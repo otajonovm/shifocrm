@@ -29,7 +29,7 @@
 
 ```bash
 # Repository yuklab olish | Clone the repository
-git clone https://github.com/otajonovm/shifocrm.git
+git clone <repository-url>
 cd shifocrm
 
 # Bog'liqliklarni o'rnatish | Install dependencies
