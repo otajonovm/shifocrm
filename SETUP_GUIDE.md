@@ -34,7 +34,7 @@ Supabase dashboard'da:
 Loyiha papkasida (shifocrm):
 
 ```bash
-# .env.example faylini .env ga nusxalash
+# Environment faylini yaratish (shablon asosida)
 cp .env.example .env
 ```
 
