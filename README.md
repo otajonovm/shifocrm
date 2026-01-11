@@ -23,6 +23,14 @@
 - 🔜 **Bemorlar moduli** | Patients module (coming soon)
 - 🔜 **Qabullar kalendari** | Appointments calendar (coming soon)
 
+## ⚠️ Muhim | Important
+
+**404 Xatosi?** Agar loyiha ishlamasa, **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** faylini o'qing!  
+**404 Error?** If the project doesn't work, read **[SETUP_GUIDE.md](./SETUP_GUIDE.md)**!
+
+Loyiha ishlashi uchun `.env` fayli va Supabase konfiguratsiyasi talab qilinadi.  
+The project requires `.env` file and Supabase configuration to work.
+
 ## 🚀 Tezkor Boshlash | Quick Start
 
 ### O'rnatish | Installation
@@ -40,6 +48,9 @@ cp .env.example .env
 # .env faylini Supabase ma'lumotlari bilan to'ldiring
 # Fill .env file with your Supabase credentials
 ```
+
+**Batafsil ko'rsatma:** [SETUP_GUIDE.md](./SETUP_GUIDE.md) faylida to'liq qadam-baqadam yo'riqnoma mavjud.  
+**Detailed instructions:** Full step-by-step guide available in [SETUP_GUIDE.md](./SETUP_GUIDE.md).
 
 ### Ishga Tushirish | Running
 

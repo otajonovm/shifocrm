@@ -1,5 +1,15 @@
 # ShifoCRM - Loyiha Tahlili
 
+## ⚠️ MUHIM: 404 Xatosi?
+
+Agar loyiha ishlamasa va **"Failed to load resource: 404"** xatosi chiqsa:
+
+👉 **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** faylini o'qing - to'liq yechim ko'rsatilgan!
+
+Qisqacha: `.env` fayli yaratish va Supabase ma'lumotlarini to'ldirish kerak.
+
+---
+
 ## Qisqacha Ma'lumot
 
 **Loyiha nomi:** ShifoCRM  
