@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as doctorsApi from '@/api/doctorsApi'
+import { MAX_DOCTORS_LIMIT, MESSAGES } from '@/constants'
 
 export const useDoctorsStore = defineStore('doctors', () => {
   const items = ref([])
@@ -13,7 +14,7 @@ export const useDoctorsStore = defineStore('doctors', () => {
     try {
       items.value = await doctorsApi.listDoctors()
     } catch (err) {
-      error.value = err.message || 'Failed to fetch doctors'
+      error.value = err.message || MESSAGES.DOCTORS.FETCH_ERROR
       console.error('Error fetching doctors:', err)
     } finally {
       isLoading.value = false
@@ -21,9 +22,9 @@ export const useDoctorsStore = defineStore('doctors', () => {
   }
 
   const create = async (payload) => {
-    if (items.value.length >= 4) {
-      error.value = 'Maximum of 4 doctors allowed'
-      throw new Error('Maximum of 4 doctors allowed')
+    if (items.value.length >= MAX_DOCTORS_LIMIT) {
+      error.value = MESSAGES.DOCTORS.MAX_LIMIT_REACHED
+      throw new Error(MESSAGES.DOCTORS.MAX_LIMIT_REACHED)
     }
 
     error.value = null
@@ -32,7 +33,7 @@ export const useDoctorsStore = defineStore('doctors', () => {
       items.value.unshift(newDoctor)
       return newDoctor
     } catch (err) {
-      error.value = err.message || 'Failed to create doctor'
+      error.value = err.message || MESSAGES.DOCTORS.CREATE_ERROR
       throw err
     }
   }
@@ -47,7 +48,7 @@ export const useDoctorsStore = defineStore('doctors', () => {
       }
       return updated
     } catch (err) {
-      error.value = err.message || 'Failed to update doctor'
+      error.value = err.message || MESSAGES.DOCTORS.UPDATE_ERROR
       throw err
     }
   }
@@ -58,7 +59,7 @@ export const useDoctorsStore = defineStore('doctors', () => {
       await doctorsApi.deleteDoctor(id)
       items.value = items.value.filter(d => d.id !== id)
     } catch (err) {
-      error.value = err.message || 'Failed to delete doctor'
+      error.value = err.message || MESSAGES.DOCTORS.DELETE_ERROR
       throw err
     }
   }

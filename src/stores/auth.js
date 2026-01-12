@@ -1,6 +1,11 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import adminCredentials from '../../db.json'
+import { MESSAGES } from '@/constants'
+
+// Admin credentials from environment variables or fallback to db.json
+const ADMIN_LOGIN = import.meta.env.VITE_ADMIN_LOGIN || adminCredentials.admin.login
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || adminCredentials.admin.password
 
 export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = ref(localStorage.getItem('isAuthenticated') === 'true')
@@ -10,18 +15,18 @@ export const useAuthStore = defineStore('auth', () => {
   const login = async ({ login, password }) => {
     error.value = null
     try {
-      if (adminCredentials.admin.login === login && adminCredentials.admin.password === password) {
+      if (ADMIN_LOGIN === login && ADMIN_PASSWORD === password) {
         isAuthenticated.value = true
         userRole.value = 'admin'
         localStorage.setItem('isAuthenticated', 'true')
         localStorage.setItem('userRole', 'admin')
         return true
       } else {
-        error.value = 'Invalid credentials'
+        error.value = MESSAGES.AUTH.INVALID_CREDENTIALS
         return false
       }
-    } catch (err) {
-      error.value = 'Login failed'
+    } catch {
+      error.value = MESSAGES.AUTH.LOGIN_FAILED
       return false
     }
   }
