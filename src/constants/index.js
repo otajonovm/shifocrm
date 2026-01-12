@@ -6,6 +6,11 @@
 // Doktorlar boshqaruvi / Doctors management
 export const MAX_DOCTORS_LIMIT = 4
 
+// UI xususiyatlari / UI Configuration
+export const UI_CONFIG = {
+  NOTIFICATION_DURATION: 3000, // milliseconds
+}
+
 // UI Xabarlari / UI Messages
 export const MESSAGES = {
   DOCTORS: {
@@ -17,6 +22,7 @@ export const MESSAGES = {
     CREATE_ERROR: 'Doktor qo\'shishda xatolik yuz berdi',
     UPDATE_SUCCESS: 'Doktor ma\'lumotlari yangilandi',
     UPDATE_ERROR: 'Doktor ma\'lumotlarini yangilashda xatolik',
+    FETCH_ERROR: 'Doktorlarni yuklashda xatolik',
   },
   AUTH: {
     INVALID_CREDENTIALS: 'Login yoki parol noto\'g\'ri',
@@ -26,7 +32,7 @@ export const MESSAGES = {
 
 // Form validatsiya shablonlari / Form validation patterns
 export const VALIDATION = {
-  PHONE_PATTERN: /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]*$/,
+  PHONE_PATTERN: '[+]?[(]?[0-9]{1,4}[)]?[-\\s./0-9]*',
   NAME_MIN_LENGTH: 2,
   NAME_MAX_LENGTH: 100,
 }

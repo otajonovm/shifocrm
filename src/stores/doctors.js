@@ -14,7 +14,7 @@ export const useDoctorsStore = defineStore('doctors', () => {
     try {
       items.value = await doctorsApi.listDoctors()
     } catch (err) {
-      error.value = err.message || MESSAGES.DOCTORS.CREATE_ERROR
+      error.value = err.message || MESSAGES.DOCTORS.FETCH_ERROR
       console.error('Error fetching doctors:', err)
     } finally {
       isLoading.value = false

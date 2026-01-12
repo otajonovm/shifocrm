@@ -95,8 +95,8 @@
                 v-model="form.full_name"
                 type="text"
                 required
-                minlength="2"
-                maxlength="100"
+                :minlength="VALIDATION.NAME_MIN_LENGTH"
+                :maxlength="VALIDATION.NAME_MAX_LENGTH"
                 class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 placeholder="Dr. Alisher Aliyev"
               />
@@ -111,7 +111,7 @@
                 v-model="form.phone"
                 type="tel"
                 required
-                pattern="[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]*"
+                :pattern="VALIDATION.PHONE_PATTERN"
                 class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 placeholder="+998901234567"
               />
@@ -254,7 +254,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
-import { MAX_DOCTORS_LIMIT, MESSAGES } from '@/constants'
+import { MAX_DOCTORS_LIMIT, MESSAGES, VALIDATION, UI_CONFIG } from '@/constants'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -284,7 +284,7 @@ const showNotification = (message, type = 'success') => {
   }
   setTimeout(() => {
     notification.value.show = false
-  }, 3000)
+  }, UI_CONFIG.NOTIFICATION_DURATION)
 }
 
 onMounted(() => {
