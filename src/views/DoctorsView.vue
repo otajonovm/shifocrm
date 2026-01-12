@@ -215,7 +215,7 @@ const handleCreateDoctor = async () => {
       phone: '',
       is_active: true,
     }
-  } catch (err) {
+  } catch {
     showFormError.value = true
   } finally {
     isSubmitting.value = false
@@ -226,7 +226,7 @@ const handleDeleteDoctor = async (id) => {
   if (confirm('Are you sure you want to delete this doctor?')) {
     try {
       await doctorsStore.remove(id)
-    } catch (err) {
+    } catch {
       alert('Failed to delete doctor')
     }
   }
