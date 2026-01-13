@@ -28,13 +28,30 @@ const readDoctors = () => {
   }
 }
 
-const writeDoctors = (doctors) => {
+const writeDoctors = async (doctors) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(doctors))
   
-  // db.json strukturasini yangilash (faqat ma'lumot uchun, asl fayl o'zgarmaydi)
-  // Frontend da db.json ni to'g'ridan-to'g'ri yozib bo'lmaydi
-  // Lekin localStorage da saqlanadi va keyin export qilish mumkin
-  console.log('Doctors updated. To save to db.json, export the data:', doctors)
+  // Development rejimida db.json ga avtomatik saqlash
+  if (import.meta.env.DEV) {
+    try {
+      const response = await fetch('/api/save-db', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ doctors }),
+      })
+      
+      if (response.ok) {
+        console.log('✅ Doctors saved to db.json successfully')
+      } else {
+        console.warn('⚠️ Failed to save to db.json, but data is saved in localStorage')
+      }
+    } catch (error) {
+      // Agar API mavjud bo'lmasa (production), localStorage da saqlanadi
+      console.log('Doctors saved to localStorage. db.json will be updated in development mode.')
+    }
+  }
 }
 
 const generateId = () => {
@@ -80,7 +97,7 @@ export const createDoctor = async ({ full_name, phone, email, password, is_activ
   }
 
   const updated = [newDoctor, ...doctors]
-  writeDoctors(updated)
+  await writeDoctors(updated)
   return newDoctor
 }
 
@@ -96,14 +113,14 @@ export const updateDoctor = async (id, payload) => {
   }
 
   doctors[index] = updatedDoctor
-  writeDoctors(doctors)
+  await writeDoctors(doctors)
   return updatedDoctor
 }
 
 export const deleteDoctor = async (id) => {
   const doctors = readDoctors()
   const filtered = doctors.filter(d => d.id !== id)
-  writeDoctors(filtered)
+  await writeDoctors(filtered)
 }
 
 // db.json formatida export qilish (admin uchun)
