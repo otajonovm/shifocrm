@@ -1,6 +1,22 @@
+import dbData from '../../db.json'
+
 const STORAGE_KEY = 'doctors'
+const DB_DOCTORS_KEY = 'doctors'
+
+// db.json dan doktorlarni o'qish va localStorage ga sinxronlashtirish
+const initDoctorsFromDb = () => {
+  const stored = localStorage.getItem(STORAGE_KEY)
+  if (!stored && dbData[DB_DOCTORS_KEY] && dbData[DB_DOCTORS_KEY].length > 0) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dbData[DB_DOCTORS_KEY]))
+    return dbData[DB_DOCTORS_KEY]
+  }
+  return null
+}
 
 const readDoctors = () => {
+  // Avval db.json dan sinxronlashtirish
+  initDoctorsFromDb()
+  
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return []
   try {
@@ -14,6 +30,11 @@ const readDoctors = () => {
 
 const writeDoctors = (doctors) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(doctors))
+  
+  // db.json strukturasini yangilash (faqat ma'lumot uchun, asl fayl o'zgarmaydi)
+  // Frontend da db.json ni to'g'ridan-to'g'ri yozib bo'lmaydi
+  // Lekin localStorage da saqlanadi va keyin export qilish mumkin
+  console.log('Doctors updated. To save to db.json, export the data:', doctors)
 }
 
 const generateId = () => {
@@ -83,4 +104,28 @@ export const deleteDoctor = async (id) => {
   const doctors = readDoctors()
   const filtered = doctors.filter(d => d.id !== id)
   writeDoctors(filtered)
+}
+
+// db.json formatida export qilish (admin uchun)
+export const exportToDbJson = () => {
+  const doctors = readDoctors()
+  const dbJson = {
+    admin: dbData.admin,
+    doctors: doctors
+  }
+  return JSON.stringify(dbJson, null, 2)
+}
+
+// db.json faylni yuklab olish (download)
+export const downloadDbJson = () => {
+  const jsonContent = exportToDbJson()
+  const blob = new Blob([jsonContent], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'db.json'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }

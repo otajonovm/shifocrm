@@ -135,13 +135,21 @@
           <h2 class="text-lg font-semibold text-gray-900">
             Doctors ({{ doctorsStore.items.length }}/4)
           </h2>
-          <button
-            @click="doctorsStore.fetchAll()"
-            :disabled="doctorsStore.isLoading"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
-          >
-            Refresh
-          </button>
+          <div class="flex gap-2">
+            <button
+              @click="handleExportDbJson"
+              class="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+            >
+              Export to db.json
+            </button>
+            <button
+              @click="doctorsStore.fetchAll()"
+              :disabled="doctorsStore.isLoading"
+              class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              Refresh
+            </button>
+          </div>
         </div>
 
         <!-- Loading State -->
@@ -218,6 +226,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
+import { downloadDbJson } from '@/api/doctorsApi'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -281,6 +290,10 @@ const handleDeleteDoctor = async (id) => {
       alert('Failed to delete doctor')
     }
   }
+}
+
+const handleExportDbJson = () => {
+  downloadDbJson()
 }
 
 const handleLogout = () => {

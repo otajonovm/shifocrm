@@ -2,5 +2,6 @@
   "admin": {
     "login": "admin",
     "password": "admin123"
-  }
+  },
+  "doctors": []
 }
