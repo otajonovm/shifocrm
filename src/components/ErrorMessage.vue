@@ -9,6 +9,7 @@ defineProps({
   message: {
     type: String,
     default: '',
+    
   },
 })
 </script>

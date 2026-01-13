@@ -10,6 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
   const userEmail = ref(localStorage.getItem('userEmail') || null)
   const error = ref(null)
 
+  
   const login = async ({ login, password }) => {
     error.value = null
     try {
@@ -23,7 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
         error.value = 'Invalid credentials'
         return false
       }
-    } catch (err) {
+    } catch (error) {
       error.value = 'Login failed'
       return false
     }
@@ -98,5 +99,6 @@ export const useAuthStore = defineStore('auth', () => {
     loginDoctor,
     logout,
     checkAuth
+
   }
 })
