@@ -22,28 +22,49 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresRole: 'admin' },
     },
     {
+      path: '/doctor/profile',
+      name: 'doctor-profile',
+      component: () => import('@/views/DoctorProfileView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'doctor' },
+    },
+    {
       path: '/',
       redirect: '/dashboard',
     },
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
   // Redirect authenticated users away from login page
   if (to.name === 'login' && authStore.isAuthenticated) {
-    next({ name: 'dashboard' })
+    const defaultRoute = authStore.userRole === 'doctor' ? '/doctor/profile' : '/dashboard'
+    next({ name: defaultRoute })
     return
   }
 
+  // Check authentication requirement
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'login', query: { redirect: to.fullPath } })
-  } else if (to.meta.requiresRole === 'admin' && authStore.userRole !== 'admin') {
-    next({ name: 'dashboard' })
-  } else {
-    next()
+    return
   }
+
+  // Check role requirement
+  if (to.meta.requiresRole) {
+    if (to.meta.requiresRole === 'admin' && authStore.userRole !== 'admin') {
+      // Redirect to appropriate dashboard
+      const defaultRoute = authStore.userRole === 'doctor' ? '/doctor/profile' : '/dashboard'
+      next({ name: defaultRoute })
+      return
+    }
+    if (to.meta.requiresRole === 'doctor' && authStore.userRole !== 'doctor') {
+      next({ name: 'dashboard' })
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

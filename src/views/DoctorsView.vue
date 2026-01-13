@@ -26,9 +26,9 @@
       <!-- Add Doctor Form -->
       <div class="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Add New Doctor</h2>
-        
+
         <form @submit.prevent="handleCreateDoctor" class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label for="full_name" class="block text-sm font-medium text-gray-700 mb-2">
                 Full Name *
@@ -54,6 +54,48 @@
                 required
                 class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 placeholder="+1234567890"
+              />
+            </div>
+
+            <div>
+              <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                Email *
+              </label>
+              <input
+                id="email"
+                v-model="form.email"
+                type="email"
+                required
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                placeholder="doctor@example.com"
+              />
+            </div>
+
+            <div>
+              <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                Initial Password *
+              </label>
+              <input
+                id="password"
+                v-model="form.password"
+                type="password"
+                required
+                minlength="6"
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                placeholder="Minimum 6 characters"
+              />
+            </div>
+
+            <div>
+              <label for="specialization" class="block text-sm font-medium text-gray-700 mb-2">
+                Specialization
+              </label>
+              <input
+                id="specialization"
+                v-model="form.specialization"
+                type="text"
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                placeholder="e.g., Cardiologist"
               />
             </div>
 
@@ -184,6 +226,9 @@ const doctorsStore = useDoctorsStore()
 const form = ref({
   full_name: '',
   phone: '',
+  email: '',
+  password: '',
+  specialization: '',
   is_active: true,
 })
 
@@ -207,15 +252,21 @@ const handleCreateDoctor = async () => {
     await doctorsStore.create({
       full_name: form.value.full_name,
       phone: form.value.phone,
+      email: form.value.email,
+      password: form.value.password,
+      specialization: form.value.specialization,
       is_active: form.value.is_active,
     })
-    
+
     form.value = {
       full_name: '',
       phone: '',
+      email: '',
+      password: '',
+      specialization: '',
       is_active: true,
     }
-  } catch (err) {
+  } catch {
     showFormError.value = true
   } finally {
     isSubmitting.value = false
@@ -226,7 +277,7 @@ const handleDeleteDoctor = async (id) => {
   if (confirm('Are you sure you want to delete this doctor?')) {
     try {
       await doctorsStore.remove(id)
-    } catch (err) {
+    } catch {
       alert('Failed to delete doctor')
     }
   }
