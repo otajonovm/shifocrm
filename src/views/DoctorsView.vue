@@ -1,5 +1,5 @@
 <template>
-  <AdminLayout>
+  <MainLayout>
     <!-- Add Doctor Form -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-8">
       <h2 class="text-lg font-semibold text-gray-900 mb-4">Add New Doctor</h2>
@@ -38,7 +38,7 @@
         </button>
       </template>
     </DoctorsTable>
-  </AdminLayout>
+  </MainLayout>
 </template>
 
 <script setup>
@@ -46,7 +46,7 @@ import { ref, onMounted } from 'vue'
 import { useDoctorsStore } from '@/stores/doctors'
 import { downloadDbJson } from '@/api/doctorsApi'
 import { useToast } from '@/composables/useToast'
-import AdminLayout from '@/layouts/AdminLayout.vue'
+import MainLayout from '@/layouts/MainLayout.vue'
 import DoctorForm from '@/components/admin/DoctorForm.vue'
 import DoctorsTable from '@/components/admin/DoctorsTable.vue'
 

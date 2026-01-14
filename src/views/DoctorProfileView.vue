@@ -1,5 +1,5 @@
 <template>
-  <DoctorLayout>
+  <MainLayout>
     <div class="max-w-4xl mx-auto">
       <!-- Loading State -->
       <div v-if="isLoading" class="text-center py-8">
@@ -42,14 +42,14 @@
         </div>
       </div>
     </div>
-  </DoctorLayout>
+  </MainLayout>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
-import DoctorLayout from '@/layouts/DoctorLayout.vue'
+import MainLayout from '@/layouts/MainLayout.vue'
 import DoctorProfileForm from '@/components/doctor/DoctorProfileForm.vue'
 import PasswordChangeForm from '@/components/doctor/PasswordChangeForm.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
