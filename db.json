@@ -5,15 +5,15 @@
   },
   "doctors": [
     {
-      "id": "36df5cd2-87f7-4f4c-846e-5402951adaf9",
-      "full_name": "asdasd",
-      "phone": "2343424",
-      "email": "asdasnd@gmail.com",
-      "password": "123123",
-      "specialization": "asdd",
+      "id": "7eee148a-a855-4f75-9c3b-705d03af57c4",
+      "full_name": "Masudbek Otajonov",
+      "phone": "+998(94) 054 27 22",
+      "email": "admin@gmail.com",
+      "password": "admin123",
+      "specialization": "sdadasd",
       "is_active": true,
-      "created_at": "2026-01-13T14:30:47.439Z",
-      "updated_at": "2026-01-13T14:30:47.439Z"
+      "created_at": "2026-01-14T06:01:44.101Z",
+      "updated_at": "2026-01-14T06:01:44.101Z"
     }
   ]
 }

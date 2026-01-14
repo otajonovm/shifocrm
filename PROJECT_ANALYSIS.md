@@ -465,3 +465,4 @@ Agar savollar bo'lsa:
 **Tahlil Sana:** 2024  
 **Versiya:** 1.0  
 **Status:** Development
+пше
