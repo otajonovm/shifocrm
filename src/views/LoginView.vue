@@ -122,10 +122,12 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const toast = useToast()
 
 const loginType = ref('admin')
 const adminLogin = ref('')
@@ -143,8 +145,11 @@ const handleAdminLogin = async () => {
   isLoading.value = false
 
   if (success) {
+    toast.success('Tizimga muvaffaqiyatli kirdingiz!')
     const redirect = route.query.redirect || '/dashboard'
     router.push(redirect)
+  } else {
+    toast.error('Login yoki parol noto\'g\'ri')
   }
 }
 
@@ -157,8 +162,11 @@ const handleDoctorLogin = async () => {
   isLoading.value = false
 
   if (success) {
+    toast.success('Tizimga muvaffaqiyatli kirdingiz!')
     const redirect = route.query.redirect || '/doctor/profile'
     router.push(redirect)
+  } else {
+    toast.error('Email yoki parol noto\'g\'ri')
   }
 }
 </script>

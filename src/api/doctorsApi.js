@@ -1,22 +1,21 @@
 import dbData from '../../db.json'
 
 const STORAGE_KEY = 'doctors'
-const DB_DOCTORS_KEY = 'doctors'
 
 // db.json dan doktorlarni o'qish va localStorage ga sinxronlashtirish
 const initDoctorsFromDb = () => {
   const stored = localStorage.getItem(STORAGE_KEY)
-  if (!stored && dbData[DB_DOCTORS_KEY] && dbData[DB_DOCTORS_KEY].length > 0) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dbData[DB_DOCTORS_KEY]))
-    return dbData[DB_DOCTORS_KEY]
+  if (!stored && dbData.doctors && dbData.doctors.length > 0) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dbData.doctors))
+    return dbData.doctors
   }
   return null
 }
 
+// localStorage dan doktorlarni o'qish
 const readDoctors = () => {
-  // Avval db.json dan sinxronlashtirish
   initDoctorsFromDb()
-  
+
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return []
   try {
@@ -28,57 +27,62 @@ const readDoctors = () => {
   }
 }
 
+// localStorage ga doktorlarni yozish
 const writeDoctors = async (doctors) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(doctors))
-  
+
   // Development rejimida db.json ga avtomatik saqlash
   if (import.meta.env.DEV) {
     try {
       const response = await fetch('/api/save-db', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ doctors }),
       })
-      
       if (response.ok) {
-        console.log('✅ Doctors saved to db.json successfully')
-      } else {
-        console.warn('⚠️ Failed to save to db.json, but data is saved in localStorage')
+        console.log('✅ Doctors saved to db.json')
       }
-    } catch (error) {
-      // Agar API mavjud bo'lmasa (production), localStorage da saqlanadi
-      console.log('Doctors saved to localStorage. db.json will be updated in development mode.')
+    } catch {
+      console.log('Doctors saved to localStorage only')
     }
   }
 }
 
+// 5 xonali unique ID generatsiya qilish (10000-99999)
 const generateId = () => {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID()
-  }
-  return `doc-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  const doctors = readDoctors()
+  const existingIds = doctors.map(d => Number(d.id))
+  
+  let newId
+  do {
+    newId = Math.floor(10000 + Math.random() * 90000) // 10000-99999
+  } while (existingIds.includes(newId))
+  
+  return newId
 }
 
+// Barcha doktorlarni olish
 export const listDoctors = async () => {
   const doctors = readDoctors()
-  // sort by created_at desc if available
   return doctors.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 }
 
+// ID bo'yicha doktorni olish
 export const getDoctorById = async (id) => {
   const doctors = readDoctors()
   return doctors.find(d => d.id === id) || null
 }
 
+// Doktor autentifikatsiyasi
 export const authenticateDoctor = async (email, password) => {
   const doctors = readDoctors()
   return doctors.find(d => d.email === email && d.password === password) || null
 }
 
+// Yangi doktor yaratish
 export const createDoctor = async ({ full_name, phone, email, password, is_active = true, specialization = null }) => {
   const doctors = readDoctors()
+
   if (doctors.some(d => d.email === email)) {
     throw new Error('Email already exists')
   }
@@ -101,9 +105,11 @@ export const createDoctor = async ({ full_name, phone, email, password, is_activ
   return newDoctor
 }
 
+// Doktor ma'lumotlarini yangilash
 export const updateDoctor = async (id, payload) => {
   const doctors = readDoctors()
   const index = doctors.findIndex(d => d.id === id)
+
   if (index === -1) throw new Error('Doctor not found')
 
   const updatedDoctor = {
@@ -117,13 +123,14 @@ export const updateDoctor = async (id, payload) => {
   return updatedDoctor
 }
 
+// Doktorni o'chirish
 export const deleteDoctor = async (id) => {
   const doctors = readDoctors()
   const filtered = doctors.filter(d => d.id !== id)
   await writeDoctors(filtered)
 }
 
-// db.json formatida export qilish (admin uchun)
+// db.json formatida export qilish
 export const exportToDbJson = () => {
   const doctors = readDoctors()
   const dbJson = {

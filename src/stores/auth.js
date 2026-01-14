@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import adminCredentials from '../../db.json'
+import dbData from '../../db.json'
 import * as doctorsApi from '@/api/doctorsApi'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -14,7 +14,7 @@ export const useAuthStore = defineStore('auth', () => {
   const login = async ({ login, password }) => {
     error.value = null
     try {
-      if (adminCredentials.admin.login === login && adminCredentials.admin.password === password) {
+      if (dbData.admin.login === login && dbData.admin.password === password) {
         isAuthenticated.value = true
         userRole.value = 'admin'
         localStorage.setItem('isAuthenticated', 'true')

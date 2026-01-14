@@ -45,11 +45,13 @@
 import { ref, onMounted } from 'vue'
 import { useDoctorsStore } from '@/stores/doctors'
 import { downloadDbJson } from '@/api/doctorsApi'
+import { useToast } from '@/composables/useToast'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import DoctorForm from '@/components/admin/DoctorForm.vue'
 import DoctorsTable from '@/components/admin/DoctorsTable.vue'
 
 const doctorsStore = useDoctorsStore()
+const toast = useToast()
 
 const form = ref({
   full_name: '',
@@ -70,6 +72,7 @@ onMounted(() => {
 const handleCreateDoctor = async (formData) => {
   if (doctorsStore.items.length >= 4) {
     showFormError.value = true
+    toast.warning('Maximum 4 ta doktor qo\'shish mumkin')
     return
   }
 
@@ -94,24 +97,33 @@ const handleCreateDoctor = async (formData) => {
       specialization: '',
       is_active: true,
     }
+
+    toast.success('Doktor muvaffaqiyatli qo\'shildi!')
   } catch {
     showFormError.value = true
+    toast.error('Doktor qo\'shishda xatolik yuz berdi')
   } finally {
     isSubmitting.value = false
   }
 }
 
 const handleDeleteDoctor = async (id) => {
-  if (confirm('Are you sure you want to delete this doctor?')) {
+  if (confirm('Haqiqatan ham bu doktorni o\'chirmoqchimisiz?')) {
     try {
       await doctorsStore.remove(id)
+      toast.success('Doktor muvaffaqiyatli o\'chirildi!')
     } catch {
-      alert('Failed to delete doctor')
+      toast.error('Doktorni o\'chirishda xatolik yuz berdi')
     }
   }
 }
 
 const handleExportDbJson = () => {
-  downloadDbJson()
+  try {
+    downloadDbJson()
+    toast.success('Ma\'lumotlar muvaffaqiyatli yuklab olindi!')
+  } catch {
+    toast.error('Yuklab olishda xatolik yuz berdi')
+  }
 }
 </script>
