@@ -1,35 +1,32 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as doctorsApi from '@/api/doctorsApi'
+import { supabaseGet } from '@/api/supabaseConfig'
 
-// Online JSON Server API (my-json-server.typicode.com - READ ONLY!)
-const API_BASE = 'https://my-json-server.typicode.com/otajonovm/shifocrm'
-
-// Admin ma'lumotlarini olish
+// Admin ma'lumotlarini olish (Supabase dan yoki default)
 const getAdminCredentials = async () => {
-  // Avval localStorage dan tekshirish
+  // Avval localStorage dan tekshirish (cache)
   const cached = localStorage.getItem('shifocrm_admin')
   if (cached) {
     return JSON.parse(cached)
   }
 
-  // Serverdan olish
+  // Supabase dan admin jadvalini tekshirish (agar mavjud bo'lsa)
   try {
-    const response = await fetch(`${API_BASE}/admin`)
-    if (response.ok) {
-      const admin = await response.json()
-      if (admin && admin.login) {
-        localStorage.setItem('shifocrm_admin', JSON.stringify(admin))
-        console.log('✅ Admin credentials loaded from server')
-        return admin
-      }
+    const admins = await supabaseGet('admin', 'limit=1')
+    if (admins && admins.length > 0) {
+      localStorage.setItem('shifocrm_admin', JSON.stringify(admins[0]))
+      console.log('✅ Admin credentials loaded from Supabase')
+      return admins[0]
     }
-  } catch (error) {
-    console.error('❌ Failed to fetch admin credentials:', error)
+  } catch {
+    console.log('ℹ️ No admin table in Supabase, using default credentials')
   }
 
   // Default fallback
-  return { login: 'admin', password: 'admin123' }
+  const defaultAdmin = { login: 'admin', password: 'admin123' }
+  localStorage.setItem('shifocrm_admin', JSON.stringify(defaultAdmin))
+  return defaultAdmin
 }
 
 export const useAuthStore = defineStore('auth', () => {

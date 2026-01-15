@@ -1,176 +1,135 @@
-// Online JSON Server API (my-json-server.typicode.com - READ ONLY!)
-// Format: https://my-json-server.typicode.com/{github-username}/{repo-name}/{resource}
-const API_BASE = 'https://my-json-server.typicode.com/otajonovm/shifocrm'
-const STORAGE_KEY = 'shifocrm_patients'
-const DATA_LOADED_KEY = 'shifocrm_patients_loaded'
+/**
+ * Patients API - Supabase REST API orqali
+ * Jadval: patients
+ */
 
-// Onlayn serverdan bemorlarni yuklash va localStorage ga saqlash
-const fetchPatientsFromServer = async () => {
-  try {
-    const response = await fetch(`${API_BASE}/patients`)
-    if (!response.ok) throw new Error(`Server error: ${response.status}`)
-    const patients = await response.json()
-    if (Array.isArray(patients) && patients.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(patients))
-      localStorage.setItem(DATA_LOADED_KEY, 'true')
-      console.log('✅ Patients loaded from online server:', patients.length)
-      return patients
-    }
-    return []
-  } catch (error) {
-    console.error('❌ Failed to fetch patients from server:', error)
-    return null
-  }
-}
+import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supabaseConfig'
 
-// localStorage dan bemorlarni o'qish
-const readPatients = () => {
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch (e) {
-    console.error('Failed to parse patients from storage', e)
-    return []
-  }
-}
-
-// localStorage ga bemorlarni yozish
-const writePatients = async (patients) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(patients))
-  console.log('✅ Patients saved to localStorage')
-}
-
-// 5 xonali unique ID generatsiya qilish (10000-99999)
-const generateId = () => {
-  const patients = readPatients()
-  const existingIds = patients.map(p => Number(p.id))
-
-  let newId
-  do {
-    newId = Math.floor(10000 + Math.random() * 90000)
-  } while (existingIds.includes(newId))
-
-  return newId
-}
-
-// Initialization - serverdan yuklash yoki localStorage dan olish
-export const initPatients = async () => {
-  const loaded = localStorage.getItem(DATA_LOADED_KEY)
-  if (!loaded) {
-    await fetchPatientsFromServer()
-  }
-}
+const TABLE = 'patients'
 
 // Barcha bemorlarni olish
 export const listPatients = async () => {
-  let patients = readPatients()
-  if (patients.length === 0) {
-    const serverPatients = await fetchPatientsFromServer()
-    if (serverPatients) {
-      patients = serverPatients
-    }
+  try {
+    const patients = await supabaseGet(TABLE, 'order=created_at.desc')
+    console.log('✅ Patients loaded from Supabase:', patients.length)
+    return patients
+  } catch (error) {
+    console.error('❌ Failed to fetch patients:', error)
+    throw error
   }
-  return patients.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 }
 
 // ID bo'yicha bemorni olish
 export const getPatientById = async (id) => {
-  const patients = readPatients()
-  return patients.find(p => p.id === id || p.id === Number(id)) || null
+  try {
+    const patients = await supabaseGet(TABLE, `id=eq.${id}`)
+    return patients[0] || null
+  } catch (error) {
+    console.error('❌ Failed to fetch patient:', error)
+    throw error
+  }
 }
 
 // Doktor ID bo'yicha bemorlarni olish
 export const getPatientsByDoctorId = async (doctorId) => {
-  let patients = readPatients()
-  if (patients.length === 0) {
-    await fetchPatientsFromServer()
-    patients = readPatients()
+  try {
+    const patients = await supabaseGet(TABLE, `doctor_id=eq.${doctorId}&order=created_at.desc`)
+    return patients
+  } catch (error) {
+    console.error('❌ Failed to fetch patients by doctor:', error)
+    throw error
   }
-  const numDoctorId = Number(doctorId)
-  return patients.filter(p => p.doctor_id === doctorId || p.doctor_id === numDoctorId)
 }
 
 // Yangi bemor yaratish
 export const createPatient = async ({
   full_name,
   phone,
-  birth_date = '',
-  gender = '',
-  address = '',
+  birth_date = null,
+  gender = null,
+  address = null,
   doctor_id = null,
-  doctor_name = '',
+  doctor_name = null,
   status = 'active',
-  notes = ''
+  notes = null
 }) => {
-  const patients = readPatients()
+  try {
+    const now = new Date().toISOString()
+    const newPatient = {
+      full_name,
+      phone,
+      birth_date: birth_date || null,
+      gender: gender || null,
+      address: address || null,
+      doctor_id: doctor_id ? Number(doctor_id) : null,
+      doctor_name: doctor_name || null,
+      status,
+      notes: notes || null,
+      last_visit: null,
+      next_appointment: null,
+      created_at: now,
+      updated_at: now
+    }
 
-  const now = new Date().toISOString()
-  const newPatient = {
-    id: generateId(),
-    full_name,
-    phone,
-    birth_date,
-    gender,
-    address,
-    doctor_id,
-    doctor_name,
-    status,
-    notes,
-    last_visit: null,
-    next_appointment: null,
-    created_at: now,
-    updated_at: now,
+    const result = await supabasePost(TABLE, newPatient)
+    console.log('✅ Patient created:', result[0])
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to create patient:', error)
+    throw error
   }
-
-  const updated = [newPatient, ...patients]
-  await writePatients(updated)
-  return newPatient
 }
 
 // Bemor ma'lumotlarini yangilash
 export const updatePatient = async (id, payload) => {
-  const patients = readPatients()
-  const numId = Number(id)
-  const index = patients.findIndex(p => p.id === id || p.id === numId)
+  try {
+    const updateData = {
+      ...payload,
+      updated_at: new Date().toISOString()
+    }
+    
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key]
+      }
+    })
 
-  if (index === -1) throw new Error('Patient not found')
-
-  const updatedPatient = {
-    ...patients[index],
-    ...payload,
-    updated_at: new Date().toISOString(),
+    const result = await supabasePatch(TABLE, id, updateData)
+    console.log('✅ Patient updated:', result[0])
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to update patient:', error)
+    throw error
   }
-
-  patients[index] = updatedPatient
-  await writePatients(patients)
-  return updatedPatient
 }
 
 // Bemorni o'chirish
 export const deletePatient = async (id) => {
-  const patients = readPatients()
-  const numId = Number(id)
-  const index = patients.findIndex(p => p.id === id || p.id === numId)
-
-  if (index === -1) throw new Error('Patient not found')
-
-  const deletedPatient = patients[index]
-  const updated = patients.filter(p => p.id !== id && p.id !== numId)
-  await writePatients(updated)
-  return deletedPatient
+  try {
+    await supabaseDelete(TABLE, id)
+    console.log('✅ Patient deleted:', id)
+    return { id }
+  } catch (error) {
+    console.error('❌ Failed to delete patient:', error)
+    throw error
+  }
 }
 
-// Ma'lumotlarni serverdan qayta yuklash (refresh)
+// Initialization (Supabase uchun kerak emas, lekin backward compatibility uchun)
+export const initPatients = async () => {
+  // No-op for Supabase
+  return true
+}
+
+// Refresh (backward compatibility)
 export const refreshFromServer = async () => {
-  localStorage.removeItem(DATA_LOADED_KEY)
-  return await fetchPatientsFromServer()
+  return await listPatients()
 }
 
 // Export to JSON file
-export const downloadDbJson = () => {
-  const patients = readPatients()
+export const downloadDbJson = async () => {
+  const patients = await listPatients()
   const data = { patients }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
