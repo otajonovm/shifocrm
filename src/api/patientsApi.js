@@ -46,12 +46,12 @@ const generateId = async () => {
   try {
     const patients = await listPatients()
     const existingIds = patients.map(p => Number(p.id))
-    
+
     let newId
     do {
       newId = Math.floor(10000 + Math.random() * 90000)
     } while (existingIds.includes(newId))
-    
+
     return newId
   } catch {
     // Fallback: timestamp based ID
@@ -74,7 +74,7 @@ export const createPatient = async ({
   try {
     const now = new Date().toISOString()
     const id = await generateId()
-    
+
     const newPatient = {
       id,
       full_name,
@@ -108,7 +108,7 @@ export const updatePatient = async (id, payload) => {
       ...payload,
       updated_at: new Date().toISOString()
     }
-    
+
     // Remove undefined values
     Object.keys(updateData).forEach(key => {
       if (updateData[key] === undefined) {

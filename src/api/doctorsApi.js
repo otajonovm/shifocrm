@@ -47,12 +47,12 @@ const generateId = async () => {
   try {
     const doctors = await listDoctors()
     const existingIds = doctors.map(d => Number(d.id))
-    
+
     let newId
     do {
       newId = Math.floor(10000 + Math.random() * 90000)
     } while (existingIds.includes(newId))
-    
+
     return newId
   } catch {
     // Fallback: random ID
@@ -61,13 +61,13 @@ const generateId = async () => {
 }
 
 // Yangi doktor yaratish
-export const createDoctor = async ({ 
-  full_name, 
-  phone, 
-  email, 
-  password, 
-  is_active = true, 
-  specialization = null 
+export const createDoctor = async ({
+  full_name,
+  phone,
+  email,
+  password,
+  is_active = true,
+  specialization = null
 }) => {
   try {
     // Email mavjudligini tekshirish
@@ -78,7 +78,7 @@ export const createDoctor = async ({
 
     const now = new Date().toISOString()
     const id = await generateId()
-    
+
     const newDoctor = {
       id,
       full_name,
@@ -107,7 +107,7 @@ export const updateDoctor = async (id, payload) => {
       ...payload,
       updated_at: new Date().toISOString()
     }
-    
+
     // Remove undefined values
     Object.keys(updateData).forEach(key => {
       if (updateData[key] === undefined) {

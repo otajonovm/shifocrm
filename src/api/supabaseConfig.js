@@ -24,12 +24,12 @@ export const supabaseGet = async (table, query = '') => {
     method: 'GET',
     headers: getHeaders()
   })
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
     throw new Error(error.message || `GET failed: ${response.status}`)
   }
-  
+
   return response.json()
 }
 
@@ -41,12 +41,12 @@ export const supabasePost = async (table, data) => {
     headers: getHeaders(),
     body: JSON.stringify(data)
   })
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
     throw new Error(error.message || `POST failed: ${response.status}`)
   }
-  
+
   return response.json()
 }
 
@@ -58,12 +58,12 @@ export const supabasePatch = async (table, id, data) => {
     headers: getHeaders(),
     body: JSON.stringify(data)
   })
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
     throw new Error(error.message || `PATCH failed: ${response.status}`)
   }
-  
+
   return response.json()
 }
 
@@ -74,11 +74,11 @@ export const supabaseDelete = async (table, id) => {
     method: 'DELETE',
     headers: getHeaders()
   })
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
     throw new Error(error.message || `DELETE failed: ${response.status}`)
   }
-  
+
   return true
 }
