@@ -1,21 +1,29 @@
-import dbData from '../../db.json'
-
+// Online JSON Server API
+const API_URL = 'https://my-json-server.typicode.com/otajonovm/db.json'
 const STORAGE_KEY = 'patients'
+const DATA_LOADED_KEY = 'patients_loaded'
 
-// db.json dan bemorlarni o'qish va localStorage ga sinxronlashtirish
-const initPatientsFromDb = () => {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  if (!stored && dbData.patients && dbData.patients.length > 0) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dbData.patients))
-    return dbData.patients
+// Onlayn serverdan bemorlarni yuklash va localStorage ga saqlash
+const fetchPatientsFromServer = async () => {
+  try {
+    const response = await fetch(`${API_URL}/db`)
+    if (!response.ok) throw new Error('Server error')
+    const data = await response.json()
+    if (data.patients && data.patients.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data.patients))
+      localStorage.setItem(DATA_LOADED_KEY, 'true')
+      console.log('✅ Patients loaded from online server')
+      return data.patients
+    }
+    return []
+  } catch (error) {
+    console.error('Failed to fetch patients from server:', error)
+    return null
   }
-  return null
 }
 
 // localStorage dan bemorlarni o'qish
 const readPatients = () => {
-  initPatientsFromDb()
-
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return []
   try {
@@ -30,22 +38,7 @@ const readPatients = () => {
 // localStorage ga bemorlarni yozish
 const writePatients = async (patients) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(patients))
-
-  // Development rejimida db.json ga avtomatik saqlash
-  if (import.meta.env.DEV) {
-    try {
-      const response = await fetch('/api/save-patients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patients }),
-      })
-      if (response.ok) {
-        console.log('✅ Patients saved to db.json')
-      }
-    } catch {
-      console.log('Patients saved to localStorage only')
-    }
-  }
+  console.log('✅ Patients saved to localStorage')
 }
 
 // 5 xonali unique ID generatsiya qilish (10000-99999)
@@ -55,15 +48,29 @@ const generateId = () => {
 
   let newId
   do {
-    newId = Math.floor(10000 + Math.random() * 90000) // 10000-99999
+    newId = Math.floor(10000 + Math.random() * 90000)
   } while (existingIds.includes(newId))
 
   return newId
 }
 
+// Initialization - serverdan yuklash yoki localStorage dan olish
+export const initPatients = async () => {
+  const loaded = localStorage.getItem(DATA_LOADED_KEY)
+  if (!loaded) {
+    await fetchPatientsFromServer()
+  }
+}
+
 // Barcha bemorlarni olish
 export const listPatients = async () => {
-  const patients = readPatients()
+  let patients = readPatients()
+  if (patients.length === 0) {
+    const serverPatients = await fetchPatientsFromServer()
+    if (serverPatients) {
+      patients = serverPatients
+    }
+  }
   return patients.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 }
 
@@ -73,10 +80,15 @@ export const getPatientById = async (id) => {
   return patients.find(p => p.id === id || p.id === Number(id)) || null
 }
 
-// Doktor ID bo'yicha bemorlarni olish (doktor o'z bemorlarini ko'rish uchun)
+// Doktor ID bo'yicha bemorlarni olish
 export const getPatientsByDoctorId = async (doctorId) => {
-  const patients = readPatients()
-  return patients.filter(p => p.doctor_id === doctorId || p.doctor_id === Number(doctorId))
+  let patients = readPatients()
+  if (patients.length === 0) {
+    await fetchPatientsFromServer()
+    patients = readPatients()
+  }
+  const numDoctorId = Number(doctorId)
+  return patients.filter(p => p.doctor_id === doctorId || p.doctor_id === numDoctorId)
 }
 
 // Yangi bemor yaratish
@@ -119,7 +131,8 @@ export const createPatient = async ({
 // Bemor ma'lumotlarini yangilash
 export const updatePatient = async (id, payload) => {
   const patients = readPatients()
-  const index = patients.findIndex(p => p.id === id || p.id === Number(id))
+  const numId = Number(id)
+  const index = patients.findIndex(p => p.id === id || p.id === numId)
 
   if (index === -1) throw new Error('Patient not found')
 
@@ -137,17 +150,24 @@ export const updatePatient = async (id, payload) => {
 // Bemorni o'chirish
 export const deletePatient = async (id) => {
   const patients = readPatients()
-  const index = patients.findIndex(p => p.id === id || p.id === Number(id))
+  const numId = Number(id)
+  const index = patients.findIndex(p => p.id === id || p.id === numId)
 
   if (index === -1) throw new Error('Patient not found')
 
   const deletedPatient = patients[index]
-  const updated = patients.filter(p => p.id !== id && p.id !== Number(id))
+  const updated = patients.filter(p => p.id !== id && p.id !== numId)
   await writePatients(updated)
   return deletedPatient
 }
 
-// db.json ni yuklab olish
+// Ma'lumotlarni serverdan qayta yuklash (refresh)
+export const refreshFromServer = async () => {
+  localStorage.removeItem(DATA_LOADED_KEY)
+  return await fetchPatientsFromServer()
+}
+
+// Export to JSON file
 export const downloadDbJson = () => {
   const patients = readPatients()
   const data = { patients }

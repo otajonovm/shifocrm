@@ -1,21 +1,29 @@
-import dbData from '../../db.json'
-
+// Online JSON Server API
+const API_URL = 'https://my-json-server.typicode.com/otajonovm/db.json'
 const STORAGE_KEY = 'doctors'
+const DATA_LOADED_KEY = 'doctors_loaded'
 
-// db.json dan doktorlarni o'qish va localStorage ga sinxronlashtirish
-const initDoctorsFromDb = () => {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  if (!stored && dbData.doctors && dbData.doctors.length > 0) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dbData.doctors))
-    return dbData.doctors
+// Onlayn serverdan doktorlarni yuklash va localStorage ga saqlash
+const fetchDoctorsFromServer = async () => {
+  try {
+    const response = await fetch(`${API_URL}/db`)
+    if (!response.ok) throw new Error('Server error')
+    const data = await response.json()
+    if (data.doctors && data.doctors.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data.doctors))
+      localStorage.setItem(DATA_LOADED_KEY, 'true')
+      console.log('✅ Doctors loaded from online server')
+      return data.doctors
+    }
+    return []
+  } catch (error) {
+    console.error('Failed to fetch doctors from server:', error)
+    return null
   }
-  return null
 }
 
 // localStorage dan doktorlarni o'qish
 const readDoctors = () => {
-  initDoctorsFromDb()
-
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return []
   try {
@@ -30,22 +38,7 @@ const readDoctors = () => {
 // localStorage ga doktorlarni yozish
 const writeDoctors = async (doctors) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(doctors))
-
-  // Development rejimida db.json ga avtomatik saqlash
-  if (import.meta.env.DEV) {
-    try {
-      const response = await fetch('/api/save-db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ doctors }),
-      })
-      if (response.ok) {
-        console.log('✅ Doctors saved to db.json')
-      }
-    } catch {
-      console.log('Doctors saved to localStorage only')
-    }
-  }
+  console.log('✅ Doctors saved to localStorage')
 }
 
 // 5 xonali unique ID generatsiya qilish (10000-99999)
@@ -55,27 +48,46 @@ const generateId = () => {
 
   let newId
   do {
-    newId = Math.floor(10000 + Math.random() * 90000) // 10000-99999
+    newId = Math.floor(10000 + Math.random() * 90000)
   } while (existingIds.includes(newId))
 
   return newId
 }
 
+// Initialization - serverdan yuklash yoki localStorage dan olish
+export const initDoctors = async () => {
+  const loaded = localStorage.getItem(DATA_LOADED_KEY)
+  if (!loaded) {
+    await fetchDoctorsFromServer()
+  }
+}
+
 // Barcha doktorlarni olish
 export const listDoctors = async () => {
-  const doctors = readDoctors()
+  // Agar localStorage bo'sh bo'lsa, serverdan yuklash
+  let doctors = readDoctors()
+  if (doctors.length === 0) {
+    const serverDoctors = await fetchDoctorsFromServer()
+    if (serverDoctors) {
+      doctors = serverDoctors
+    }
+  }
   return doctors.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 }
 
 // ID bo'yicha doktorni olish
 export const getDoctorById = async (id) => {
   const doctors = readDoctors()
-  return doctors.find(d => d.id === id) || null
+  return doctors.find(d => d.id === id || d.id === Number(id)) || null
 }
 
 // Doktor autentifikatsiyasi
 export const authenticateDoctor = async (email, password) => {
-  const doctors = readDoctors()
+  let doctors = readDoctors()
+  if (doctors.length === 0) {
+    await fetchDoctorsFromServer()
+    doctors = readDoctors()
+  }
   return doctors.find(d => d.email === email && d.password === password) || null
 }
 
@@ -108,7 +120,8 @@ export const createDoctor = async ({ full_name, phone, email, password, is_activ
 // Doktor ma'lumotlarini yangilash
 export const updateDoctor = async (id, payload) => {
   const doctors = readDoctors()
-  const index = doctors.findIndex(d => d.id === id)
+  const numId = Number(id)
+  const index = doctors.findIndex(d => d.id === id || d.id === numId)
 
   if (index === -1) throw new Error('Doctor not found')
 
@@ -126,30 +139,26 @@ export const updateDoctor = async (id, payload) => {
 // Doktorni o'chirish
 export const deleteDoctor = async (id) => {
   const doctors = readDoctors()
-  const filtered = doctors.filter(d => d.id !== id)
+  const numId = Number(id)
+  const filtered = doctors.filter(d => d.id !== id && d.id !== numId)
   await writeDoctors(filtered)
 }
 
-// db.json formatida export qilish
-export const exportToDbJson = () => {
-  const doctors = readDoctors()
-  const dbJson = {
-    admin: dbData.admin,
-    doctors: doctors
-  }
-  return JSON.stringify(dbJson, null, 2)
+// Ma'lumotlarni serverdan qayta yuklash (refresh)
+export const refreshFromServer = async () => {
+  localStorage.removeItem(DATA_LOADED_KEY)
+  return await fetchDoctorsFromServer()
 }
 
-// db.json faylni yuklab olish (download)
+// Export to JSON file
 export const downloadDbJson = () => {
-  const jsonContent = exportToDbJson()
-  const blob = new Blob([jsonContent], { type: 'application/json' })
+  const doctors = readDoctors()
+  const data = { doctors }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'db.json'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'doctors.json'
+  a.click()
   URL.revokeObjectURL(url)
 }

@@ -23,7 +23,7 @@ export default defineConfig({
               try {
                 const data = JSON.parse(body)
                 const dbPath = fileURLToPath(new URL('./db.json', import.meta.url))
-                
+
                 // Read existing db.json to preserve admin credentials
                 let existingDb = { admin: { login: 'admin', password: 'admin123' }, doctors: [] }
                 try {
@@ -36,15 +36,54 @@ export default defineConfig({
                 } catch (e) {
                   console.log('Creating new db.json')
                 }
-                
+
                 // Update doctors array (preserve admin credentials)
                 existingDb.doctors = data.doctors || []
-                
+
                 // Write to db.json
                 writeFileSync(dbPath, JSON.stringify(existingDb, null, 2), 'utf-8')
-                
+
                 res.writeHead(200, { 'Content-Type': 'application/json' })
                 res.end(JSON.stringify({ success: true, message: 'db.json updated successfully' }))
+              } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify({ success: false, error: error.message }))
+              }
+            })
+          } else {
+            next()
+          }
+        })
+
+        // Save patients endpoint
+        server.middlewares.use('/api/save-patients', (req, res, next) => {
+          if (req.method === 'POST') {
+            let body = ''
+            req.on('data', chunk => {
+              body += chunk.toString()
+            })
+            req.on('end', () => {
+              try {
+                const data = JSON.parse(body)
+                const dbPath = fileURLToPath(new URL('./db.json', import.meta.url))
+
+                // Read existing db.json
+                let existingDb = { admin: { login: 'admin', password: 'admin123' }, doctors: [], patients: [] }
+                try {
+                  const existingContent = readFileSync(dbPath, 'utf-8')
+                  existingDb = JSON.parse(existingContent)
+                } catch (e) {
+                  console.log('Creating new db.json')
+                }
+
+                // Update patients array (preserve other data)
+                existingDb.patients = data.patients || []
+
+                // Write to db.json
+                writeFileSync(dbPath, JSON.stringify(existingDb, null, 2), 'utf-8')
+
+                res.writeHead(200, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify({ success: true, message: 'Patients saved successfully' }))
               } catch (error) {
                 res.writeHead(500, { 'Content-Type': 'application/json' })
                 res.end(JSON.stringify({ success: false, error: error.message }))

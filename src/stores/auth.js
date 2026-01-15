@@ -1,7 +1,35 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import dbData from '../../db.json'
 import * as doctorsApi from '@/api/doctorsApi'
+
+// Online JSON Server API
+const API_URL = 'https://my-json-server.typicode.com/otajonovm/db.json'
+
+// Admin ma'lumotlarini olish
+const getAdminCredentials = async () => {
+  // Avval localStorage dan tekshirish
+  const cached = localStorage.getItem('admin_credentials')
+  if (cached) {
+    return JSON.parse(cached)
+  }
+
+  // Serverdan olish
+  try {
+    const response = await fetch(`${API_URL}/db`)
+    if (response.ok) {
+      const data = await response.json()
+      if (data.admin) {
+        localStorage.setItem('admin_credentials', JSON.stringify(data.admin))
+        return data.admin
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch admin credentials:', error)
+  }
+
+  // Default fallback
+  return { login: 'admin', password: 'admin123' }
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = ref(localStorage.getItem('isAuthenticated') === 'true')
@@ -11,10 +39,11 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref(null)
 
 
-  const login = async ({ login, password }) => {
+  const login = async ({ login: inputLogin, password: inputPassword }) => {
     error.value = null
     try {
-      if (dbData.admin.login === login && dbData.admin.password === password) {
+      const adminCredentials = await getAdminCredentials()
+      if (adminCredentials.login === inputLogin && adminCredentials.password === inputPassword) {
         isAuthenticated.value = true
         userRole.value = 'admin'
         localStorage.setItem('isAuthenticated', 'true')
