@@ -41,6 +41,24 @@ export const getPatientsByDoctorId = async (doctorId) => {
   }
 }
 
+// 5 xonali unique ID generatsiya qilish (10000-99999)
+const generateId = async () => {
+  try {
+    const patients = await listPatients()
+    const existingIds = patients.map(p => Number(p.id))
+    
+    let newId
+    do {
+      newId = Math.floor(10000 + Math.random() * 90000)
+    } while (existingIds.includes(newId))
+    
+    return newId
+  } catch {
+    // Fallback: timestamp based ID
+    return Math.floor(10000 + Math.random() * 90000)
+  }
+}
+
 // Yangi bemor yaratish
 export const createPatient = async ({
   full_name,
@@ -55,7 +73,10 @@ export const createPatient = async ({
 }) => {
   try {
     const now = new Date().toISOString()
+    const id = await generateId()
+    
     const newPatient = {
+      id,
       full_name,
       phone,
       birth_date: birth_date || null,

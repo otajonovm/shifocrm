@@ -42,6 +42,24 @@ export const authenticateDoctor = async (email, password) => {
   }
 }
 
+// 5 xonali unique ID generatsiya qilish (10000-99999)
+const generateId = async () => {
+  try {
+    const doctors = await listDoctors()
+    const existingIds = doctors.map(d => Number(d.id))
+    
+    let newId
+    do {
+      newId = Math.floor(10000 + Math.random() * 90000)
+    } while (existingIds.includes(newId))
+    
+    return newId
+  } catch {
+    // Fallback: random ID
+    return Math.floor(10000 + Math.random() * 90000)
+  }
+}
+
 // Yangi doktor yaratish
 export const createDoctor = async ({ 
   full_name, 
@@ -59,7 +77,10 @@ export const createDoctor = async ({
     }
 
     const now = new Date().toISOString()
+    const id = await generateId()
+    
     const newDoctor = {
+      id,
       full_name,
       phone,
       email,
