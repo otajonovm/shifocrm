@@ -1,9 +1,9 @@
 /**
  * Visits API - Tashriflar uchun CRUD
- * localStorage based demo
+ * localStorage based (barcha o'zgarishlar faqat brauzerda saqlanadi)
  */
 
-const STORAGE_KEY = 'visits'
+const STORAGE_KEY = 'shifocrm_visits'
 
 // localStorage dan o'qish
 const readVisits = () => {

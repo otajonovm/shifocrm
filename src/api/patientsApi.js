@@ -1,23 +1,24 @@
-// Online JSON Server API
-const API_URL = 'https://my-json-server.typicode.com/otajonovm/db.json'
-const STORAGE_KEY = 'patients'
-const DATA_LOADED_KEY = 'patients_loaded'
+// Online JSON Server API (my-json-server.typicode.com - READ ONLY!)
+// Format: https://my-json-server.typicode.com/{github-username}/{repo-name}/{resource}
+const API_BASE = 'https://my-json-server.typicode.com/otajonovm/shifocrm'
+const STORAGE_KEY = 'shifocrm_patients'
+const DATA_LOADED_KEY = 'shifocrm_patients_loaded'
 
 // Onlayn serverdan bemorlarni yuklash va localStorage ga saqlash
 const fetchPatientsFromServer = async () => {
   try {
-    const response = await fetch(`${API_URL}/db`)
-    if (!response.ok) throw new Error('Server error')
-    const data = await response.json()
-    if (data.patients && data.patients.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data.patients))
+    const response = await fetch(`${API_BASE}/patients`)
+    if (!response.ok) throw new Error(`Server error: ${response.status}`)
+    const patients = await response.json()
+    if (Array.isArray(patients) && patients.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(patients))
       localStorage.setItem(DATA_LOADED_KEY, 'true')
-      console.log('✅ Patients loaded from online server')
-      return data.patients
+      console.log('✅ Patients loaded from online server:', patients.length)
+      return patients
     }
     return []
   } catch (error) {
-    console.error('Failed to fetch patients from server:', error)
+    console.error('❌ Failed to fetch patients from server:', error)
     return null
   }
 }

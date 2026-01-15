@@ -2,29 +2,30 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as doctorsApi from '@/api/doctorsApi'
 
-// Online JSON Server API
-const API_URL = 'https://my-json-server.typicode.com/otajonovm/db.json'
+// Online JSON Server API (my-json-server.typicode.com - READ ONLY!)
+const API_BASE = 'https://my-json-server.typicode.com/otajonovm/shifocrm'
 
 // Admin ma'lumotlarini olish
 const getAdminCredentials = async () => {
   // Avval localStorage dan tekshirish
-  const cached = localStorage.getItem('admin_credentials')
+  const cached = localStorage.getItem('shifocrm_admin')
   if (cached) {
     return JSON.parse(cached)
   }
 
   // Serverdan olish
   try {
-    const response = await fetch(`${API_URL}/db`)
+    const response = await fetch(`${API_BASE}/admin`)
     if (response.ok) {
-      const data = await response.json()
-      if (data.admin) {
-        localStorage.setItem('admin_credentials', JSON.stringify(data.admin))
-        return data.admin
+      const admin = await response.json()
+      if (admin && admin.login) {
+        localStorage.setItem('shifocrm_admin', JSON.stringify(admin))
+        console.log('✅ Admin credentials loaded from server')
+        return admin
       }
     }
   } catch (error) {
-    console.error('Failed to fetch admin credentials:', error)
+    console.error('❌ Failed to fetch admin credentials:', error)
   }
 
   // Default fallback

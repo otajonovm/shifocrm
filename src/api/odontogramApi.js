@@ -12,7 +12,7 @@
  * }
  */
 
-const STORAGE_KEY = 'odontogram_snapshots'
+const STORAGE_KEY = 'shifocrm_odontograms'
 
 // Tish raqamlari (FDI notation - kattalar uchun 32 ta tish)
 export const TOOTH_NUMBERS = {
