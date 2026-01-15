@@ -16,6 +16,8 @@
             @click="exportPatients"
             class="inline-flex items-center gap-2 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 font-medium rounded-lg hover:bg-gray-50 transition-colors"
           >
+
+
             <ArrowDownTrayIcon class="w-5 h-5" />
             Export
           </button>
@@ -30,7 +32,6 @@
         </div>
       </div>
 
-      <!-- Filters -->
       <div class="bg-white p-4 rounded-xl shadow-card border border-gray-100">
         <div class="flex flex-col sm:flex-row gap-4">
           <div class="flex-1 relative">
@@ -63,14 +64,11 @@
         </div>
       </div>
 
-      <!-- Loading State -->
       <div v-if="patientsStore.loading" class="flex items-center justify-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
 
-      <!-- Patients Table -->
       <div v-else class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
-        <!-- Desktop Table -->
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full">
             <thead class="bg-gray-50 sticky top-0">
@@ -166,7 +164,6 @@
           </table>
         </div>
 
-        <!-- Mobile Cards -->
         <div class="md:hidden divide-y divide-gray-100">
           <div
             v-for="patient in filteredPatients"
@@ -367,105 +364,16 @@
       </Transition>
     </Teleport>
 
-    <!-- View Patient Modal -->
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition ease-out duration-300"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition ease-in duration-200"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
-      >
-        <div
-          v-if="showViewModal"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          @click.self="showViewModal = false"
-        >
-          <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl animate-slide-up">
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between p-6 border-b border-gray-100">
-              <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-lg">
-                  {{ getInitials(viewingPatient?.full_name || '') }}
-                </div>
-                <div>
-                  <h2 class="text-xl font-semibold text-gray-900">{{ viewingPatient?.full_name }}</h2>
-                  <p class="text-sm text-gray-500">ID: #{{ viewingPatient?.id }}</p>
-                </div>
-              </div>
-              <button
-                @click="showViewModal = false"
-                class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <XMarkIcon class="w-5 h-5" />
-              </button>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="p-6 space-y-4">
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Telefon</p>
-                  <p class="text-sm font-medium text-gray-900 mt-1">{{ viewingPatient?.phone }}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Tug'ilgan sana</p>
-                  <p class="text-sm font-medium text-gray-900 mt-1">{{ formatDate(viewingPatient?.birth_date) || '-' }}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Jinsi</p>
-                  <p class="text-sm font-medium text-gray-900 mt-1">
-                    {{ viewingPatient?.gender === 'male' ? 'Erkak' : viewingPatient?.gender === 'female' ? 'Ayol' : '-' }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Status</p>
-                  <span
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1"
-                    :class="viewingPatient?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
-                  >
-                    {{ viewingPatient?.status === 'active' ? 'Faol' : 'Nofaol' }}
-                  </span>
-                </div>
-                <div class="col-span-2">
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Manzil</p>
-                  <p class="text-sm font-medium text-gray-900 mt-1">{{ viewingPatient?.address || '-' }}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Doktor</p>
-                  <p class="text-sm font-medium text-gray-900 mt-1">{{ viewingPatient?.doctor_name || '-' }}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Oxirgi ko'rik</p>
-                  <p class="text-sm font-medium text-gray-900 mt-1">{{ formatDate(viewingPatient?.last_visit) || '-' }}</p>
-                </div>
-                <div class="col-span-2" v-if="viewingPatient?.notes">
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Izohlar</p>
-                  <p class="text-sm font-medium text-gray-900 mt-1">{{ viewingPatient?.notes }}</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
-              <button
-                @click="showViewModal = false"
-                class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Yopish
-              </button>
-              <button
-                @click="showViewModal = false; openEditModal(viewingPatient)"
-                class="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all"
-              >
-                Tahrirlash
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+    <!-- Patient Profile Modal (with tabs: MED-ID, Odontogram, Visits) -->
+    <PatientProfileModal
+      :show="showViewModal"
+      :patient="viewingPatient"
+      :is-admin="isAdmin"
+      :doctor-id="authStore.userId"
+      :doctor-name="currentDoctorName"
+      @close="showViewModal = false"
+      @edit="handleEditFromProfile"
+    />
 
     <!-- Delete Confirmation Modal -->
     <Teleport to="body">
@@ -518,6 +426,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import MainLayout from '@/layouts/MainLayout.vue'
+import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
@@ -540,6 +449,13 @@ const patientsStore = usePatientsStore()
 const toast = useToast()
 
 const isAdmin = computed(() => authStore.userRole === 'admin')
+
+// Current doctor name (for odontogram)
+const currentDoctorName = computed(() => {
+  if (isAdmin.value) return 'Admin'
+  const doctor = doctorsStore.items.find(d => d.id === authStore.userId || d.id === Number(authStore.userId))
+  return doctor?.full_name || ''
+})
 
 // Search & Filter
 const searchQuery = ref('')
@@ -636,6 +552,11 @@ const openEditModal = (patient) => {
     notes: patient.notes || '',
   }
   showModal.value = true
+}
+
+const handleEditFromProfile = (patient) => {
+  showViewModal.value = false
+  openEditModal(patient)
 }
 
 const closeModal = () => {
