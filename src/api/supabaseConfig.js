@@ -4,7 +4,7 @@
  */
 
 export const SUPABASE_URL = 'https://qwngzvtanjlkvdbkvbew.supabase.co'
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3bmd6dnRhbmpsa3ZkYmt2YmV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzcwMTcyMDYsImV4cCI6MjA1MjU5MzIwNn0.sb_publishable_NHM7-elbN0Vk7h1Epc2GIg_3dBozNLH'
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3bmd6dnRhbmpsa3ZkYmt2YmV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwMzAxOTQsImV4cCI6MjA4MzYwNjE5NH0.PkSebyYQ5TDdPUBikgh3W6NlPh__aiIKT3Z9xcIbFyM'
 
 // REST API base URL
 export const REST_URL = `${SUPABASE_URL}/rest/v1`
