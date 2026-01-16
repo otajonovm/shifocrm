@@ -106,10 +106,57 @@ Batafsil ma'lumot uchun `DATABASE_SETUP.md` faylini o'qing.
 
 Loyiha hozir development bosqichida. Keyingi qadamlar:
 
-- [ ] Patients Management
+- [x] Patients Management
 - [ ] Appointments System
 - [ ] Reports & Analytics
 - [ ] Notifications
+
+## PWA (Progressive Web App)
+
+ShifoCRM PWA sifatida ishlaydi - mobil qurilmalarga o'rnatish mumkin.
+
+### O'rnatish (Install)
+
+1. **Chrome/Edge (Desktop):**
+   - Saytni oching
+   - Address bar da "Install" ikonini bosing
+   - Yoki Menu → "Install ShifoCRM"
+
+2. **Android (Chrome):**
+   - Saytni oching
+   - Menu (⋮) → "Add to Home screen" / "Install app"
+
+3. **iOS (Safari):**
+   - Saytni oching
+   - Share (↑) → "Add to Home Screen"
+
+### PWA Test
+
+```sh
+# Production build
+npm run build
+
+# Preview (PWA faqat production build da ishlaydi)
+npm run preview
+```
+
+Keyin `http://localhost:4173` da oching va PWA install tugmasini ko'rasiz.
+
+### Eslatmalar
+
+- **HTTPS kerak:** PWA faqat HTTPS yoki localhost da ishlaydi
+- **Service Worker:** Offline qo'llab-quvvatlash uchun avtomatik generatsiya qilinadi
+- **Auto-update:** Yangi versiya chiqsa avtomatik yangilanadi
+
+### Icon yangilash
+
+O'z logongizni ishlatish uchun:
+
+```sh
+# scripts/generate-pwa-icons.js dagi SVG ni o'zgartiring
+# Keyin qayta generatsiya qiling:
+node scripts/generate-pwa-icons.js
+```
 
 ## Support / Yordam
 

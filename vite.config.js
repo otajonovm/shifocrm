@@ -1,14 +1,50 @@
+/* eslint-disable no-unused-vars */
 import { fileURLToPath, URL } from 'node:url'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
     vueDevTools(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      manifest: {
+        name: 'ShifoCRM',
+        short_name: 'ShifoCRM',
+        description: 'Klinikalar uchun mini CRM',
+        theme_color: '#0ea5e9',
+        background_color: '#ffffff',
+        display: 'standalone',
+        start_url: '/',
+        icons: [
+          {
+            src: '/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
+      }
+    }),
     // Custom plugin to save db.json in development
     {
       name: 'save-db-json',
@@ -24,12 +60,10 @@ export default defineConfig({
                 const data = JSON.parse(body)
                 const dbPath = fileURLToPath(new URL('./db.json', import.meta.url))
 
-                // Read existing db.json to preserve admin credentials
                 let existingDb = { admin: { login: 'admin', password: 'admin123' }, doctors: [] }
                 try {
                   const existingContent = readFileSync(dbPath, 'utf-8')
                   existingDb = JSON.parse(existingContent)
-                  // Ensure admin object exists
                   if (!existingDb.admin) {
                     existingDb.admin = { login: 'admin', password: 'admin123' }
                   }
@@ -37,10 +71,8 @@ export default defineConfig({
                   console.log('Creating new db.json')
                 }
 
-                // Update doctors array (preserve admin credentials)
                 existingDb.doctors = data.doctors || []
 
-                // Write to db.json
                 writeFileSync(dbPath, JSON.stringify(existingDb, null, 2), 'utf-8')
 
                 res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -55,7 +87,6 @@ export default defineConfig({
           }
         })
 
-        // Save patients endpoint
         server.middlewares.use('/api/save-patients', (req, res, next) => {
           if (req.method === 'POST') {
             let body = ''
