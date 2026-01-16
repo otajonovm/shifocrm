@@ -1,9 +1,10 @@
 /**
  * PWA Icon Generator Script
  *
- * 2 ta usul:
- * 1) public/logo.png (512x512) qo'ying - script undan barcha o'lchamlarni yaratadi
- * 2) logo.png bo'lmasa - default SVG ishlatiladi
+ * Quyidagi formatlarni qo'llab-quvvatlaydi:
+ * - public/logo.png
+ * - public/logo.jpg
+ * - public/logo.jpeg
  *
  * Run: node scripts/generate-pwa-icons.js
  */
@@ -16,10 +17,18 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const publicDir = join(__dirname, '..', 'public');
-const customLogoPath = join(publicDir, 'logo.png');
 
-// Check if custom logo exists
-const hasCustomLogo = existsSync(customLogoPath);
+// Check for custom logo in different formats
+const logoFormats = ['logo.png', 'logo.jpg', 'logo.jpeg'];
+let customLogoPath = null;
+for (const format of logoFormats) {
+  const path = join(publicDir, format);
+  if (existsSync(path)) {
+    customLogoPath = path;
+    break;
+  }
+}
+const hasCustomLogo = customLogoPath !== null;
 
 // ShifoCRM Logo - Heart with person inside (Blue #1e4b8e, Green #2eaa5a)
 const createSvgLogo = (size) => {
@@ -66,7 +75,7 @@ async function generateIcons() {
   console.log('🎨 Generating PWA icons...');
 
   if (hasCustomLogo) {
-    console.log('📷 Custom logo found: public/logo.png');
+    console.log(`📷 Custom logo found: ${customLogoPath}`);
   } else {
     console.log('ℹ️  No custom logo found, using ShifoCRM default SVG');
   }
