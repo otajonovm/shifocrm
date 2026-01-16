@@ -69,7 +69,12 @@
                 class="w-10 h-12 rounded-lg border-2 flex flex-col items-center justify-center text-xs font-medium transition-all hover:scale-105 disabled:hover:scale-100"
                 :class="getToothClasses(tooth)"
               >
-                <span class="text-[10px] text-gray-400">{{ tooth }}</span>
+                <img
+                  :src="`/teeth/${tooth}.svg`"
+                  class="w-6 h-6"
+                  @load="(e) => { const s = e.target.nextElementSibling; if (s) s.style.display = 'none' }"
+                  @error="(e) => { e.target.style.display = 'none' }"
+                />
                 <span class="text-lg">{{ getToothIcon(tooth) }}</span>
               </button>
             </div>
@@ -90,7 +95,12 @@
                 class="w-10 h-12 rounded-lg border-2 flex flex-col items-center justify-center text-xs font-medium transition-all hover:scale-105 disabled:hover:scale-100"
                 :class="getToothClasses(tooth)"
               >
-                <span class="text-[10px] text-gray-400">{{ tooth }}</span>
+                <img
+                  :src="`/teeth/${tooth}.svg`"
+                  class="w-6 h-6"
+                  @load="(e) => { const s = e.target.nextElementSibling; if (s) s.style.display = 'none' }"
+                  @error="(e) => { e.target.style.display = 'none' }"
+                />
                 <span class="text-lg">{{ getToothIcon(tooth) }}</span>
               </button>
             </div>
@@ -114,7 +124,12 @@
                 class="w-10 h-12 rounded-lg border-2 flex flex-col items-center justify-center text-xs font-medium transition-all hover:scale-105 disabled:hover:scale-100"
                 :class="getToothClasses(tooth)"
               >
-                <span class="text-lg">{{ getToothIcon(tooth) }}</span>
+                <img
+                  :src="`/teeth/${tooth}.svg`"
+                  class="w-6 h-6"
+                  @load="(e) => { const s = e.target.nextElementSibling; if (s) s.style.display = 'none' }"
+                  @error="(e) => { e.target.style.display = 'none' }"
+                />
                 <span class="text-[10px] text-gray-400">{{ tooth }}</span>
               </button>
             </div>
@@ -135,7 +150,12 @@
                 class="w-10 h-12 rounded-lg border-2 flex flex-col items-center justify-center text-xs font-medium transition-all hover:scale-105 disabled:hover:scale-100"
                 :class="getToothClasses(tooth)"
               >
-                <span class="text-lg">{{ getToothIcon(tooth) }}</span>
+                <img
+                  :src="`/teeth/${tooth}.svg`"
+                  class="w-6 h-6"
+                  @load="(e) => { const s = e.target.nextElementSibling; if (s) s.style.display = 'none' }"
+                  @error="(e) => { e.target.style.display = 'none' }"
+                />
                 <span class="text-[10px] text-gray-400">{{ tooth }}</span>
               </button>
             </div>
