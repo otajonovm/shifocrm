@@ -91,6 +91,9 @@
                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Status
                 </th>
+                <th v-if="isAdmin" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Oxirgi tashrif
+                </th>
                 <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Amallar
                 </th>
@@ -127,12 +130,17 @@
                   <span class="text-sm text-gray-600">{{ formatDate(patient.last_visit) || '-' }}</span>
                 </td>
                 <td class="px-6 py-4">
-                  <span
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                    :class="patient.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
-                  >
-                    {{ patient.status === 'active' ? 'Faol' : 'Nofaol' }}
+                  <PatientStatusBadge :status="patient.status || 'active'" />
+                </td>
+                <td v-if="isAdmin" class="px-6 py-4">
+                  <span v-if="getLastVisitStatus(patient.id)" class="text-xs">
+                    <VisitStatusBadge 
+                      :status="getLastVisitStatus(patient.id).status" 
+                      :visit="getLastVisitStatus(patient.id)"
+                      :show-icon="false"
+                    />
                   </span>
+                  <span v-else class="text-xs text-gray-400">-</span>
                 </td>
                 <td class="px-6 py-4" @click.stop>
                   <div class="flex items-center justify-end gap-1">
@@ -175,12 +183,7 @@
                   <p class="text-sm text-gray-500">{{ patient.phone }}</p>
                 </div>
               </div>
-              <span
-                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                :class="patient.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
-              >
-                {{ patient.status === 'active' ? 'Faol' : 'Nofaol' }}
-              </span>
+              <PatientStatusBadge :status="patient.status || 'active'" />
             </div>
             <div class="mt-3 flex items-center justify-between text-sm">
               <span class="text-gray-500">Oxirgi: {{ formatDate(patient.last_visit) || '-' }}</span>
@@ -241,7 +244,9 @@
                 <h2 class="text-xl font-semibold text-gray-900">
                   {{ isEditing ? 'Bemorni Tahrirlash' : 'Yangi Bemor' }}
                 </h2>
-                <p class="text-sm text-gray-500">Bemor ma'lumotlarini kiriting</p>
+                <p class="text-sm text-gray-500">
+                  {{ isEditing ? 'Bemor ma\'lumotlarini yangilang' : 'Bemor yaratilganda avtomatik birinchi tashrif yaratiladi' }}
+                </p>
               </div>
               <button
                 @click="closeModal"
@@ -301,27 +306,45 @@
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Biriktirilgan Doktor</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Biriktirilgan Doktor
+                    <span class="text-xs text-gray-400 font-normal">(ixtiyoriy)</span>
+                  </label>
                   <select
                     v-model="patientForm.doctor_id"
                     @change="updateDoctorName"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
-                    <option value="">Tanlang</option>
+                    <option value="">Tanlanmagan (keyinroq tayinlash mumkin)</option>
                     <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
                       {{ doctor.full_name }}
+                      <span v-if="doctor.specialization"> - {{ doctor.specialization }}</span>
                     </option>
                   </select>
+                  <p class="mt-1 text-xs text-gray-500">
+                    Agar doktor tanlanmagan bo'lsa, bemor klinikaga kelganda doktor tayinlanadi
+                  </p>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <select
-                    v-model="patientForm.status"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    <option value="active">Faol</option>
-                    <option value="inactive">Nofaol</option>
-                  </select>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                    <span class="text-xs text-gray-400 font-normal">(default: Faol)</span>
+                  </label>
+                  <div class="flex items-center gap-3">
+                    <select
+                      v-model="patientForm.status"
+                      class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="active">Faol</option>
+                      <option value="inactive">Nofaol</option>
+                      <option value="archived">Arxivlangan</option>
+                      <option value="deceased">Vafot etgan</option>
+                    </select>
+                    <PatientStatusBadge :status="patientForm.status || 'active'" :show-tooltip="false" />
+                  </div>
+                  <p class="mt-1 text-xs text-gray-500">
+                    Yangi bemor default "Faol" statusida yaratiladi va avtomatik birinchi tashrif yaratiladi
+                  </p>
                 </div>
                 <div class="sm:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">Izohlar</label>
@@ -419,10 +442,13 @@
 import { ref, computed, onMounted } from 'vue'
 import MainLayout from '@/layouts/MainLayout.vue'
 import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
+import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
+import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
+import * as visitsApi from '@/api/visitsApi'
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -463,6 +489,7 @@ const isEditing = ref(false)
 const editingPatientId = ref(null)
 const viewingPatient = ref(null)
 const deletingPatient = ref(null)
+const patientVisits = ref({}) // { patientId: visit }
 
 // Form
 const initialFormState = {
@@ -515,6 +542,27 @@ const formatDate = (dateStr) => {
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return dateStr
   return date.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+// Oxirgi tashrif statusini olish
+const getLastVisitStatus = (patientId) => {
+  return patientVisits.value[patientId] || null
+}
+
+// Bemorlar uchun visit ma'lumotlarini yuklash
+const loadPatientVisits = async () => {
+  try {
+    const visitsMap = {}
+    for (const patient of patientsStore.items) {
+      const visits = await visitsApi.getVisitsByPatientId(patient.id)
+      if (visits && visits.length > 0) {
+        visitsMap[patient.id] = visits[0] // Eng oxirgisi
+      }
+    }
+    patientVisits.value = visitsMap
+  } catch (error) {
+    console.error('Failed to load patient visits:', error)
+  }
 }
 
 const updateDoctorName = () => {
@@ -586,12 +634,24 @@ const savePatient = async () => {
   try {
     if (isEditing.value && editingPatientId.value) {
       await patientsStore.editPatient(editingPatientId.value, patientForm.value)
+      toast.success('Bemor muvaffaqiyatli yangilandi!')
     } else {
-      await patientsStore.addPatient(patientForm.value)
+      // Yangi bemor yaratish - avtomatik birinchi visit yaratiladi
+      const newPatient = await patientsStore.addPatient(patientForm.value)
+      toast.success('Bemor muvaffaqiyatli qo\'shildi! Avtomatik birinchi tashrif yaratildi.')
+      
+      // Yangi bemor uchun visit ma'lumotlarini yuklash
+      if (newPatient && newPatient.id) {
+        const visits = await visitsApi.getVisitsByPatientId(newPatient.id)
+        if (visits && visits.length > 0) {
+          patientVisits.value[newPatient.id] = visits[0]
+        }
+      }
     }
     closeModal()
   } catch (err) {
     console.error('Save error:', err)
+    toast.error('Xatolik yuz berdi')
   }
 }
 
@@ -621,7 +681,13 @@ const exportPatients = () => {
 
 // Lifecycle
 onMounted(async () => {
-  await doctorsStore.fetchAll()
+  await Promise.all([
+    doctorsStore.fetchAll(),
+    patientsStore.fetchPatients()
+  ])
+  
+  // Bemorlar yuklangandan keyin visit ma'lumotlarini yuklash
+  await loadPatientVisits()
 
   if (isAdmin.value) {
     await patientsStore.fetchPatients()

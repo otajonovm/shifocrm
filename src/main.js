@@ -10,7 +10,6 @@ import router from './router'
 
 const app = createApp(App)
 
-// Toast konfiguratsiyasi
 const toastOptions = {
   position: 'top-right',
   timeout: 3000,

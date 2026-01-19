@@ -12,9 +12,19 @@
             <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-xl">
               {{ getInitials(patient.full_name) }}
             </div>
-            <div>
-              <h1 class="text-2xl font-bold text-gray-900">{{ patient.full_name }}</h1>
-              <div class="flex items-center gap-6 mt-2">
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-2">
+                <h1 class="text-2xl font-bold text-gray-900">{{ patient.full_name }}</h1>
+                <button
+                  v-if="isAdmin"
+                  @click="openPatientStatusModal"
+                  class="cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  <PatientStatusBadge :status="patient.status || 'active'" />
+                </button>
+                <PatientStatusBadge v-else :status="patient.status || 'active'" />
+              </div>
+              <div class="flex items-center gap-6 mt-2 flex-wrap">
                 <div>
                   <span class="text-xs text-gray-500">MED ID</span>
                   <p class="text-sm font-semibold text-gray-900">{{ patient.med_id || `#${patient.id}` }}</p>
@@ -23,12 +33,23 @@
                   <span class="text-xs text-gray-500">Telefon</span>
                   <p class="text-sm font-semibold text-gray-900">{{ patient.phone || '-' }}</p>
                 </div>
-                <div>
-                  <span class="text-xs text-gray-500">Balans</span>
-                  <p class="text-sm font-semibold" :class="balance >= 0 ? 'text-green-600' : 'text-red-600'">
-                    {{ formatBalance(balance) }}
-                  </p>
+                <div v-if="patient.doctor_name">
+                  <span class="text-xs text-gray-500">Doktor</span>
+                  <p class="text-sm font-semibold text-gray-900">{{ patient.doctor_name }}</p>
                 </div>
+                <div v-if="lastVisitStatus">
+                  <span class="text-xs text-gray-500">Oxirgi tashrif</span>
+                  <div class="mt-0.5">
+                    <VisitStatusBadge :status="lastVisitStatus.status" :visit="lastVisitStatus" :show-icon="false" />
+                  </div>
+                </div>
+              </div>
+              <!-- Qarzdorlik Banner -->
+              <div v-if="totalDebt > 0" class="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg">
+                <ExclamationCircleIcon class="w-5 h-5 text-red-600" />
+                <span class="text-sm font-medium text-red-700">
+                  Umumiy qarzdorlik: {{ formatCurrency(totalDebt) }}
+                </span>
               </div>
             </div>
           </div>
@@ -95,27 +116,117 @@
         Bemorlar ro'yxatiga qaytish
       </button>
     </div>
+
+    <!-- Patient Status Change Modal (Admin only) -->
+    <Transition
+      enter-active-class="transition ease-out duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition ease-in duration-150"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showPatientStatusModal"
+        class="fixed inset-0 z-50 overflow-y-auto"
+        @click.self="closePatientStatusModal"
+      >
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+          
+          <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Bemor statusini o'zgartirish</h3>
+                <button
+                  @click="closePatientStatusModal"
+                  class="text-gray-400 hover:text-gray-500"
+                >
+                  <XMarkIcon class="w-6 h-6" />
+                </button>
+              </div>
+
+              <div class="space-y-4">
+                <!-- Current Status -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Hozirgi status:</label>
+                  <PatientStatusBadge v-if="patient" :status="patient.status || 'active'" />
+                </div>
+
+                <!-- New Status -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Yangi status:</label>
+                  <select
+                    v-model="newPatientStatus"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option
+                      v-for="status in Object.values(PATIENT_STATUSES)"
+                      :key="status"
+                      :value="status"
+                    >
+                      {{ getPatientStatusLabel(status) }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <button
+                @click="updatePatientStatus"
+                :disabled="updatingPatientStatus || !newPatientStatus"
+                class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ updatingPatientStatus ? 'Saqlanmoqda...' : 'Saqlash' }}
+              </button>
+              <button
+                @click="closePatientStatusModal"
+                class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+              >
+                Bekor qilish
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </MainLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
 import PatientVisitsTable from '@/components/patients/PatientVisitsTable.vue'
 import PatientOdontogramPlaceholder from '@/components/patients/PatientOdontogramPlaceholder.vue'
 import PatientPaymentsPlaceholder from '@/components/patients/PatientPaymentsPlaceholder.vue'
 import PatientDocumentsPlaceholder from '@/components/patients/PatientDocumentsPlaceholder.vue'
+import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
+import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
 import { usePatientsStore } from '@/stores/patients'
-import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
+import { PATIENT_STATUSES, getPatientStatusLabel } from '@/constants/patientStatus'
+import { ArrowLeftIcon, ExclamationCircleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import * as visitsApi from '@/api/visitsApi'
+
+const toast = useToast()
 
 const route = useRoute()
 const router = useRouter()
 const patientsStore = usePatientsStore()
+const authStore = useAuthStore()
 
 const patient = ref(null)
 const loading = ref(true)
 const activeTab = ref('visits')
+const lastVisitStatus = ref(null)
+const totalDebt = ref(0)
+const visits = ref([])
+const showPatientStatusModal = ref(false)
+const newPatientStatus = ref('')
+const updatingPatientStatus = ref(false)
 
 const tabs = [
   { id: 'visits', label: 'Tashriflar', count: null },
@@ -124,10 +235,77 @@ const tabs = [
   { id: 'documents', label: 'Hujjatlar', count: null },
 ]
 
-const balance = computed(() => {
-  // TODO: Calculate balance from payments
-  return 0
-})
+const isAdmin = computed(() => authStore.userRole === 'admin')
+
+// Oxirgi visit statusini yuklash
+const loadLastVisit = async (patientId) => {
+  try {
+    const patientVisits = await visitsApi.getVisitsByPatientId(patientId)
+    if (patientVisits && patientVisits.length > 0) {
+      lastVisitStatus.value = patientVisits[0] // Eng oxirgisi
+      visits.value = patientVisits
+    } else {
+      lastVisitStatus.value = null
+      visits.value = []
+    }
+  } catch (error) {
+    console.error('Failed to load visits:', error)
+    lastVisitStatus.value = null
+    visits.value = []
+  }
+}
+
+// Umumiy qarzdorlikni hisoblash
+const loadTotalDebt = async (patientId) => {
+  try {
+    totalDebt.value = await visitsApi.getPatientTotalDebt(patientId)
+  } catch (error) {
+    console.error('Failed to load total debt:', error)
+    totalDebt.value = 0
+  }
+}
+
+const formatCurrency = (amount) => {
+  if (!amount) return '0 so\'m'
+  return new Intl.NumberFormat('uz-UZ', {
+    style: 'currency',
+    currency: 'UZS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount).replace('UZS', 'so\'m')
+}
+
+// Patient status o'zgartirish modalini ochish
+const openPatientStatusModal = () => {
+  if (!isAdmin.value) return
+  newPatientStatus.value = patient.value?.status || 'active'
+  showPatientStatusModal.value = true
+}
+
+const closePatientStatusModal = () => {
+  showPatientStatusModal.value = false
+  newPatientStatus.value = ''
+}
+
+// Patient status o'zgartirish
+const updatePatientStatus = async () => {
+  if (!isAdmin.value || !patient.value) return
+  
+  updatingPatientStatus.value = true
+  try {
+    await patientsStore.editPatient(patient.value.id, {
+      status: newPatientStatus.value
+    })
+    patient.value.status = newPatientStatus.value
+    toast.success('Bemor statusi muvaffaqiyatli o\'zgartirildi')
+    closePatientStatusModal()
+  } catch (error) {
+    console.error('Failed to update patient status:', error)
+    toast.error('Statusni o\'zgartirishda xatolik')
+  } finally {
+    updatingPatientStatus.value = false
+  }
+}
 
 const getInitials = (name) => {
   if (!name) return ''
@@ -147,45 +325,45 @@ onMounted(async () => {
   const patientIdParam = route.params.id
   const patientId = Number(patientIdParam)
   
-  console.log('🚀 PatientDetailView mounted')
-  console.log('📋 Route param ID:', patientIdParam, 'Type:', typeof patientIdParam)
-  console.log('🔢 Converted ID:', patientId, 'Type:', typeof patientId)
+  console.log('?? PatientDetailView mounted')
+  console.log('?? Route param ID:', patientIdParam, 'Type:', typeof patientIdParam)
+  console.log('?? Converted ID:', patientId, 'Type:', typeof patientId)
   
   // NaN tekshiruvi
   if (isNaN(patientId)) {
-    console.error('❌ Invalid patient ID:', patientIdParam)
+    console.error('? Invalid patient ID:', patientIdParam)
     loading.value = false
     return
   }
   
   // Avval store'dan bemorlarni yuklash (agar bo'sh bo'lsa)
   if (patientsStore.items.length === 0) {
-    console.log('📥 Store is empty, fetching patients...')
+    console.log('?? Store is empty, fetching patients...')
     try {
       await patientsStore.fetchPatients()
-      console.log('✅ Patients fetched:', patientsStore.items.length)
+      console.log('? Patients fetched:', patientsStore.items.length)
     } catch (err) {
-      console.warn('⚠️ Failed to fetch patients list:', err)
+      console.warn('?? Failed to fetch patients list:', err)
     }
   } else {
-    console.log('📦 Store already has', patientsStore.items.length, 'patients')
+    console.log('?? Store already has', patientsStore.items.length, 'patients')
   }
 
   try {
-    console.log('🔍 Calling getPatientById with number ID:', patientId)
+    console.log('?? Calling getPatientById with number ID:', patientId)
     
     // Avval store'dan qidirish
     patient.value = await patientsStore.getPatientById(patientId)
-    console.log('📋 Patient result from store:', patient.value)
+    console.log('?? Patient result from store:', patient.value)
     
     // Agar topilmasa, API'dan to'g'ridan-to'g'ri qidirish
     if (!patient.value) {
-      console.log('⚠️ Not found in store, trying direct API call...')
+      console.log('?? Not found in store, trying direct API call...')
       try {
         const directPatient = await patientsStore.fetchPatientById(patientId)
         if (directPatient) {
           patient.value = directPatient
-          console.log('✅ Found via direct API call:', directPatient)
+          console.log('? Found via direct API call:', directPatient)
         }
       } catch (apiErr) {
         console.warn('Direct API call failed:', apiErr)
@@ -194,22 +372,22 @@ onMounted(async () => {
     
     // Agar hali ham topilmasa, bemorlarni yangilash va qidirish
     if (!patient.value) {
-      console.log('⚠️ Patient still not found, refreshing store...')
+      console.log('?? Patient still not found, refreshing store...')
       try {
         await patientsStore.fetchPatients()
-        console.log('📦 Store refreshed, now has', patientsStore.items.length, 'patients')
+        console.log('?? Store refreshed, now has', patientsStore.items.length, 'patients')
         patient.value = await patientsStore.getPatientById(patientId)
-        console.log('📋 Patient result after refresh:', patient.value)
+        console.log('?? Patient result after refresh:', patient.value)
       } catch (err) {
         console.warn('Failed to refresh:', err)
       }
     }
     
     if (!patient.value) {
-      console.error('❌ Patient not found!')
-      console.error('🔍 Looking for ID:', patientId, 'Type:', typeof patientId)
-      console.error('📋 Available IDs:', patientsStore.items.map(p => ({ id: p.id, name: p.full_name, type: typeof p.id })))
-      console.error('🔢 Comparison test:')
+      console.error('? Patient not found!')
+      console.error('?? Looking for ID:', patientId, 'Type:', typeof patientId)
+      console.error('?? Available IDs:', patientsStore.items.map(p => ({ id: p.id, name: p.full_name, type: typeof p.id })))
+      console.error('?? Comparison test:')
       patientsStore.items.forEach(p => {
         const match = p.id === patientId || 
                       p.id === Number(patientId) || 
@@ -218,12 +396,30 @@ onMounted(async () => {
         console.log(`  ID ${p.id} (${typeof p.id}) === ${patientId} (${typeof patientId}): ${match}`)
       })
     } else {
-      console.log('✅ Patient loaded successfully:', patient.value.full_name)
+      console.log('? Patient loaded successfully:', patient.value.full_name)
+    }
+    
+    // Patient yuklangandan keyin visit va qarzdorlik ma'lumotlarini yuklash
+    if (patient.value) {
+      await Promise.all([
+        loadLastVisit(patient.value.id),
+        loadTotalDebt(patient.value.id)
+      ])
     }
   } catch (error) {
-    console.error('❌ Failed to load patient:', error)
+    console.error('? Failed to load patient:', error)
   } finally {
     loading.value = false
+  }
+})
+
+// Visit yangilanganda ma'lumotlarni yangilash
+watch(() => patient.value?.id, async (newId) => {
+  if (newId) {
+    await Promise.all([
+      loadLastVisit(newId),
+      loadTotalDebt(newId)
+    ])
   }
 })
 </script>

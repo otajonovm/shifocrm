@@ -1,40 +1,35 @@
 /**
- * Visits API - Tashriflar uchun CRUD
- * localStorage based (barcha o'zgarishlar faqat brauzerda saqlanadi)
+ * Visits API - Supabase REST API orqali
+ * Jadval: visits
  */
 
-const STORAGE_KEY = 'shifocrm_visits'
+import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supabaseConfig'
 
-// localStorage dan o'qish
-const readVisits = () => {
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return []
+const TABLE = 'visits'
+
+// 5 xonali unique ID generatsiya qilish (10000-99999)
+const generateId = async () => {
   try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch (e) {
-    console.error('Failed to parse visits from storage', e)
-    return []
+    const visits = await supabaseGet(TABLE, 'select=id&order=id.desc&limit=1000')
+    const existingIds = visits.map(v => Number(v.id))
+
+    let newId
+    let attempts = 0
+    do {
+      newId = Math.floor(10000 + Math.random() * 90000)
+      attempts++
+      if (attempts > 100) {
+        // Agar 100 marta urinishdan keyin ham topilmasa, timestamp based ID ishlatish
+        newId = Math.floor(10000 + Date.now() % 90000)
+        break
+      }
+    } while (existingIds.includes(newId))
+
+    return newId
+  } catch {
+    // Fallback: timestamp based ID
+    return Math.floor(10000 + Date.now() % 90000)
   }
-}
-
-// localStorage ga yozish
-const writeVisits = (visits) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(visits))
-  console.log('✅ Visits saved to localStorage')
-}
-
-// 5 xonali unique ID generatsiya qilish
-const generateId = () => {
-  const visits = readVisits()
-  const existingIds = visits.map(v => Number(v.id))
-
-  let newId
-  do {
-    newId = Math.floor(10000 + Math.random() * 90000)
-  } while (existingIds.includes(newId))
-
-  return newId
 }
 
 /**
@@ -43,11 +38,15 @@ const generateId = () => {
  * @returns {Promise<Array>}
  */
 export const getVisitsByPatientId = async (patientId) => {
-  const visits = readVisits()
-  const numId = Number(patientId)
-  return visits
-    .filter(v => v.patient_id === patientId || v.patient_id === numId)
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  try {
+    const numId = Number(patientId)
+    const visits = await supabaseGet(TABLE, `patient_id=eq.${numId}&order=created_at.desc`)
+    console.log(`✅ Visits loaded for patient ${patientId}:`, visits.length)
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits:', error)
+    throw error
+  }
 }
 
 /**
@@ -56,48 +55,194 @@ export const getVisitsByPatientId = async (patientId) => {
  * @returns {Promise<Object|null>}
  */
 export const getVisitById = async (id) => {
-  const visits = readVisits()
-  const numId = Number(id)
-  return visits.find(v => v.id === id || v.id === numId) || null
+  try {
+    const numId = Number(id)
+    const visits = await supabaseGet(TABLE, `id=eq.${numId}`)
+    return visits[0] || null
+  } catch (error) {
+    console.error('❌ Failed to fetch visit:', error)
+    throw error
+  }
 }
 
 /**
- * Bemorning active (in_progress) tashrifini olish
+ * Bemorning active (pending, arrived, in_progress) tashrifini olish
  * @param {number|string} patientId
  * @returns {Promise<Object|null>}
  */
 export const getActiveVisit = async (patientId) => {
-  const visits = readVisits()
-  const numId = Number(patientId)
-  return visits.find(
-    v => (v.patient_id === patientId || v.patient_id === numId) && v.status === 'in_progress'
-  ) || null
+  try {
+    const numId = Number(patientId)
+    const activeStatuses = ['pending', 'arrived', 'in_progress']
+    const statusFilter = activeStatuses.map(s => `status.eq.${s}`).join(',')
+    
+    // Supabase'da OR query qilish uchun
+    const visits = await supabaseGet(
+      TABLE,
+      `patient_id=eq.${numId}&or=(${activeStatuses.map(s => `status.eq.${s}`).join(',')})&order=created_at.desc&limit=1`
+    )
+    
+    // Agar OR query ishlamasa, barcha visitlarni olish va filter qilish
+    if (!visits || visits.length === 0) {
+      const allVisits = await supabaseGet(TABLE, `patient_id=eq.${numId}&order=created_at.desc`)
+      return allVisits.find(v => activeStatuses.includes(v.status)) || null
+    }
+    
+    return visits[0] || null
+  } catch (error) {
+    console.error('❌ Failed to fetch active visit:', error)
+    // Fallback: barcha visitlarni olish va filter qilish
+    try {
+      const allVisits = await getVisitsByPatientId(patientId)
+      const activeStatuses = ['pending', 'arrived', 'in_progress']
+      return allVisits.find(v => activeStatuses.includes(v.status)) || null
+    } catch {
+      return null
+    }
+  }
+}
+
+/**
+ * Status bo'yicha tashriflarni filtrlash
+ * @param {Array} visits - Tashriflar ro'yxati
+ * @param {string|Array} statusFilter - Status yoki statuslar ro'yxati
+ * @returns {Array} - Filtrlangan tashriflar
+ */
+export const filterVisitsByStatus = (visits, statusFilter) => {
+  if (!statusFilter || statusFilter === 'all') return visits
+  if (Array.isArray(statusFilter)) {
+    return visits.filter(v => statusFilter.includes(v.status))
+  }
+  return visits.filter(v => v.status === statusFilter)
+}
+
+/**
+ * Qarzdor tashriflarni olish
+ * @param {number|string|null} patientId - Bemor ID (ixtiyoriy)
+ * @returns {Promise<Array>}
+ */
+export const getDebtVisits = async (patientId = null) => {
+  try {
+    let query = 'debt_amount=gt.0&or=(status.eq.completed_debt)&order=created_at.desc'
+    
+    if (patientId) {
+      const numId = Number(patientId)
+      query = `patient_id=eq.${numId}&${query}`
+    }
+    
+    const visits = await supabaseGet(TABLE, query)
+    
+    // Agar OR query ishlamasa, barcha visitlarni olish va filter qilish
+    if (!visits || visits.length === 0) {
+      const allVisits = patientId 
+        ? await getVisitsByPatientId(patientId)
+        : await supabaseGet(TABLE, 'order=created_at.desc')
+      
+      return allVisits.filter(v => {
+        const hasDebt = v.debt_amount !== null && v.debt_amount > 0
+        const isDebtStatus = v.status === 'completed_debt'
+        return hasDebt || isDebtStatus
+      }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    }
+    
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch debt visits:', error)
+    // Fallback: barcha visitlarni olish va filter qilish
+    try {
+      const allVisits = patientId 
+        ? await getVisitsByPatientId(patientId)
+        : await supabaseGet(TABLE, 'order=created_at.desc')
+      
+      return allVisits.filter(v => {
+        const hasDebt = v.debt_amount !== null && v.debt_amount > 0
+        const isDebtStatus = v.status === 'completed_debt'
+        return hasDebt || isDebtStatus
+      }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    } catch {
+      return []
+    }
+  }
+}
+
+/**
+ * Bemorning umumiy qarzdorligini hisoblash
+ * @param {number|string} patientId - Bemor ID
+ * @returns {Promise<number>} - Umumiy qarzdorlik summasi
+ */
+export const getPatientTotalDebt = async (patientId) => {
+  try {
+    const debtVisits = await getDebtVisits(patientId)
+    return debtVisits.reduce((total, visit) => {
+      const debt = visit.debt_amount || 0
+      return total + Number(debt)
+    }, 0)
+  } catch (error) {
+    console.error('❌ Failed to calculate total debt:', error)
+    return 0
+  }
+}
+
+/**
+ * Qarz summasi hisoblash: debt_amount = price - paid_amount
+ * @param {number|null} price - Xizmat narxi
+ * @param {number|null} paidAmount - To'langan summa
+ * @returns {number|null} - Qarzdorlik summasi
+ */
+const calculateDebt = (price, paidAmount) => {
+  if (!price || price === 0) return null
+  const paid = paidAmount || 0
+  const debt = price - paid
+  return debt > 0 ? debt : null
 }
 
 /**
  * Yangi tashrif yaratish
- * @param {Object} data - { patient_id, doctor_id, doctor_name, notes }
+ * @param {Object} data - { patient_id, doctor_id, doctor_name, notes, status, price, paid_amount, service_name }
  * @returns {Promise<Object>}
  */
-export const createVisit = async ({ patient_id, doctor_id, doctor_name = '', notes = '' }) => {
-  const visits = readVisits()
-  const now = new Date().toISOString()
+export const createVisit = async ({
+  patient_id,
+  doctor_id,
+  doctor_name = '',
+  notes = '',
+  status = 'pending',
+  price = null,
+  paid_amount = null,
+  debt_amount = null,
+  service_name = null
+}) => {
+  try {
+    const now = new Date().toISOString()
+    const id = await generateId()
 
-  const newVisit = {
-    id: generateId(),
-    patient_id: Number(patient_id),
-    doctor_id: doctor_id ? Number(doctor_id) : null,
-    doctor_name,
-    date: now.split('T')[0],
-    status: 'in_progress',
-    notes,
-    created_at: now,
-    updated_at: now
+    // Qarz avtomatik hisoblash (agar price va paid_amount berilgan bo'lsa)
+    let finalDebtAmount = debt_amount
+    if (debt_amount === null && price !== null) {
+      finalDebtAmount = calculateDebt(price, paid_amount)
+    }
+
+    const newVisit = {
+      id,
+      patient_id: Number(patient_id),
+      doctor_id: doctor_id ? Number(doctor_id) : null,
+      doctor_name: doctor_name || null,
+      date: now.split('T')[0],
+      status,
+      notes: notes || null,
+      price: price !== null && price !== undefined ? Number(price) : null,
+      paid_amount: paid_amount !== null && paid_amount !== undefined ? Number(paid_amount) : null,
+      debt_amount: finalDebtAmount !== null && finalDebtAmount !== undefined ? Number(finalDebtAmount) : null,
+      service_name: service_name || null
+    }
+
+    const result = await supabasePost(TABLE, newVisit)
+    console.log('✅ Visit created:', result[0])
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to create visit:', error)
+    throw error
   }
-
-  visits.unshift(newVisit)
-  writeVisits(visits)
-  return newVisit
 }
 
 /**
@@ -107,30 +252,82 @@ export const createVisit = async ({ patient_id, doctor_id, doctor_name = '', not
  * @returns {Promise<Object>}
  */
 export const updateVisit = async (id, payload) => {
-  const visits = readVisits()
-  const numId = Number(id)
-  const index = visits.findIndex(v => v.id === id || v.id === numId)
+  try {
+    const numId = Number(id)
+    
+    // Avval mavjud visitni olish
+    const currentVisit = await getVisitById(id)
+    if (!currentVisit) {
+      throw new Error('Visit not found')
+    }
 
-  if (index === -1) throw new Error('Visit not found')
+    const updateData = { ...payload }
 
-  const updatedVisit = {
-    ...visits[index],
-    ...payload,
-    updated_at: new Date().toISOString()
+    // Agar price yoki paid_amount o'zgarsa, debt_amount ni avtomatik hisoblash
+    if (updateData.price !== undefined || updateData.paid_amount !== undefined) {
+      const price = updateData.price !== undefined ? updateData.price : currentVisit.price
+      const paidAmount = updateData.paid_amount !== undefined ? updateData.paid_amount : currentVisit.paid_amount
+      
+      // Faqat debt_amount alohida berilmagan bo'lsa, avtomatik hisobla
+      if (updateData.debt_amount === undefined) {
+        updateData.debt_amount = calculateDebt(price, paidAmount)
+      }
+    }
+
+    // Null qiymatlarni to'g'ri yuborish
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key]
+      }
+    })
+
+    const result = await supabasePatch(TABLE, numId, updateData)
+    console.log('✅ Visit updated:', result[0])
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to update visit:', error)
+    throw error
   }
-
-  visits[index] = updatedVisit
-  writeVisits(visits)
-  return updatedVisit
 }
 
 /**
- * Tashrifni yakunlash (completed)
+ * Tashrifni yakunlash (completed_paid)
  * @param {number|string} id
  * @returns {Promise<Object>}
  */
 export const completeVisit = async (id) => {
-  return updateVisit(id, { status: 'completed' })
+  return updateVisit(id, { status: 'completed_paid', debt_amount: null })
+}
+
+/**
+ * Tashrifni qarzdor sifatida yakunlash
+ * @param {number|string} id
+ * @param {number} debtAmount - Qarzdorlik summasi (ixtiyoriy, agar price/paid_amount bo'lsa avtomatik hisoblanadi)
+ * @returns {Promise<Object>}
+ */
+export const completeVisitWithDebt = async (id, debtAmount = null) => {
+  const visit = await getVisitById(id)
+  if (!visit) throw new Error('Visit not found')
+
+  // Agar debtAmount berilmagan bo'lsa va price/paid_amount mavjud bo'lsa, avtomatik hisobla
+  let finalDebtAmount = debtAmount
+  if (debtAmount === null && visit.price !== null) {
+    finalDebtAmount = calculateDebt(visit.price, visit.paid_amount)
+  }
+
+  return updateVisit(id, {
+    status: 'completed_debt',
+    debt_amount: finalDebtAmount !== null ? Number(finalDebtAmount) : null
+  })
+}
+
+/**
+ * Qarzdorlikni to'lash
+ * @param {number|string} id
+ * @returns {Promise<Object>}
+ */
+export const payDebt = async (id) => {
+  return updateVisit(id, { status: 'completed_paid', debt_amount: null })
 }
 
 /**
@@ -139,9 +336,13 @@ export const completeVisit = async (id) => {
  * @returns {Promise<boolean>}
  */
 export const deleteVisit = async (id) => {
-  const visits = readVisits()
-  const numId = Number(id)
-  const filtered = visits.filter(v => v.id !== id && v.id !== numId)
-  writeVisits(filtered)
-  return true
+  try {
+    const numId = Number(id)
+    await supabaseDelete(TABLE, numId)
+    console.log('✅ Visit deleted:', numId)
+    return true
+  } catch (error) {
+    console.error('❌ Failed to delete visit:', error)
+    throw error
+  }
 }

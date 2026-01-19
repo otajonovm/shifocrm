@@ -34,16 +34,11 @@
               <ClockIcon v-else class="w-5 h-5 text-yellow-600" />
             </div>
             <div>
-              <p class="font-medium text-gray-900">{{ formatDate(visit.date) }}</p>
+              <p class="font-medium text-gray-900">{{ formatDate(visit.date || visit.created_at) }}</p>
               <p class="text-sm text-gray-500">{{ visit.doctor_name || 'Doktor belgilanmagan' }}</p>
             </div>
           </div>
-          <span
-            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-            :class="getStatusClasses(visit.status)"
-          >
-            {{ getStatusText(visit.status) }}
-          </span>
+          <VisitStatusBadge :status="visit.status" :visit="visit" />
         </div>
 
         <div v-if="visit.notes" class="mt-3 pt-3 border-t border-gray-100">
@@ -61,9 +56,9 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { CalendarDaysIcon, CheckCircleIcon, ClockIcon } from '@heroicons/vue/24/outline'
+import { CalendarDaysIcon } from '@heroicons/vue/24/outline'
 import { formatDate, formatDateTime } from '@/lib/date'
-import { getVisitStatusBadge } from '@/lib/patientHelpers'
+import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
 import * as visitsApi from '@/api/visitsApi'
 
 const props = defineProps({
@@ -79,13 +74,6 @@ const props = defineProps({
 
 const loading = ref(false)
 const visits = ref([])
-
-const getStatusClasses = (status) => {
-  const badge = getVisitStatusBadge(status)
-  return [badge.bgClass, badge.textClass]
-}
-
-const getStatusText = (status) => getVisitStatusBadge(status).text
 
 const loadVisits = async () => {
   loading.value = true

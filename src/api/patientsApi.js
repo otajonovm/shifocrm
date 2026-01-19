@@ -107,7 +107,8 @@ export const createPatient = async ({
   doctor_id = null,
   doctor_name = null,
   status = 'active',
-  notes = null
+  notes = null,
+  createFirstVisit = true // Avtomatik birinchi visit yaratish
 }) => {
   try {
     const now = new Date().toISOString()
@@ -132,6 +133,29 @@ export const createPatient = async ({
 
     const result = await supabasePost(TABLE, newPatient)
     console.log('✅ Patient created:', result[0])
+    
+    // Avtomatik birinchi visit yaratish
+    if (createFirstVisit) {
+      try {
+        // Dynamic import to avoid circular dependency
+        const { createVisit } = await import('./visitsApi')
+        await createVisit({
+          patient_id: result[0].id,
+          doctor_id: doctor_id || null,
+          doctor_name: doctor_name || null,
+          status: 'pending', // Default: "Yozildi" - onlayn yozilgan
+          notes: 'Birinchi tashrif (avtomatik yaratilgan)',
+          price: null,
+          paid_amount: null,
+          debt_amount: null
+        })
+        console.log('✅ First visit created automatically for patient:', result[0].id)
+      } catch (visitError) {
+        // Visit yaratishda xatolik bo'lsa ham, patient yaratilgan bo'ladi
+        console.warn('⚠️ Failed to create first visit:', visitError)
+      }
+    }
+    
     return result[0]
   } catch (error) {
     console.error('❌ Failed to create patient:', error)

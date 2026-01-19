@@ -274,7 +274,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { PlusIcon, CheckIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 import { formatDate } from '@/lib/date'
-import { getVisitStatusBadge } from '@/lib/patientHelpers'
+import { getVisitStatusLabel } from '@/constants/visitStatus'
 import * as visitsApi from '@/api/visitsApi'
 import * as odontogramApi from '@/api/odontogramApi'
 
@@ -327,7 +327,7 @@ const hasChanges = computed(() => {
 // Methods
 const formatVisitDate = (date) => formatDate(date)
 
-const getVisitStatusText = (status) => getVisitStatusBadge(status).text
+const getVisitStatusText = (status) => getVisitStatusLabel(status)
 
 const getToothClasses = (toothNum) => {
   if (!currentOdontogram.value?.data?.teeth?.[toothNum]) {
@@ -439,12 +439,12 @@ const completeCurrentVisit = async () => {
   loading.value = true
   try {
     await visitsApi.completeVisit(currentVisit.value.id)
-    currentVisit.value.status = 'completed'
+    currentVisit.value.status = 'completed_paid'
 
     // Update in list
     const index = visits.value.findIndex(v => v.id === currentVisit.value.id)
     if (index !== -1) {
-      visits.value[index].status = 'completed'
+      visits.value[index].status = 'completed_paid'
     }
 
     toast.success('Tashrif yakunlandi!')
