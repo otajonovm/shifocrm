@@ -1,4 +1,4 @@
-/**
+  /**
  * Patients API - Supabase REST API orqali
  * Jadval: patients
  */

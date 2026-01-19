@@ -28,7 +28,7 @@
           </div>
         </div>
 
-        <!-- Right: Search, Notifications, User Menu -->
+        <!-- Right: Search, Language, Notifications, User Menu -->
         <div class="flex items-center gap-3">
           <!-- Search (Admin only) -->
           <div v-if="authStore.userRole === 'admin'" class="hidden md:block">
@@ -37,7 +37,7 @@
               <input
                 type="text"
                 v-model="searchQuery"
-                placeholder="Qidirish..."
+                :placeholder="$t('common.search')"
                 class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
@@ -131,6 +131,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from 'vue-i18n'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import {
   Bars3Icon,
@@ -143,6 +144,8 @@ import {
   ArrowRightOnRectangleIcon,
 } from '@heroicons/vue/24/outline'
 
+const { t } = useI18n()
+
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -153,36 +156,36 @@ const searchQuery = ref('')
 
 const pageTitle = computed(() => {
   const titles = {
-    '/dashboard': 'Dashboard',
-    '/patients': 'Bemorlar',
-    '/doctors': 'Doktorlar',
-    '/appointments': 'Uchrashuvlar',
-    '/payments': 'To\'lovlar',
-    '/services': 'Xizmatlar',
-    '/reports': 'Hisobotlar',
-    '/settings': 'Sozlamalar',
-    '/my-patients': 'Mening Bemorlarim',
-    '/my-appointments': 'Mening Uchrashuvlarim',
-    '/treatment-plans': 'Davolash Rejalari',
-    '/doctor/profile': 'Mening Profilim',
+    '/dashboard': t('dashboard.title'),
+    '/patients': t('patients.allPatients'),
+    '/doctors': t('doctors.title'),
+    '/appointments': t('appointments.title'),
+    '/payments': t('payments.title'),
+    '/services': t('services.title'),
+    '/reports': t('reports.title'),
+    '/settings': t('settings.title'),
+    '/my-patients': t('patients.myPatients'),
+    '/my-appointments': t('appointments.myAppointments'),
+    '/treatment-plans': t('dashboard.treatmentPlans'),
+    '/doctor/profile': t('profile.title'),
   }
-  return titles[route.path] || 'Dashboard'
+  return titles[route.path] || t('dashboard.title')
 })
 
 const pageSubtitle = computed(() => {
   const subtitles = {
-    '/dashboard': 'Umumiy ko\'rsatkichlar',
-    '/patients': 'Bemorlar ro\'yxati va boshqaruvi',
-    '/doctors': 'Shifokorlar ro\'yxati',
-    '/appointments': 'Qabullar jadvali',
-    '/payments': 'Moliyaviy hisobotlar',
-    '/services': 'Xizmatlar narxlari',
-    '/reports': 'Statistika va tahlillar',
-    '/settings': 'Tizim sozlamalari',
-    '/my-patients': 'Sizga biriktirilgan bemorlar',
-    '/my-appointments': 'Sizning qabullar jadvalingiz',
-    '/treatment-plans': 'Davolash protokollari',
-    '/doctor/profile': 'Shaxsiy ma\'lumotlar',
+    '/dashboard': t('dashboard.overview'),
+    '/patients': t('patients.patientList'),
+    '/doctors': t('doctors.doctorsList'),
+    '/appointments': t('appointments.appointmentsCalendar'),
+    '/payments': t('payments.financialReports'),
+    '/services': t('services.servicePrices'),
+    '/reports': t('reports.statistics'),
+    '/settings': t('settings.systemSettings'),
+    '/my-patients': t('patients.myPatientList'),
+    '/my-appointments': t('appointments.appointmentsCalendar'),
+    '/treatment-plans': t('dashboard.treatmentPlans'),
+    '/doctor/profile': t('profile.personalInfo'),
   }
   return subtitles[route.path] || ''
 })

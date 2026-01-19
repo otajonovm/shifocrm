@@ -16,15 +16,15 @@
               <h1 class="text-2xl font-bold text-gray-900">{{ patient.full_name }}</h1>
               <div class="flex items-center gap-6 mt-2">
                 <div>
-                  <span class="text-xs text-gray-500">MED ID</span>
+                  <span class="text-xs text-gray-500">{{ $t('patients.medId') }}</span>
                   <p class="text-sm font-semibold text-gray-900">{{ patient.med_id || `#${patient.id}` }}</p>
                 </div>
                 <div>
-                  <span class="text-xs text-gray-500">Telefon</span>
+                  <span class="text-xs text-gray-500">{{ $t('common.phone') }}</span>
                   <p class="text-sm font-semibold text-gray-900">{{ patient.phone || '-' }}</p>
                 </div>
                 <div>
-                  <span class="text-xs text-gray-500">Balans</span>
+                  <span class="text-xs text-gray-500">{{ $t('patients.balance') }}</span>
                   <p class="text-sm font-semibold" :class="balance >= 0 ? 'text-green-600' : 'text-red-600'">
                     {{ formatBalance(balance) }}
                   </p>
@@ -35,7 +35,7 @@
           <button
             @click="$router.push('/patients')"
             class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Orqaga"
+            :title="$t('common.back')"
           >
             <ArrowLeftIcon class="w-5 h-5" />
           </button>
@@ -87,12 +87,12 @@
     </div>
 
     <div v-else class="text-center py-12">
-      <p class="text-gray-500">Bemor topilmadi</p>
+      <p class="text-gray-500">{{ $t('patients.patientNotFound') }}</p>
       <button
         @click="$router.push('/patients')"
         class="mt-4 text-primary-600 hover:text-primary-700 font-medium"
       >
-        Bemorlar ro'yxatiga qaytish
+        {{ $t('patients.backToPatients') }}
       </button>
     </div>
   </MainLayout>
@@ -101,6 +101,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import PatientVisitsTable from '@/components/patients/PatientVisitsTable.vue'
 import PatientOdontogramPlaceholder from '@/components/patients/PatientOdontogramPlaceholder.vue'
@@ -108,6 +109,8 @@ import PatientPaymentsPlaceholder from '@/components/patients/PatientPaymentsPla
 import PatientDocumentsPlaceholder from '@/components/patients/PatientDocumentsPlaceholder.vue'
 import { usePatientsStore } from '@/stores/patients'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -117,12 +120,12 @@ const patient = ref(null)
 const loading = ref(true)
 const activeTab = ref('visits')
 
-const tabs = [
-  { id: 'visits', label: 'Tashriflar', count: null },
-  { id: 'odontogram', label: 'Odontogramma', count: null },
-  { id: 'payments', label: 'To\'lovlar', count: null },
-  { id: 'documents', label: 'Hujjatlar', count: null },
-]
+const tabs = computed(() => [
+  { id: 'visits', label: t('patients.visits'), count: null },
+  { id: 'odontogram', label: t('patients.odontogram'), count: null },
+  { id: 'payments', label: t('patients.payments'), count: null },
+  { id: 'documents', label: t('patients.documents'), count: null },
+])
 
 const balance = computed(() => {
   // TODO: Calculate balance from payments

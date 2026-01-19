@@ -15,7 +15,7 @@
       </div>
       <div>
         <h1 class="text-xl font-bold text-gray-900">SHIFOCRM</h1>
-        <p class="text-xs text-gray-500">Tibbiyot tizimi</p>
+        <p class="text-xs text-gray-500">{{ $t('common.medicalSystem') }}</p>
       </div>
     </div>
 
@@ -66,7 +66,7 @@
         <button
           @click="$emit('logout')"
           class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-          title="Chiqish"
+          :title="$t('common.logout')"
         >
           <ArrowRightOnRectangleIcon class="w-5 h-5" />
         </button>
@@ -86,6 +86,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from 'vue-i18n'
 import {
   HomeIcon,
   UsersIcon,
@@ -111,35 +112,36 @@ defineEmits(['close', 'logout'])
 
 const route = useRoute()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 // Admin menu items
-const adminMenuItems = [
-  { name: 'Dashboard', to: '/dashboard', icon: HomeIcon },
-  { name: 'Bemorlar', to: '/patients', icon: UsersIcon },
-  { name: 'Doktorlar', to: '/doctors', icon: UserGroupIcon },
-  { name: 'Uchrashuvlar', to: '/appointments', icon: CalendarDaysIcon },
-  { name: 'To\'lovlar', to: '/payments', icon: CreditCardIcon },
-  { name: 'Xizmatlar', to: '/services', icon: ClipboardDocumentListIcon },
-  { name: 'Hisobotlar', to: '/reports', icon: ChartBarIcon },
-  { name: 'Sozlamalar', to: '/settings', icon: Cog6ToothIcon },
-]
+const adminMenuItems = computed(() => [
+  { name: t('dashboard.title'), to: '/dashboard', icon: HomeIcon },
+  { name: t('patients.title'), to: '/patients', icon: UsersIcon },
+  { name: t('doctors.title'), to: '/doctors', icon: UserGroupIcon },
+  { name: t('appointments.title'), to: '/appointments', icon: CalendarDaysIcon },
+  { name: t('payments.title'), to: '/payments', icon: CreditCardIcon },
+  { name: t('services.title'), to: '/services', icon: ClipboardDocumentListIcon },
+  { name: t('reports.title'), to: '/reports', icon: ChartBarIcon },
+  { name: t('settings.title'), to: '/settings', icon: Cog6ToothIcon },
+])
 
 // Doctor menu items
-const doctorMenuItems = [
-  { name: 'Dashboard', to: '/dashboard', icon: HomeIcon },
-  { name: 'Mening Bemorlarim', to: '/my-patients', icon: UsersIcon },
-  { name: 'Mening Uchrashuvlarim', to: '/my-appointments', icon: CalendarDaysIcon },
-  { name: 'Davolash Rejalari', to: '/treatment-plans', icon: DocumentTextIcon },
-  { name: 'Mening Profilim', to: '/doctor/profile', icon: UserCircleIcon },
-]
+const doctorMenuItems = computed(() => [
+  { name: t('dashboard.title'), to: '/dashboard', icon: HomeIcon },
+  { name: t('patients.myPatients'), to: '/my-patients', icon: UsersIcon },
+  { name: t('appointments.myAppointments'), to: '/my-appointments', icon: CalendarDaysIcon },
+  { name: t('treatmentPlans.title'), to: '/treatment-plans', icon: DocumentTextIcon },
+  { name: t('profile.title'), to: '/doctor/profile', icon: UserCircleIcon },
+])
 
 const menuItems = computed(() => {
-  return authStore.userRole === 'admin' ? adminMenuItems : doctorMenuItems
+  return authStore.userRole === 'admin' ? adminMenuItems.value : doctorMenuItems.value
 })
 
 const userName = computed(() => {
-  if (authStore.userRole === 'admin') return 'Administrator'
-  return authStore.userEmail || 'Shifokor'
+  if (authStore.userRole === 'admin') return t('common.administrator')
+  return authStore.userEmail || t('common.doctor')
 })
 
 const userInitials = computed(() => {
@@ -148,7 +150,7 @@ const userInitials = computed(() => {
 })
 
 const roleLabel = computed(() => {
-  return authStore.userRole === 'admin' ? 'Administrator' : 'Shifokor'
+  return authStore.userRole === 'admin' ? t('common.administrator') : t('common.doctor')
 })
 
 const roleBadgeClass = computed(() => {

@@ -5,10 +5,10 @@
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">
-            {{ isAdmin ? 'Barcha Bemorlar' : 'Mening Bemorlarim' }}
+            {{ isAdmin ? $t('patients.allPatients') : $t('patients.myPatients') }}
           </h1>
           <p class="text-sm text-gray-500 mt-1">
-            {{ isAdmin ? 'Tizimdagi barcha bemorlar ro\'yxati' : 'Sizga biriktirilgan bemorlar' }}
+            {{ isAdmin ? $t('patients.patientList') : $t('patients.myPatientList') }}
           </p>
         </div>
         <div class="flex items-center gap-3">
@@ -19,7 +19,7 @@
 
 
             <ArrowDownTrayIcon class="w-5 h-5" />
-            Export
+            {{ $t('common.export') }}
           </button>
           <button
             v-if="isAdmin"
@@ -27,7 +27,7 @@
             class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
           >
             <PlusIcon class="w-5 h-5" />
-            Yangi Bemor
+            {{ $t('patients.addPatient') }}
           </button>
         </div>
       </div>
@@ -39,7 +39,7 @@
             <input
               type="text"
               v-model="searchQuery"
-              placeholder="Bemor qidirish..."
+              :placeholder="$t('patients.searchPlaceholder')"
               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
@@ -48,7 +48,7 @@
             v-model="selectedDoctor"
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="">Barcha doktorlar</option>
+            <option value="">{{ $t('patients.allDoctors') }}</option>
             <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
               {{ doctor.full_name }}
             </option>
@@ -57,9 +57,9 @@
             v-model="selectedStatus"
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="">Barcha statuslar</option>
-            <option value="active">Faol</option>
-            <option value="inactive">Nofaol</option>
+            <option value="">{{ $t('patients.allStatuses') }}</option>
+            <option value="active">{{ $t('common.active') }}</option>
+            <option value="inactive">{{ $t('common.inactive') }}</option>
           </select>
         </div>
       </div>
@@ -131,7 +131,7 @@
                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                     :class="patient.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
                   >
-                    {{ patient.status === 'active' ? 'Faol' : 'Nofaol' }}
+                    {{ patient.status === 'active' ? $t('common.active') : $t('common.inactive') }}
                   </span>
                 </td>
                 <td class="px-6 py-4" @click.stop>
@@ -139,7 +139,7 @@
                     <button
                       @click.stop="openEditModal(patient)"
                       class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Tahrirlash"
+                      :title="$t('common.edit')"
                     >
                       <PencilIcon class="w-4 h-4" />
                     </button>
@@ -147,7 +147,7 @@
                       v-if="isAdmin"
                       @click.stop="confirmDelete(patient)"
                       class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="O'chirish"
+                      :title="$t('common.delete')"
                     >
                       <TrashIcon class="w-4 h-4" />
                     </button>
@@ -206,14 +206,14 @@
             class="mt-4 inline-flex items-center gap-2 px-4 py-2 text-primary-600 hover:text-primary-700 font-medium"
           >
             <PlusIcon class="w-5 h-5" />
-            Yangi bemor qo'shish
+            {{ $t('patients.addNewPatient') }}
           </button>
         </div>
 
         <!-- Pagination -->
         <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100">
           <p class="text-sm text-gray-500">
-            Jami: <span class="font-medium">{{ filteredPatients.length }}</span> bemor
+            {{ $t('patients.total') }}: <span class="font-medium">{{ filteredPatients.length }}</span> {{ $t('patients.patients') }}
           </p>
         </div>
       </div>
@@ -239,9 +239,9 @@
             <div class="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white">
               <div>
                 <h2 class="text-xl font-semibold text-gray-900">
-                  {{ isEditing ? 'Bemorni Tahrirlash' : 'Yangi Bemor' }}
+                  {{ isEditing ? $t('patients.editPatient') : $t('patients.addPatient') }}
                 </h2>
-                <p class="text-sm text-gray-500">Bemor ma'lumotlarini kiriting</p>
+                <p class="text-sm text-gray-500">{{ $t('patients.enterPatientData') }}</p>
               </div>
               <button
                 @click="closeModal"
@@ -255,25 +255,25 @@
             <div class="p-6 space-y-4">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">F.I.O *</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.fullName') }} *</label>
                   <input
                     type="text"
                     v-model="patientForm.full_name"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="To'liq ism"
+                    :placeholder="$t('patients.fullNamePlaceholder')"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Telefon *</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('common.phone') }} *</label>
                   <input
                     type="tel"
                     v-model="patientForm.phone"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="+998 (XX) XXX XX XX"
+                    :placeholder="$t('patients.phonePlaceholder')"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Tug'ilgan sana</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.birthDate') }}</label>
                   <input
                     type="date"
                     v-model="patientForm.birth_date"
@@ -281,55 +281,55 @@
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Jinsi</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.gender') }}</label>
                   <select
                     v-model="patientForm.gender"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
-                    <option value="">Tanlang</option>
-                    <option value="male">Erkak</option>
-                    <option value="female">Ayol</option>
+                    <option value="">{{ $t('patients.selectGender') }}</option>
+                    <option value="male">{{ $t('patients.male') }}</option>
+                    <option value="female">{{ $t('patients.female') }}</option>
                   </select>
                 </div>
                 <div class="sm:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Manzil</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.address') }}</label>
                   <input
                     type="text"
                     v-model="patientForm.address"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Manzilni kiriting"
+                    :placeholder="$t('patients.addressPlaceholder')"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Biriktirilgan Doktor</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.assignedDoctor') }}</label>
                   <select
                     v-model="patientForm.doctor_id"
                     @change="updateDoctorName"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
-                    <option value="">Tanlang</option>
+                    <option value="">{{ $t('patients.selectDoctor') }}</option>
                     <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
                       {{ doctor.full_name }}
                     </option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('common.status') }}</label>
                   <select
                     v-model="patientForm.status"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
-                    <option value="active">Faol</option>
-                    <option value="inactive">Nofaol</option>
+                    <option value="active">{{ $t('common.active') }}</option>
+                    <option value="inactive">{{ $t('common.inactive') }}</option>
                   </select>
                 </div>
                 <div class="sm:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Izohlar</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.notes') }}</label>
                   <textarea
                     v-model="patientForm.notes"
                     rows="3"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Qo'shimcha ma'lumotlar..."
+                    :placeholder="$t('patients.notesPlaceholder')"
                   ></textarea>
                 </div>
               </div>
@@ -341,14 +341,14 @@
                 @click="closeModal"
                 class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                Bekor qilish
+                {{ $t('common.cancel') }}
               </button>
               <button
                 @click="savePatient"
                 :disabled="patientsStore.loading"
                 class="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50"
               >
-                {{ patientsStore.loading ? 'Saqlanmoqda...' : 'Saqlash' }}
+                {{ patientsStore.loading ? $t('common.saving') : $t('common.save') }}
               </button>
             </div>
           </div>
@@ -387,7 +387,7 @@
               <div class="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
                 <ExclamationTriangleIcon class="w-8 h-8 text-red-600" />
               </div>
-              <h3 class="mt-4 text-lg font-semibold text-gray-900">Bemorni o'chirish</h3>
+              <h3 class="mt-4 text-lg font-semibold text-gray-900">{{ $t('patients.deleteConfirm') }}</h3>
               <p class="mt-2 text-sm text-gray-500">
                 <span class="font-medium text-gray-700">{{ deletingPatient?.full_name }}</span> ni o'chirmoqchimisiz?
                 Bu amalni qaytarib bo'lmaydi.
