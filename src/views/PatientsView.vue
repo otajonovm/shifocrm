@@ -100,9 +100,10 @@
               <tr
                 v-for="patient in filteredPatients"
                 :key="patient.id"
-                class="hover:bg-gray-50 transition-colors"
+                @click="goToPatientDetail(patient.id)"
+                class="hover:bg-gray-50 transition-colors cursor-pointer"
               >
-                <td class="px-6 py-4">
+                <td class="px-6 py-4" @click.stop>
                   <span class="text-sm font-mono text-gray-500">#{{ patient.id }}</span>
                 </td>
                 <td class="px-6 py-4">
@@ -133,17 +134,10 @@
                     {{ patient.status === 'active' ? 'Faol' : 'Nofaol' }}
                   </span>
                 </td>
-                <td class="px-6 py-4">
+                <td class="px-6 py-4" @click.stop>
                   <div class="flex items-center justify-end gap-1">
                     <button
-                      @click="viewPatient(patient)"
-                      class="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                      title="Ko'rish"
-                    >
-                      <EyeIcon class="w-4 h-4" />
-                    </button>
-                    <button
-                      @click="openEditModal(patient)"
+                      @click.stop="openEditModal(patient)"
                       class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Tahrirlash"
                     >
@@ -151,7 +145,7 @@
                     </button>
                     <button
                       v-if="isAdmin"
-                      @click="confirmDelete(patient)"
+                      @click.stop="confirmDelete(patient)"
                       class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="O'chirish"
                     >
@@ -168,7 +162,8 @@
           <div
             v-for="patient in filteredPatients"
             :key="patient.id"
-            class="p-4 hover:bg-gray-50"
+            @click="goToPatientDetail(patient.id)"
+            class="p-4 hover:bg-gray-50 cursor-pointer"
           >
             <div class="flex items-start justify-between">
               <div class="flex items-center gap-3">
@@ -189,14 +184,11 @@
             </div>
             <div class="mt-3 flex items-center justify-between text-sm">
               <span class="text-gray-500">Oxirgi: {{ formatDate(patient.last_visit) || '-' }}</span>
-              <div class="flex items-center gap-2">
-                <button @click="viewPatient(patient)" class="p-2 text-primary-600 hover:bg-primary-50 rounded-lg">
-                  <EyeIcon class="w-5 h-5" />
-                </button>
-                <button @click="openEditModal(patient)" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
+              <div class="flex items-center gap-2" @click.stop>
+                <button @click.stop="openEditModal(patient)" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
                   <PencilIcon class="w-5 h-5" />
                 </button>
-                <button v-if="isAdmin" @click="confirmDelete(patient)" class="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+                <button v-if="isAdmin" @click.stop="confirmDelete(patient)" class="p-2 text-red-600 hover:bg-red-50 rounded-lg">
                   <TrashIcon class="w-5 h-5" />
                 </button>
               </div>
@@ -435,14 +427,15 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   ArrowDownTrayIcon,
-  EyeIcon,
   PencilIcon,
   TrashIcon,
   UsersIcon,
   XMarkIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/vue/24/outline'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const doctorsStore = useDoctorsStore()
 const patientsStore = usePatientsStore()
@@ -564,6 +557,13 @@ const closeModal = () => {
   patientForm.value = { ...initialFormState }
   isEditing.value = false
   editingPatientId.value = null
+}
+
+const goToPatientDetail = (patientId) => {
+  // ID ni number formatga o'tkazish (Supabase'da ID number)
+  const numId = Number(patientId)
+  console.log('Navigating to patient detail:', { original: patientId, converted: numId, type: typeof numId })
+  router.push(`/patients/${numId}`)
 }
 
 const viewPatient = (patient) => {

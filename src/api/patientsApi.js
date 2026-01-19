@@ -22,11 +22,49 @@ export const listPatients = async () => {
 // ID bo'yicha bemorni olish
 export const getPatientById = async (id) => {
   try {
-    const patients = await supabaseGet(TABLE, `id=eq.${id}`)
-    return patients[0] || null
+    console.log('🔍 API: Searching patient with ID:', id, 'Type:', typeof id)
+
+    // ID ni number formatga o'tkazish (Supabase'da ID number)
+    const numId = Number(id)
+
+    // NaN tekshiruvi
+    if (isNaN(numId)) {
+      console.error('❌ Invalid ID format:', id)
+      return null
+    }
+
+    console.log('🔍 Querying Supabase with number ID:', numId)
+
+    // Supabase'da ID number formatda, shuning uchun to'g'ridan-to'g'ri number ID bilan qidirish
+    const patients = await supabaseGet(TABLE, `id=eq.${numId}`)
+
+    console.log('📦 Supabase response:', patients)
+
+    const patient = patients && patients.length > 0 ? patients[0] : null
+
+    if (patient) {
+      console.log('✅ API: Patient found:', {
+        id: patient.id,
+        name: patient.full_name,
+        idType: typeof patient.id,
+        fullData: patient
+      })
+    } else {
+      console.error('❌ API: Patient not found with ID:', numId)
+      console.error('Response was:', patients)
+    }
+
+    return patient
   } catch (error) {
     console.error('❌ Failed to fetch patient:', error)
-    throw error
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      id: id,
+      idType: typeof id
+    })
+    // Xatolik bo'lsa ham null qaytarish, throw qilmaslik
+    return null
   }
 }
 

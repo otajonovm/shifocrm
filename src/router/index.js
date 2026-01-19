@@ -22,6 +22,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresRole: 'admin' },
     },
     {
+      path: '/patients/:id',
+      name: 'patient-detail',
+      component: () => import('@/views/PatientDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/my-patients',
       name: 'my-patients',
       component: () => import('@/views/PatientsView.vue'),
@@ -93,7 +99,7 @@ router.beforeEach(async (to, from, next) => {
 
   // Redirect authenticated users away from login page
   if (to.name === 'login' && authStore.isAuthenticated) {
-    const defaultRoute = authStore.userRole === 'doctor' ? '/doctor/profile' : '/dashboard'
+    const defaultRoute = authStore.userRole === 'doctor' ? 'doctor-profile' : 'dashboard'
     next({ name: defaultRoute })
     return
   }
@@ -108,7 +114,7 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresRole) {
     if (to.meta.requiresRole === 'admin' && authStore.userRole !== 'admin') {
       // Redirect to appropriate dashboard
-      const defaultRoute = authStore.userRole === 'doctor' ? '/doctor/profile' : '/dashboard'
+      const defaultRoute = authStore.userRole === 'doctor' ? 'doctor-profile' : 'dashboard'
       next({ name: defaultRoute })
       return
     }

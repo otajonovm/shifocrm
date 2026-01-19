@@ -67,10 +67,14 @@ import { getVisitStatusBadge } from '@/lib/patientHelpers'
 import * as visitsApi from '@/api/visitsApi'
 
 const props = defineProps({
+  patientId: {
+    type: [String, Number],
+    required: true,
+  },
   patient: {
     type: Object,
-    required: true
-  }
+    default: null,
+  },
 })
 
 const loading = ref(false)
@@ -86,7 +90,10 @@ const getStatusText = (status) => getVisitStatusBadge(status).text
 const loadVisits = async () => {
   loading.value = true
   try {
-    visits.value = await visitsApi.getVisitsByPatientId(props.patient.id)
+    const patientId = props.patientId || props.patient?.id
+    if (patientId) {
+      visits.value = await visitsApi.getVisitsByPatientId(patientId)
+    }
   } catch (error) {
     console.error('Failed to load visits:', error)
   } finally {
@@ -96,5 +103,5 @@ const loadVisits = async () => {
 
 onMounted(loadVisits)
 
-watch(() => props.patient.id, loadVisits)
+watch(() => props.patientId || props.patient?.id, loadVisits)
 </script>
