@@ -188,6 +188,11 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { usePatientsStore } from '@/stores/patients'
+import { useDoctorsStore } from '@/stores/doctors'
+import { getVisitsByDate, getVisitsByDoctorAndDate, getVisitsByDoctorId } from '@/api/visitsApi'
+import { getVisitStatusLabel, getVisitStatusColors, getCompletedStatuses, getActiveVisitStatuses } from '@/constants/visitStatus'
+import { getTodayISO, formatDate } from '@/lib/date'
 import {
   UsersIcon,
   CalendarDaysIcon,
@@ -197,9 +202,11 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const authStore = useAuthStore()
+const patientsStore = usePatientsStore()
+const doctorsStore = useDoctorsStore()
 
 const doctorName = computed(() => {
-  return authStore.userEmail?.split('@')[0] || 'Doktor'
+  return authStore.user?.full_name || authStore.userEmail?.split('@')[0] || 'Doktor'
 })
 
 const currentDate = ref('')
@@ -220,55 +227,164 @@ const updateTime = () => {
 }
 
 let timeInterval
-onMounted(() => {
-  updateTime()
-  timeInterval = setInterval(updateTime, 1000)
-})
-
 onUnmounted(() => {
   clearInterval(timeInterval)
 })
 
-// Mock data
 const stats = ref({
-  myPatients: 86,
-  newThisWeek: 5,
-  todayAppointments: 8,
-  remaining: 5,
-  completed: 3,
-  completedThisMonth: 124,
+  myPatients: 0,
+  newThisWeek: 0,
+  todayAppointments: 0,
+  remaining: 0,
+  completed: 0,
+  completedThisMonth: 0,
 })
 
-const todaySchedule = ref([
-  { id: 1, time: '09:00', patientName: 'Aliyev Sardor', reason: 'Tekshiruv', status: 'completed', statusLabel: 'Yakunlangan' },
-  { id: 2, time: '10:00', patientName: 'Karimova Zebo', reason: 'Konsultatsiya', status: 'completed', statusLabel: 'Yakunlangan' },
-  { id: 3, time: '11:00', patientName: 'Rahimov Bobur', reason: 'Davolash', status: 'in-progress', statusLabel: 'Jarayonda' },
-  { id: 4, time: '14:00', patientName: 'Saidova Dilnoza', reason: 'Tekshiruv', status: 'scheduled', statusLabel: 'Kutilmoqda' },
-  { id: 5, time: '15:00', patientName: 'Toshmatov Aziz', reason: 'Takroriy ko\'rik', status: 'scheduled', statusLabel: 'Kutilmoqda' },
-])
+const todaySchedule = ref([])
+const upcomingAppointments = ref([])
 
-const upcomingAppointments = ref([
-  { id: 1, date: 'Ertaga', time: '09:30', patientName: 'Usmonov Jahongir', patientInitials: 'UJ', reason: 'Tekshiruv' },
-  { id: 2, date: 'Ertaga', time: '11:00', patientName: 'Ergasheva Malika', patientInitials: 'EM', reason: 'Konsultatsiya' },
-  { id: 3, date: '17-yanvar', time: '10:00', patientName: 'Qodirov Bekzod', patientInitials: 'QB', reason: 'Davolash' },
-])
+const toISODate = (value) => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toISOString().split('T')[0]
+}
+
+const formatTime = (value) => {
+  if (!value) return '--:--'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '--:--'
+  return date.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })
+}
+
+const getInitials = (name) => {
+  if (!name) return '--'
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0].toUpperCase())
+    .join('')
+}
+
+const getDoctorId = () => {
+  if (authStore.user?.id) return authStore.user.id
+  if (!authStore.userEmail) return null
+  const doctor = doctorsStore.items.find(item => item.email === authStore.userEmail)
+  return doctor?.id || null
+}
+
+const loadDoctorDashboard = async () => {
+  const today = getTodayISO()
+
+  await doctorsStore.fetchAll()
+  const doctorId = getDoctorId()
+
+  if (doctorId) {
+    await patientsStore.fetchPatientsByDoctor(doctorId)
+  } else {
+    await patientsStore.fetchPatients()
+  }
+
+  let todayVisits = []
+  let allVisits = []
+  try {
+    todayVisits = doctorId
+      ? await getVisitsByDoctorAndDate(doctorId, today)
+      : await getVisitsByDate(today)
+  } catch {
+    todayVisits = []
+  }
+
+  try {
+    allVisits = doctorId
+      ? await getVisitsByDoctorId(doctorId)
+      : []
+  } catch {
+    allVisits = []
+  }
+
+  const patientMap = new Map(
+    patientsStore.items.map(patient => [Number(patient.id), patient])
+  )
+  const completedStatuses = getCompletedStatuses()
+  const activeStatuses = getActiveVisitStatuses()
+
+  const now = new Date()
+  const weekAgo = new Date()
+  weekAgo.setDate(now.getDate() - 7)
+
+  stats.value = {
+    myPatients: patientsStore.items.length,
+    newThisWeek: patientsStore.items.filter(patient => {
+      const created = new Date(patient.created_at)
+      return !Number.isNaN(created.getTime()) && created >= weekAgo
+    }).length,
+    todayAppointments: todayVisits.length,
+    remaining: todayVisits.filter(visit => activeStatuses.includes(visit.status)).length,
+    completed: todayVisits.filter(visit => completedStatuses.includes(visit.status)).length,
+    completedThisMonth: allVisits.filter(visit => {
+      const created = new Date(visit.created_at)
+      return (
+        !Number.isNaN(created.getTime()) &&
+        created.getFullYear() === now.getFullYear() &&
+        created.getMonth() === now.getMonth() &&
+        completedStatuses.includes(visit.status)
+      )
+    }).length,
+  }
+
+  todaySchedule.value = todayVisits.map(visit => {
+    const patient = patientMap.get(Number(visit.patient_id))
+    return {
+      id: visit.id,
+      time: formatTime(visit.created_at),
+      patientName: patient?.full_name || `#${visit.patient_id}`,
+      reason: visit.service_name || visit.notes || 'Ko\'rik',
+      status: visit.status,
+      statusLabel: getVisitStatusLabel(visit.status),
+    }
+  })
+
+  const upcoming = allVisits
+    .filter(visit => {
+      const visitDate = visit.date || toISODate(visit.created_at)
+      return visitDate && visitDate >= today && activeStatuses.includes(visit.status)
+    })
+    .sort((a, b) => {
+      const aDate = new Date(a.date || a.created_at)
+      const bDate = new Date(b.date || b.created_at)
+      return aDate - bDate
+    })
+    .slice(0, 5)
+
+  upcomingAppointments.value = upcoming.map(visit => {
+    const patient = patientMap.get(Number(visit.patient_id))
+    return {
+      id: visit.id,
+      date: formatDate(visit.date || visit.created_at),
+      time: formatTime(visit.created_at),
+      patientName: patient?.full_name || `#${visit.patient_id}`,
+      patientInitials: getInitials(patient?.full_name),
+      reason: visit.service_name || visit.notes || 'Ko\'rik',
+    }
+  })
+}
+
+onMounted(() => {
+  updateTime()
+  timeInterval = setInterval(updateTime, 1000)
+  loadDoctorDashboard()
+})
 
 const getTimelineColor = (status) => {
-  const colors = {
-    completed: 'bg-green-500',
-    'in-progress': 'bg-blue-500',
-    scheduled: 'bg-gray-300',
-  }
-  return colors[status] || colors.scheduled
+  const colors = getVisitStatusColors(status)
+  return colors.bgClass || 'bg-gray-300'
 }
 
 const getStatusBadge = (status) => {
-  const classes = {
-    completed: 'bg-green-100 text-green-700',
-    'in-progress': 'bg-blue-100 text-blue-700',
-    scheduled: 'bg-gray-100 text-gray-600',
-  }
-  return classes[status] || classes.scheduled
+  const colors = getVisitStatusColors(status)
+  return `${colors.bgClass} ${colors.textClass}`
 }
 
 const startAppointment = () => {

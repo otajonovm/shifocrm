@@ -7,6 +7,72 @@ import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supa
 
 const TABLE = 'visits'
 
+/**
+ * Barcha tashriflarni olish
+ * @param {string} query - Supabase query
+ * @returns {Promise<Array>}
+ */
+export const listVisits = async (query = 'order=created_at.desc') => {
+  try {
+    const visits = await supabaseGet(TABLE, query)
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits:', error)
+    throw error
+  }
+}
+
+/**
+ * Doktor ID bo'yicha tashriflarni olish
+ * @param {number|string} doctorId
+ * @returns {Promise<Array>}
+ */
+export const getVisitsByDoctorId = async (doctorId) => {
+  try {
+    const numId = Number(doctorId)
+    const visits = await supabaseGet(TABLE, `doctor_id=eq.${numId}&order=created_at.desc`)
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits by doctor:', error)
+    throw error
+  }
+}
+
+/**
+ * Sana bo'yicha tashriflarni olish
+ * @param {string} date - YYYY-MM-DD
+ * @returns {Promise<Array>}
+ */
+export const getVisitsByDate = async (date) => {
+  try {
+    const visits = await supabaseGet(TABLE, `date=eq.${date}&order=created_at.desc`)
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits by date:', error)
+    throw error
+  }
+}
+
+/**
+ * Doktor va sana bo'yicha tashriflarni olish
+ * @param {number|string} doctorId
+ * @param {string} date - YYYY-MM-DD
+ * @returns {Promise<Array>}
+ */
+export const getVisitsByDoctorAndDate = async (doctorId, date) => {
+  try {
+    const numId = Number(doctorId)
+    const visits = await supabaseGet(
+      TABLE,
+      `doctor_id=eq.${numId}&date=eq.${date}&order=created_at.desc`
+    )
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits by doctor and date:', error)
+    throw error
+  }
+}
+
 // 5 xonali unique ID generatsiya qilish (10000-99999)
 const generateId = async () => {
   try {
