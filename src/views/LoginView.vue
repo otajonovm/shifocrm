@@ -229,7 +229,7 @@ const handleDoctorLogin = async () => {
 
   if (success) {
     toast.success('Tizimga muvaffaqiyatli kirdingiz!')
-    const redirect = route.query.redirect || '/doctor/profile'
+    const redirect = route.query.redirect || '/dashboard'
     router.push(redirect)
   } else {
     toast.error('Email yoki parol noto\'g\'ri')

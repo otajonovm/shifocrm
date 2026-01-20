@@ -54,7 +54,7 @@
             </div>
           </div>
           <button
-            @click="$router.push('/patients')"
+            @click="goBack"
             class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             title="Orqaga"
           >
@@ -236,6 +236,15 @@ const tabs = [
 ]
 
 const isAdmin = computed(() => authStore.userRole === 'admin')
+const isDoctor = computed(() => authStore.userRole === 'doctor')
+
+const goBack = () => {
+  if (isDoctor.value) {
+    router.push('/my-patients')
+    return
+  }
+  router.push('/patients')
+}
 
 // Oxirgi visit statusini yuklash
 const loadLastVisit = async (patientId) => {
