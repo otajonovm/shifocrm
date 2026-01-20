@@ -42,7 +42,6 @@ export const authenticateDoctor = async (email, password) => {
   }
 }
 
-// 5 xonali unique ID generatsiya qilish (10000-99999)
 const generateId = async () => {
   try {
     const doctors = await listDoctors()

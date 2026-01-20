@@ -11,7 +11,7 @@ const TABLE = 'patients'
 export const listPatients = async () => {
   try {
     const patients = await supabaseGet(TABLE, 'order=created_at.desc')
-    console.log('✅ Patients loaded from Supabase:', patients.length)
+    console.log('✅ Patients loaded from Supabase:')
     return patients
   } catch (error) {
     console.error('❌ Failed to fetch patients:', error)
@@ -22,7 +22,6 @@ export const listPatients = async () => {
 // ID bo'yicha bemorni olish
 export const getPatientById = async (id) => {
   try {
-    console.log('🔍 API: Searching patient with ID:', id, 'Type:', typeof id)
 
     // ID ni number formatga o'tkazish (Supabase'da ID number)
     const numId = Number(id)
@@ -33,12 +32,10 @@ export const getPatientById = async (id) => {
       return null
     }
 
-    console.log('🔍 Querying Supabase with number ID:', numId)
 
     // Supabase'da ID number formatda, shuning uchun to'g'ridan-to'g'ri number ID bilan qidirish
     const patients = await supabaseGet(TABLE, `id=eq.${numId}`)
 
-    console.log('📦 Supabase response:', patients)
 
     const patient = patients && patients.length > 0 ? patients[0] : null
 

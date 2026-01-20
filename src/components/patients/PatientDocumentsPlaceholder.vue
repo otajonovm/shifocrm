@@ -1,20 +1,193 @@
 <template>
-  <div class="text-center py-12">
-    <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-      <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
+  <div class="space-y-6">
+    <div class="rounded-xl border border-slate-200 bg-white p-4">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div class="flex-1">
+          <label class="text-sm font-medium text-slate-700">Hujjat nomi</label>
+          <input
+            v-model="title"
+            type="text"
+            class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            placeholder="Masalan: RTG, analiz, rasm..."
+          />
+        </div>
+        <div class="flex items-center gap-3">
+          <input
+            ref="fileInputRef"
+            type="file"
+            class="hidden"
+            accept=".pdf,.jpg,.jpeg,.png"
+            @change="handleFileChange"
+          />
+          <button
+            class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            @click="openFilePicker"
+          >
+            Fayl tanlash
+          </button>
+          <button
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+            :disabled="uploading || !selectedFile"
+            @click="saveDocument"
+          >
+            {{ uploading ? 'Yuklanmoqda...' : 'Saqlash' }}
+          </button>
+        </div>
+      </div>
+      <p class="mt-2 text-xs text-slate-500">
+        Maksimal fayl hajmi: 2 MB. PDF yoki rasm fayllari tavsiya qilinadi.
+      </p>
     </div>
-    <h3 class="text-lg font-semibold text-gray-900 mb-2">Hujjatlar</h3>
-    <p class="text-gray-500">Bu bo'lim tez orada qo'shiladi</p>
+
+    <div class="overflow-x-auto rounded-xl border border-slate-200">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr>
+            <th class="px-4 py-3">Hujjat</th>
+            <th class="px-4 py-3">Sana</th>
+            <th class="px-4 py-3">Hajm</th>
+            <th class="px-4 py-3 text-right">Amal</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr v-if="documents.length === 0">
+            <td class="px-4 py-4 text-slate-500" colspan="4">Hujjatlar topilmadi.</td>
+          </tr>
+          <tr v-for="doc in documents" :key="doc.id" class="bg-white">
+            <td class="px-4 py-3">
+              <div class="font-medium text-slate-800">{{ doc.title || doc.name }}</div>
+              <div class="text-xs text-slate-500">{{ doc.name }}</div>
+            </td>
+            <td class="px-4 py-3 text-slate-600">{{ formatDate(doc.createdAt) }}</td>
+            <td class="px-4 py-3 text-slate-600">{{ formatSize(doc.size) }}</td>
+            <td class="px-4 py-3 text-right">
+              <div class="flex justify-end gap-2">
+                <a
+                  class="rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                  :href="doc.dataUrl"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Ko'rish
+                </a>
+                <a
+                  class="rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                  :href="doc.dataUrl"
+                  :download="doc.name"
+                >
+                  Yuklab olish
+                </a>
+                <button
+                  class="rounded-lg border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                  @click="removeDocument(doc.id)"
+                >
+                  O'chirish
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { ref, watch, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
+
+const props = defineProps({
   patientId: {
     type: [String, Number],
-    required: true,
-  },
+    required: true
+  }
 })
+
+const toast = useToast()
+const documents = ref([])
+const title = ref('')
+const selectedFile = ref(null)
+const uploading = ref(false)
+const fileInputRef = ref(null)
+
+const storageKey = () => `patient-documents-${props.patientId}`
+
+const loadDocuments = () => {
+  const raw = localStorage.getItem(storageKey())
+  documents.value = raw ? JSON.parse(raw) : []
+}
+
+const persistDocuments = () => {
+  localStorage.setItem(storageKey(), JSON.stringify(documents.value))
+}
+
+const formatDate = (value) => {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString('uz-UZ')
+}
+
+const formatSize = (bytes) => {
+  if (!bytes) return '-'
+  const kb = bytes / 1024
+  if (kb < 1024) return `${kb.toFixed(0)} KB`
+  return `${(kb / 1024).toFixed(1)} MB`
+}
+
+const openFilePicker = () => {
+  fileInputRef.value?.click()
+}
+
+const handleFileChange = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  if (file.size > 2 * 1024 * 1024) {
+    toast.error('Fayl 2MB dan katta. Kichikroq fayl tanlang.')
+    event.target.value = ''
+    return
+  }
+  selectedFile.value = file
+}
+
+const saveDocument = async () => {
+  if (!selectedFile.value) return
+  uploading.value = true
+  try {
+    const dataUrl = await readFileAsDataUrl(selectedFile.value)
+    documents.value.unshift({
+      id: Date.now(),
+      name: selectedFile.value.name,
+      size: selectedFile.value.size,
+      type: selectedFile.value.type,
+      title: title.value.trim(),
+      dataUrl,
+      createdAt: new Date().toISOString()
+    })
+    persistDocuments()
+    title.value = ''
+    selectedFile.value = null
+    if (fileInputRef.value) fileInputRef.value.value = ''
+    toast.success('Hujjat saqlandi')
+  } catch (error) {
+    console.error('Failed to save document:', error)
+    toast.error('Hujjatni saqlashda xatolik')
+  } finally {
+    uploading.value = false
+  }
+}
+
+const removeDocument = (id) => {
+  documents.value = documents.value.filter((doc) => doc.id !== id)
+  persistDocuments()
+}
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+
+onMounted(loadDocuments)
+watch(() => props.patientId, loadDocuments)
 </script>
