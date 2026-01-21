@@ -193,6 +193,7 @@ import { ref, onMounted } from 'vue'
 import { usePatientsStore } from '@/stores/patients'
 import { useDoctorsStore } from '@/stores/doctors'
 import { getVisitsByDate } from '@/api/visitsApi'
+import { getIncomeByDate } from '@/api/paymentsApi'
 import { getVisitStatusLabel, getVisitStatusColors, getCompletedStatuses } from '@/constants/visitStatus'
 import { getTodayISO, formatDateTime } from '@/lib/date'
 import {
@@ -308,6 +309,19 @@ const loadDashboard = async () => {
   const completedStatuses = getCompletedStatuses()
   const completedVisits = visits.filter(visit => completedStatuses.includes(visit.status))
 
+  let dailyRevenue = 0
+  try {
+    const income = await getIncomeByDate(today)
+    dailyRevenue = income ? Number(income.net_income || 0) : 0
+  } catch {
+    dailyRevenue = visits.reduce((sum, visit) => {
+      const paid = visit.paid_amount !== null && visit.paid_amount !== undefined
+        ? Number(visit.paid_amount)
+        : (visit.status === 'completed_paid' ? Number(visit.price || 0) : 0)
+      return sum + (Number.isNaN(paid) ? 0 : paid)
+    }, 0)
+  }
+
   stats.value = {
     totalPatients: patientsStore.items.length,
     newPatientsToday: patientsStore.items.filter(patient => toISODate(patient.created_at) === today).length,
@@ -315,12 +329,7 @@ const loadDashboard = async () => {
     activeDoctors: doctorsStore.items.filter(doctor => doctor.is_active !== false).length,
     todayAppointments: visits.length,
     completedToday: completedVisits.length,
-    dailyRevenue: visits.reduce((sum, visit) => {
-      const paid = visit.paid_amount !== null && visit.paid_amount !== undefined
-        ? Number(visit.paid_amount)
-        : (visit.status === 'completed_paid' ? Number(visit.price || 0) : 0)
-      return sum + (Number.isNaN(paid) ? 0 : paid)
-    }, 0),
+    dailyRevenue,
   }
 
   todayAppointments.value = visits.map((visit) => {

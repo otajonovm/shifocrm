@@ -348,6 +348,7 @@ import {
   VISIT_STATUSES
 } from '@/constants/visitStatus'
 import * as visitsApi from '@/api/visitsApi'
+import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
 
 const formatCurrency = (amount) => {
   if (!amount && amount !== 0) return '0 so\'m'
@@ -509,6 +510,33 @@ const completeVisit = async () => {
     }
     
     await visitsApi.updateVisit(selectedVisit.value.id, updateData)
+
+    if (paidAmount && paidAmount > 0) {
+      try {
+        const existingPayments = await getPaymentsByVisitId(selectedVisit.value.id)
+        const netPaid = existingPayments.reduce((sum, entry) => {
+          const amount = Number(entry.amount) || 0
+          return sum + (entry.payment_type === 'refund' ? -amount : amount)
+        }, 0)
+        const diff = paidAmount - netPaid
+
+        if (diff > 0) {
+          await createPayment({
+            visit_id: selectedVisit.value.id,
+            patient_id: selectedVisit.value.patient_id,
+            doctor_id: selectedVisit.value.doctor_id,
+            amount: diff,
+            payment_type: 'payment',
+            method: 'cash',
+            note: netPaid > 0 ? 'Qo\'shimcha to\'lov' : 'Tashrif to\'lovi'
+          })
+        }
+      } catch (paymentError) {
+        console.error('Failed to save payment:', paymentError)
+        toast.error('To\'lovni saqlashda xatolik')
+      }
+    }
+
     toast.success('Tashrif yakunlandi')
     await loadVisits()
     emit('visit-updated')

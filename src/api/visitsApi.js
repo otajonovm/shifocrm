@@ -73,6 +73,46 @@ export const getVisitsByDoctorAndDate = async (doctorId, date) => {
   }
 }
 
+/**
+ * Sana oralig'ida tashriflarni olish
+ * @param {string} startDate - YYYY-MM-DD
+ * @param {string} endDate - YYYY-MM-DD
+ * @returns {Promise<Array>}
+ */
+export const getVisitsByDateRange = async (startDate, endDate) => {
+  try {
+    const visits = await supabaseGet(
+      TABLE,
+      `date=gte.${startDate}&date=lte.${endDate}&order=date.asc,created_at.asc`
+    )
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits by date range:', error)
+    throw error
+  }
+}
+
+/**
+ * Doktor va sana oralig'i bo'yicha tashriflarni olish
+ * @param {number|string} doctorId
+ * @param {string} startDate - YYYY-MM-DD
+ * @param {string} endDate - YYYY-MM-DD
+ * @returns {Promise<Array>}
+ */
+export const getVisitsByDoctorAndDateRange = async (doctorId, startDate, endDate) => {
+  try {
+    const numId = Number(doctorId)
+    const visits = await supabaseGet(
+      TABLE,
+      `doctor_id=eq.${numId}&date=gte.${startDate}&date=lte.${endDate}&order=date.asc,created_at.asc`
+    )
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits by doctor and date range:', error)
+    throw error
+  }
+}
+
 // 5 xonali unique ID generatsiya qilish (10000-99999)
 const generateId = async () => {
   try {
@@ -276,7 +316,14 @@ export const createVisit = async ({
   price = null,
   paid_amount = null,
   debt_amount = null,
-  service_name = null
+  service_name = null,
+  date = null,
+  start_time = null,
+  end_time = null,
+  duration_minutes = null,
+  room = null,
+  channel = null,
+  updated_by = null
 }) => {
   try {
     const now = new Date().toISOString()
@@ -293,13 +340,19 @@ export const createVisit = async ({
       patient_id: Number(patient_id),
       doctor_id: doctor_id ? Number(doctor_id) : null,
       doctor_name: doctor_name || null,
-      date: now.split('T')[0],
+      date: date || now.split('T')[0],
       status,
       notes: notes || null,
       price: price !== null && price !== undefined ? Number(price) : null,
       paid_amount: paid_amount !== null && paid_amount !== undefined ? Number(paid_amount) : null,
       debt_amount: finalDebtAmount !== null && finalDebtAmount !== undefined ? Number(finalDebtAmount) : null,
-      service_name: service_name || null
+      service_name: service_name || null,
+      start_time: start_time || null,
+      end_time: end_time || null,
+      duration_minutes: duration_minutes !== null && duration_minutes !== undefined ? Number(duration_minutes) : null,
+      room: room || null,
+      channel: channel || null,
+      updated_by: updated_by || null
     }
 
     const result = await supabasePost(TABLE, newVisit)

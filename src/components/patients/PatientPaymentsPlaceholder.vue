@@ -2,16 +2,16 @@
   <div class="space-y-6">
     <div class="grid gap-4 sm:grid-cols-3">
       <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-        <p class="text-xs text-slate-500">Jami xizmat narxi</p>
-        <p class="mt-2 text-lg font-semibold text-slate-900">{{ formatCurrency(totalBill) }}</p>
+        <p class="text-xs text-slate-500">Jami to'lovlar</p>
+        <p class="mt-2 text-lg font-semibold text-slate-900">{{ formatCurrency(totalPayments) }}</p>
       </div>
       <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-        <p class="text-xs text-slate-500">Bajarilgan ishlar</p>
-        <p class="mt-2 text-lg font-semibold text-emerald-600">{{ history.length }}</p>
+        <p class="text-xs text-slate-500">Qaytarimlar</p>
+        <p class="mt-2 text-lg font-semibold text-rose-600">{{ formatCurrency(totalRefunds) }}</p>
       </div>
       <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-        <p class="text-xs text-slate-500">Oxirgi yozuv</p>
-        <p class="mt-2 text-lg font-semibold text-slate-700">{{ lastEntryLabel }}</p>
+        <p class="text-xs text-slate-500">Sof daromad</p>
+        <p class="mt-2 text-lg font-semibold text-emerald-600">{{ formatCurrency(netIncome) }}</p>
       </div>
     </div>
 
@@ -19,22 +19,32 @@
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
-            <th class="px-4 py-3">Tish raqami</th>
-            <th class="px-4 py-3">Xizmat nomi</th>
-            <th class="px-4 py-3">Narxi</th>
+            <th class="px-4 py-3">Sana</th>
+            <th class="px-4 py-3">Turi</th>
+            <th class="px-4 py-3">Miqdor</th>
+            <th class="px-4 py-3">Usul</th>
+            <th class="px-4 py-3">Izoh</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
-          <tr v-if="history.length === 0">
-            <td class="px-4 py-4 text-slate-500" colspan="3">To'lovlar topilmadi.</td>
+          <tr v-if="loading">
+            <td class="px-4 py-4 text-slate-500" colspan="5">Yuklanmoqda...</td>
           </tr>
-          <tr v-for="entry in history" :key="entry.id" class="bg-white">
-            <td class="px-4 py-3 text-slate-700">#{{ entry.toothId }}</td>
+          <tr v-else-if="payments.length === 0">
+            <td class="px-4 py-4 text-slate-500" colspan="5">To'lovlar topilmadi.</td>
+          </tr>
+          <tr v-for="entry in payments" :key="entry.id" class="bg-white">
+            <td class="px-4 py-3 text-slate-700">{{ formatDate(entry.paid_at) }}</td>
             <td class="px-4 py-3 text-slate-700">
-              {{ entry.serviceName }}
-              <div class="text-xs text-slate-400">{{ entry.performedBy }}</div>
+              <span :class="getTypeClass(entry.payment_type)">
+                {{ getTypeLabel(entry.payment_type) }}
+              </span>
             </td>
-            <td class="px-4 py-3 text-slate-700">{{ formatCurrency(entry.price) }}</td>
+            <td class="px-4 py-3 text-slate-700">
+              {{ formatCurrency(entry.amount) }}
+            </td>
+            <td class="px-4 py-3 text-slate-700">{{ entry.method || '-' }}</td>
+            <td class="px-4 py-3 text-slate-700">{{ entry.note || '-' }}</td>
           </tr>
         </tbody>
       </table>
@@ -44,6 +54,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { getPaymentsByPatientId } from '@/api/paymentsApi'
 
 const props = defineProps({
   patientId: {
@@ -52,16 +63,23 @@ const props = defineProps({
   }
 })
 
-const history = ref([])
+const payments = ref([])
+const loading = ref(false)
 
-const totalBill = computed(() =>
-  history.value.reduce((sum, entry) => sum + (Number(entry.price) || 0), 0)
+const totalPayments = computed(() =>
+  payments.value.reduce((sum, entry) => sum + (entry.payment_type === 'payment' ? Number(entry.amount) || 0 : 0), 0)
 )
 
-const lastEntryLabel = computed(() => {
-  if (history.value.length === 0) return '-'
-  return history.value[0].serviceName || '-'
-})
+const totalRefunds = computed(() =>
+  payments.value.reduce((sum, entry) => sum + (entry.payment_type === 'refund' ? Number(entry.amount) || 0 : 0), 0)
+)
+
+const netIncome = computed(() =>
+  payments.value.reduce((sum, entry) => {
+    const amount = Number(entry.amount) || 0
+    return sum + (entry.payment_type === 'refund' ? -amount : amount)
+  }, 0)
+)
 
 const formatCurrency = (amount) => {
   if (!amount) return '0 so\'m'
@@ -73,13 +91,37 @@ const formatCurrency = (amount) => {
   }).format(amount).replace('UZS', 'so\'m')
 }
 
-const historyStorageKey = computed(() => `patient-history-${props.patientId}`)
-
-const loadHistory = () => {
-  const raw = localStorage.getItem(historyStorageKey.value)
-  history.value = raw ? JSON.parse(raw) : []
+const getTypeLabel = (type) => {
+  if (type === 'refund') return 'Qaytarim'
+  if (type === 'adjustment') return 'Tuzatma'
+  return 'To\'lov'
 }
 
-onMounted(loadHistory)
-watch(() => props.patientId, loadHistory)
+const getTypeClass = (type) => {
+  if (type === 'refund') return 'text-rose-600 font-medium'
+  if (type === 'adjustment') return 'text-amber-600 font-medium'
+  return 'text-emerald-600 font-medium'
+}
+
+const formatDate = (value) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+const loadPayments = async () => {
+  loading.value = true
+  try {
+    payments.value = await getPaymentsByPatientId(props.patientId)
+  } catch (error) {
+    console.error('Failed to load payments:', error)
+    payments.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadPayments)
+watch(() => props.patientId, loadPayments)
 </script>
