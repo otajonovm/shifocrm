@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6 animate-fade-in">
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
       <!-- Jami Bemorlar -->
       <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div class="flex items-center justify-between">
@@ -60,7 +60,50 @@
             <p class="text-orange-100 text-sm font-medium">Kunlik Daromad</p>
             <p class="text-3xl font-bold mt-1">{{ formatCurrency(stats.dailyRevenue) }}</p>
             <p class="text-orange-100 text-sm mt-2">
-              <span class="text-green-300">+12%</span> o'tgan haftaga nisbatan
+              <span :class="stats.weeklyGrowth >= 0 ? 'text-green-300' : 'text-red-200'">
+                {{ stats.weeklyGrowth >= 0 ? '+' : '' }}{{ stats.weeklyGrowth }}%
+              </span>
+              haftalik o'zgarish
+            </p>
+          </div>
+          <div class="p-3 bg-white/20 rounded-xl">
+            <CurrencyDollarIcon class="w-8 h-8" />
+          </div>
+        </div>
+        <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
+      </div>
+
+      <!-- Haftalik Daromad -->
+      <div class="relative overflow-hidden bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-teal-100 text-sm font-medium">Haftalik Daromad</p>
+            <p class="text-3xl font-bold mt-1">{{ formatCurrency(stats.weeklyRevenue) }}</p>
+            <p class="text-teal-100 text-sm mt-2">
+              <span :class="stats.weeklyGrowth >= 0 ? 'text-green-300' : 'text-red-200'">
+                {{ stats.weeklyGrowth >= 0 ? '+' : '' }}{{ stats.weeklyGrowth }}%
+              </span>
+              o'tgan haftaga nisbatan
+            </p>
+          </div>
+          <div class="p-3 bg-white/20 rounded-xl">
+            <CurrencyDollarIcon class="w-8 h-8" />
+          </div>
+        </div>
+        <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
+      </div>
+
+      <!-- Oylik Daromad -->
+      <div class="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-indigo-100 text-sm font-medium">Oylik Daromad</p>
+            <p class="text-3xl font-bold mt-1">{{ formatCurrency(stats.monthlyRevenue) }}</p>
+            <p class="text-indigo-100 text-sm mt-2">
+              <span :class="stats.monthlyGrowth >= 0 ? 'text-green-300' : 'text-red-200'">
+                {{ stats.monthlyGrowth >= 0 ? '+' : '' }}{{ stats.monthlyGrowth }}%
+              </span>
+              o'tgan oyga nisbatan
             </p>
           </div>
           <div class="p-3 bg-white/20 rounded-xl">
@@ -193,7 +236,7 @@ import { ref, onMounted } from 'vue'
 import { usePatientsStore } from '@/stores/patients'
 import { useDoctorsStore } from '@/stores/doctors'
 import { getVisitsByDate } from '@/api/visitsApi'
-import { getIncomeByDate } from '@/api/paymentsApi'
+import { getPaymentsByDateRange } from '@/api/paymentsApi'
 import { getVisitStatusLabel, getVisitStatusColors, getCompletedStatuses } from '@/constants/visitStatus'
 import { getTodayISO, formatDateTime } from '@/lib/date'
 import {
@@ -221,6 +264,10 @@ const stats = ref({
   todayAppointments: 0,
   completedToday: 0,
   dailyRevenue: 0,
+  weeklyRevenue: 0,
+  weeklyGrowth: 0,
+  monthlyRevenue: 0,
+  monthlyGrowth: 0,
 })
 
 const todayAppointments = ref([])
@@ -310,9 +357,15 @@ const loadDashboard = async () => {
   const completedVisits = visits.filter(visit => completedStatuses.includes(visit.status))
 
   let dailyRevenue = 0
+  let weeklyRevenue = 0
+  let monthlyRevenue = 0
+  let weeklyGrowth = 0
+  let monthlyGrowth = 0
+  const now = new Date()
+  const { startISO: todayStartISO, endISO: todayEndISO } = getLocalDayRange(now)
   try {
-    const income = await getIncomeByDate(today)
-    dailyRevenue = income ? Number(income.net_income || 0) : 0
+    const todayPayments = await getPaymentsByDateRange(todayStartISO, todayEndISO)
+    dailyRevenue = getNetIncomeFromPayments(todayPayments)
   } catch {
     dailyRevenue = visits.reduce((sum, visit) => {
       const paid = visit.paid_amount !== null && visit.paid_amount !== undefined
@@ -322,6 +375,54 @@ const loadDashboard = async () => {
     }, 0)
   }
 
+  const weekStart = startOfWeek(now)
+  const weekEnd = addDays(weekStart, 6)
+  const prevWeekStart = addDays(weekStart, -7)
+  const prevWeekEnd = addDays(weekEnd, -7)
+
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+
+  const weekRange = getLocalRangeForDates(weekStart, weekEnd)
+  const prevWeekRange = getLocalRangeForDates(prevWeekStart, prevWeekEnd)
+  const monthRange = getLocalRangeForDates(monthStart, monthEnd)
+  const prevMonthRange = getLocalRangeForDates(prevMonthStart, prevMonthEnd)
+
+  let prevWeekRevenue = 0
+  let prevMonthRevenue = 0
+  try {
+    const weekPayments = await getPaymentsByDateRange(weekRange.startISO, weekRange.endISO)
+    weeklyRevenue = getNetIncomeFromPayments(weekPayments)
+  } catch {
+    weeklyRevenue = 0
+  }
+
+  try {
+    const monthPayments = await getPaymentsByDateRange(monthRange.startISO, monthRange.endISO)
+    monthlyRevenue = getNetIncomeFromPayments(monthPayments)
+  } catch {
+    monthlyRevenue = 0
+  }
+
+  try {
+    const prevWeekPayments = await getPaymentsByDateRange(prevWeekRange.startISO, prevWeekRange.endISO)
+    prevWeekRevenue = getNetIncomeFromPayments(prevWeekPayments)
+  } catch {
+    prevWeekRevenue = 0
+  }
+
+  try {
+    const prevMonthPayments = await getPaymentsByDateRange(prevMonthRange.startISO, prevMonthRange.endISO)
+    prevMonthRevenue = getNetIncomeFromPayments(prevMonthPayments)
+  } catch {
+    prevMonthRevenue = 0
+  }
+
+  weeklyGrowth = calculateGrowth(weeklyRevenue, prevWeekRevenue)
+  monthlyGrowth = calculateGrowth(monthlyRevenue, prevMonthRevenue)
+
   stats.value = {
     totalPatients: patientsStore.items.length,
     newPatientsToday: patientsStore.items.filter(patient => toISODate(patient.created_at) === today).length,
@@ -330,6 +431,10 @@ const loadDashboard = async () => {
     todayAppointments: visits.length,
     completedToday: completedVisits.length,
     dailyRevenue,
+    weeklyRevenue,
+    weeklyGrowth,
+    monthlyRevenue,
+    monthlyGrowth,
   }
 
   todayAppointments.value = visits.map((visit) => {
@@ -356,6 +461,42 @@ onMounted(() => {
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('uz-UZ').format(amount) + ' so\'m'
+}
+
+const getNetIncomeFromPayments = (payments) => {
+  return payments.reduce((sum, entry) => {
+    const amount = Number(entry.amount) || 0
+    return sum + (entry.payment_type === 'refund' ? -amount : amount)
+  }, 0)
+}
+
+const calculateGrowth = (current, previous) => {
+  if (!previous || previous === 0) return current > 0 ? 100 : 0
+  return Math.round(((current - previous) / previous) * 100)
+}
+
+const getLocalDayRange = (date) => {
+  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999)
+  return { startISO: start.toISOString(), endISO: end.toISOString() }
+}
+
+const getLocalRangeForDates = (startDate, endDate) => {
+  const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+  const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999)
+  return { startISO: start.toISOString(), endISO: end.toISOString() }
+}
+
+const startOfWeek = (date) => {
+  const day = date.getDay()
+  const diff = date.getDate() - (day === 0 ? 6 : day - 1)
+  return new Date(date.getFullYear(), date.getMonth(), diff)
+}
+
+const addDays = (date, days) => {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
 }
 
 const getStatusClass = (status) => {

@@ -163,6 +163,9 @@ export const getVisitsByPatientId = async (patientId) => {
 export const getVisitById = async (id) => {
   try {
     const numId = Number(id)
+    if (!Number.isFinite(numId)) {
+      throw new Error('Invalid visit ID')
+    }
     const visits = await supabaseGet(TABLE, `id=eq.${numId}`)
     return visits[0] || null
   } catch (error) {
@@ -373,6 +376,9 @@ export const createVisit = async ({
 export const updateVisit = async (id, payload) => {
   try {
     const numId = Number(id)
+    if (!Number.isFinite(numId)) {
+      throw new Error('Invalid visit ID')
+    }
     
     // Avval mavjud visitni olish
     const currentVisit = await getVisitById(id)
@@ -457,6 +463,9 @@ export const payDebt = async (id) => {
 export const deleteVisit = async (id) => {
   try {
     const numId = Number(id)
+    if (!Number.isFinite(numId)) {
+      throw new Error('Invalid visit ID')
+    }
     await supabaseDelete(TABLE, numId)
     console.log('✅ Visit deleted:', numId)
     return true

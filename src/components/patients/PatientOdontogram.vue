@@ -191,6 +191,7 @@ import { formatDate } from '@/lib/date'
 import { getVisitStatusLabel } from '@/constants/visitStatus'
 import * as visitsApi from '@/api/visitsApi'
 import * as odontogramApi from '@/api/odontogramApi'
+import * as visitServicesApi from '@/api/visitServicesApi'
 import Tooth from './Tooth.vue'
 
 const { TOOTH_STATES } = odontogramApi
@@ -294,8 +295,6 @@ const toothStatusMap = computed(() => {
 
 const patientHistory = ref([])
 
-const historyStorageKey = computed(() => `patient-history-${props.patient.id}`)
-
 const totalBill = computed(() =>
   patientHistory.value.reduce((sum, entry) => sum + (Number(entry.price) || 0), 0)
 )
@@ -308,25 +307,35 @@ const syncTeethFromOdontogram = () => {
   }))
 }
 
-const loadPatientHistory = () => {
-  const raw = localStorage.getItem(historyStorageKey.value)
-  patientHistory.value = raw ? JSON.parse(raw) : []
+const loadPatientHistory = async () => {
+  try {
+    patientHistory.value = await visitServicesApi.getVisitServicesByPatientId(props.patient.id)
+  } catch (error) {
+    console.error('Failed to load visit services:', error)
+    patientHistory.value = []
+  }
 }
 
-const persistPatientHistory = () => {
-  localStorage.setItem(historyStorageKey.value, JSON.stringify(patientHistory.value))
-}
-
-const addHistoryEntry = ({ toothId, serviceName, price }) => {
-  patientHistory.value.unshift({
-    id: Date.now(),
-    toothId,
-    serviceName,
-    price,
-    performedBy: 'Doctor tomonidan bajarildi',
-    createdAt: new Date().toISOString()
-  })
-  persistPatientHistory()
+const addHistoryEntry = async ({ toothId, serviceName, price }) => {
+  if (!currentVisit.value?.id) {
+    toast.error('Avval tashrifni tanlang')
+    return
+  }
+  try {
+    const entry = await visitServicesApi.createVisitService({
+      visit_id: currentVisit.value.id,
+      patient_id: props.patient.id,
+      doctor_id: props.doctorId,
+      tooth_id: toothId,
+      service_name: serviceName,
+      price,
+      performed_by: authStore.user?.full_name || props.doctorName || 'Doctor'
+    })
+    patientHistory.value.unshift(entry)
+  } catch (error) {
+    console.error('Failed to save visit service:', error)
+    toast.error('Bajarilgan ishni saqlashda xatolik')
+  }
 }
 
 const loadVisits = async () => {
@@ -466,13 +475,13 @@ const setToothStatus = (status) => {
   closeStatusMenu()
 }
 
-const applyMenuSelection = (option) => {
+const applyMenuSelection = async (option) => {
   if (!selectedToothId.value) return
   const status = option.status || option.value
   setToothStatus(status)
 
   if (isDoctor.value && option.price) {
-    addHistoryEntry({
+    await addHistoryEntry({
       toothId: selectedToothId.value,
       serviceName: option.label,
       price: option.price
@@ -509,10 +518,10 @@ const handleEscape = (event) => {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadVisits()
   syncTeethFromOdontogram()
-  loadPatientHistory()
+  await loadPatientHistory()
   document.addEventListener('click', handleDocumentClick)
   window.addEventListener('keydown', handleEscape)
 })
@@ -523,12 +532,12 @@ onBeforeUnmount(() => {
 })
 
 // Watch for patient change
-watch(() => props.patient.id, () => {
+watch(() => props.patient.id, async () => {
   selectedVisitId.value = ''
   currentVisit.value = null
   currentOdontogram.value = null
   syncTeethFromOdontogram()
-  loadPatientHistory()
+  await loadPatientHistory()
   loadVisits()
 })
 </script>

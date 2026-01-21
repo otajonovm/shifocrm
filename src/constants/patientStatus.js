@@ -6,8 +6,10 @@
 export const PATIENT_STATUSES = {
   ACTIVE: 'active',
   INACTIVE: 'inactive',
+  FOLLOW_UP: 'follow_up',
   ARCHIVED: 'archived',
-  DECEASED: 'deceased'
+  DECEASED: 'deceased',
+  BLOCKED: 'blocked'
 }
 
 /**
@@ -33,6 +35,15 @@ export const PATIENT_STATUS_CONFIG = {
     icon: 'pause-circle',
     order: 2
   },
+  [PATIENT_STATUSES.FOLLOW_UP]: {
+    label: 'Kuzatuvda',
+    description: 'Bemor qayta chaqirish yoki kuzatuvda',
+    bgClass: 'bg-amber-100',
+    textClass: 'text-amber-700',
+    borderClass: 'border-amber-300',
+    icon: 'exclamation-circle',
+    order: 3
+  },
   [PATIENT_STATUSES.ARCHIVED]: {
     label: 'Arxivlangan',
     description: 'Bemor arxivga olingan',
@@ -40,7 +51,7 @@ export const PATIENT_STATUS_CONFIG = {
     textClass: 'text-gray-600',
     borderClass: 'border-gray-400',
     icon: 'archive',
-    order: 3
+    order: 4
   },
   [PATIENT_STATUSES.DECEASED]: {
     label: 'Vafot etgan',
@@ -49,7 +60,16 @@ export const PATIENT_STATUS_CONFIG = {
     textClass: 'text-red-700',
     borderClass: 'border-red-300',
     icon: 'x-circle',
-    order: 4
+    order: 5
+  },
+  [PATIENT_STATUSES.BLOCKED]: {
+    label: 'Bloklangan',
+    description: 'Bemor vaqtincha bloklangan',
+    bgClass: 'bg-rose-100',
+    textClass: 'text-rose-700',
+    borderClass: 'border-rose-300',
+    icon: 'no-symbol',
+    order: 6
   }
 }
 

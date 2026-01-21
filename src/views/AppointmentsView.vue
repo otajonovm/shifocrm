@@ -284,6 +284,12 @@
                     >
                       Ko'chirish
                     </button>
+                    <button
+                      @click="openStatusModal(visit)"
+                      class="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded"
+                    >
+                      Status
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -411,10 +417,6 @@
                   <label class="block text-sm font-medium text-gray-700 mb-1">Davomiyligi (min)</label>
                   <input v-model.number="rescheduleForm.duration_minutes" type="number" min="10" step="5" class="w-full px-3 py-2 border rounded-lg" />
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Xona</label>
-                  <input v-model="rescheduleForm.room" type="text" class="w-full px-3 py-2 border rounded-lg" />
-                </div>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Kanal</label>
@@ -477,6 +479,49 @@
               <button @click="closeCompleteModal" class="px-4 py-2 text-sm border rounded-lg">Bekor</button>
               <button @click="completeVisit" class="px-4 py-2 text-sm text-white bg-emerald-600 rounded-lg">
                 Yakunlash
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Status Edit Modal -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition ease-out duration-200"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition ease-in duration-150"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="showStatusModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div class="w-full max-w-md bg-white rounded-2xl shadow-xl">
+            <div class="flex items-center justify-between p-6 border-b border-gray-100">
+              <h3 class="text-lg font-semibold text-gray-900">Statusni o'zgartirish</h3>
+              <button @click="closeStatusModal" class="text-gray-400 hover:text-gray-600">
+                <XMarkIcon class="w-6 h-6" />
+              </button>
+            </div>
+            <div class="p-6 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Yangi status</label>
+                <select v-model="statusValue" class="w-full px-3 py-2 border rounded-lg">
+                  <option value="">Tanlang...</option>
+                  <option v-for="status in statusOptions" :key="status.value" :value="status.value">
+                    {{ status.label }}
+                  </option>
+                </select>
+              </div>
+              <div v-if="statusError" class="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2">
+                {{ statusError }}
+              </div>
+            </div>
+            <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
+              <button @click="closeStatusModal" class="px-4 py-2 text-sm border rounded-lg">Bekor</button>
+              <button @click="applyStatusChange" class="px-4 py-2 text-sm text-white bg-slate-700 rounded-lg">
+                Saqlash
               </button>
             </div>
           </div>
@@ -554,7 +599,6 @@ const rescheduleForm = ref({
   date: '',
   start_time: '',
   duration_minutes: 30,
-  room: '',
   channel: '',
   reason: ''
 })
@@ -566,6 +610,11 @@ const completeForm = ref({
   price: null,
   paid_amount: null
 })
+
+const showStatusModal = ref(false)
+const statusError = ref('')
+const statusTarget = ref(null)
+const statusValue = ref('')
 
 const doctors = computed(() => doctorsStore.items)
 const patients = computed(() => patientsStore.items)
@@ -679,14 +728,17 @@ const closeCreateModal = () => {
 
 const openRescheduleModal = (visit = null) => {
   rescheduleError.value = ''
-  rescheduleTargets.value = visit ? [visit] : selectedVisits()
-  if (rescheduleTargets.value.length === 0) return
+  const targets = visit ? [visit] : selectedVisits()
+  rescheduleTargets.value = targets.filter(item => Number.isFinite(Number(item?.id)))
+  if (rescheduleTargets.value.length === 0) {
+    rescheduleError.value = 'Uchrashuv topilmadi.'
+    return
+  }
   const first = rescheduleTargets.value[0]
   rescheduleForm.value = {
     date: first.date || selectedDate.value,
     start_time: first.start_time || '',
     duration_minutes: first.duration_minutes || 30,
-    room: first.room || '',
     channel: first.channel || '',
     reason: ''
   }
@@ -713,6 +765,33 @@ const closeCompleteModal = () => {
   completeTarget.value = null
 }
 
+const openStatusModal = (visit) => {
+  statusError.value = ''
+  statusTarget.value = visit
+  statusValue.value = visit.status
+  showStatusModal.value = true
+}
+
+const closeStatusModal = () => {
+  showStatusModal.value = false
+  statusTarget.value = null
+  statusValue.value = ''
+}
+
+const applyStatusChange = async () => {
+  if (!statusTarget.value || !statusValue.value) {
+    statusError.value = 'Status tanlang.'
+    return
+  }
+  try {
+    await updateStatus(statusTarget.value, statusValue.value)
+    closeStatusModal()
+  } catch (error) {
+    console.error('Failed to change status:', error)
+    statusError.value = 'Statusni o\'zgartirishda xatolik'
+  }
+}
+
 const createAppointment = async () => {
   createError.value = ''
   if (!createForm.value.patient_id || !createForm.value.doctor_id) {
@@ -724,7 +803,12 @@ const createAppointment = async () => {
     return
   }
 
-  const endTime = buildEndTime(createForm.value.start_time, createForm.value.duration_minutes)
+  const durationMinutes = Number(createForm.value.duration_minutes)
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    createError.value = 'Davomiylik (min) to\'g\'ri bo\'lishi kerak.'
+    return
+  }
+  const endTime = buildEndTime(createForm.value.start_time, durationMinutes)
   const overlap = await hasOverlap({
     date: createForm.value.date,
     start_time: createForm.value.start_time,
@@ -750,7 +834,7 @@ const createAppointment = async () => {
       date: createForm.value.date,
       start_time: createForm.value.start_time,
       end_time: endTime,
-      duration_minutes: createForm.value.duration_minutes,
+      duration_minutes: durationMinutes,
       room: createForm.value.room,
       channel: createForm.value.channel,
       updated_by: getActorLabel()
@@ -771,14 +855,19 @@ const applyReschedule = async () => {
     return
   }
 
-  const endTime = buildEndTime(rescheduleForm.value.start_time, rescheduleForm.value.duration_minutes)
+  const durationMinutes = Number(rescheduleForm.value.duration_minutes)
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    rescheduleError.value = 'Davomiylik (min) to\'g\'ri bo\'lishi kerak.'
+    return
+  }
+  const endTime = buildEndTime(rescheduleForm.value.start_time, durationMinutes)
   for (const visit of rescheduleTargets.value) {
     const overlap = await hasOverlap({
       date: rescheduleForm.value.date,
       start_time: rescheduleForm.value.start_time,
       end_time: endTime,
       doctor_id: visit.doctor_id,
-      room: rescheduleForm.value.room,
+      room: visit.room,
       ignoreVisitId: visit.id
     })
     if (overlap) {
@@ -793,8 +882,7 @@ const applyReschedule = async () => {
         date: rescheduleForm.value.date,
         start_time: rescheduleForm.value.start_time,
         end_time: endTime,
-        duration_minutes: rescheduleForm.value.duration_minutes,
-        room: rescheduleForm.value.room,
+        duration_minutes: durationMinutes,
         channel: rescheduleForm.value.channel,
         notes: visit.notes,
         updated_by: getActorLabel()
@@ -904,10 +992,12 @@ const bulkChangeDoctor = async () => {
 }
 
 const toggleSelect = (id) => {
-  if (selectedIds.value.includes(id)) {
-    selectedIds.value = selectedIds.value.filter(item => item !== id)
+  const normalizedId = Number(id)
+  if (!Number.isFinite(normalizedId)) return
+  if (selectedIds.value.includes(normalizedId)) {
+    selectedIds.value = selectedIds.value.filter(item => item !== normalizedId)
   } else {
-    selectedIds.value.push(id)
+    selectedIds.value.push(normalizedId)
   }
 }
 
@@ -915,7 +1005,9 @@ const toggleSelectAll = () => {
   if (allSelected.value) {
     selectedIds.value = []
   } else {
-    selectedIds.value = filteredVisits.value.map(v => v.id)
+    selectedIds.value = filteredVisits.value
+      .map(v => Number(v.id))
+      .filter(id => Number.isFinite(id))
   }
 }
 
@@ -924,7 +1016,7 @@ const clearSelected = () => {
   bulkDoctorId.value = ''
 }
 
-const selectedVisits = () => visits.value.filter(v => selectedIds.value.includes(v.id))
+const selectedVisits = () => visits.value.filter(v => selectedIds.value.includes(Number(v.id)))
 
 const exportAppointments = () => {
   const data = filteredVisits.value.map(visit => ({

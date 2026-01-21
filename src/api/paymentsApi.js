@@ -50,6 +50,7 @@ export const createPayment = async ({
   paid_at = null
 }) => {
   try {
+    const safePaidAt = paid_at || new Date().toISOString()
     const payload = {
       visit_id: Number(visit_id),
       patient_id: Number(patient_id),
@@ -58,7 +59,7 @@ export const createPayment = async ({
       payment_type,
       method: method || null,
       note: note || null,
-      paid_at: paid_at || null
+      paid_at: safePaidAt
     }
 
     const result = await supabasePost(TABLE, payload)
@@ -95,6 +96,52 @@ export const getMonthlyIncome = async (query = 'order=month.desc') => {
     return await supabaseGet(INCOME_MONTHLY_VIEW, query)
   } catch (error) {
     console.error('❌ Failed to fetch monthly income:', error)
+    throw error
+  }
+}
+
+export const getIncomeDailyRange = async (startDate, endDate) => {
+  try {
+    return await supabaseGet(
+      INCOME_DAILY_VIEW,
+      `day=gte.${startDate}&day=lte.${endDate}&order=day.asc`
+    )
+  } catch (error) {
+    console.error('❌ Failed to fetch daily income range:', error)
+    throw error
+  }
+}
+
+export const getPaymentsByDateRange = async (startDate, endDate) => {
+  try {
+    const start = String(startDate).includes('T')
+      ? startDate
+      : `${startDate}T00:00:00`
+    const end = String(endDate).includes('T')
+      ? endDate
+      : `${endDate}T23:59:59.999`
+    return await supabaseGet(TABLE, `paid_at=gte.${start}&paid_at=lte.${end}&order=paid_at.desc`)
+  } catch (error) {
+    console.error('❌ Failed to fetch payments by date range:', error)
+    throw error
+  }
+}
+
+export const getPaymentsByDoctorAndDateRange = async (doctorId, startDate, endDate) => {
+  try {
+    const numId = Number(doctorId)
+    const start = String(startDate).includes('T')
+      ? startDate
+      : `${startDate}T00:00:00`
+    const end = String(endDate).includes('T')
+      ? endDate
+      : `${endDate}T23:59:59.999`
+    return await supabaseGet(
+      TABLE,
+      `doctor_id=eq.${numId}&paid_at=gte.${start}&paid_at=lte.${end}&order=paid_at.desc`
+    )
+  } catch (error) {
+    console.error('❌ Failed to fetch payments by doctor and date range:', error)
     throw error
   }
 }

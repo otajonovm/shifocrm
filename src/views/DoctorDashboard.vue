@@ -65,6 +65,63 @@
       </div>
     </div>
 
+    <!-- Revenue Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
+      <div class="bg-white rounded-2xl p-6 shadow-card border border-gray-100 hover:shadow-card-hover transition-shadow">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm font-medium">Bugungi daromad</p>
+            <p class="text-3xl font-bold text-gray-900 mt-1">{{ formatCurrency(revenue.today) }}</p>
+            <p class="text-sm text-gray-500 mt-2">
+              <span :class="revenue.weeklyGrowth >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ revenue.weeklyGrowth >= 0 ? '+' : '' }}{{ revenue.weeklyGrowth }}%
+              </span>
+              haftalik o'zgarish
+            </p>
+          </div>
+          <div class="p-3 bg-orange-100 rounded-xl">
+            <CurrencyDollarIcon class="w-8 h-8 text-orange-600" />
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6 shadow-card border border-gray-100 hover:shadow-card-hover transition-shadow">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm font-medium">Haftalik daromad</p>
+            <p class="text-3xl font-bold text-gray-900 mt-1">{{ formatCurrency(revenue.weekly) }}</p>
+            <p class="text-sm text-gray-500 mt-2">
+              <span :class="revenue.weeklyGrowth >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ revenue.weeklyGrowth >= 0 ? '+' : '' }}{{ revenue.weeklyGrowth }}%
+              </span>
+              o'tgan haftaga nisbatan
+            </p>
+          </div>
+          <div class="p-3 bg-teal-100 rounded-xl">
+            <CurrencyDollarIcon class="w-8 h-8 text-teal-600" />
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6 shadow-card border border-gray-100 hover:shadow-card-hover transition-shadow">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm font-medium">Oylik daromad</p>
+            <p class="text-3xl font-bold text-gray-900 mt-1">{{ formatCurrency(revenue.monthly) }}</p>
+            <p class="text-sm text-gray-500 mt-2">
+              <span :class="revenue.monthlyGrowth >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ revenue.monthlyGrowth >= 0 ? '+' : '' }}{{ revenue.monthlyGrowth }}%
+              </span>
+              o'tgan oyga nisbatan
+            </p>
+          </div>
+          <div class="p-3 bg-indigo-100 rounded-xl">
+            <CurrencyDollarIcon class="w-8 h-8 text-indigo-600" />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Quick Action -->
     <div>
       <button
@@ -197,9 +254,11 @@ import {
   UsersIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
+  CurrencyDollarIcon,
   PlayIcon,
   EyeIcon,
 } from '@heroicons/vue/24/outline'
+import { getPaymentsByDoctorAndDateRange } from '@/api/paymentsApi'
 
 const authStore = useAuthStore()
 const patientsStore = usePatientsStore()
@@ -238,6 +297,14 @@ const stats = ref({
   remaining: 0,
   completed: 0,
   completedThisMonth: 0,
+})
+
+const revenue = ref({
+  today: 0,
+  weekly: 0,
+  monthly: 0,
+  weeklyGrowth: 0,
+  monthlyGrowth: 0,
 })
 
 const todaySchedule = ref([])
@@ -369,6 +436,8 @@ const loadDoctorDashboard = async () => {
       reason: visit.service_name || visit.notes || 'Ko\'rik',
     }
   })
+
+  await loadDoctorRevenue(doctorId)
 }
 
 onMounted(() => {
@@ -385,6 +454,103 @@ const getTimelineColor = (status) => {
 const getStatusBadge = (status) => {
   const colors = getVisitStatusColors(status)
   return `${colors.bgClass} ${colors.textClass}`
+}
+
+const loadDoctorRevenue = async (doctorId) => {
+  if (!doctorId) {
+    revenue.value = {
+      today: 0,
+      weekly: 0,
+      monthly: 0,
+      weeklyGrowth: 0,
+      monthlyGrowth: 0,
+    }
+    return
+  }
+
+  const now = new Date()
+  const weekStart = startOfWeek(now)
+  const weekEnd = addDays(weekStart, 6)
+  const prevWeekStart = addDays(weekStart, -7)
+  const prevWeekEnd = addDays(weekEnd, -7)
+
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+
+  const todayRange = getLocalDayRange(new Date())
+  const weekRange = getLocalRangeForDates(weekStart, weekEnd)
+  const prevWeekRange = getLocalRangeForDates(prevWeekStart, prevWeekEnd)
+  const monthRange = getLocalRangeForDates(monthStart, monthEnd)
+  const prevMonthRange = getLocalRangeForDates(prevMonthStart, prevMonthEnd)
+
+  const [todayPayments, weekPayments, monthPayments, prevWeekPayments, prevMonthPayments] = await Promise.all([
+    getPaymentsByDoctorAndDateRange(doctorId, todayRange.startISO, todayRange.endISO),
+    getPaymentsByDoctorAndDateRange(doctorId, weekRange.startISO, weekRange.endISO),
+    getPaymentsByDoctorAndDateRange(doctorId, monthRange.startISO, monthRange.endISO),
+    getPaymentsByDoctorAndDateRange(doctorId, prevWeekRange.startISO, prevWeekRange.endISO),
+    getPaymentsByDoctorAndDateRange(doctorId, prevMonthRange.startISO, prevMonthRange.endISO),
+  ])
+
+  const todayRevenue = getNetIncomeFromPayments(todayPayments)
+  const weeklyRevenue = getNetIncomeFromPayments(weekPayments)
+  const monthlyRevenue = getNetIncomeFromPayments(monthPayments)
+  const prevWeekRevenue = getNetIncomeFromPayments(prevWeekPayments)
+  const prevMonthRevenue = getNetIncomeFromPayments(prevMonthPayments)
+
+  revenue.value = {
+    today: todayRevenue,
+    weekly: weeklyRevenue,
+    monthly: monthlyRevenue,
+    weeklyGrowth: calculateGrowth(weeklyRevenue, prevWeekRevenue),
+    monthlyGrowth: calculateGrowth(monthlyRevenue, prevMonthRevenue),
+  }
+}
+
+const getNetIncomeFromPayments = (payments) => {
+  return payments.reduce((sum, entry) => {
+    const amount = Number(entry.amount) || 0
+    return sum + (entry.payment_type === 'refund' ? -amount : amount)
+  }, 0)
+}
+
+const calculateGrowth = (current, previous) => {
+  if (!previous || previous === 0) return current > 0 ? 100 : 0
+  return Math.round(((current - previous) / previous) * 100)
+}
+
+const getLocalDayRange = (date) => {
+  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999)
+  return { startISO: start.toISOString(), endISO: end.toISOString() }
+}
+
+const getLocalRangeForDates = (startDate, endDate) => {
+  const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+  const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999)
+  return { startISO: start.toISOString(), endISO: end.toISOString() }
+}
+
+const startOfWeek = (date) => {
+  const day = date.getDay()
+  const diff = date.getDate() - (day === 0 ? 6 : day - 1)
+  return new Date(date.getFullYear(), date.getMonth(), diff)
+}
+
+const addDays = (date, days) => {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('uz-UZ', {
+    style: 'currency',
+    currency: 'UZS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount || 0).replace('UZS', 'so\'m')
 }
 
 const startAppointment = () => {

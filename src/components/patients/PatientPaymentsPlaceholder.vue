@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <div class="grid gap-4 sm:grid-cols-3">
+    <div class="grid gap-4 sm:grid-cols-4">
       <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
         <p class="text-xs text-slate-500">Jami to'lovlar</p>
         <p class="mt-2 text-lg font-semibold text-slate-900">{{ formatCurrency(totalPayments) }}</p>
@@ -12,6 +12,10 @@
       <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
         <p class="text-xs text-slate-500">Sof daromad</p>
         <p class="mt-2 text-lg font-semibold text-emerald-600">{{ formatCurrency(netIncome) }}</p>
+      </div>
+      <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+        <p class="text-xs text-slate-500">Jami xizmat narxi</p>
+        <p class="mt-2 text-lg font-semibold text-slate-900">{{ formatCurrency(totalServices) }}</p>
       </div>
     </div>
 
@@ -49,12 +53,42 @@
         </tbody>
       </table>
     </div>
+
+    <div class="overflow-x-auto rounded-xl border border-slate-200">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr>
+            <th class="px-4 py-3">Bajarilgan ishlar</th>
+            <th class="px-4 py-3">Tish</th>
+            <th class="px-4 py-3">Narx</th>
+            <th class="px-4 py-3">Doktor</th>
+            <th class="px-4 py-3">Sana</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr v-if="servicesLoading">
+            <td class="px-4 py-4 text-slate-500" colspan="5">Yuklanmoqda...</td>
+          </tr>
+          <tr v-else-if="services.length === 0">
+            <td class="px-4 py-4 text-slate-500" colspan="5">Bajarilgan ishlar topilmadi.</td>
+          </tr>
+          <tr v-for="service in services" :key="service.id" class="bg-white">
+            <td class="px-4 py-3 text-slate-700">{{ service.service_name }}</td>
+            <td class="px-4 py-3 text-slate-700">{{ service.tooth_id ? `#${service.tooth_id}` : '-' }}</td>
+            <td class="px-4 py-3 text-slate-700">{{ formatCurrency(service.price) }}</td>
+            <td class="px-4 py-3 text-slate-700">{{ service.performed_by || '-' }}</td>
+            <td class="px-4 py-3 text-slate-700">{{ formatDate(service.created_at) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { getPaymentsByPatientId } from '@/api/paymentsApi'
+import { getVisitServicesByPatientId } from '@/api/visitServicesApi'
 
 const props = defineProps({
   patientId: {
@@ -65,6 +99,8 @@ const props = defineProps({
 
 const payments = ref([])
 const loading = ref(false)
+const services = ref([])
+const servicesLoading = ref(false)
 
 const totalPayments = computed(() =>
   payments.value.reduce((sum, entry) => sum + (entry.payment_type === 'payment' ? Number(entry.amount) || 0 : 0), 0)
@@ -79,6 +115,10 @@ const netIncome = computed(() =>
     const amount = Number(entry.amount) || 0
     return sum + (entry.payment_type === 'refund' ? -amount : amount)
   }, 0)
+)
+
+const totalServices = computed(() =>
+  services.value.reduce((sum, entry) => sum + (Number(entry.price) || 0), 0)
 )
 
 const formatCurrency = (amount) => {
@@ -122,6 +162,22 @@ const loadPayments = async () => {
   }
 }
 
-onMounted(loadPayments)
-watch(() => props.patientId, loadPayments)
+const loadServices = async () => {
+  servicesLoading.value = true
+  try {
+    services.value = await getVisitServicesByPatientId(props.patientId)
+  } catch (error) {
+    console.error('Failed to load visit services:', error)
+    services.value = []
+  } finally {
+    servicesLoading.value = false
+  }
+}
+
+const loadAll = async () => {
+  await Promise.all([loadPayments(), loadServices()])
+}
+
+onMounted(loadAll)
+watch(() => props.patientId, loadAll)
 </script>

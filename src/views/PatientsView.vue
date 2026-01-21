@@ -58,8 +58,9 @@
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="">Barcha statuslar</option>
-            <option value="active">Faol</option>
-            <option value="inactive">Nofaol</option>
+            <option v-for="status in statusOptions" :key="status.value" :value="status.value">
+              {{ status.label }}
+            </option>
           </select>
         </div>
       </div>
@@ -335,10 +336,9 @@
                       v-model="patientForm.status"
                       class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     >
-                      <option value="active">Faol</option>
-                      <option value="inactive">Nofaol</option>
-                      <option value="archived">Arxivlangan</option>
-                      <option value="deceased">Vafot etgan</option>
+                      <option v-for="status in statusOptions" :key="status.value" :value="status.value">
+                        {{ status.label }}
+                      </option>
                     </select>
                     <PatientStatusBadge :status="patientForm.status || 'active'" :show-tooltip="false" />
                   </div>
@@ -449,6 +449,7 @@ import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
 import * as visitsApi from '@/api/visitsApi'
+import { PATIENT_STATUSES, getPatientStatusLabel } from '@/constants/patientStatus'
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -507,6 +508,30 @@ const patientForm = ref({ ...initialFormState })
 
 // Doctors list
 const doctors = computed(() => doctorsStore.items)
+
+const statusOptions = computed(() => {
+  const base = [
+    PATIENT_STATUSES.ACTIVE,
+    PATIENT_STATUSES.INACTIVE,
+    PATIENT_STATUSES.FOLLOW_UP
+  ]
+
+  const adminOnly = [
+    PATIENT_STATUSES.ARCHIVED,
+    PATIENT_STATUSES.DECEASED,
+    PATIENT_STATUSES.BLOCKED
+  ]
+
+  const values = isAdmin.value ? [...base, ...adminOnly] : [...base]
+  const currentStatus = patientForm.value?.status
+  if (currentStatus && !values.includes(currentStatus)) {
+    values.push(currentStatus)
+  }
+  return values.map(value => ({
+    value,
+    label: getPatientStatusLabel(value)
+  }))
+})
 
 // Filtered patients
 const filteredPatients = computed(() => {
