@@ -80,7 +80,7 @@
                   @click="userMenuOpen = false"
                 >
                   <UserCircleIcon class="w-5 h-5 text-gray-400" />
-                  Profil
+                  {{ t('common.profile') }}
                 </router-link>
                 <router-link
                   to="/settings"
@@ -88,7 +88,7 @@
                   @click="userMenuOpen = false"
                 >
                   <Cog6ToothIcon class="w-5 h-5 text-gray-400" />
-                  Sozlamalar
+                  {{ t('common.settings') }}
                 </router-link>
                 <router-link
                   to="/help"
@@ -96,7 +96,7 @@
                   @click="userMenuOpen = false"
                 >
                   <QuestionMarkCircleIcon class="w-5 h-5 text-gray-400" />
-                  Yordam
+                  {{ t('common.help') }}
                 </router-link>
                 <hr class="my-1 border-gray-100" />
                 <button
@@ -104,7 +104,7 @@
                   class="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                 >
                   <ArrowRightOnRectangleIcon class="w-5 h-5" />
-                  Chiqish
+                  {{ t('common.logout') }}
                 </button>
               </div>
             </Transition>
@@ -149,12 +149,14 @@ const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { t, locale } = useI18n()
 
 const sidebarOpen = ref(false)
 const userMenuOpen = ref(false)
 const searchQuery = ref('')
 
 const pageTitle = computed(() => {
+<<<<<<< HEAD
   const titles = {
     '/dashboard': t('dashboard.title'),
     '/patients': t('patients.allPatients'),
@@ -186,8 +188,43 @@ const pageSubtitle = computed(() => {
     '/my-appointments': t('appointments.appointmentsCalendar'),
     '/treatment-plans': t('dashboard.treatmentPlans'),
     '/doctor/profile': t('profile.personalInfo'),
+=======
+  const map = {
+    '/dashboard': 'page.dashboard.title',
+    '/patients': 'page.patients.title',
+    '/doctors': 'page.doctors.title',
+    '/appointments': 'page.appointments.title',
+    '/payments': 'page.payments.title',
+    '/services': 'page.services.title',
+    '/reports': 'page.reports.title',
+    '/settings': 'page.settings.title',
+    '/my-patients': 'page.myPatients.title',
+    '/my-appointments': 'page.myAppointments.title',
+    '/treatment-plans': 'page.treatmentPlans.title',
+    '/doctor/profile': 'page.doctorProfile.title',
   }
-  return subtitles[route.path] || ''
+  const key = map[route.path] || 'page.dashboard.title'
+  return t(key)
+})
+
+const pageSubtitle = computed(() => {
+  const map = {
+    '/dashboard': 'page.dashboard.subtitle',
+    '/patients': 'page.patients.subtitle',
+    '/doctors': 'page.doctors.subtitle',
+    '/appointments': 'page.appointments.subtitle',
+    '/payments': 'page.payments.subtitle',
+    '/services': 'page.services.subtitle',
+    '/reports': 'page.reports.subtitle',
+    '/settings': 'page.settings.subtitle',
+    '/my-patients': 'page.myPatients.subtitle',
+    '/my-appointments': 'page.myAppointments.subtitle',
+    '/treatment-plans': 'page.treatmentPlans.subtitle',
+    '/doctor/profile': 'page.doctorProfile.subtitle',
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
+  }
+  const key = map[route.path] || ''
+  return key ? t(key) : ''
 })
 
 const userInitials = computed(() => {
@@ -200,4 +237,5 @@ const handleLogout = () => {
   authStore.logout()
   router.push('/login')
 }
+
 </script>

@@ -52,6 +52,8 @@ import {
   PauseCircleIcon,
   ArchiveBoxIcon,
   XCircleIcon,
+  ExclamationCircleIcon,
+  NoSymbolIcon,
   QuestionMarkCircleIcon
 } from '@heroicons/vue/24/outline'
 import { getPatientStatusConfig, PATIENT_STATUSES } from '@/constants/patientStatus'
@@ -82,6 +84,8 @@ const iconComponent = computed(() => {
     'pause-circle': PauseCircleIcon,
     archive: ArchiveBoxIcon,
     'x-circle': XCircleIcon,
+    'exclamation-circle': ExclamationCircleIcon,
+    'no-symbol': NoSymbolIcon,
     'question-mark': QuestionMarkCircleIcon
   }
   return iconMap[config.value.icon] || QuestionMarkCircleIcon

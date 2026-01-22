@@ -30,7 +30,11 @@
                   <p class="text-sm font-semibold text-gray-900">{{ patient.med_id || `#${patient.id}` }}</p>
                 </div>
                 <div>
+<<<<<<< HEAD
                   <span class="text-xs text-gray-500">{{ $t('common.phone') }}</span>
+=======
+                  <span class="text-xs text-gray-500">{{ t('patientDetail.phone') }}</span>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <p class="text-sm font-semibold text-gray-900">{{ patient.phone || '-' }}</p>
                 </div>
                 <div>
@@ -40,7 +44,11 @@
                   </p>
                 </div>
                 <div v-if="patient.doctor_name">
+<<<<<<< HEAD
                   <span class="text-xs text-gray-500">{{ $t('common.doctor') }}</span>
+=======
+                  <span class="text-xs text-gray-500">{{ t('patientDetail.doctor') }}</span>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <p class="text-sm font-semibold text-gray-900">{{ patient.doctor_name }}</p>
                 </div>
                 <div v-if="lastVisitStatus">
@@ -60,9 +68,13 @@
             </div>
           </div>
           <button
-            @click="$router.push('/patients')"
+            @click="goBack"
             class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+<<<<<<< HEAD
             :title="$t('common.back')"
+=======
+            :title="t('patientDetail.back')"
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           >
             <ArrowLeftIcon class="w-5 h-5" />
           </button>
@@ -81,7 +93,7 @@
               ? 'text-primary-600 border-b-2 border-primary-600'
               : 'text-gray-600 hover:text-gray-900'"
           >
-            {{ tab.label }}
+                {{ t(tab.labelKey) }}
             <span v-if="tab.count" class="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
               {{ tab.count }}
             </span>
@@ -105,6 +117,11 @@
             <PatientPaymentsPlaceholder :patient-id="patient.id" />
           </div>
 
+          <!-- Davolash rejasi Tab -->
+          <div v-else-if="activeTab === 'plans'">
+            <PatientTreatmentPlans :patient-id="patient.id" />
+          </div>
+
           <!-- Hujjatlar Tab -->
           <div v-else-if="activeTab === 'documents'">
             <PatientDocumentsPlaceholder :patient-id="patient.id" />
@@ -114,12 +131,20 @@
     </div>
 
     <div v-else class="text-center py-12">
+<<<<<<< HEAD
       <p class="text-gray-500">{{ $t('patients.patientNotFound') }}</p>
+=======
+      <p class="text-gray-500">{{ t('patientDetail.notFound') }}</p>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
       <button
         @click="$router.push('/patients')"
         class="mt-4 text-primary-600 hover:text-primary-700 font-medium"
       >
+<<<<<<< HEAD
         {{ $t('patients.backToPatients') }}
+=======
+        {{ t('patientDetail.backToList') }}
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
       </button>
     </div>
 
@@ -143,7 +168,7 @@
           <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
             <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
               <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">Bemor statusini o'zgartirish</h3>
+                <h3 class="text-lg font-semibold text-gray-900">{{ t('patientDetail.changeStatusTitle') }}</h3>
                 <button
                   @click="closePatientStatusModal"
                   class="text-gray-400 hover:text-gray-500"
@@ -184,7 +209,7 @@
                 :disabled="updatingPatientStatus || !newPatientStatus"
                 class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {{ updatingPatientStatus ? 'Saqlanmoqda...' : 'Saqlash' }}
+                {{ updatingPatientStatus ? t('patientDetail.saving') : t('patientDetail.save') }}
               </button>
               <button
                 @click="closePatientStatusModal"
@@ -202,12 +227,14 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import PatientVisitsTable from '@/components/patients/PatientVisitsTable.vue'
 import PatientOdontogramPlaceholder from '@/components/patients/PatientOdontogramPlaceholder.vue'
 import PatientPaymentsPlaceholder from '@/components/patients/PatientPaymentsPlaceholder.vue'
+import PatientTreatmentPlans from '@/components/patients/PatientTreatmentPlans.vue'
 import PatientDocumentsPlaceholder from '@/components/patients/PatientDocumentsPlaceholder.vue'
 import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
 import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
@@ -219,6 +246,7 @@ import { ArrowLeftIcon, ExclamationCircleIcon, XMarkIcon } from '@heroicons/vue/
 import * as visitsApi from '@/api/visitsApi'
 
 const toast = useToast()
+const { t } = useI18n()
 
 const { t } = useI18n()
 
@@ -237,14 +265,33 @@ const showPatientStatusModal = ref(false)
 const newPatientStatus = ref('')
 const updatingPatientStatus = ref(false)
 
+<<<<<<< HEAD
 const tabs = computed(() => [
   { id: 'visits', label: t('patients.visits'), count: null },
   { id: 'odontogram', label: t('patients.odontogram'), count: null },
   { id: 'payments', label: t('patients.payments'), count: null },
   { id: 'documents', label: t('patients.documents'), count: null },
 ])
+=======
+const tabs = [
+  { id: 'visits', labelKey: 'patientDetail.tabVisits', count: null },
+  { id: 'odontogram', labelKey: 'patientDetail.tabOdontogram', count: null },
+  { id: 'payments', labelKey: 'patientDetail.tabPayments', count: null },
+  { id: 'plans', labelKey: 'patientDetail.tabPlans', count: null },
+  { id: 'documents', labelKey: 'patientDetail.tabDocuments', count: null },
+]
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 
 const isAdmin = computed(() => authStore.userRole === 'admin')
+const isDoctor = computed(() => authStore.userRole === 'doctor')
+
+const goBack = () => {
+  if (isDoctor.value) {
+    router.push('/my-patients')
+    return
+  }
+  router.push('/patients')
+}
 
 // Oxirgi visit statusini yuklash
 const loadLastVisit = async (patientId) => {
@@ -306,11 +353,11 @@ const updatePatientStatus = async () => {
       status: newPatientStatus.value
     })
     patient.value.status = newPatientStatus.value
-    toast.success('Bemor statusi muvaffaqiyatli o\'zgartirildi')
+    toast.success(t('patientDetail.toastStatusUpdated'))
     closePatientStatusModal()
   } catch (error) {
     console.error('Failed to update patient status:', error)
-    toast.error('Statusni o\'zgartirishda xatolik')
+    toast.error(t('patientDetail.errorStatusUpdate'))
   } finally {
     updatingPatientStatus.value = false
   }

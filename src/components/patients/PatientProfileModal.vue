@@ -22,7 +22,7 @@
               </div>
               <div>
                 <h2 class="text-xl font-semibold text-gray-900">{{ patient.full_name }}</h2>
-                <p class="text-sm text-gray-500">Bemor Profili</p>
+                <p class="text-sm text-gray-500">{{ t('patientProfile.title') }}</p>
               </div>
             </div>
             <div class="flex items-center gap-2">
@@ -53,7 +53,7 @@
             >
               <div class="flex items-center gap-2">
                 <component :is="tab.icon" class="w-4 h-4" />
-                {{ tab.label }}
+                {{ t(tab.labelKey) }}
               </div>
               <div
                 v-if="activeTab === tab.id"
@@ -82,6 +82,11 @@
             <div v-else-if="activeTab === 'visits'" class="animate-fade-in">
               <PatientVisits :patient="patient" />
             </div>
+
+            <!-- Davolash rejasi Tab -->
+            <div v-else-if="activeTab === 'plans'" class="animate-fade-in">
+              <PatientTreatmentPlans :patient-id="patient.id" />
+            </div>
           </div>
         </div>
       </div>
@@ -91,17 +96,20 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   XMarkIcon,
   PencilIcon,
   IdentificationIcon,
   DocumentChartBarIcon,
-  CalendarDaysIcon
+  CalendarDaysIcon,
+  ClipboardDocumentListIcon
 } from '@heroicons/vue/24/outline'
 import { getInitials } from '@/lib/patientHelpers'
 import PatientMedIdCard from './PatientMedIdCard.vue'
 import PatientOdontogram from './PatientOdontogram.vue'
 import PatientVisits from './PatientVisits.vue'
+import PatientTreatmentPlans from './PatientTreatmentPlans.vue'
 
 const props = defineProps({
   show: {
@@ -126,13 +134,16 @@ const props = defineProps({
   }
 })
 
+const { t } = useI18n()
+
 defineEmits(['close', 'edit'])
 
 // Tabs configuration
 const tabs = [
-  { id: 'medid', label: 'MED-ID Karta', icon: IdentificationIcon },
-  { id: 'odontogram', label: 'Odontogramma', icon: DocumentChartBarIcon },
-  { id: 'visits', label: 'Tashriflar', icon: CalendarDaysIcon }
+  { id: 'medid', labelKey: 'patientProfile.tabMedId', icon: IdentificationIcon },
+  { id: 'odontogram', labelKey: 'patientProfile.tabOdontogram', icon: DocumentChartBarIcon },
+  { id: 'visits', labelKey: 'patientProfile.tabVisits', icon: CalendarDaysIcon },
+  { id: 'plans', labelKey: 'patientProfile.tabPlans', icon: ClipboardDocumentListIcon }
 ]
 
 const activeTab = ref('medid')

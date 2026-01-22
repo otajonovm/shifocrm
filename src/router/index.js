@@ -99,7 +99,7 @@ router.beforeEach(async (to, from, next) => {
 
   // Redirect authenticated users away from login page
   if (to.name === 'login' && authStore.isAuthenticated) {
-    const defaultRoute = authStore.userRole === 'doctor' ? 'doctor-profile' : 'dashboard'
+    const defaultRoute = authStore.userRole === 'doctor' ? 'dashboard' : 'dashboard'
     next({ name: defaultRoute })
     return
   }
@@ -114,7 +114,7 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresRole) {
     if (to.meta.requiresRole === 'admin' && authStore.userRole !== 'admin') {
       // Redirect to appropriate dashboard
-      const defaultRoute = authStore.userRole === 'doctor' ? 'doctor-profile' : 'dashboard'
+      const defaultRoute = authStore.userRole === 'doctor' ? 'dashboard' : 'dashboard'
       next({ name: defaultRoute })
       return
     }

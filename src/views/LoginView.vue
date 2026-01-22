@@ -115,7 +115,11 @@
         <form v-else @submit.prevent="handleDoctorLogin" class="space-y-5">
           <div>
             <label for="doctor-email" class="block text-sm font-medium text-gray-700 mb-2">
+<<<<<<< HEAD
               {{ $t('common.email') }}
+=======
+              {{ t('login.emailLabel') }}
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
             </label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -129,7 +133,11 @@
                 type="email"
                 required
                 class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
+<<<<<<< HEAD
                 :placeholder="$t('auth.emailPlaceholder')"
+=======
+                :placeholder="t('login.emailPlaceholder')"
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
               />
             </div>
           </div>
@@ -189,14 +197,12 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
-import { useI18n } from 'vue-i18n'
-
-const { t } = useI18n()
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const toast = useToast()
+const { t } = useI18n()
 
 const loginType = ref('admin')
 const adminLogin = ref('')
@@ -214,11 +220,19 @@ const handleAdminLogin = async () => {
   isLoading.value = false
 
   if (success) {
+<<<<<<< HEAD
     toast.success(t('auth.loginSuccess'))
     const redirect = route.query.redirect || '/dashboard'
     router.push(redirect)
   } else {
     toast.error(t('auth.loginOrPasswordWrong'))
+=======
+    toast.success(t('login.toastSuccess'))
+    const redirect = route.query.redirect || '/dashboard'
+    router.push(redirect)
+  } else {
+    toast.error(t('login.toastErrorAdmin'))
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
   }
 }
 
@@ -231,11 +245,19 @@ const handleDoctorLogin = async () => {
   isLoading.value = false
 
   if (success) {
+<<<<<<< HEAD
     toast.success(t('auth.loginSuccess'))
     const redirect = route.query.redirect || '/doctor/profile'
     router.push(redirect)
   } else {
     toast.error(t('auth.emailOrPasswordWrong'))
+=======
+    toast.success(t('login.toastSuccess'))
+    const redirect = route.query.redirect || '/dashboard'
+    router.push(redirect)
+  } else {
+    toast.error(t('login.toastErrorDoctor'))
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
   }
 }
 </script>

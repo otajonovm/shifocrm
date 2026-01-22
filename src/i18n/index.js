@@ -17,4 +17,9 @@ const i18n = createI18n({
   globalInjection: true,
 })
 
+export const setLocale = (locale) => {
+  i18n.global.locale.value = locale
+  localStorage.setItem('locale', locale)
+}
+
 export default i18n

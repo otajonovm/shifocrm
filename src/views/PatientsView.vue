@@ -5,10 +5,17 @@
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">
+<<<<<<< HEAD
             {{ isAdmin ? $t('patients.allPatients') : $t('patients.myPatients') }}
           </h1>
           <p class="text-sm text-gray-500 mt-1">
             {{ isAdmin ? $t('patients.patientList') : $t('patients.myPatientList') }}
+=======
+            {{ isAdmin ? t('patients.allPatients') : t('patients.myPatients') }}
+          </h1>
+          <p class="text-sm text-gray-500 mt-1">
+            {{ isAdmin ? t('patients.allPatientsSubtitle') : t('patients.myPatientsSubtitle') }}
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </p>
         </div>
         <div class="flex items-center gap-3">
@@ -19,7 +26,11 @@
 
 
             <ArrowDownTrayIcon class="w-5 h-5" />
+<<<<<<< HEAD
             {{ $t('common.export') }}
+=======
+            {{ t('patients.export') }}
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </button>
           <button
             v-if="isAdmin"
@@ -27,7 +38,11 @@
             class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
           >
             <PlusIcon class="w-5 h-5" />
+<<<<<<< HEAD
             {{ $t('patients.addPatient') }}
+=======
+            {{ t('patients.newPatient') }}
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </button>
         </div>
       </div>
@@ -39,7 +54,11 @@
             <input
               type="text"
               v-model="searchQuery"
+<<<<<<< HEAD
               :placeholder="$t('patients.searchPlaceholder')"
+=======
+              :placeholder="t('patients.searchPlaceholder')"
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
@@ -48,7 +67,11 @@
             v-model="selectedDoctor"
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
+<<<<<<< HEAD
             <option value="">{{ $t('patients.allDoctors') }}</option>
+=======
+            <option value="">{{ t('patients.allDoctors') }}</option>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
             <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
               {{ doctor.full_name }}
             </option>
@@ -57,9 +80,16 @@
             v-model="selectedStatus"
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
+<<<<<<< HEAD
             <option value="">{{ $t('patients.allStatuses') }}</option>
             <option value="active">{{ $t('common.active') }}</option>
             <option value="inactive">{{ $t('common.inactive') }}</option>
+=======
+            <option value="">{{ t('patients.allStatuses') }}</option>
+            <option v-for="status in statusOptions" :key="status.value" :value="status.value">
+              {{ status.label }}
+            </option>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </select>
         </div>
       </div>
@@ -77,25 +107,25 @@
                   ID
                 </th>
                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  F.I.O
+                  {{ t('patients.fullName') }}
                 </th>
                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Telefon
+                  {{ t('patients.phone') }}
                 </th>
                 <th v-if="isAdmin" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Doktor
+                  {{ t('patients.doctor') }}
                 </th>
                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Oxirgi ko'rik
+                  {{ t('patients.lastExam') }}
                 </th>
                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Status
+                  {{ t('patients.status') }}
                 </th>
                 <th v-if="isAdmin" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Oxirgi tashrif
+                  {{ t('patients.lastVisit') }}
                 </th>
                 <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Amallar
+                  {{ t('patients.actions') }}
                 </th>
               </tr>
             </thead>
@@ -147,7 +177,11 @@
                     <button
                       @click.stop="openEditModal(patient)"
                       class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+<<<<<<< HEAD
                       :title="$t('common.edit')"
+=======
+                      :title="t('patients.edit')"
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                     >
                       <PencilIcon class="w-4 h-4" />
                     </button>
@@ -155,7 +189,11 @@
                       v-if="isAdmin"
                       @click.stop="confirmDelete(patient)"
                       class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+<<<<<<< HEAD
                       :title="$t('common.delete')"
+=======
+                      :title="t('patients.delete')"
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                     >
                       <TrashIcon class="w-4 h-4" />
                     </button>
@@ -186,7 +224,7 @@
               <PatientStatusBadge :status="patient.status || 'active'" />
             </div>
             <div class="mt-3 flex items-center justify-between text-sm">
-              <span class="text-gray-500">Oxirgi: {{ formatDate(patient.last_visit) || '-' }}</span>
+              <span class="text-gray-500">{{ t('patients.last') }}: {{ formatDate(patient.last_visit) || '-' }}</span>
               <div class="flex items-center gap-2" @click.stop>
                 <button @click.stop="openEditModal(patient)" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
                   <PencilIcon class="w-5 h-5" />
@@ -202,21 +240,29 @@
         <!-- Empty State -->
         <div v-if="filteredPatients.length === 0 && !patientsStore.loading" class="p-12 text-center">
           <UsersIcon class="w-12 h-12 text-gray-300 mx-auto" />
-          <p class="mt-4 text-gray-500">Bemorlar topilmadi</p>
+          <p class="mt-4 text-gray-500">{{ t('patients.noPatients') }}</p>
           <button
             v-if="isAdmin"
             @click="openAddModal"
             class="mt-4 inline-flex items-center gap-2 px-4 py-2 text-primary-600 hover:text-primary-700 font-medium"
           >
             <PlusIcon class="w-5 h-5" />
+<<<<<<< HEAD
             {{ $t('patients.addNewPatient') }}
+=======
+            {{ t('patients.addNewPatient') }}
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </button>
         </div>
 
         <!-- Pagination -->
         <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100">
           <p class="text-sm text-gray-500">
+<<<<<<< HEAD
             {{ $t('patients.total') }}: <span class="font-medium">{{ filteredPatients.length }}</span> {{ $t('patients.patients') }}
+=======
+            {{ t('patients.total') }}: <span class="font-medium">{{ filteredPatients.length }}</span> {{ t('patients.patientsCount') }}
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </p>
         </div>
       </div>
@@ -242,10 +288,17 @@
             <div class="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white">
               <div>
                 <h2 class="text-xl font-semibold text-gray-900">
+<<<<<<< HEAD
                   {{ isEditing ? $t('patients.editPatient') : $t('patients.addPatient') }}
                 </h2>
                 <p class="text-sm text-gray-500">
                   {{ isEditing ? $t('patients.enterPatientData') : 'Bemor yaratilganda avtomatik birinchi tashrif yaratiladi' }}
+=======
+                  {{ isEditing ? t('patients.editPatient') : t('patients.newPatient') }}
+                </h2>
+                <p class="text-sm text-gray-500">
+                  {{ isEditing ? t('patients.editSubtitle') : t('patients.createSubtitle') }}
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                 </p>
               </div>
               <button
@@ -260,16 +313,28 @@
             <div class="p-6 space-y-4">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
+<<<<<<< HEAD
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.fullName') }} *</label>
+=======
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.fullName') }} *</label>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <input
                     type="text"
                     v-model="patientForm.full_name"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+<<<<<<< HEAD
                     :placeholder="$t('patients.fullNamePlaceholder')"
                   />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('common.phone') }} *</label>
+=======
+                    :placeholder="t('patients.fullNamePlaceholder')"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.phone') }} *</label>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <input
                     type="tel"
                     v-model="patientForm.phone"
@@ -278,7 +343,11 @@
                   />
                 </div>
                 <div>
+<<<<<<< HEAD
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.birthDate') }}</label>
+=======
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.birthDate') }}</label>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <input
                     type="date"
                     v-model="patientForm.birth_date"
@@ -286,11 +355,16 @@
                   />
                 </div>
                 <div>
+<<<<<<< HEAD
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.gender') }}</label>
+=======
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.gender') }}</label>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <select
                     v-model="patientForm.gender"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
+<<<<<<< HEAD
                     <option value="">{{ $t('patients.selectGender') }}</option>
                     <option value="male">{{ $t('patients.male') }}</option>
                     <option value="female">{{ $t('patients.female') }}</option>
@@ -298,61 +372,106 @@
                 </div>
                 <div class="sm:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.address') }}</label>
+=======
+                    <option value="">{{ t('patients.select') }}</option>
+                    <option value="male">{{ t('patients.genderMale') }}</option>
+                    <option value="female">{{ t('patients.genderFemale') }}</option>
+                  </select>
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.address') }}</label>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <input
                     type="text"
                     v-model="patientForm.address"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+<<<<<<< HEAD
                     :placeholder="$t('patients.addressPlaceholder')"
+=======
+                    :placeholder="t('patients.addressPlaceholder')"
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
+<<<<<<< HEAD
                     {{ $t('patients.assignedDoctor') }}
                     <span class="text-xs text-gray-400 font-normal">(ixtiyoriy)</span>
+=======
+                    {{ t('patients.assignedDoctor') }}
+                    <span class="text-xs text-gray-400 font-normal">({{ t('patients.optional') }})</span>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   </label>
                   <select
                     v-model="patientForm.doctor_id"
                     @change="updateDoctorName"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
+<<<<<<< HEAD
                     <option value="">{{ $t('patients.selectDoctor') }}</option>
+=======
+                    <option value="">{{ t('patients.unassignedDoctor') }}</option>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                     <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
                       {{ doctor.full_name }}
                       <span v-if="doctor.specialization"> - {{ doctor.specialization }}</span>
                     </option>
                   </select>
                   <p class="mt-1 text-xs text-gray-500">
-                    Agar doktor tanlanmagan bo'lsa, bemor klinikaga kelganda doktor tayinlanadi
+                    {{ t('patients.assignedDoctorHint') }}
                   </p>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
+<<<<<<< HEAD
                     {{ $t('common.status') }}
                     <span class="text-xs text-gray-400 font-normal">(default: {{ $t('common.active') }})</span>
+=======
+                    {{ t('patients.status') }}
+                    <span class="text-xs text-gray-400 font-normal">({{ t('patients.defaultActive') }})</span>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   </label>
                   <div class="flex items-center gap-3">
                     <select
                       v-model="patientForm.status"
                       class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     >
+<<<<<<< HEAD
                       <option value="active">{{ $t('common.active') }}</option>
                       <option value="inactive">{{ $t('common.inactive') }}</option>
                       <option value="archived">Arxivlangan</option>
                       <option value="deceased">Vafot etgan</option>
+=======
+                      <option v-for="status in statusOptions" :key="status.value" :value="status.value">
+                        {{ status.label }}
+                      </option>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                     </select>
                     <PatientStatusBadge :status="patientForm.status || 'active'" :show-tooltip="false" />
                   </div>
                   <p class="mt-1 text-xs text-gray-500">
+<<<<<<< HEAD
                     Yangi bemor default "{{ $t('common.active') }}" statusida yaratiladi va avtomatik birinchi tashrif yaratiladi
                   </p>
                 </div>
                 <div class="sm:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.notes') }}</label>
+=======
+                    {{ t('patients.defaultActiveNote') }}
+                  </p>
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.notes') }}</label>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <textarea
                     v-model="patientForm.notes"
                     rows="3"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+<<<<<<< HEAD
                     :placeholder="$t('patients.notesPlaceholder')"
+=======
+                    :placeholder="t('patients.notesPlaceholder')"
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   ></textarea>
                 </div>
               </div>
@@ -364,14 +483,22 @@
                 @click="closeModal"
                 class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
+<<<<<<< HEAD
                 {{ $t('common.cancel') }}
+=======
+                {{ t('patients.cancel') }}
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
               </button>
               <button
                 @click="savePatient"
                 :disabled="patientsStore.loading"
                 class="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50"
               >
+<<<<<<< HEAD
                 {{ patientsStore.loading ? $t('common.saving') : $t('common.save') }}
+=======
+                {{ patientsStore.loading ? t('patients.saving') : t('patients.save') }}
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
               </button>
             </div>
           </div>
@@ -410,10 +537,15 @@
               <div class="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
                 <ExclamationTriangleIcon class="w-8 h-8 text-red-600" />
               </div>
+<<<<<<< HEAD
               <h3 class="mt-4 text-lg font-semibold text-gray-900">{{ $t('patients.deleteConfirm') }}</h3>
+=======
+              <h3 class="mt-4 text-lg font-semibold text-gray-900">{{ t('patients.deleteTitle') }}</h3>
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
               <p class="mt-2 text-sm text-gray-500">
-                <span class="font-medium text-gray-700">{{ deletingPatient?.full_name }}</span> ni o'chirmoqchimisiz?
-                Bu amalni qaytarib bo'lmaydi.
+                <span class="font-medium text-gray-700">{{ deletingPatient?.full_name }}</span>
+                {{ t('patients.deleteQuestion') }}
+                {{ t('patients.deleteWarning') }}
               </p>
             </div>
             <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
@@ -421,14 +553,14 @@
                 @click="showDeleteModal = false"
                 class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                Bekor qilish
+                {{ t('patients.cancel') }}
               </button>
               <button
                 @click="deletePatientConfirmed"
                 :disabled="patientsStore.loading"
                 class="px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                {{ patientsStore.loading ? 'O\'chirilmoqda...' : 'O\'chirish' }}
+                {{ patientsStore.loading ? t('patients.deleting') : t('patients.delete') }}
               </button>
             </div>
           </div>
@@ -440,6 +572,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
 import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
@@ -449,6 +582,7 @@ import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
 import * as visitsApi from '@/api/visitsApi'
+import { PATIENT_STATUSES, getPatientStatusLabel } from '@/constants/patientStatus'
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -466,12 +600,13 @@ const authStore = useAuthStore()
 const doctorsStore = useDoctorsStore()
 const patientsStore = usePatientsStore()
 const toast = useToast()
+const { t } = useI18n()
 
 const isAdmin = computed(() => authStore.userRole === 'admin')
 
 // Current doctor name (for odontogram)
 const currentDoctorName = computed(() => {
-  if (isAdmin.value) return 'Admin'
+  if (isAdmin.value) return t('role.admin')
   const doctor = doctorsStore.items.find(d => d.id === authStore.userId || d.id === Number(authStore.userId))
   return doctor?.full_name || ''
 })
@@ -507,6 +642,30 @@ const patientForm = ref({ ...initialFormState })
 
 // Doctors list
 const doctors = computed(() => doctorsStore.items)
+
+const statusOptions = computed(() => {
+  const base = [
+    PATIENT_STATUSES.ACTIVE,
+    PATIENT_STATUSES.INACTIVE,
+    PATIENT_STATUSES.FOLLOW_UP
+  ]
+
+  const adminOnly = [
+    PATIENT_STATUSES.ARCHIVED,
+    PATIENT_STATUSES.DECEASED,
+    PATIENT_STATUSES.BLOCKED
+  ]
+
+  const values = isAdmin.value ? [...base, ...adminOnly] : [...base]
+  const currentStatus = patientForm.value?.status
+  if (currentStatus && !values.includes(currentStatus)) {
+    values.push(currentStatus)
+  }
+  return values.map(value => ({
+    value,
+    label: getPatientStatusLabel(value)
+  }))
+})
 
 // Filtered patients
 const filteredPatients = computed(() => {
@@ -549,16 +708,21 @@ const getLastVisitStatus = (patientId) => {
   return patientVisits.value[patientId] || null
 }
 
-// Bemorlar uchun visit ma'lumotlarini yuklash
-const loadPatientVisits = async () => {
+// Bemorlar uchun visit ma'lumotlarini yuklash (batch)
+const loadPatientVisits = async (doctorId = null) => {
   try {
     const visitsMap = {}
-    for (const patient of patientsStore.items) {
-      const visits = await visitsApi.getVisitsByPatientId(patient.id)
-      if (visits && visits.length > 0) {
-        visitsMap[patient.id] = visits[0] // Eng oxirgisi
+    const visits = doctorId
+      ? await visitsApi.getVisitsByDoctorId(doctorId)
+      : await visitsApi.listVisits('order=created_at.desc')
+
+    visits.forEach((visit) => {
+      const patientId = Number(visit.patient_id)
+      if (!visitsMap[patientId]) {
+        visitsMap[patientId] = visit
       }
-    }
+    })
+
     patientVisits.value = visitsMap
   } catch (error) {
     console.error('Failed to load patient visits:', error)
@@ -634,11 +798,11 @@ const savePatient = async () => {
   try {
     if (isEditing.value && editingPatientId.value) {
       await patientsStore.editPatient(editingPatientId.value, patientForm.value)
-      toast.success('Bemor muvaffaqiyatli yangilandi!')
+      toast.success(t('patients.toastUpdated'))
     } else {
       // Yangi bemor yaratish - avtomatik birinchi visit yaratiladi
       const newPatient = await patientsStore.addPatient(patientForm.value)
-      toast.success('Bemor muvaffaqiyatli qo\'shildi! Avtomatik birinchi tashrif yaratildi.')
+      toast.success(t('patients.toastCreated'))
       
       // Yangi bemor uchun visit ma'lumotlarini yuklash
       if (newPatient && newPatient.id) {
@@ -676,27 +840,32 @@ const exportPatients = () => {
   a.download = 'patients.json'
   a.click()
   URL.revokeObjectURL(url)
-  toast.success('Bemorlar ro\'yxati yuklandi!')
+  toast.success(t('patients.toastLoaded'))
 }
 
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([
-    doctorsStore.fetchAll(),
-    patientsStore.fetchPatients()
-  ])
-  
-  // Bemorlar yuklangandan keyin visit ma'lumotlarini yuklash
-  await loadPatientVisits()
+  await doctorsStore.fetchAll()
+
+  let doctorId = null
+  if (!isAdmin.value) {
+    if (authStore.user?.id) {
+      doctorId = authStore.user.id
+    } else if (authStore.userEmail) {
+      const doctor = doctorsStore.items.find(item => item.email === authStore.userEmail)
+      doctorId = doctor?.id || null
+    }
+  }
 
   if (isAdmin.value) {
     await patientsStore.fetchPatients()
+    await loadPatientVisits()
+  } else if (doctorId) {
+    await patientsStore.fetchPatientsByDoctor(doctorId)
+    await loadPatientVisits(doctorId)
   } else {
-    // Doctor o'z bemorlarini ko'radi
-    const doctorId = authStore.user?.id
-    if (doctorId) {
-      await patientsStore.fetchPatientsByDoctor(doctorId)
-    }
+    await patientsStore.fetchPatients()
+    await loadPatientVisits()
   }
 })
 </script>

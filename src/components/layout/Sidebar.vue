@@ -23,7 +23,7 @@
     <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
       <router-link
         v-for="item in menuItems"
-        :key="item.name"
+        :key="item.labelKey"
         :to="item.to"
         class="group flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200"
         :class="[
@@ -37,7 +37,7 @@
           class="w-5 h-5 transition-transform group-hover:scale-110"
           :class="isActiveRoute(item.to) ? 'text-white' : 'text-gray-400 group-hover:text-primary-500'"
         />
-        <span>{{ item.name }}</span>
+        <span>{{ t(item.labelKey) }}</span>
         <span
           v-if="item.badge"
           class="ml-auto px-2 py-0.5 text-xs font-semibold rounded-full"
@@ -55,7 +55,7 @@
           {{ userInitials }}
         </div>
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-gray-900 truncate">{{ userName }}</p>
+        <p class="text-sm font-medium text-gray-900 truncate">{{ userName }}</p>
           <span
             class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
             :class="roleBadgeClass"
@@ -115,6 +115,7 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 // Admin menu items
+<<<<<<< HEAD
 const adminMenuItems = computed(() => [
   { name: t('dashboard.title'), to: '/dashboard', icon: HomeIcon },
   { name: t('patients.title'), to: '/patients', icon: UsersIcon },
@@ -134,14 +135,40 @@ const doctorMenuItems = computed(() => [
   { name: t('treatmentPlans.title'), to: '/treatment-plans', icon: DocumentTextIcon },
   { name: t('profile.title'), to: '/doctor/profile', icon: UserCircleIcon },
 ])
+=======
+const adminMenuItems = [
+  { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
+  { labelKey: 'nav.patients', to: '/patients', icon: UsersIcon },
+  { labelKey: 'nav.doctors', to: '/doctors', icon: UserGroupIcon },
+  { labelKey: 'nav.appointments', to: '/appointments', icon: CalendarDaysIcon },
+  { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
+  { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
+  { labelKey: 'nav.reports', to: '/reports', icon: ChartBarIcon },
+  { labelKey: 'nav.settings', to: '/settings', icon: Cog6ToothIcon },
+]
+
+// Doctor menu items
+const doctorMenuItems = [
+  { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
+  { labelKey: 'nav.myPatients', to: '/my-patients', icon: UsersIcon },
+  { labelKey: 'nav.myAppointments', to: '/my-appointments', icon: CalendarDaysIcon },
+  { labelKey: 'nav.treatmentPlans', to: '/treatment-plans', icon: DocumentTextIcon },
+  { labelKey: 'nav.doctorProfile', to: '/doctor/profile', icon: UserCircleIcon },
+]
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 
 const menuItems = computed(() => {
   return authStore.userRole === 'admin' ? adminMenuItems.value : doctorMenuItems.value
 })
 
 const userName = computed(() => {
+<<<<<<< HEAD
   if (authStore.userRole === 'admin') return t('common.administrator')
   return authStore.userEmail || t('common.doctor')
+=======
+  if (authStore.userRole === 'admin') return t('role.admin')
+  return authStore.userEmail || t('role.doctor')
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 })
 
 const userInitials = computed(() => {
@@ -150,7 +177,11 @@ const userInitials = computed(() => {
 })
 
 const roleLabel = computed(() => {
+<<<<<<< HEAD
   return authStore.userRole === 'admin' ? t('common.administrator') : t('common.doctor')
+=======
+  return authStore.userRole === 'admin' ? t('role.admin') : t('role.doctor')
+>>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 })
 
 const roleBadgeClass = computed(() => {

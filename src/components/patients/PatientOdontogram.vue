@@ -3,14 +3,14 @@
     <!-- Visit Selection Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white rounded-xl p-4 border border-gray-100">
       <div class="flex items-center gap-3">
-        <label class="text-sm font-medium text-gray-700">Tashrif:</label>
+        <label class="text-sm font-medium text-gray-700">{{ t('odontogram.visit') }}</label>
         <select
           v-model="selectedVisitId"
           @change="onVisitChange"
           class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           :disabled="loading"
         >
-          <option value="">Tanlang...</option>
+          <option value="">{{ t('odontogram.select') }}</option>
           <option v-for="visit in visits" :key="visit.id" :value="visit.id">
             {{ formatVisitDate(visit.date) }} - {{ getVisitStatusText(visit.status) }}
           </option>
@@ -25,16 +25,16 @@
           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50"
         >
           <PlusIcon class="w-4 h-4" />
-          Yangi tashrif
+          {{ t('odontogram.newVisit') }}
         </button>
         <button
-          v-if="currentVisit && currentVisit.status === 'in_progress'"
+          v-if="currentVisit && currentVisit.status === 'in_progress' && isDoctor"
           @click="completeCurrentVisit"
           :disabled="loading"
           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
         >
           <CheckIcon class="w-4 h-4" />
-          Yakunlash
+          {{ t('odontogram.completeVisit') }}
         </button>
       </div>
     </div>
@@ -52,121 +52,102 @@
 
     <!-- Odontogram Content -->
     <div v-else class="space-y-6">
-      <!-- Upper Jaw -->
-      <div class="bg-white rounded-xl p-4 border border-gray-100">
-        <h4 class="text-sm font-semibold text-gray-700 mb-3 text-center">Yuqori Jag' (Upper)</h4>
-        <div class="flex justify-center gap-1">
-          <!-- Upper Right (18-11) -->
-          <div class="flex gap-1">
-            <div
-              v-for="tooth in TOOTH_NUMBERS.upper_right"
-              :key="tooth"
-              class="relative"
-            >
-              <button
-                @click="openToothEditor(tooth)"
-                :disabled="!canEdit"
-                class="w-10 h-12 rounded-lg border-2 flex flex-col items-center justify-center text-xs font-medium transition-all hover:scale-105 disabled:hover:scale-100"
-                :class="getToothClasses(tooth)"
-              >
-                <img
-                  :src="`/teeth/${tooth}.svg`"
-                  class="w-6 h-6"
-                  @load="(e) => { const s = e.target.nextElementSibling; if (s) s.style.display = 'none' }"
-                  @error="(e) => { e.target.style.display = 'none' }"
-                />
-                <span class="text-lg">{{ getToothIcon(tooth) }}</span>
-              </button>
+      <div class="overflow-x-auto rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:overflow-visible sm:p-6">
+        <div class="relative">
+          <div class="pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2 bg-slate-200"></div>
+          <div class="pointer-events-none absolute left-2 right-2 top-1/2 h-px -translate-y-1/2 bg-slate-200"></div>
+
+          <div class="space-y-6">
+            <div class="flex justify-center">
+              <div class="flex min-w-[820px] items-start gap-4">
+                <div class="flex gap-2">
+                  <Tooth
+                    v-for="id in upperRight"
+                    :key="id"
+                    :id="id"
+                    :status="toothStatusMap[id]"
+                    :disabled="!canEdit"
+                    @select="openStatusMenu"
+                  />
+                </div>
+                <div class="h-24 w-px bg-slate-200"></div>
+                <div class="flex gap-2">
+                  <Tooth
+                    v-for="id in upperLeft"
+                    :key="id"
+                    :id="id"
+                    :status="toothStatusMap[id]"
+                    :disabled="!canEdit"
+                    @select="openStatusMenu"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div class="w-px bg-gray-300 mx-1"></div>
-
-          <!-- Upper Left (21-28) -->
-          <div class="flex gap-1">
-            <div
-              v-for="tooth in TOOTH_NUMBERS.upper_left"
-              :key="tooth"
-              class="relative"
-            >
-              <button
-                @click="openToothEditor(tooth)"
-                :disabled="!canEdit"
-                class="w-10 h-12 rounded-lg border-2 flex flex-col items-center justify-center text-xs font-medium transition-all hover:scale-105 disabled:hover:scale-100"
-                :class="getToothClasses(tooth)"
-              >
-                <img
-                  :src="`/teeth/${tooth}.svg`"
-                  class="w-6 h-6"
-                  @load="(e) => { const s = e.target.nextElementSibling; if (s) s.style.display = 'none' }"
-                  @error="(e) => { e.target.style.display = 'none' }"
-                />
-                <span class="text-lg">{{ getToothIcon(tooth) }}</span>
-              </button>
+            <div class="flex justify-center">
+              <div class="flex min-w-[820px] items-start gap-4">
+                <div class="flex gap-2">
+                  <Tooth
+                    v-for="id in lowerLeft"
+                    :key="id"
+                    :id="id"
+                    :status="toothStatusMap[id]"
+                    :disabled="!canEdit"
+                    @select="openStatusMenu"
+                  />
+                </div>
+                <div class="h-24 w-px bg-slate-200"></div>
+                <div class="flex gap-2">
+                  <Tooth
+                    v-for="id in lowerRight"
+                    :key="id"
+                    :id="id"
+                    :status="toothStatusMap[id]"
+                    :disabled="!canEdit"
+                    @select="openStatusMenu"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Lower Jaw -->
-      <div class="bg-white rounded-xl p-4 border border-gray-100">
-        <div class="flex justify-center gap-1">
-          <!-- Lower Left (31-38) -->
-          <div class="flex gap-1">
-            <div
-              v-for="tooth in TOOTH_NUMBERS.lower_left"
-              :key="tooth"
-              class="relative"
-            >
-              <button
-                @click="openToothEditor(tooth)"
-                :disabled="!canEdit"
-                class="w-10 h-12 rounded-lg border-2 flex flex-col items-center justify-center text-xs font-medium transition-all hover:scale-105 disabled:hover:scale-100"
-                :class="getToothClasses(tooth)"
-              >
-                <img
-                  :src="`/teeth/${tooth}.svg`"
-                  class="w-6 h-6"
-                  @load="(e) => { const s = e.target.nextElementSibling; if (s) s.style.display = 'none' }"
-                  @error="(e) => { e.target.style.display = 'none' }"
-                />
-                <span class="text-[10px] text-gray-400">{{ tooth }}</span>
-              </button>
-            </div>
-          </div>
+      <div class="flex justify-end text-sm text-slate-600">
+        <span class="rounded-lg bg-slate-50 px-3 py-1.5">
+          {{ t('odontogram.total') }}: <span class="font-semibold text-slate-900">{{ formatCurrency(totalBill) }}</span>
+        </span>
+      </div>
 
-          <div class="w-px bg-gray-300 mx-1"></div>
-
-          <!-- Lower Right (48-41) -->
-          <div class="flex gap-1">
-            <div
-              v-for="tooth in TOOTH_NUMBERS.lower_right"
-              :key="tooth"
-              class="relative"
-            >
-              <button
-                @click="openToothEditor(tooth)"
-                :disabled="!canEdit"
-                class="w-10 h-12 rounded-lg border-2 flex flex-col items-center justify-center text-xs font-medium transition-all hover:scale-105 disabled:hover:scale-100"
-                :class="getToothClasses(tooth)"
-              >
-                <img
-                  :src="`/teeth/${tooth}.svg`"
-                  class="w-6 h-6"
-                  @load="(e) => { const s = e.target.nextElementSibling; if (s) s.style.display = 'none' }"
-                  @error="(e) => { e.target.style.display = 'none' }"
-                />
-                <span class="text-[10px] text-gray-400">{{ tooth }}</span>
-              </button>
-            </div>
-          </div>
+      <div
+        v-if="menuOpen && selectedToothId"
+        ref="menuRef"
+        class="fixed z-50 min-w-[200px] rounded-xl border border-slate-200 bg-white p-2 shadow-lg"
+        :style="menuStyle"
+      >
+        <div class="px-2 pb-1 text-xs font-medium text-slate-500">
+          {{ t('odontogram.toothLabel', { id: selectedToothId }) }} · {{ activeUserRole.toUpperCase() }}
         </div>
-        <h4 class="text-sm font-semibold text-gray-700 mt-3 text-center">Pastki Jag' (Lower)</h4>
+        <button
+          v-for="option in menuOptions"
+          :key="option.value"
+          class="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-50"
+          @click="applyMenuSelection(option)"
+        >
+          <span class="flex items-center gap-2">
+            <span
+              class="h-2.5 w-2.5 rounded-full"
+              :class="option.dotClass"
+            ></span>
+            <span class="text-slate-700">{{ t(option.labelKey) }}</span>
+          </span>
+          <span v-if="option.price" class="text-xs text-slate-500">{{ formatCurrency(option.price) }}</span>
+        </button>
       </div>
 
       <!-- Legend -->
       <div class="bg-white rounded-xl p-4 border border-gray-100">
-        <h4 class="text-sm font-semibold text-gray-700 mb-3">Izoh:</h4>
+        <h4 class="text-sm font-semibold text-gray-700 mb-3">{{ t('odontogram.noteLabel') }}</h4>
         <div class="flex flex-wrap gap-3">
           <div v-for="(state, key) in TOOTH_STATES" :key="key" class="flex items-center gap-2">
             <span
@@ -175,7 +156,7 @@
             >
               {{ state.icon }}
             </span>
-            <span class="text-sm text-gray-600">{{ state.label }}</span>
+            <span class="text-sm text-gray-600">{{ t(state.labelKey) }}</span>
           </div>
         </div>
       </div>
@@ -192,93 +173,30 @@
             Saqlanmoqda...
           </template>
           <template v-else>
-            Saqlash
+            {{ t('odontogram.save') }}
           </template>
         </button>
       </div>
     </div>
 
-    <!-- Tooth Editor Modal -->
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition ease-out duration-200"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition ease-in duration-150"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
-      >
-        <div
-          v-if="editingTooth"
-          class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          @click.self="closeToothEditor"
-        >
-          <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl animate-slide-up">
-            <div class="p-6">
-              <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                Tish #{{ editingTooth }} - Holatini tanlang
-              </h3>
-
-              <div class="grid grid-cols-2 gap-2 mb-4">
-                <button
-                  v-for="(state, key) in TOOTH_STATES"
-                  :key="key"
-                  @click="setToothState(key)"
-                  class="flex items-center gap-2 p-3 rounded-lg border-2 transition-all"
-                  :class="editingToothData.state === key ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-300'"
-                >
-                  <span
-                    class="w-8 h-8 rounded flex items-center justify-center text-white"
-                    :class="state.color"
-                  >
-                    {{ state.icon }}
-                  </span>
-                  <span class="text-sm font-medium text-gray-700">{{ state.label }}</span>
-                </button>
-              </div>
-
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Izoh</label>
-                <textarea
-                  v-model="editingToothData.note"
-                  rows="2"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Qo'shimcha izoh..."
-                ></textarea>
-              </div>
-
-              <div class="flex justify-end gap-2">
-                <button
-                  @click="closeToothEditor"
-                  class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Bekor qilish
-                </button>
-                <button
-                  @click="applyToothChanges"
-                  class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
-                >
-                  Qo'llash
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { PlusIcon, CheckIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import { formatDate } from '@/lib/date'
 import { getVisitStatusLabel } from '@/constants/visitStatus'
 import * as visitsApi from '@/api/visitsApi'
 import * as odontogramApi from '@/api/odontogramApi'
+import * as visitServicesApi from '@/api/visitServicesApi'
+import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
+import Tooth from './Tooth.vue'
 
-const { TOOTH_NUMBERS, TOOTH_STATES } = odontogramApi
+const { TOOTH_STATES } = odontogramApi
 
 const props = defineProps({
   patient: {
@@ -296,6 +214,8 @@ const props = defineProps({
 })
 
 const toast = useToast()
+const authStore = useAuthStore()
+const { t } = useI18n()
 
 // State
 const loading = ref(false)
@@ -306,9 +226,33 @@ const currentVisit = ref(null)
 const currentOdontogram = ref(null)
 const originalOdontogramData = ref(null)
 
-// Tooth editor
-const editingTooth = ref(null)
-const editingToothData = ref({ state: 'healthy', note: '' })
+const upperRight = [18, 17, 16, 15, 14, 13, 12, 11]
+const upperLeft = [21, 22, 23, 24, 25, 26, 27, 28]
+const lowerLeft = [48, 47, 46, 45, 44, 43, 42, 41]
+const lowerRight = [31, 32, 33, 34, 35, 36, 37, 38]
+const toothIds = [...upperRight, ...upperLeft, ...lowerLeft, ...lowerRight]
+
+const teeth = ref(toothIds.map(id => ({ id, status: 'healthy' })))
+const selectedToothId = ref(null)
+const menuOpen = ref(false)
+const menuRef = ref(null)
+const menuStyle = ref({ left: '0px', top: '0px', transform: 'translate(-50%, 0)' })
+const ignoreClose = ref(false)
+
+const statusOptions = [
+  { value: 'healthy', labelKey: 'odontogram.statusHealthy', dotClass: 'bg-slate-200' },
+  { value: 'caries', labelKey: 'odontogram.statusCaries', dotClass: 'bg-red-500' },
+  { value: 'filling', labelKey: 'odontogram.statusFilling', dotClass: 'bg-blue-500' },
+  { value: 'crown', labelKey: 'odontogram.statusCrown', dotClass: 'bg-amber-500' },
+  { value: 'missing', labelKey: 'odontogram.statusMissing', dotClass: 'bg-slate-400' }
+]
+
+const servicesList = [
+  { value: 'filling', labelKey: 'odontogram.serviceFilling', price: 150000, status: 'filling', dotClass: 'bg-blue-500' },
+  { value: 'root_canal', labelKey: 'odontogram.serviceRootCanal', price: 250000, status: 'caries', dotClass: 'bg-red-500' },
+  { value: 'crown', labelKey: 'odontogram.serviceCrown', price: 350000, status: 'crown', dotClass: 'bg-amber-500' },
+  { value: 'extraction', labelKey: 'odontogram.serviceExtraction', price: 200000, status: 'missing', dotClass: 'bg-slate-400' }
+]
 
 // Computed
 const hasActiveVisit = computed(() => {
@@ -324,38 +268,77 @@ const hasChanges = computed(() => {
   return JSON.stringify(currentOdontogram.value.data) !== JSON.stringify(originalOdontogramData.value)
 })
 
+const activeUserRole = computed(() => authStore.userRole || 'doctor')
+const isDoctor = computed(() => activeUserRole.value === 'doctor')
+
+const menuOptions = computed(() => (isDoctor.value ? servicesList : statusOptions))
+
 // Methods
 const formatVisitDate = (date) => formatDate(date)
 
 const getVisitStatusText = (status) => getVisitStatusLabel(status)
 
-const getToothClasses = (toothNum) => {
-  if (!currentOdontogram.value?.data?.teeth?.[toothNum]) {
-    return 'border-gray-200 bg-gray-50'
-  }
-
-  const state = currentOdontogram.value.data.teeth[toothNum].state
-  const stateConfig = TOOTH_STATES[state]
-
-  if (!stateConfig) return 'border-gray-200 bg-gray-50'
-
-  const colorMap = {
-    'bg-green-500': 'border-green-400 bg-green-50',
-    'bg-red-500': 'border-red-400 bg-red-50',
-    'bg-blue-500': 'border-blue-400 bg-blue-50',
-    'bg-gray-400': 'border-gray-400 bg-gray-100',
-    'bg-yellow-500': 'border-yellow-400 bg-yellow-50',
-    'bg-purple-500': 'border-purple-400 bg-purple-50'
-  }
-
-  return colorMap[stateConfig.color] || 'border-gray-200 bg-gray-50'
+const formatCurrency = (amount) => {
+  if (!amount) return '0 so\'m'
+  return new Intl.NumberFormat('uz-UZ', {
+    style: 'currency',
+    currency: 'UZS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount).replace('UZS', t('common.currencySuffix'))
 }
 
-const getToothIcon = (toothNum) => {
-  if (!currentOdontogram.value?.data?.teeth?.[toothNum]) return '○'
+const toothStatusMap = computed(() => {
+  const map = {}
+  teeth.value.forEach((tooth) => {
+    map[tooth.id] = tooth.status
+  })
+  return map
+})
 
-  const state = currentOdontogram.value.data.teeth[toothNum].state
-  return TOOTH_STATES[state]?.icon || '○'
+const patientHistory = ref([])
+
+const totalBill = computed(() =>
+  patientHistory.value.reduce((sum, entry) => sum + (Number(entry.price) || 0), 0)
+)
+
+const syncTeethFromOdontogram = () => {
+  const data = currentOdontogram.value?.data?.teeth || {}
+  teeth.value = toothIds.map((id) => ({
+    id,
+    status: data[id]?.state || 'healthy'
+  }))
+}
+
+const loadPatientHistory = async () => {
+  try {
+    patientHistory.value = await visitServicesApi.getVisitServicesByPatientId(props.patient.id)
+  } catch (error) {
+    console.error('Failed to load visit services:', error)
+    patientHistory.value = []
+  }
+}
+
+const addHistoryEntry = async ({ toothId, serviceName, price }) => {
+  if (!currentVisit.value?.id) {
+    toast.error('Avval tashrifni tanlang')
+    return
+  }
+  try {
+    const entry = await visitServicesApi.createVisitService({
+      visit_id: currentVisit.value.id,
+      patient_id: props.patient.id,
+      doctor_id: props.doctorId,
+      tooth_id: toothId,
+      service_name: serviceName,
+      price,
+      performed_by: authStore.user?.full_name || props.doctorName || 'Doctor'
+    })
+    patientHistory.value.unshift(entry)
+  } catch (error) {
+    console.error('Failed to save visit service:', error)
+    toast.error(t('odontogram.errorSaveService'))
+  }
 }
 
 const loadVisits = async () => {
@@ -371,7 +354,7 @@ const loadVisits = async () => {
     }
   } catch (error) {
     console.error('Failed to load visits:', error)
-    toast.error('Tashriflarni yuklashda xatolik')
+    toast.error(t('odontogram.errorLoadVisits'))
   } finally {
     loading.value = false
   }
@@ -394,9 +377,10 @@ const loadOdontogram = async (visitId) => {
       doctor_id: props.doctorId
     })
     originalOdontogramData.value = JSON.parse(JSON.stringify(currentOdontogram.value.data))
+    syncTeethFromOdontogram()
   } catch (error) {
     console.error('Failed to load odontogram:', error)
-    toast.error('Odontogrammani yuklashda xatolik')
+    toast.error(t('odontogram.errorLoadOdontogram'))
   } finally {
     loading.value = false
   }
@@ -419,10 +403,10 @@ const startNewVisit = async () => {
     selectedVisitId.value = newVisit.id
     await loadOdontogram(newVisit.id)
 
-    toast.success('Yangi tashrif boshlandi!')
+    toast.success(t('odontogram.toastVisitStarted'))
   } catch (error) {
     console.error('Failed to create visit:', error)
-    toast.error('Tashrif yaratishda xatolik')
+    toast.error(t('odontogram.errorCreateVisit'))
   } finally {
     loading.value = false
   }
@@ -438,50 +422,106 @@ const completeCurrentVisit = async () => {
 
   loading.value = true
   try {
-    await visitsApi.completeVisit(currentVisit.value.id)
+    const services = await visitServicesApi.getVisitServicesByVisitId(currentVisit.value.id)
+    const totalPrice = services.reduce((sum, entry) => sum + (Number(entry.price) || 0), 0)
+
+    await visitsApi.updateVisit(currentVisit.value.id, {
+      status: 'completed_paid',
+      price: totalPrice,
+      paid_amount: totalPrice,
+      debt_amount: null
+    })
     currentVisit.value.status = 'completed_paid'
+    currentVisit.value.price = totalPrice
+    currentVisit.value.paid_amount = totalPrice
+
+    if (totalPrice > 0) {
+      const existingPayments = await getPaymentsByVisitId(currentVisit.value.id)
+      const netPaid = existingPayments.reduce((sum, entry) => {
+        const amount = Number(entry.amount) || 0
+        return sum + (entry.payment_type === 'refund' ? -amount : amount)
+      }, 0)
+
+      if (netPaid < totalPrice) {
+        await createPayment({
+          visit_id: currentVisit.value.id,
+          patient_id: props.patient.id,
+          doctor_id: props.doctorId,
+          amount: totalPrice - netPaid,
+          payment_type: 'payment',
+          method: 'cash',
+          note: 'Odontogramma yakunlandi'
+        })
+      }
+    }
 
     // Update in list
     const index = visits.value.findIndex(v => v.id === currentVisit.value.id)
     if (index !== -1) {
       visits.value[index].status = 'completed_paid'
+      visits.value[index].price = totalPrice
+      visits.value[index].paid_amount = totalPrice
     }
 
-    toast.success('Tashrif yakunlandi!')
+    toast.success(t('odontogram.toastVisitCompleted'))
   } catch (error) {
     console.error('Failed to complete visit:', error)
-    toast.error('Tashrifni yakunlashda xatolik')
+    toast.error(t('odontogram.errorCompleteVisit'))
   } finally {
     loading.value = false
   }
 }
 
-const openToothEditor = (toothNum) => {
+const openStatusMenu = ({ id, rect }) => {
   if (!canEdit.value) return
-
-  editingTooth.value = toothNum
-  const currentData = currentOdontogram.value?.data?.teeth?.[toothNum] || { state: 'healthy', note: '' }
-  editingToothData.value = { ...currentData }
+  selectedToothId.value = id
+  menuOpen.value = true
+  ignoreClose.value = true
+  menuStyle.value = {
+    left: `${rect.left + rect.width / 2}px`,
+    top: `${rect.bottom + 8}px`,
+    transform: 'translate(-50%, 0)'
+  }
+  setTimeout(() => {
+    ignoreClose.value = false
+  }, 0)
 }
 
-const closeToothEditor = () => {
-  editingTooth.value = null
-  editingToothData.value = { state: 'healthy', note: '' }
+const closeStatusMenu = () => {
+  menuOpen.value = false
+  selectedToothId.value = null
 }
 
-const setToothState = (state) => {
-  editingToothData.value.state = state
-}
-
-const applyToothChanges = () => {
-  if (!editingTooth.value || !currentOdontogram.value) return
-
-  if (!currentOdontogram.value.data.teeth) {
-    currentOdontogram.value.data.teeth = {}
+const setToothStatus = (status) => {
+  if (!selectedToothId.value) return
+  const target = teeth.value.find((tooth) => tooth.id === selectedToothId.value)
+  if (target) {
+    target.status = status
   }
 
-  currentOdontogram.value.data.teeth[editingTooth.value] = { ...editingToothData.value }
-  closeToothEditor()
+  if (currentOdontogram.value) {
+    if (!currentOdontogram.value.data.teeth) {
+      currentOdontogram.value.data.teeth = {}
+    }
+    const existing = currentOdontogram.value.data.teeth[selectedToothId.value] || { note: '' }
+    currentOdontogram.value.data.teeth[selectedToothId.value] = { ...existing, state: status }
+  }
+
+  closeStatusMenu()
+}
+
+const applyMenuSelection = async (option) => {
+  if (!selectedToothId.value) return
+  const status = option.status || option.value
+  setToothStatus(status)
+
+  if (isDoctor.value && option.price) {
+    await addHistoryEntry({
+      toothId: selectedToothId.value,
+      serviceName: t(option.labelKey),
+      price: option.price
+    })
+  }
 }
 
 const saveOdontogram = async () => {
@@ -494,22 +534,45 @@ const saveOdontogram = async () => {
     toast.success('Odontogramma saqlandi!')
   } catch (error) {
     console.error('Failed to save odontogram:', error)
-    toast.error('Odontogrammani saqlashda xatolik')
+    toast.error(t('odontogram.errorSaveOdontogram'))
   } finally {
     saving.value = false
   }
 }
 
+const handleDocumentClick = (event) => {
+  if (ignoreClose.value) return
+  if (menuRef.value && menuRef.value.contains(event.target)) return
+  closeStatusMenu()
+}
+
+const handleEscape = (event) => {
+  if (event.key === 'Escape') {
+    closeStatusMenu()
+  }
+}
+
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadVisits()
+  syncTeethFromOdontogram()
+  await loadPatientHistory()
+  document.addEventListener('click', handleDocumentClick)
+  window.addEventListener('keydown', handleEscape)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleDocumentClick)
+  window.removeEventListener('keydown', handleEscape)
 })
 
 // Watch for patient change
-watch(() => props.patient.id, () => {
+watch(() => props.patient.id, async () => {
   selectedVisitId.value = ''
   currentVisit.value = null
   currentOdontogram.value = null
+  syncTeethFromOdontogram()
+  await loadPatientHistory()
   loadVisits()
 })
 </script>

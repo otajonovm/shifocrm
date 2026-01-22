@@ -7,6 +7,112 @@ import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supa
 
 const TABLE = 'visits'
 
+/**
+ * Barcha tashriflarni olish
+ * @param {string} query - Supabase query
+ * @returns {Promise<Array>}
+ */
+export const listVisits = async (query = 'order=created_at.desc') => {
+  try {
+    const visits = await supabaseGet(TABLE, query)
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits:', error)
+    throw error
+  }
+}
+
+/**
+ * Doktor ID bo'yicha tashriflarni olish
+ * @param {number|string} doctorId
+ * @returns {Promise<Array>}
+ */
+export const getVisitsByDoctorId = async (doctorId) => {
+  try {
+    const numId = Number(doctorId)
+    const visits = await supabaseGet(TABLE, `doctor_id=eq.${numId}&order=created_at.desc`)
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits by doctor:', error)
+    throw error
+  }
+}
+
+/**
+ * Sana bo'yicha tashriflarni olish
+ * @param {string} date - YYYY-MM-DD
+ * @returns {Promise<Array>}
+ */
+export const getVisitsByDate = async (date) => {
+  try {
+    const visits = await supabaseGet(TABLE, `date=eq.${date}&order=created_at.desc`)
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits by date:', error)
+    throw error
+  }
+}
+
+/**
+ * Doktor va sana bo'yicha tashriflarni olish
+ * @param {number|string} doctorId
+ * @param {string} date - YYYY-MM-DD
+ * @returns {Promise<Array>}
+ */
+export const getVisitsByDoctorAndDate = async (doctorId, date) => {
+  try {
+    const numId = Number(doctorId)
+    const visits = await supabaseGet(
+      TABLE,
+      `doctor_id=eq.${numId}&date=eq.${date}&order=created_at.desc`
+    )
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits by doctor and date:', error)
+    throw error
+  }
+}
+
+/**
+ * Sana oralig'ida tashriflarni olish
+ * @param {string} startDate - YYYY-MM-DD
+ * @param {string} endDate - YYYY-MM-DD
+ * @returns {Promise<Array>}
+ */
+export const getVisitsByDateRange = async (startDate, endDate) => {
+  try {
+    const visits = await supabaseGet(
+      TABLE,
+      `date=gte.${startDate}&date=lte.${endDate}&order=date.asc,created_at.asc`
+    )
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits by date range:', error)
+    throw error
+  }
+}
+
+/**
+ * Doktor va sana oralig'i bo'yicha tashriflarni olish
+ * @param {number|string} doctorId
+ * @param {string} startDate - YYYY-MM-DD
+ * @param {string} endDate - YYYY-MM-DD
+ * @returns {Promise<Array>}
+ */
+export const getVisitsByDoctorAndDateRange = async (doctorId, startDate, endDate) => {
+  try {
+    const numId = Number(doctorId)
+    const visits = await supabaseGet(
+      TABLE,
+      `doctor_id=eq.${numId}&date=gte.${startDate}&date=lte.${endDate}&order=date.asc,created_at.asc`
+    )
+    return visits
+  } catch (error) {
+    console.error('❌ Failed to fetch visits by doctor and date range:', error)
+    throw error
+  }
+}
+
 // 5 xonali unique ID generatsiya qilish (10000-99999)
 const generateId = async () => {
   try {
@@ -57,6 +163,9 @@ export const getVisitsByPatientId = async (patientId) => {
 export const getVisitById = async (id) => {
   try {
     const numId = Number(id)
+    if (!Number.isFinite(numId)) {
+      throw new Error('Invalid visit ID')
+    }
     const visits = await supabaseGet(TABLE, `id=eq.${numId}`)
     return visits[0] || null
   } catch (error) {
@@ -210,7 +319,14 @@ export const createVisit = async ({
   price = null,
   paid_amount = null,
   debt_amount = null,
-  service_name = null
+  service_name = null,
+  date = null,
+  start_time = null,
+  end_time = null,
+  duration_minutes = null,
+  room = null,
+  channel = null,
+  updated_by = null
 }) => {
   try {
     const now = new Date().toISOString()
@@ -227,13 +343,19 @@ export const createVisit = async ({
       patient_id: Number(patient_id),
       doctor_id: doctor_id ? Number(doctor_id) : null,
       doctor_name: doctor_name || null,
-      date: now.split('T')[0],
+      date: date || now.split('T')[0],
       status,
       notes: notes || null,
       price: price !== null && price !== undefined ? Number(price) : null,
       paid_amount: paid_amount !== null && paid_amount !== undefined ? Number(paid_amount) : null,
       debt_amount: finalDebtAmount !== null && finalDebtAmount !== undefined ? Number(finalDebtAmount) : null,
-      service_name: service_name || null
+      service_name: service_name || null,
+      start_time: start_time || null,
+      end_time: end_time || null,
+      duration_minutes: duration_minutes !== null && duration_minutes !== undefined ? Number(duration_minutes) : null,
+      room: room || null,
+      channel: channel || null,
+      updated_by: updated_by || null
     }
 
     const result = await supabasePost(TABLE, newVisit)
@@ -254,6 +376,9 @@ export const createVisit = async ({
 export const updateVisit = async (id, payload) => {
   try {
     const numId = Number(id)
+    if (!Number.isFinite(numId)) {
+      throw new Error('Invalid visit ID')
+    }
     
     // Avval mavjud visitni olish
     const currentVisit = await getVisitById(id)
@@ -338,6 +463,9 @@ export const payDebt = async (id) => {
 export const deleteVisit = async (id) => {
   try {
     const numId = Number(id)
+    if (!Number.isFinite(numId)) {
+      throw new Error('Invalid visit ID')
+    }
     await supabaseDelete(TABLE, numId)
     console.log('✅ Visit deleted:', numId)
     return true
