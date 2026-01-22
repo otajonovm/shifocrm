@@ -10,7 +10,6 @@ import i18n from './i18n'
 
 const app = createApp(App)
 
-// Toast konfiguratsiyasi
 const toastOptions = {
   position: 'top-right',
   timeout: 3000,

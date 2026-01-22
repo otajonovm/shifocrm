@@ -69,28 +69,19 @@ export const getStatusBadge = (status) => {
 }
 
 /**
- * Visit status badge
- * @param {string} status - in_progress/completed
+ * Visit status badge (DEPRECATED - use VisitStatusBadge component instead)
+ * @deprecated Use VisitStatusBadge component from @/components/ui/VisitStatusBadge.vue
+ * @param {string} status - Visit status
  * @returns {object}
  */
 export const getVisitStatusBadge = (status) => {
-  if (status === 'completed') {
-    return {
-      text: 'Yakunlangan',
-      bgClass: 'bg-green-100',
-      textClass: 'text-green-700'
-    }
-  }
-  if (status === 'in_progress') {
-    return {
-      text: 'Jarayonda',
-      bgClass: 'bg-yellow-100',
-      textClass: 'text-yellow-700'
-    }
-  }
+  // Backward compatibility - use new constants
+  const { getVisitStatusConfig, getVisitStatusLabel, getVisitStatusColors } = require('@/constants/visitStatus')
+  const config = getVisitStatusConfig(status)
+  const colors = getVisitStatusColors(status)
   return {
-    text: status || '-',
-    bgClass: 'bg-gray-100',
-    textClass: 'text-gray-600'
+    text: getVisitStatusLabel(status),
+    bgClass: colors.bgClass,
+    textClass: colors.textClass
   }
 }

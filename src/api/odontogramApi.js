@@ -1,6 +1,6 @@
 /**
- * Odontogram API - Tish xaritasi snapshot'lari uchun CRUD
- * localStorage based demo
+ * Odontogram API - Supabase REST API orqali
+ * Jadval: odontograms
  *
  * Data format:
  * {
@@ -12,7 +12,9 @@
  * }
  */
 
-const STORAGE_KEY = 'shifocrm_odontograms'
+import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supabaseConfig'
+
+const TABLE = 'odontograms'
 
 // Tish raqamlari (FDI notation - kattalar uchun 32 ta tish)
 export const TOOTH_NUMBERS = {
@@ -32,36 +34,27 @@ export const TOOTH_STATES = {
   root_canal: { label: 'Kanal', color: 'bg-purple-500', icon: '◉' }
 }
 
-// localStorage dan o'qish
-const readSnapshots = () => {
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return []
+// 5 xonali unique ID generatsiya qilish (10000-99999)
+const generateId = async () => {
   try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch (e) {
-    console.error('Failed to parse odontogram snapshots from storage', e)
-    return []
+    const odontograms = await supabaseGet(TABLE, 'select=id&order=id.desc&limit=1000')
+    const existingIds = odontograms.map(o => Number(o.id))
+
+    let newId
+    let attempts = 0
+    do {
+      newId = Math.floor(10000 + Math.random() * 90000)
+      attempts++
+      if (attempts > 100) {
+        newId = Math.floor(10000 + Date.now() % 90000)
+        break
+      }
+    } while (existingIds.includes(newId))
+
+    return newId
+  } catch {
+    return Math.floor(10000 + Date.now() % 90000)
   }
-}
-
-// localStorage ga yozish
-const writeSnapshots = (snapshots) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshots))
-  console.log('✅ Odontogram snapshots saved to localStorage')
-}
-
-// 5 xonali unique ID generatsiya qilish
-const generateId = () => {
-  const snapshots = readSnapshots()
-  const existingIds = snapshots.map(s => Number(s.id))
-
-  let newId
-  do {
-    newId = Math.floor(10000 + Math.random() * 90000)
-  } while (existingIds.includes(newId))
-
-  return newId
 }
 
 /**
@@ -90,9 +83,14 @@ export const createEmptyOdontogram = () => {
  * @returns {Promise<Object|null>}
  */
 export const getOdontogramByVisitId = async (visitId) => {
-  const snapshots = readSnapshots()
-  const numId = Number(visitId)
-  return snapshots.find(s => s.visit_id === visitId || s.visit_id === numId) || null
+  try {
+    const numId = Number(visitId)
+    const odontograms = await supabaseGet(TABLE, `visit_id=eq.${numId}&limit=1`)
+    return odontograms[0] || null
+  } catch (error) {
+    console.error('❌ Failed to fetch odontogram:', error)
+    throw error
+  }
 }
 
 /**
@@ -101,35 +99,57 @@ export const getOdontogramByVisitId = async (visitId) => {
  * @returns {Promise<Array>}
  */
 export const getOdontogramsByPatientId = async (patientId) => {
-  const snapshots = readSnapshots()
-  const numId = Number(patientId)
-  return snapshots
-    .filter(s => s.patient_id === patientId || s.patient_id === numId)
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  try {
+    const numId = Number(patientId)
+    const odontograms = await supabaseGet(TABLE, `patient_id=eq.${numId}&order=created_at.desc`)
+    return odontograms
+  } catch (error) {
+    console.error('❌ Failed to fetch odontograms:', error)
+    throw error
+  }
+}
+
+/**
+ * Odontogramma ID bo'yicha olish
+ * @param {number|string} id
+ * @returns {Promise<Object|null>}
+ */
+export const getOdontogramById = async (id) => {
+  try {
+    const numId = Number(id)
+    const odontograms = await supabaseGet(TABLE, `id=eq.${numId}&limit=1`)
+    return odontograms[0] || null
+  } catch (error) {
+    console.error('❌ Failed to fetch odontogram:', error)
+    throw error
+  }
 }
 
 /**
  * Yangi odontogramma snapshot yaratish
- * @param {Object} data - { patient_id, visit_id, doctor_id, data }
+ * @param {Object} params - { patient_id, visit_id, doctor_id, data }
  * @returns {Promise<Object>}
  */
 export const createOdontogramSnapshot = async ({ patient_id, visit_id, doctor_id, data = null }) => {
-  const snapshots = readSnapshots()
-  const now = new Date().toISOString()
+  try {
+    const id = await generateId()
+    const odontogramData = data || createEmptyOdontogram()
 
-  const newSnapshot = {
-    id: generateId(),
-    patient_id: Number(patient_id),
-    visit_id: Number(visit_id),
-    doctor_id: doctor_id ? Number(doctor_id) : null,
-    data: data || createEmptyOdontogram(),
-    created_at: now,
-    updated_at: now
+    const newOdontogram = {
+      id,
+      patient_id: Number(patient_id),
+      visit_id: Number(visit_id),
+      doctor_id: doctor_id ? Number(doctor_id) : null,
+      data: odontogramData
+    }
+
+    const result = await supabasePost(TABLE, newOdontogram)
+    console.log('✅ Odontogram created:', result[0])
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to create odontogram:', error)
+    throw error
   }
-
-  snapshots.unshift(newSnapshot)
-  writeSnapshots(snapshots)
-  return newSnapshot
 }
 
 /**
@@ -139,21 +159,21 @@ export const createOdontogramSnapshot = async ({ patient_id, visit_id, doctor_id
  * @returns {Promise<Object>}
  */
 export const updateOdontogramSnapshot = async (id, data) => {
-  const snapshots = readSnapshots()
-  const numId = Number(id)
-  const index = snapshots.findIndex(s => s.id === id || s.id === numId)
+  try {
+    const numId = Number(id)
+    
+    // Data JSONB formatida yuborish
+    const updateData = {
+      data: data
+    }
 
-  if (index === -1) throw new Error('Odontogram snapshot not found')
-
-  const updatedSnapshot = {
-    ...snapshots[index],
-    data,
-    updated_at: new Date().toISOString()
+    const result = await supabasePatch(TABLE, numId, updateData)
+    console.log('✅ Odontogram updated:', result[0])
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to update odontogram:', error)
+    throw error
   }
-
-  snapshots[index] = updatedSnapshot
-  writeSnapshots(snapshots)
-  return updatedSnapshot
 }
 
 /**
@@ -162,11 +182,15 @@ export const updateOdontogramSnapshot = async (id, data) => {
  * @returns {Promise<boolean>}
  */
 export const deleteOdontogramSnapshot = async (id) => {
-  const snapshots = readSnapshots()
-  const numId = Number(id)
-  const filtered = snapshots.filter(s => s.id !== id && s.id !== numId)
-  writeSnapshots(filtered)
-  return true
+  try {
+    const numId = Number(id)
+    await supabaseDelete(TABLE, numId)
+    console.log('✅ Odontogram deleted:', numId)
+    return true
+  } catch (error) {
+    console.error('❌ Failed to delete odontogram:', error)
+    throw error
+  }
 }
 
 /**
@@ -175,17 +199,26 @@ export const deleteOdontogramSnapshot = async (id) => {
  * @returns {Promise<Object>}
  */
 export const getOrCreateOdontogram = async ({ patient_id, visit_id, doctor_id }) => {
-  const existing = await getOdontogramByVisitId(visit_id)
-  if (existing) return existing
+  try {
+    // Avval mavjud odontogrammani qidirish
+    const existing = await getOdontogramByVisitId(visit_id)
+    if (existing) {
+      return existing
+    }
 
-  // Oxirgi odontogrammadan nusxa olish (agar mavjud bo'lsa)
-  const patientSnapshots = await getOdontogramsByPatientId(patient_id)
-  let initialData = null
+    // Agar mavjud bo'lmasa, yangi yaratish
+    // Oxirgi odontogrammadan nusxa olish (agar mavjud bo'lsa)
+    const patientSnapshots = await getOdontogramsByPatientId(patient_id)
+    let initialData = null
 
-  if (patientSnapshots.length > 0) {
-    // Oxirgi snapshot'dan data ni nusxalash
-    initialData = JSON.parse(JSON.stringify(patientSnapshots[0].data))
+    if (patientSnapshots.length > 0) {
+      // Oxirgi snapshot'dan data ni nusxalash
+      initialData = JSON.parse(JSON.stringify(patientSnapshots[0].data))
+    }
+
+    return await createOdontogramSnapshot({ patient_id, visit_id, doctor_id, data: initialData })
+  } catch (error) {
+    console.error('❌ Failed to get or create odontogram:', error)
+    throw error
   }
-
-  return createOdontogramSnapshot({ patient_id, visit_id, doctor_id, data: initialData })
 }
