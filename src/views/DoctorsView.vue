@@ -2,13 +2,13 @@
   <MainLayout>
     <!-- Add Doctor Form -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-      <h2 class="text-lg font-semibold text-gray-900 mb-4">Add New Doctor</h2>
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('doctors.addTitle') }}</h2>
 
       <DoctorForm
         :initial-data="form"
         :is-submitting="isSubmitting"
         :disabled="doctorsStore.items.length >= 4"
-        button-text="Add Doctor"
+        :button-text="t('doctors.addButton')"
         @submit="handleCreateDoctor"
       >
         <template #error>
@@ -16,7 +16,7 @@
             <p class="text-sm text-red-600">{{ doctorsStore.error }}</p>
           </div>
           <p v-if="doctorsStore.items.length >= 4" class="text-sm text-amber-600 font-medium mt-2">
-            Maximum of 4 doctors reached. Please remove a doctor before adding a new one.
+            {{ t('doctors.maxDoctorsWarning') }}
           </p>
         </template>
       </DoctorForm>
@@ -34,7 +34,7 @@
           @click="handleExportDbJson"
           class="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
         >
-          Export to db.json
+          {{ t('doctors.exportDb') }}
         </button>
       </template>
     </DoctorsTable>
@@ -43,6 +43,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useDoctorsStore } from '@/stores/doctors'
 import { downloadDbJson } from '@/api/doctorsApi'
 import { useToast } from '@/composables/useToast'
@@ -52,6 +53,7 @@ import DoctorsTable from '@/components/admin/DoctorsTable.vue'
 
 const doctorsStore = useDoctorsStore()
 const toast = useToast()
+const { t } = useI18n()
 
 const form = ref({
   full_name: '',
@@ -72,7 +74,7 @@ onMounted(() => {
 const handleCreateDoctor = async (formData) => {
   if (doctorsStore.items.length >= 4) {
     showFormError.value = true
-    toast.warning('Maximum 4 ta doktor qo\'shish mumkin')
+    toast.warning(t('doctors.maxDoctorsToast'))
     return
   }
 
@@ -98,22 +100,22 @@ const handleCreateDoctor = async (formData) => {
       is_active: true,
     }
 
-    toast.success('Doktor muvaffaqiyatli qo\'shildi!')
+    toast.success(t('doctors.toastCreated'))
   } catch {
     showFormError.value = true
-    toast.error('Doktor qo\'shishda xatolik yuz berdi')
+    toast.error(t('doctors.errorCreate'))
   } finally {
     isSubmitting.value = false
   }
 }
 
 const handleDeleteDoctor = async (id) => {
-  if (confirm('Haqiqatan ham bu doktorni o\'chirmoqchimisiz?')) {
+  if (confirm(t('doctors.confirmDelete'))) {
     try {
       await doctorsStore.remove(id)
-      toast.success('Doktor muvaffaqiyatli o\'chirildi!')
+      toast.success(t('doctors.toastDeleted'))
     } catch {
-      toast.error('Doktorni o\'chirishda xatolik yuz berdi')
+      toast.error(t('doctors.errorDelete'))
     }
   }
 }
@@ -121,9 +123,9 @@ const handleDeleteDoctor = async (id) => {
 const handleExportDbJson = () => {
   try {
     downloadDbJson()
-    toast.success('Ma\'lumotlar muvaffaqiyatli yuklab olindi!')
+    toast.success(t('doctors.toastExport'))
   } catch {
-    toast.error('Yuklab olishda xatolik yuz berdi')
+    toast.error(t('doctors.errorExport'))
   }
 }
 </script>

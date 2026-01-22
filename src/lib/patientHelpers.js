@@ -1,6 +1,7 @@
 /**
  * Patient helper utilities
  */
+import i18n from '@/i18n'
 
 /**
  * Ismdan initiallar olish (2 ta harf)
@@ -23,8 +24,8 @@ export const getInitials = (name) => {
  * @returns {string} - Erkak/Ayol/-
  */
 export const formatGender = (gender) => {
-  if (gender === 'male') return 'Erkak'
-  if (gender === 'female') return 'Ayol'
+  if (gender === 'male') return i18n.global.t('patients.genderMale')
+  if (gender === 'female') return i18n.global.t('patients.genderFemale')
   return '-'
 }
 
@@ -56,13 +57,13 @@ export const formatMedId = (id) => {
 export const getStatusBadge = (status) => {
   if (status === 'active') {
     return {
-      text: 'Faol',
+      text: i18n.global.t('patients.statusActive'),
       bgClass: 'bg-green-100',
       textClass: 'text-green-700'
     }
   }
   return {
-    text: 'Nofaol',
+    text: i18n.global.t('patients.statusInactive'),
     bgClass: 'bg-gray-100',
     textClass: 'text-gray-600'
   }

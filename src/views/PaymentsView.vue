@@ -3,22 +3,22 @@
     <div class="space-y-6 animate-fade-in">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">To'lovlar</h1>
-          <p class="text-gray-500">Moliyaviy hisobotlar va to'lovlar</p>
+          <h1 class="text-2xl font-bold text-gray-900">{{ t('payments.title') }}</h1>
+          <p class="text-gray-500">{{ t('payments.subtitle') }}</p>
         </div>
       </div>
 
       <div class="grid gap-4 sm:grid-cols-3">
         <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-          <p class="text-xs text-slate-500">Jami to'lovlar</p>
+          <p class="text-xs text-slate-500">{{ t('payments.totalPayments') }}</p>
           <p class="mt-2 text-lg font-semibold text-slate-900">{{ formatCurrency(totalPayments) }}</p>
         </div>
         <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-          <p class="text-xs text-slate-500">Qaytarimlar</p>
+          <p class="text-xs text-slate-500">{{ t('payments.refunds') }}</p>
           <p class="mt-2 text-lg font-semibold text-rose-600">{{ formatCurrency(totalRefunds) }}</p>
         </div>
         <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-          <p class="text-xs text-slate-500">Sof daromad</p>
+          <p class="text-xs text-slate-500">{{ t('payments.netIncome') }}</p>
           <p class="mt-2 text-lg font-semibold text-emerald-600">{{ formatCurrency(netIncome) }}</p>
         </div>
       </div>
@@ -26,8 +26,8 @@
       <div class="bg-white rounded-2xl shadow-card border border-gray-100">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h2 class="text-lg font-semibold text-gray-900">To'lovlar ro'yxati</h2>
-            <p class="text-sm text-gray-500">Oxirgi to'lovlar va qaytarimlar</p>
+            <h2 class="text-lg font-semibold text-gray-900">{{ t('payments.listTitle') }}</h2>
+            <p class="text-sm text-gray-500">{{ t('payments.listSubtitle') }}</p>
           </div>
         </div>
 
@@ -35,21 +35,21 @@
           <table class="min-w-full divide-y divide-gray-100 text-sm">
             <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
-                <th class="px-6 py-3">Sana</th>
-                <th class="px-6 py-3">Bemor ID</th>
-                <th class="px-6 py-3">Tashrif ID</th>
-                <th class="px-6 py-3">Turi</th>
-                <th class="px-6 py-3">Miqdor</th>
-                <th class="px-6 py-3">Usul</th>
-                <th class="px-6 py-3">Izoh</th>
+                <th class="px-6 py-3">{{ t('payments.date') }}</th>
+                <th class="px-6 py-3">{{ t('payments.patientId') }}</th>
+                <th class="px-6 py-3">{{ t('payments.visitId') }}</th>
+                <th class="px-6 py-3">{{ t('payments.type') }}</th>
+                <th class="px-6 py-3">{{ t('payments.amount') }}</th>
+                <th class="px-6 py-3">{{ t('payments.method') }}</th>
+                <th class="px-6 py-3">{{ t('payments.note') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
               <tr v-if="loading">
-                <td class="px-6 py-4 text-gray-500" colspan="7">Yuklanmoqda...</td>
+                <td class="px-6 py-4 text-gray-500" colspan="7">{{ t('payments.loading') }}</td>
               </tr>
               <tr v-else-if="payments.length === 0">
-                <td class="px-6 py-4 text-gray-500" colspan="7">To'lovlar topilmadi.</td>
+                <td class="px-6 py-4 text-gray-500" colspan="7">{{ t('payments.noPayments') }}</td>
               </tr>
               <tr v-for="payment in payments" :key="payment.id" class="bg-white">
                 <td class="px-6 py-4 text-gray-700">{{ formatDate(payment.paid_at) }}</td>
@@ -75,9 +75,11 @@
 <script setup>
 import MainLayout from '@/layouts/MainLayout.vue'
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { listPayments } from '@/api/paymentsApi'
 
 const payments = ref([])
+const { t } = useI18n()
 const loading = ref(false)
 
 const totalPayments = computed(() =>
@@ -96,9 +98,9 @@ const netIncome = computed(() =>
 )
 
 const getTypeLabel = (type) => {
-  if (type === 'refund') return 'Qaytarim'
-  if (type === 'adjustment') return 'Tuzatma'
-  return 'To\'lov'
+  if (type === 'refund') return t('payments.typeRefund')
+  if (type === 'adjustment') return t('payments.typeAdjustment')
+  return t('payments.typePayment')
 }
 
 const getTypeClass = (type) => {
@@ -114,7 +116,7 @@ const formatCurrency = (amount) => {
     currency: 'UZS',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(amount).replace('UZS', 'so\'m')
+  }).format(amount).replace('UZS', t('common.currencySuffix'))
 }
 
 const formatDate = (value) => {

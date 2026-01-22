@@ -4,8 +4,8 @@
       <!-- Header -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Uchrashuvlar</h1>
-          <p class="text-gray-500">Qabullar jadvali va boshqaruvi</p>
+          <h1 class="text-2xl font-bold text-gray-900">{{ t('appointments.title') }}</h1>
+          <p class="text-gray-500">{{ t('appointments.subtitle') }}</p>
         </div>
         <div class="flex items-center gap-2">
           <button
@@ -13,14 +13,14 @@
             class="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 border border-gray-200 font-medium rounded-lg hover:bg-gray-50 transition-colors"
           >
             <ArrowDownTrayIcon class="w-5 h-5" />
-            Export
+            {{ t('appointments.export') }}
           </button>
           <label
             v-if="isAdmin"
             class="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 border border-gray-200 font-medium rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
           >
             <ArrowUpTrayIcon class="w-5 h-5" />
-            Import
+            {{ t('appointments.import') }}
             <input type="file" accept=".csv" class="hidden" @change="importAppointments" />
           </label>
           <button
@@ -29,7 +29,7 @@
             class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all"
           >
             <PlusIcon class="w-5 h-5" />
-            Yangi Uchrashuv
+            {{ t('appointments.newAppointment') }}
           </button>
         </div>
       </div>
@@ -42,7 +42,7 @@
               @click="setToday"
               class="px-3 py-2 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50"
             >
-              Bugun
+              {{ t('appointments.today') }}
             </button>
             <button
               @click="shiftRange(-1)"
@@ -71,7 +71,7 @@
               class="px-3 py-2 text-sm font-medium rounded-lg border"
               :class="viewMode === mode.value ? 'bg-primary-50 border-primary-200 text-primary-700' : 'border-gray-200 hover:bg-gray-50'"
             >
-              {{ mode.label }}
+              {{ t(mode.labelKey) }}
             </button>
           </div>
         </div>
@@ -82,7 +82,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Bemor ismi, telefon, MED ID..."
+              :placeholder="t('appointments.searchPlaceholder')"
               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
@@ -91,7 +91,7 @@
             v-model="selectedDoctor"
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="">Barcha doktorlar</option>
+            <option value="">{{ t('appointments.allDoctors') }}</option>
             <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
               {{ doctor.full_name }}
             </option>
@@ -100,26 +100,26 @@
             v-model="selectedStatus"
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="">Barcha statuslar</option>
+            <option value="">{{ t('appointments.allStatuses') }}</option>
             <option v-for="status in statusOptions" :key="status.value" :value="status.value">
               {{ status.label }}
             </option>
           </select>
-          <input
+            <input
             v-model="selectedService"
             type="text"
-            placeholder="Xizmat nomi..."
+              :placeholder="t('appointments.servicePlaceholder')"
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           />
           <select
             v-model="selectedPayment"
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="">To'lov holati</option>
-            <option value="paid">To'langan</option>
-            <option value="partial">Qisman</option>
-            <option value="unpaid">To'lanmagan</option>
-            <option value="debt">Qarzdor</option>
+            <option value="">{{ t('appointments.paymentStatus') }}</option>
+            <option value="paid">{{ t('appointments.paymentPaid') }}</option>
+            <option value="partial">{{ t('appointments.paymentPartial') }}</option>
+            <option value="unpaid">{{ t('appointments.paymentUnpaid') }}</option>
+            <option value="debt">{{ t('appointments.paymentDebt') }}</option>
           </select>
         </div>
       </div>
@@ -127,26 +127,26 @@
       <!-- Bulk Actions -->
       <div v-if="selectedIds.length > 0" class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-wrap items-center gap-3">
         <span class="text-sm font-medium text-amber-800">
-          {{ selectedIds.length }} ta tanlandi
+          {{ selectedIds.length }} {{ t('appointments.selected') }}
         </span>
         <button
           @click="bulkUpdateStatus('cancelled')"
           class="px-3 py-1.5 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700"
         >
-          Bekor qilish
+          {{ t('appointments.cancel') }}
         </button>
         <button
           @click="bulkUpdateStatus('no_show')"
           class="px-3 py-1.5 text-sm font-medium text-white bg-gray-600 rounded-lg hover:bg-gray-700"
         >
-          Kelmagan
+          {{ t('appointments.noShow') }}
         </button>
         <div v-if="isAdmin" class="flex items-center gap-2">
           <select
             v-model="bulkDoctorId"
             class="px-3 py-1.5 text-sm border border-amber-200 rounded-lg bg-white"
           >
-            <option value="">Doktor tanlang</option>
+            <option value="">{{ t('appointments.selectDoctor') }}</option>
             <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
               {{ doctor.full_name }}
             </option>
@@ -155,20 +155,20 @@
             @click="bulkChangeDoctor"
             class="px-3 py-1.5 text-sm font-medium text-amber-900 bg-amber-200 rounded-lg hover:bg-amber-300"
           >
-            Doktor almashtirish
+            {{ t('appointments.changeDoctor') }}
           </button>
         </div>
         <button
           @click="openRescheduleModal"
           class="px-3 py-1.5 text-sm font-medium text-amber-900 bg-amber-200 rounded-lg hover:bg-amber-300"
         >
-          Ko'chirish
+          {{ t('appointments.reschedule') }}
         </button>
         <button
           @click="clearSelected"
           class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-amber-200 rounded-lg"
         >
-          Bekor
+          {{ t('appointments.clearSelection') }}
         </button>
       </div>
 
@@ -176,9 +176,9 @@
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h2 class="text-lg font-semibold text-gray-900">Uchrashuvlar ro'yxati</h2>
+            <h2 class="text-lg font-semibold text-gray-900">{{ t('appointments.listTitle') }}</h2>
             <p class="text-sm text-gray-500">
-              {{ filteredVisits.length }} ta uchrashuv
+              {{ filteredVisits.length }} {{ t('appointments.totalAppointments') }}
             </p>
           </div>
           <div class="text-sm text-gray-500">
@@ -192,24 +192,24 @@
                 <th class="px-4 py-3">
                   <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
                 </th>
-                <th class="px-4 py-3">Sana</th>
-                <th class="px-4 py-3">Vaqt</th>
-                <th class="px-4 py-3">Bemor</th>
-                <th class="px-4 py-3">Doktor</th>
-                <th class="px-4 py-3">Xizmat</th>
-                <th class="px-4 py-3">Status</th>
-                <th class="px-4 py-3">To'lov</th>
-                <th class="px-4 py-3">Xona/Kanal</th>
-                <th class="px-4 py-3">Izoh</th>
-                <th class="px-4 py-3 text-right">Amallar</th>
+                <th class="px-4 py-3">{{ t('appointments.date') }}</th>
+                <th class="px-4 py-3">{{ t('appointments.time') }}</th>
+                <th class="px-4 py-3">{{ t('appointments.patient') }}</th>
+                <th class="px-4 py-3">{{ t('appointments.doctor') }}</th>
+                <th class="px-4 py-3">{{ t('appointments.service') }}</th>
+                <th class="px-4 py-3">{{ t('appointments.status') }}</th>
+                <th class="px-4 py-3">{{ t('appointments.payment') }}</th>
+                <th class="px-4 py-3">{{ t('appointments.roomChannel') }}</th>
+                <th class="px-4 py-3">{{ t('appointments.notes') }}</th>
+                <th class="px-4 py-3 text-right">{{ t('appointments.actions') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
               <tr v-if="loading">
-                <td class="px-6 py-4 text-gray-500" colspan="11">Yuklanmoqda...</td>
+                <td class="px-6 py-4 text-gray-500" colspan="11">{{ t('appointments.loading') }}</td>
               </tr>
               <tr v-else-if="filteredVisits.length === 0">
-                <td class="px-6 py-4 text-gray-500" colspan="11">Uchrashuvlar topilmadi.</td>
+                <td class="px-6 py-4 text-gray-500" colspan="11">{{ t('appointments.noAppointments') }}</td>
               </tr>
               <tr v-for="visit in filteredVisits" :key="visit.id" class="hover:bg-gray-50">
                 <td class="px-4 py-3">
@@ -248,47 +248,47 @@
                       @click="updateStatus(visit, 'arrived')"
                       class="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded"
                     >
-                      Keldi
+                      {{ t('appointments.arrived') }}
                     </button>
                     <button
                       v-if="visit.status === 'arrived'"
                       @click="updateStatus(visit, 'in_progress')"
                       class="px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-50 rounded"
                     >
-                      Boshlandi
+                      {{ t('appointments.started') }}
                     </button>
                     <button
                       v-if="visit.status === 'in_progress'"
                       @click="openCompleteModal(visit)"
                       class="px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 rounded"
                     >
-                      Yakunlash
+                      {{ t('appointments.complete') }}
                     </button>
                     <button
                       v-if="visit.status !== 'cancelled'"
                       @click="updateStatus(visit, 'cancelled')"
                       class="px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 rounded"
                     >
-                      Bekor
+                      {{ t('appointments.cancel') }}
                     </button>
                     <button
                       v-if="visit.status === 'pending' || visit.status === 'arrived'"
                       @click="updateStatus(visit, 'no_show')"
                       class="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded"
                     >
-                      Kelmagan
+                      {{ t('appointments.noShow') }}
                     </button>
                     <button
                       @click="openRescheduleModal(visit)"
                       class="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded"
                     >
-                      Ko'chirish
+                      {{ t('appointments.reschedule') }}
                     </button>
                     <button
                       @click="openStatusModal(visit)"
                       class="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded"
                     >
-                      Status
+                      {{ t('appointments.status') }}
                     </button>
                   </div>
                 </td>
@@ -312,7 +312,7 @@
         <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div class="w-full max-w-2xl bg-white rounded-2xl shadow-xl">
             <div class="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 class="text-lg font-semibold text-gray-900">Yangi uchrashuv</h3>
+              <h3 class="text-lg font-semibold text-gray-900">{{ t('appointments.createTitle') }}</h3>
               <button @click="closeCreateModal" class="text-gray-400 hover:text-gray-600">
                 <XMarkIcon class="w-6 h-6" />
               </button>
@@ -320,54 +320,54 @@
             <div class="p-6 space-y-4">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Bemor</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.patient') }}</label>
                   <select v-model="createForm.patient_id" class="w-full px-3 py-2 border rounded-lg">
-                    <option value="">Tanlang...</option>
+                    <option value="">{{ t('appointments.select') }}</option>
                     <option v-for="patient in patients" :key="patient.id" :value="patient.id">
                       {{ patient.full_name }} ({{ patient.phone }})
                     </option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Doktor</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.doctor') }}</label>
                   <select v-model="createForm.doctor_id" class="w-full px-3 py-2 border rounded-lg">
-                    <option value="">Tanlang...</option>
+                    <option value="">{{ t('appointments.select') }}</option>
                     <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
                       {{ doctor.full_name }}
                     </option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Sana</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.date') }}</label>
                   <input v-model="createForm.date" type="date" class="w-full px-3 py-2 border rounded-lg" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Boshlanish vaqti</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.startTime') }}</label>
                   <input v-model="createForm.start_time" type="time" class="w-full px-3 py-2 border rounded-lg" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Davomiyligi (min)</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.duration') }}</label>
                   <input v-model.number="createForm.duration_minutes" type="number" min="10" step="5" class="w-full px-3 py-2 border rounded-lg" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Xizmat</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.service') }}</label>
                   <input v-model="createForm.service_name" type="text" class="w-full px-3 py-2 border rounded-lg" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Narx</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.price') }}</label>
                   <input v-model.number="createForm.price" type="number" min="0" step="1000" class="w-full px-3 py-2 border rounded-lg" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Xona</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.room') }}</label>
                   <input v-model="createForm.room" type="text" class="w-full px-3 py-2 border rounded-lg" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Kanal</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.channel') }}</label>
                   <input v-model="createForm.channel" type="text" class="w-full px-3 py-2 border rounded-lg" />
                 </div>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Izoh</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.notes') }}</label>
                 <textarea v-model="createForm.notes" rows="3" class="w-full px-3 py-2 border rounded-lg"></textarea>
               </div>
               <div v-if="createError" class="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2">
@@ -375,9 +375,9 @@
               </div>
             </div>
             <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
-              <button @click="closeCreateModal" class="px-4 py-2 text-sm border rounded-lg">Bekor</button>
+              <button @click="closeCreateModal" class="px-4 py-2 text-sm border rounded-lg">{{ t('appointments.cancel') }}</button>
               <button @click="createAppointment" class="px-4 py-2 text-sm text-white bg-primary-600 rounded-lg">
-                Saqlash
+                {{ t('appointments.save') }}
               </button>
             </div>
           </div>
@@ -398,7 +398,7 @@
         <div v-if="showRescheduleModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div class="w-full max-w-lg bg-white rounded-2xl shadow-xl">
             <div class="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 class="text-lg font-semibold text-gray-900">Uchrashuvni ko'chirish</h3>
+              <h3 class="text-lg font-semibold text-gray-900">{{ t('appointments.rescheduleTitle') }}</h3>
               <button @click="closeRescheduleModal" class="text-gray-400 hover:text-gray-600">
                 <XMarkIcon class="w-6 h-6" />
               </button>
@@ -406,24 +406,24 @@
             <div class="p-6 space-y-4">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Sana</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.date') }}</label>
                   <input v-model="rescheduleForm.date" type="date" class="w-full px-3 py-2 border rounded-lg" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Boshlanish vaqti</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.startTime') }}</label>
                   <input v-model="rescheduleForm.start_time" type="time" class="w-full px-3 py-2 border rounded-lg" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Davomiyligi (min)</label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.duration') }}</label>
                   <input v-model.number="rescheduleForm.duration_minutes" type="number" min="10" step="5" class="w-full px-3 py-2 border rounded-lg" />
                 </div>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Kanal</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.channel') }}</label>
                 <input v-model="rescheduleForm.channel" type="text" class="w-full px-3 py-2 border rounded-lg" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Sabab</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.reason') }}</label>
                 <textarea v-model="rescheduleForm.reason" rows="2" class="w-full px-3 py-2 border rounded-lg"></textarea>
               </div>
               <div v-if="rescheduleError" class="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2">
@@ -431,9 +431,9 @@
               </div>
             </div>
             <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
-              <button @click="closeRescheduleModal" class="px-4 py-2 text-sm border rounded-lg">Bekor</button>
+              <button @click="closeRescheduleModal" class="px-4 py-2 text-sm border rounded-lg">{{ t('appointments.cancel') }}</button>
               <button @click="applyReschedule" class="px-4 py-2 text-sm text-white bg-indigo-600 rounded-lg">
-                Saqlash
+                {{ t('appointments.save') }}
               </button>
             </div>
           </div>
@@ -454,31 +454,31 @@
         <div v-if="showCompleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div class="w-full max-w-lg bg-white rounded-2xl shadow-xl">
             <div class="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 class="text-lg font-semibold text-gray-900">Uchrashuvni yakunlash</h3>
+              <h3 class="text-lg font-semibold text-gray-900">{{ t('appointments.completeTitle') }}</h3>
               <button @click="closeCompleteModal" class="text-gray-400 hover:text-gray-600">
                 <XMarkIcon class="w-6 h-6" />
               </button>
             </div>
             <div class="p-6 space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Xizmat narxi (so'm)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.priceLabel') }}</label>
                 <input v-model.number="completeForm.price" type="number" min="0" step="1000" class="w-full px-3 py-2 border rounded-lg" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">To'langan summa (so'm)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.paidAmountLabel') }}</label>
                 <input v-model.number="completeForm.paid_amount" type="number" min="0" step="1000" class="w-full px-3 py-2 border rounded-lg" />
               </div>
               <div class="text-sm text-gray-600">
-                Qarzdorlik: <span class="font-semibold">{{ formatCurrency(Math.max(0, (completeForm.price || 0) - (completeForm.paid_amount || 0))) }}</span>
+                {{ t('appointments.debtLabel') }}: <span class="font-semibold">{{ formatCurrency(Math.max(0, (completeForm.price || 0) - (completeForm.paid_amount || 0))) }}</span>
               </div>
               <div v-if="completeError" class="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2">
                 {{ completeError }}
               </div>
             </div>
             <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
-              <button @click="closeCompleteModal" class="px-4 py-2 text-sm border rounded-lg">Bekor</button>
+              <button @click="closeCompleteModal" class="px-4 py-2 text-sm border rounded-lg">{{ t('appointments.cancel') }}</button>
               <button @click="completeVisit" class="px-4 py-2 text-sm text-white bg-emerald-600 rounded-lg">
-                Yakunlash
+                {{ t('appointments.complete') }}
               </button>
             </div>
           </div>
@@ -499,16 +499,16 @@
         <div v-if="showStatusModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div class="w-full max-w-md bg-white rounded-2xl shadow-xl">
             <div class="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 class="text-lg font-semibold text-gray-900">Statusni o'zgartirish</h3>
+              <h3 class="text-lg font-semibold text-gray-900">{{ t('appointments.changeStatusTitle') }}</h3>
               <button @click="closeStatusModal" class="text-gray-400 hover:text-gray-600">
                 <XMarkIcon class="w-6 h-6" />
               </button>
             </div>
             <div class="p-6 space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Yangi status</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.newStatus') }}</label>
                 <select v-model="statusValue" class="w-full px-3 py-2 border rounded-lg">
-                  <option value="">Tanlang...</option>
+                  <option value="">{{ t('appointments.select') }}</option>
                   <option v-for="status in statusOptions" :key="status.value" :value="status.value">
                     {{ status.label }}
                   </option>
@@ -519,9 +519,9 @@
               </div>
             </div>
             <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
-              <button @click="closeStatusModal" class="px-4 py-2 text-sm border rounded-lg">Bekor</button>
+              <button @click="closeStatusModal" class="px-4 py-2 text-sm border rounded-lg">{{ t('appointments.cancel') }}</button>
               <button @click="applyStatusChange" class="px-4 py-2 text-sm text-white bg-slate-700 rounded-lg">
-                Saqlash
+                {{ t('appointments.save') }}
               </button>
             </div>
           </div>
@@ -533,6 +533,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
@@ -553,6 +554,7 @@ const authStore = useAuthStore()
 const doctorsStore = useDoctorsStore()
 const patientsStore = usePatientsStore()
 const toast = useToast()
+const { t } = useI18n()
 
 const isAdmin = computed(() => authStore.userRole === 'admin')
 const doctorId = computed(() => authStore.user?.id || null)
@@ -561,9 +563,9 @@ const loading = ref(false)
 const visits = ref([])
 
 const viewModes = [
-  { label: 'Kun', value: 'day' },
-  { label: 'Hafta', value: 'week' },
-  { label: 'Oy', value: 'month' }
+  { labelKey: 'appointments.viewDay', value: 'day' },
+  { labelKey: 'appointments.viewWeek', value: 'week' },
+  { labelKey: 'appointments.viewMonth', value: 'month' }
 ]
 const viewMode = ref('day')
 const selectedDate = ref(new Date().toISOString().split('T')[0])
@@ -620,13 +622,13 @@ const doctors = computed(() => doctorsStore.items)
 const patients = computed(() => patientsStore.items)
 
 const statusOptions = computed(() => [
-  { value: 'pending', label: 'Yozildi' },
-  { value: 'arrived', label: 'Keldi' },
-  { value: 'in_progress', label: 'Davolanish' },
-  { value: 'completed_paid', label: 'Yakunlandi' },
-  { value: 'completed_debt', label: 'Qarzdor' },
-  { value: 'cancelled', label: 'Bekor' },
-  { value: 'no_show', label: 'Kelmagan' }
+  { value: 'pending', label: t('appointments.statusPending') },
+  { value: 'arrived', label: t('appointments.statusArrived') },
+  { value: 'in_progress', label: t('appointments.statusInProgress') },
+  { value: 'completed_paid', label: t('appointments.statusCompleted') },
+  { value: 'completed_debt', label: t('appointments.statusDebt') },
+  { value: 'cancelled', label: t('appointments.statusCancelled') },
+  { value: 'no_show', label: t('appointments.statusNoShow') }
 ])
 
 const dateRange = computed(() => {
@@ -731,7 +733,7 @@ const openRescheduleModal = (visit = null) => {
   const targets = visit ? [visit] : selectedVisits()
   rescheduleTargets.value = targets.filter(item => Number.isFinite(Number(item?.id)))
   if (rescheduleTargets.value.length === 0) {
-    rescheduleError.value = 'Uchrashuv topilmadi.'
+    rescheduleError.value = t('appointments.errorNotFound')
     return
   }
   const first = rescheduleTargets.value[0]
@@ -780,7 +782,7 @@ const closeStatusModal = () => {
 
 const applyStatusChange = async () => {
   if (!statusTarget.value || !statusValue.value) {
-    statusError.value = 'Status tanlang.'
+    statusError.value = t('appointments.errorSelectStatus')
     return
   }
   try {
@@ -788,18 +790,18 @@ const applyStatusChange = async () => {
     closeStatusModal()
   } catch (error) {
     console.error('Failed to change status:', error)
-    statusError.value = 'Statusni o\'zgartirishda xatolik'
+    statusError.value = t('appointments.errorStatus')
   }
 }
 
 const createAppointment = async () => {
   createError.value = ''
   if (!createForm.value.patient_id || !createForm.value.doctor_id) {
-    createError.value = 'Bemor va doktor tanlash majburiy.'
+    createError.value = t('appointments.errorSelectPatientDoctor')
     return
   }
   if (!createForm.value.date || !createForm.value.start_time) {
-    createError.value = 'Sana va vaqtni kiriting.'
+    createError.value = t('appointments.errorDateTimeRequired')
     return
   }
 
@@ -817,7 +819,7 @@ const createAppointment = async () => {
     room: createForm.value.room
   })
   if (overlap) {
-    createError.value = 'Tanlangan vaqtda doktor yoki xona band.'
+    createError.value = t('appointments.errorOverlap')
     return
   }
 
@@ -839,19 +841,19 @@ const createAppointment = async () => {
       channel: createForm.value.channel,
       updated_by: getActorLabel()
     })
-    toast.success('Uchrashuv yaratildi')
+    toast.success(t('appointments.toastCreated'))
     showCreateModal.value = false
     await loadVisits()
   } catch (error) {
     console.error('Failed to create appointment:', error)
-    createError.value = 'Saqlashda xatolik yuz berdi'
+    createError.value = t('appointments.errorSave')
   }
 }
 
 const applyReschedule = async () => {
   rescheduleError.value = ''
   if (!rescheduleForm.value.date || !rescheduleForm.value.start_time) {
-    rescheduleError.value = 'Sana va vaqtni kiriting.'
+    rescheduleError.value = t('appointments.errorDateTimeRequired')
     return
   }
 
@@ -871,7 +873,7 @@ const applyReschedule = async () => {
       ignoreVisitId: visit.id
     })
     if (overlap) {
-      rescheduleError.value = 'Tanlangan vaqtda konflikt bor.'
+      rescheduleError.value = t('appointments.errorOverlapConflict')
       return
     }
   }
@@ -888,12 +890,12 @@ const applyReschedule = async () => {
         updated_by: getActorLabel()
       })
     }
-    toast.success('Uchrashuvlar ko\'chirildi')
+    toast.success(t('appointments.toastRescheduled'))
     closeRescheduleModal()
     await loadVisits()
   } catch (error) {
     console.error('Failed to reschedule:', error)
-    rescheduleError.value = 'Ko\'chirishda xatolik yuz berdi'
+    rescheduleError.value = t('appointments.errorReschedule')
   }
 }
 
@@ -903,7 +905,7 @@ const updateStatus = async (visit, status) => {
     await loadVisits()
   } catch (error) {
     console.error('Failed to update status:', error)
-    toast.error('Statusni o\'zgartirishda xatolik')
+    toast.error(t('appointments.errorStatus'))
   }
 }
 
@@ -928,12 +930,12 @@ const completeVisit = async () => {
     if (paidAmount && paidAmount > 0) {
       await syncPayment(completeTarget.value, paidAmount)
     }
-    toast.success('Uchrashuv yakunlandi')
+    toast.success(t('appointments.toastCompleted'))
     closeCompleteModal()
     await loadVisits()
   } catch (error) {
     console.error('Failed to complete visit:', error)
-    completeError.value = 'Yakunlashda xatolik yuz berdi'
+    completeError.value = t('appointments.errorComplete')
   }
 }
 
@@ -1037,7 +1039,7 @@ const exportAppointments = () => {
   a.download = 'appointments.json'
   a.click()
   URL.revokeObjectURL(url)
-  toast.success('Export tayyor')
+    toast.success(t('appointments.toastExportReady'))
 }
 
 const importAppointments = async (event) => {
@@ -1084,7 +1086,7 @@ const importAppointments = async (event) => {
     await loadVisits()
   } catch (error) {
     console.error('Import failed:', error)
-    toast.error('Importda xatolik')
+    toast.error(t('appointments.errorImport'))
   } finally {
     event.target.value = ''
   }
@@ -1137,10 +1139,10 @@ const getPaymentStatus = (visit) => {
 
 const getPaymentLabel = (visit) => {
   const status = getPaymentStatus(visit)
-  if (status === 'paid') return 'To\'langan'
-  if (status === 'partial') return 'Qisman'
-  if (status === 'debt') return 'Qarzdor'
-  return 'To\'lanmagan'
+  if (status === 'paid') return t('appointments.paymentPaid')
+  if (status === 'partial') return t('appointments.paymentPartial')
+  if (status === 'debt') return t('appointments.paymentDebt')
+  return t('appointments.paymentUnpaid')
 }
 
 const formatDate = (dateStr) => {

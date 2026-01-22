@@ -2,19 +2,19 @@
   <div class="space-y-6">
     <div class="grid gap-4 sm:grid-cols-4">
       <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-        <p class="text-xs text-slate-500">Jami to'lovlar</p>
+        <p class="text-xs text-slate-500">{{ t('patientPayments.totalPayments') }}</p>
         <p class="mt-2 text-lg font-semibold text-slate-900">{{ formatCurrency(totalPayments) }}</p>
       </div>
       <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-        <p class="text-xs text-slate-500">Qaytarimlar</p>
+        <p class="text-xs text-slate-500">{{ t('patientPayments.refunds') }}</p>
         <p class="mt-2 text-lg font-semibold text-rose-600">{{ formatCurrency(totalRefunds) }}</p>
       </div>
       <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-        <p class="text-xs text-slate-500">Sof daromad</p>
+        <p class="text-xs text-slate-500">{{ t('patientPayments.netIncome') }}</p>
         <p class="mt-2 text-lg font-semibold text-emerald-600">{{ formatCurrency(netIncome) }}</p>
       </div>
       <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-        <p class="text-xs text-slate-500">Jami xizmat narxi</p>
+        <p class="text-xs text-slate-500">{{ t('patientPayments.totalServices') }}</p>
         <p class="mt-2 text-lg font-semibold text-slate-900">{{ formatCurrency(totalServices) }}</p>
       </div>
     </div>
@@ -23,19 +23,19 @@
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
-            <th class="px-4 py-3">Sana</th>
-            <th class="px-4 py-3">Turi</th>
-            <th class="px-4 py-3">Miqdor</th>
-            <th class="px-4 py-3">Usul</th>
-            <th class="px-4 py-3">Izoh</th>
+            <th class="px-4 py-3">{{ t('patientPayments.date') }}</th>
+            <th class="px-4 py-3">{{ t('patientPayments.type') }}</th>
+            <th class="px-4 py-3">{{ t('patientPayments.amount') }}</th>
+            <th class="px-4 py-3">{{ t('patientPayments.method') }}</th>
+            <th class="px-4 py-3">{{ t('patientPayments.note') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-if="loading">
-            <td class="px-4 py-4 text-slate-500" colspan="5">Yuklanmoqda...</td>
+            <td class="px-4 py-4 text-slate-500" colspan="5">{{ t('patientPayments.loading') }}</td>
           </tr>
           <tr v-else-if="payments.length === 0">
-            <td class="px-4 py-4 text-slate-500" colspan="5">To'lovlar topilmadi.</td>
+            <td class="px-4 py-4 text-slate-500" colspan="5">{{ t('patientPayments.noPayments') }}</td>
           </tr>
           <tr v-for="entry in payments" :key="entry.id" class="bg-white">
             <td class="px-4 py-3 text-slate-700">{{ formatDate(entry.paid_at) }}</td>
@@ -58,19 +58,19 @@
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
-            <th class="px-4 py-3">Bajarilgan ishlar</th>
-            <th class="px-4 py-3">Tish</th>
-            <th class="px-4 py-3">Narx</th>
-            <th class="px-4 py-3">Doktor</th>
-            <th class="px-4 py-3">Sana</th>
+            <th class="px-4 py-3">{{ t('patientPayments.services') }}</th>
+            <th class="px-4 py-3">{{ t('patientPayments.tooth') }}</th>
+            <th class="px-4 py-3">{{ t('patientPayments.price') }}</th>
+            <th class="px-4 py-3">{{ t('patientPayments.doctor') }}</th>
+            <th class="px-4 py-3">{{ t('patientPayments.date') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-if="servicesLoading">
-            <td class="px-4 py-4 text-slate-500" colspan="5">Yuklanmoqda...</td>
+            <td class="px-4 py-4 text-slate-500" colspan="5">{{ t('patientPayments.loading') }}</td>
           </tr>
           <tr v-else-if="services.length === 0">
-            <td class="px-4 py-4 text-slate-500" colspan="5">Bajarilgan ishlar topilmadi.</td>
+            <td class="px-4 py-4 text-slate-500" colspan="5">{{ t('patientPayments.noServices') }}</td>
           </tr>
           <tr v-for="service in services" :key="service.id" class="bg-white">
             <td class="px-4 py-3 text-slate-700">{{ service.service_name }}</td>
@@ -87,6 +87,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getPaymentsByPatientId } from '@/api/paymentsApi'
 import { getVisitServicesByPatientId } from '@/api/visitServicesApi'
 
@@ -101,6 +102,7 @@ const payments = ref([])
 const loading = ref(false)
 const services = ref([])
 const servicesLoading = ref(false)
+const { t } = useI18n()
 
 const totalPayments = computed(() =>
   payments.value.reduce((sum, entry) => sum + (entry.payment_type === 'payment' ? Number(entry.amount) || 0 : 0), 0)
@@ -128,13 +130,13 @@ const formatCurrency = (amount) => {
     currency: 'UZS',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(amount).replace('UZS', 'so\'m')
+  }).format(amount).replace('UZS', t('common.currencySuffix'))
 }
 
 const getTypeLabel = (type) => {
-  if (type === 'refund') return 'Qaytarim'
-  if (type === 'adjustment') return 'Tuzatma'
-  return 'To\'lov'
+  if (type === 'refund') return t('patientPayments.typeRefund')
+  if (type === 'adjustment') return t('patientPayments.typeAdjustment')
+  return t('patientPayments.typePayment')
 }
 
 const getTypeClass = (type) => {

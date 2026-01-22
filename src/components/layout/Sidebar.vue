@@ -14,8 +14,8 @@
         </svg>
       </div>
       <div>
-        <h1 class="text-xl font-bold text-gray-900">SHIFOCRM</h1>
-        <p class="text-xs text-gray-500">Tibbiyot tizimi</p>
+        <h1 class="text-xl font-bold text-gray-900">{{ t('app.name') }}</h1>
+        <p class="text-xs text-gray-500">{{ t('app.tagline') }}</p>
       </div>
     </div>
 
@@ -23,7 +23,7 @@
     <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
       <router-link
         v-for="item in menuItems"
-        :key="item.name"
+        :key="item.labelKey"
         :to="item.to"
         class="group flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200"
         :class="[
@@ -37,7 +37,7 @@
           class="w-5 h-5 transition-transform group-hover:scale-110"
           :class="isActiveRoute(item.to) ? 'text-white' : 'text-gray-400 group-hover:text-primary-500'"
         />
-        <span>{{ item.name }}</span>
+        <span>{{ t(item.labelKey) }}</span>
         <span
           v-if="item.badge"
           class="ml-auto px-2 py-0.5 text-xs font-semibold rounded-full"
@@ -55,7 +55,7 @@
           {{ userInitials }}
         </div>
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-gray-900 truncate">{{ userName }}</p>
+        <p class="text-sm font-medium text-gray-900 truncate">{{ userName }}</p>
           <span
             class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
             :class="roleBadgeClass"
@@ -66,7 +66,7 @@
         <button
           @click="$emit('logout')"
           class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-          title="Chiqish"
+          :title="t('common.logout')"
         >
           <ArrowRightOnRectangleIcon class="w-5 h-5" />
         </button>
@@ -86,6 +86,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from 'vue-i18n'
 import {
   HomeIcon,
   UsersIcon,
@@ -111,26 +112,27 @@ defineEmits(['close', 'logout'])
 
 const route = useRoute()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 // Admin menu items
 const adminMenuItems = [
-  { name: 'Dashboard', to: '/dashboard', icon: HomeIcon },
-  { name: 'Bemorlar', to: '/patients', icon: UsersIcon },
-  { name: 'Doktorlar', to: '/doctors', icon: UserGroupIcon },
-  { name: 'Uchrashuvlar', to: '/appointments', icon: CalendarDaysIcon },
-  { name: 'To\'lovlar', to: '/payments', icon: CreditCardIcon },
-  { name: 'Xizmatlar', to: '/services', icon: ClipboardDocumentListIcon },
-  { name: 'Hisobotlar', to: '/reports', icon: ChartBarIcon },
-  { name: 'Sozlamalar', to: '/settings', icon: Cog6ToothIcon },
+  { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
+  { labelKey: 'nav.patients', to: '/patients', icon: UsersIcon },
+  { labelKey: 'nav.doctors', to: '/doctors', icon: UserGroupIcon },
+  { labelKey: 'nav.appointments', to: '/appointments', icon: CalendarDaysIcon },
+  { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
+  { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
+  { labelKey: 'nav.reports', to: '/reports', icon: ChartBarIcon },
+  { labelKey: 'nav.settings', to: '/settings', icon: Cog6ToothIcon },
 ]
 
 // Doctor menu items
 const doctorMenuItems = [
-  { name: 'Dashboard', to: '/dashboard', icon: HomeIcon },
-  { name: 'Mening Bemorlarim', to: '/my-patients', icon: UsersIcon },
-  { name: 'Mening Uchrashuvlarim', to: '/my-appointments', icon: CalendarDaysIcon },
-  { name: 'Davolash Rejalari', to: '/treatment-plans', icon: DocumentTextIcon },
-  { name: 'Mening Profilim', to: '/doctor/profile', icon: UserCircleIcon },
+  { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
+  { labelKey: 'nav.myPatients', to: '/my-patients', icon: UsersIcon },
+  { labelKey: 'nav.myAppointments', to: '/my-appointments', icon: CalendarDaysIcon },
+  { labelKey: 'nav.treatmentPlans', to: '/treatment-plans', icon: DocumentTextIcon },
+  { labelKey: 'nav.doctorProfile', to: '/doctor/profile', icon: UserCircleIcon },
 ]
 
 const menuItems = computed(() => {
@@ -138,8 +140,8 @@ const menuItems = computed(() => {
 })
 
 const userName = computed(() => {
-  if (authStore.userRole === 'admin') return 'Administrator'
-  return authStore.userEmail || 'Shifokor'
+  if (authStore.userRole === 'admin') return t('role.admin')
+  return authStore.userEmail || t('role.doctor')
 })
 
 const userInitials = computed(() => {
@@ -148,7 +150,7 @@ const userInitials = computed(() => {
 })
 
 const roleLabel = computed(() => {
-  return authStore.userRole === 'admin' ? 'Administrator' : 'Shifokor'
+  return authStore.userRole === 'admin' ? t('role.admin') : t('role.doctor')
 })
 
 const roleBadgeClass = computed(() => {

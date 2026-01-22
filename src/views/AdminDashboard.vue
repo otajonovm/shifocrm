@@ -6,10 +6,10 @@
       <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-blue-100 text-sm font-medium">Jami Bemorlar</p>
+            <p class="text-blue-100 text-sm font-medium">{{ t('adminDashboard.totalPatients') }}</p>
             <p class="text-3xl font-bold mt-1">{{ stats.totalPatients }}</p>
             <p class="text-blue-100 text-sm mt-2">
-              <span class="text-green-300">+{{ stats.newPatientsToday }}</span> bugun
+              <span class="text-green-300">+{{ stats.newPatientsToday }}</span> {{ t('adminDashboard.today') }}
             </p>
           </div>
           <div class="p-3 bg-white/20 rounded-xl">
@@ -23,10 +23,10 @@
       <div class="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-emerald-100 text-sm font-medium">Jami Doktorlar</p>
+            <p class="text-emerald-100 text-sm font-medium">{{ t('adminDashboard.totalDoctors') }}</p>
             <p class="text-3xl font-bold mt-1">{{ stats.totalDoctors }}</p>
             <p class="text-emerald-100 text-sm mt-2">
-              <span class="text-green-300">{{ stats.activeDoctors }}</span> faol
+              <span class="text-green-300">{{ stats.activeDoctors }}</span> {{ t('adminDashboard.active') }}
             </p>
           </div>
           <div class="p-3 bg-white/20 rounded-xl">
@@ -40,10 +40,10 @@
       <div class="relative overflow-hidden bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-purple-100 text-sm font-medium">Bugungi Uchrashuvlar</p>
+            <p class="text-purple-100 text-sm font-medium">{{ t('adminDashboard.todayAppointments') }}</p>
             <p class="text-3xl font-bold mt-1">{{ stats.todayAppointments }}</p>
             <p class="text-purple-100 text-sm mt-2">
-              <span class="text-green-300">{{ stats.completedToday }}</span> yakunlangan
+              <span class="text-green-300">{{ stats.completedToday }}</span> {{ t('adminDashboard.completed') }}
             </p>
           </div>
           <div class="p-3 bg-white/20 rounded-xl">
@@ -57,13 +57,13 @@
       <div class="relative overflow-hidden bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-orange-100 text-sm font-medium">Kunlik Daromad</p>
+            <p class="text-orange-100 text-sm font-medium">{{ t('adminDashboard.dailyRevenue') }}</p>
             <p class="text-3xl font-bold mt-1">{{ formatCurrency(stats.dailyRevenue) }}</p>
             <p class="text-orange-100 text-sm mt-2">
               <span :class="stats.weeklyGrowth >= 0 ? 'text-green-300' : 'text-red-200'">
                 {{ stats.weeklyGrowth >= 0 ? '+' : '' }}{{ stats.weeklyGrowth }}%
               </span>
-              haftalik o'zgarish
+              {{ t('adminDashboard.weeklyChange') }}
             </p>
           </div>
           <div class="p-3 bg-white/20 rounded-xl">
@@ -77,13 +77,13 @@
       <div class="relative overflow-hidden bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-teal-100 text-sm font-medium">Haftalik Daromad</p>
+            <p class="text-teal-100 text-sm font-medium">{{ t('adminDashboard.weeklyRevenue') }}</p>
             <p class="text-3xl font-bold mt-1">{{ formatCurrency(stats.weeklyRevenue) }}</p>
             <p class="text-teal-100 text-sm mt-2">
               <span :class="stats.weeklyGrowth >= 0 ? 'text-green-300' : 'text-red-200'">
                 {{ stats.weeklyGrowth >= 0 ? '+' : '' }}{{ stats.weeklyGrowth }}%
               </span>
-              o'tgan haftaga nisbatan
+              {{ t('adminDashboard.weeklyCompared') }}
             </p>
           </div>
           <div class="p-3 bg-white/20 rounded-xl">
@@ -97,13 +97,13 @@
       <div class="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-indigo-100 text-sm font-medium">Oylik Daromad</p>
+            <p class="text-indigo-100 text-sm font-medium">{{ t('adminDashboard.monthlyRevenue') }}</p>
             <p class="text-3xl font-bold mt-1">{{ formatCurrency(stats.monthlyRevenue) }}</p>
             <p class="text-indigo-100 text-sm mt-2">
               <span :class="stats.monthlyGrowth >= 0 ? 'text-green-300' : 'text-red-200'">
                 {{ stats.monthlyGrowth >= 0 ? '+' : '' }}{{ stats.monthlyGrowth }}%
               </span>
-              o'tgan oyga nisbatan
+              {{ t('adminDashboard.monthlyCompared') }}
             </p>
           </div>
           <div class="p-3 bg-white/20 rounded-xl">
@@ -121,14 +121,14 @@
         class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
       >
         <PlusIcon class="w-5 h-5" />
-        Yangi Bemor
+        {{ t('adminDashboard.newPatient') }}
       </button>
       <button
         @click="showNewAppointmentModal = true"
         class="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 font-medium rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 hover:scale-[1.02] transition-all"
       >
         <CalendarDaysIcon class="w-5 h-5 text-primary-500" />
-        Uchrashuvni Belgilash
+        {{ t('adminDashboard.scheduleAppointment') }}
       </button>
     </div>
 
@@ -138,25 +138,25 @@
       <div class="lg:col-span-2 bg-white rounded-2xl shadow-card border border-gray-100">
         <div class="flex items-center justify-between p-6 border-b border-gray-100">
           <div>
-            <h2 class="text-lg font-semibold text-gray-900">Bugungi Uchrashuvlar</h2>
-            <p class="text-sm text-gray-500">Joriy kun uchun rejalashtirilgan qabullar</p>
+          <h2 class="text-lg font-semibold text-gray-900">{{ t('adminDashboard.todayAppointmentsTitle') }}</h2>
+          <p class="text-sm text-gray-500">{{ t('adminDashboard.todayAppointmentsSubtitle') }}</p>
           </div>
           <router-link
             to="/appointments"
             class="text-sm text-primary-600 hover:text-primary-700 font-medium"
           >
-            Barchasini ko'rish →
+            {{ t('adminDashboard.viewAll') }}
           </router-link>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Vaqt</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Bemor</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Doktor</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Amallar</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ t('adminDashboard.time') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ t('adminDashboard.patient') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ t('adminDashboard.doctor') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ t('adminDashboard.status') }}</th>
+                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ t('adminDashboard.actions') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -198,15 +198,15 @@
         </div>
         <div v-if="todayAppointments.length === 0" class="p-12 text-center">
           <CalendarDaysIcon class="w-12 h-12 text-gray-300 mx-auto" />
-          <p class="mt-4 text-gray-500">Bugun uchun uchrashuvlar yo'q</p>
+          <p class="mt-4 text-gray-500">{{ t('adminDashboard.noTodayAppointments') }}</p>
         </div>
       </div>
 
       <!-- Recent Activity -->
       <div class="bg-white rounded-2xl shadow-card border border-gray-100">
         <div class="p-6 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-gray-900">So'nggi Faoliyat</h2>
-          <p class="text-sm text-gray-500">Oxirgi o'zgarishlar</p>
+          <h2 class="text-lg font-semibold text-gray-900">{{ t('adminDashboard.recentActivityTitle') }}</h2>
+          <p class="text-sm text-gray-500">{{ t('adminDashboard.recentActivitySubtitle') }}</p>
         </div>
         <div class="p-6 space-y-4">
           <div
@@ -233,6 +233,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePatientsStore } from '@/stores/patients'
 import { useDoctorsStore } from '@/stores/doctors'
 import { getVisitsByDate } from '@/api/visitsApi'
@@ -252,6 +253,7 @@ import {
 
 const showNewPatientModal = ref(false)
 const showNewAppointmentModal = ref(false)
+const { t } = useI18n()
 
 const patientsStore = usePatientsStore()
 const doctorsStore = useDoctorsStore()
@@ -301,18 +303,18 @@ const buildRecentActivities = (visits) => {
   const activities = visits.slice(0, 3).map((visit) => {
     const hasPayment = (visit.paid_amount || 0) > 0
     const isCompleted = getCompletedStatuses().includes(visit.status)
-    let title = 'Yangi tashrif'
+    let title = t('adminDashboard.activityNewVisit')
     let icon = UserPlusIcon
     let iconBg = 'bg-blue-100'
     let iconColor = 'text-blue-600'
 
     if (hasPayment) {
-      title = 'To\'lov qabul qilindi'
+      title = t('adminDashboard.activityPaymentReceived')
       icon = CurrencyDollarIcon
       iconBg = 'bg-orange-100'
       iconColor = 'text-orange-600'
     } else if (isCompleted) {
-      title = 'Uchrashuv yakunlandi'
+      title = t('adminDashboard.activityVisitCompleted')
       icon = CheckCircleIcon
       iconBg = 'bg-green-100'
       iconColor = 'text-green-600'
@@ -460,7 +462,10 @@ onMounted(() => {
 })
 
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('uz-UZ').format(amount) + ' so\'m'
+  return new Intl.NumberFormat('uz-UZ', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount || 0)
 }
 
 const getNetIncomeFromPayments = (payments) => {

@@ -2,8 +2,8 @@
   <div class="space-y-4">
     <!-- Header -->
     <div class="flex items-center justify-between">
-      <h3 class="text-lg font-semibold text-gray-900">Tashriflar Tarixi</h3>
-      <span class="text-sm text-gray-500">Jami: {{ visits.length }}</span>
+      <h3 class="text-lg font-semibold text-gray-900">{{ t('patientVisits.title') }}</h3>
+      <span class="text-sm text-gray-500">{{ t('patientVisits.total') }}: {{ visits.length }}</span>
     </div>
 
     <!-- Loading -->
@@ -14,7 +14,7 @@
     <!-- Empty State -->
     <div v-else-if="visits.length === 0" class="bg-gray-50 rounded-xl p-8 text-center">
       <CalendarDaysIcon class="w-12 h-12 text-gray-300 mx-auto" />
-      <p class="mt-4 text-gray-500">Hozircha tashriflar yo'q</p>
+      <p class="mt-4 text-gray-500">{{ t('patientVisits.noVisits') }}</p>
     </div>
 
     <!-- Visits List -->
@@ -35,7 +35,7 @@
             </div>
             <div>
               <p class="font-medium text-gray-900">{{ formatDate(visit.date || visit.created_at) }}</p>
-              <p class="text-sm text-gray-500">{{ visit.doctor_name || 'Doktor belgilanmagan' }}</p>
+              <p class="text-sm text-gray-500">{{ visit.doctor_name || t('patientVisits.noDoctor') }}</p>
             </div>
           </div>
           <VisitStatusBadge :status="visit.status" :visit="visit" />
@@ -56,8 +56,11 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { CalendarDaysIcon } from '@heroicons/vue/24/outline'
 import { formatDate, formatDateTime } from '@/lib/date'
+
+const { t } = useI18n()
 import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
 import * as visitsApi from '@/api/visitsApi'
 

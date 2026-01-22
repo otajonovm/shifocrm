@@ -3,12 +3,12 @@
     <div class="max-w-4xl mx-auto">
       <!-- Loading State -->
       <div v-if="isLoading" class="text-center py-8">
-        <LoadingSpinner message="Loading profile..." />
+        <LoadingSpinner :message="t('doctorProfile.loading')" />
       </div>
 
       <!-- Profile Form -->
       <div v-else class="bg-white rounded-lg shadow-md p-6 space-y-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('doctorProfile.personalInfo') }}</h2>
 
         <DoctorProfileForm
           :initial-data="profile"
@@ -19,13 +19,13 @@
             <ErrorMessage v-if="updateError" :message="updateError" />
           </template>
           <template #success>
-            <SuccessMessage v-if="updateSuccess" message="Profile updated successfully!" />
+            <SuccessMessage v-if="updateSuccess" :message="t('doctorProfile.profileUpdated')" />
           </template>
         </DoctorProfileForm>
 
         <!-- Password Change Section -->
         <div class="border-t pt-6 mt-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Change Password</h2>
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('doctorProfile.changePassword') }}</h2>
           <PasswordChangeForm
             ref="passwordFormRef"
             :is-changing-password="isChangingPassword"
@@ -36,7 +36,7 @@
               <ErrorMessage v-if="passwordError" :message="passwordError" />
             </template>
             <template #success>
-              <SuccessMessage v-if="passwordSuccess" message="Password changed successfully!" />
+              <SuccessMessage v-if="passwordSuccess" :message="t('doctorProfile.passwordUpdated')" />
             </template>
           </PasswordChangeForm>
         </div>
@@ -47,6 +47,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
 import MainLayout from '@/layouts/MainLayout.vue'
@@ -58,6 +59,7 @@ import SuccessMessage from '@/components/shared/SuccessMessage.vue'
 
 const authStore = useAuthStore()
 const doctorsStore = useDoctorsStore()
+const { t } = useI18n()
 
 const profile = ref({
   full_name: '',
@@ -134,22 +136,22 @@ const handleUpdateProfile = async (profileData) => {
 
 const handleChangePassword = async (passwordData) => {
   if (passwordData.newPassword !== passwordData.confirmPassword) {
-    passwordError.value = 'New passwords do not match'
+    passwordError.value = t('doctorProfile.errorPasswordMismatch')
     return
   }
 
   if (passwordData.newPassword.length < 6) {
-    passwordError.value = 'Password must be at least 6 characters'
+    passwordError.value = t('doctorProfile.errorPasswordLength')
     return
   }
 
   if (!existingDoctor.value) {
-    passwordError.value = 'Profile not loaded'
+    passwordError.value = t('doctorProfile.errorProfileNotLoaded')
     return
   }
 
   if (existingDoctor.value.password !== passwordData.oldPassword) {
-    passwordError.value = 'Current password is incorrect'
+    passwordError.value = t('doctorProfile.errorPasswordIncorrect')
     return
   }
 
@@ -172,7 +174,7 @@ const handleChangePassword = async (passwordData) => {
       passwordSuccess.value = false
     }, 3000)
   } catch (err) {
-    passwordError.value = err.message || 'Failed to change password'
+    passwordError.value = err.message || t('doctorProfile.errorPasswordChange')
   } finally {
     isChangingPassword.value = false
   }

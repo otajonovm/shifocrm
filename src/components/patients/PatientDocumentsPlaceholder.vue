@@ -3,12 +3,12 @@
     <div class="rounded-xl border border-slate-200 bg-white p-4">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div class="flex-1">
-          <label class="text-sm font-medium text-slate-700">Hujjat nomi</label>
+          <label class="text-sm font-medium text-slate-700">{{ t('patientDocuments.titleLabel') }}</label>
           <input
             v-model="title"
             type="text"
             class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
-            placeholder="Masalan: RTG, analiz, rasm..."
+            :placeholder="t('patientDocuments.titlePlaceholder')"
           />
         </div>
         <div class="flex items-center gap-3">
@@ -23,19 +23,19 @@
             class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
             @click="openFilePicker"
           >
-            Fayl tanlash
+            {{ t('patientDocuments.selectFile') }}
           </button>
           <button
             class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
             :disabled="uploading || !selectedFile"
             @click="saveDocument"
           >
-            {{ uploading ? 'Yuklanmoqda...' : 'Saqlash' }}
+            {{ uploading ? t('patientDocuments.uploading') : t('patientDocuments.save') }}
           </button>
         </div>
       </div>
       <p class="mt-2 text-xs text-slate-500">
-        Maksimal fayl hajmi: 2 MB. PDF yoki rasm fayllari tavsiya qilinadi.
+        {{ t('patientDocuments.hint') }}
       </p>
     </div>
 
@@ -43,15 +43,15 @@
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
-            <th class="px-4 py-3">Hujjat</th>
-            <th class="px-4 py-3">Sana</th>
-            <th class="px-4 py-3">Hajm</th>
-            <th class="px-4 py-3 text-right">Amal</th>
+            <th class="px-4 py-3">{{ t('patientDocuments.document') }}</th>
+            <th class="px-4 py-3">{{ t('patientDocuments.date') }}</th>
+            <th class="px-4 py-3">{{ t('patientDocuments.size') }}</th>
+            <th class="px-4 py-3 text-right">{{ t('patientDocuments.actions') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-if="documents.length === 0">
-            <td class="px-4 py-4 text-slate-500" colspan="4">Hujjatlar topilmadi.</td>
+            <td class="px-4 py-4 text-slate-500" colspan="4">{{ t('patientDocuments.noDocuments') }}</td>
           </tr>
           <tr v-for="doc in documents" :key="doc.id" class="bg-white">
             <td class="px-4 py-3">
@@ -68,20 +68,20 @@
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Ko'rish
+                  {{ t('patientDocuments.view') }}
                 </a>
                 <a
                   class="rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
                   :href="doc.dataUrl"
                   :download="doc.name"
                 >
-                  Yuklab olish
+                  {{ t('patientDocuments.download') }}
                 </a>
                 <button
                   class="rounded-lg border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
                   @click="removeDocument(doc.id)"
                 >
-                  O'chirish
+                  {{ t('patientDocuments.delete') }}
                 </button>
               </div>
             </td>
@@ -94,6 +94,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from '@/composables/useToast'
 
 const props = defineProps({
@@ -104,6 +105,7 @@ const props = defineProps({
 })
 
 const toast = useToast()
+const { t } = useI18n()
 const documents = ref([])
 const title = ref('')
 const selectedFile = ref(null)
@@ -141,7 +143,7 @@ const handleFileChange = (event) => {
   const file = event.target.files?.[0]
   if (!file) return
   if (file.size > 2 * 1024 * 1024) {
-    toast.error('Fayl 2MB dan katta. Kichikroq fayl tanlang.')
+    toast.error(t('patientDocuments.errorFileTooLarge'))
     event.target.value = ''
     return
   }
@@ -166,10 +168,10 @@ const saveDocument = async () => {
     title.value = ''
     selectedFile.value = null
     if (fileInputRef.value) fileInputRef.value.value = ''
-    toast.success('Hujjat saqlandi')
+    toast.success(t('patientDocuments.toastSaved'))
   } catch (error) {
     console.error('Failed to save document:', error)
-    toast.error('Hujjatni saqlashda xatolik')
+    toast.error(t('patientDocuments.errorSave'))
   } finally {
     uploading.value = false
   }

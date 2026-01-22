@@ -3,14 +3,14 @@
     <!-- Visit Selection Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white rounded-xl p-4 border border-gray-100">
       <div class="flex items-center gap-3">
-        <label class="text-sm font-medium text-gray-700">Tashrif:</label>
+        <label class="text-sm font-medium text-gray-700">{{ t('odontogram.visit') }}</label>
         <select
           v-model="selectedVisitId"
           @change="onVisitChange"
           class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           :disabled="loading"
         >
-          <option value="">Tanlang...</option>
+          <option value="">{{ t('odontogram.select') }}</option>
           <option v-for="visit in visits" :key="visit.id" :value="visit.id">
             {{ formatVisitDate(visit.date) }} - {{ getVisitStatusText(visit.status) }}
           </option>
@@ -25,7 +25,7 @@
           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50"
         >
           <PlusIcon class="w-4 h-4" />
-          Yangi tashrif
+          {{ t('odontogram.newVisit') }}
         </button>
         <button
           v-if="currentVisit && currentVisit.status === 'in_progress' && isDoctor"
@@ -34,7 +34,7 @@
           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
         >
           <CheckIcon class="w-4 h-4" />
-          Yakunlash
+          {{ t('odontogram.completeVisit') }}
         </button>
       </div>
     </div>
@@ -115,7 +115,7 @@
 
       <div class="flex justify-end text-sm text-slate-600">
         <span class="rounded-lg bg-slate-50 px-3 py-1.5">
-          Jami hisob: <span class="font-semibold text-slate-900">{{ formatCurrency(totalBill) }}</span>
+          {{ t('odontogram.total') }}: <span class="font-semibold text-slate-900">{{ formatCurrency(totalBill) }}</span>
         </span>
       </div>
 
@@ -126,7 +126,7 @@
         :style="menuStyle"
       >
         <div class="px-2 pb-1 text-xs font-medium text-slate-500">
-          Tish #{{ selectedToothId }} · {{ activeUserRole.toUpperCase() }}
+          {{ t('odontogram.toothLabel', { id: selectedToothId }) }} · {{ activeUserRole.toUpperCase() }}
         </div>
         <button
           v-for="option in menuOptions"
@@ -139,7 +139,7 @@
               class="h-2.5 w-2.5 rounded-full"
               :class="option.dotClass"
             ></span>
-            <span class="text-slate-700">{{ option.label }}</span>
+            <span class="text-slate-700">{{ t(option.labelKey) }}</span>
           </span>
           <span v-if="option.price" class="text-xs text-slate-500">{{ formatCurrency(option.price) }}</span>
         </button>
@@ -147,7 +147,7 @@
 
       <!-- Legend -->
       <div class="bg-white rounded-xl p-4 border border-gray-100">
-        <h4 class="text-sm font-semibold text-gray-700 mb-3">Izoh:</h4>
+        <h4 class="text-sm font-semibold text-gray-700 mb-3">{{ t('odontogram.noteLabel') }}</h4>
         <div class="flex flex-wrap gap-3">
           <div v-for="(state, key) in TOOTH_STATES" :key="key" class="flex items-center gap-2">
             <span
@@ -156,7 +156,7 @@
             >
               {{ state.icon }}
             </span>
-            <span class="text-sm text-gray-600">{{ state.label }}</span>
+            <span class="text-sm text-gray-600">{{ t(state.labelKey) }}</span>
           </div>
         </div>
       </div>
@@ -173,7 +173,7 @@
             Saqlanmoqda...
           </template>
           <template v-else>
-            Saqlash
+            {{ t('odontogram.save') }}
           </template>
         </button>
       </div>
@@ -184,6 +184,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { PlusIcon, CheckIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -192,6 +193,7 @@ import { getVisitStatusLabel } from '@/constants/visitStatus'
 import * as visitsApi from '@/api/visitsApi'
 import * as odontogramApi from '@/api/odontogramApi'
 import * as visitServicesApi from '@/api/visitServicesApi'
+import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
 import Tooth from './Tooth.vue'
 
 const { TOOTH_STATES } = odontogramApi
@@ -213,6 +215,7 @@ const props = defineProps({
 
 const toast = useToast()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 // State
 const loading = ref(false)
@@ -237,18 +240,18 @@ const menuStyle = ref({ left: '0px', top: '0px', transform: 'translate(-50%, 0)'
 const ignoreClose = ref(false)
 
 const statusOptions = [
-  { value: 'healthy', label: 'Sog\'lom', dotClass: 'bg-slate-200' },
-  { value: 'caries', label: 'Karies', dotClass: 'bg-red-500' },
-  { value: 'filling', label: 'Plomba', dotClass: 'bg-blue-500' },
-  { value: 'crown', label: 'Krona', dotClass: 'bg-amber-500' },
-  { value: 'missing', label: 'Yo\'q', dotClass: 'bg-slate-400' }
+  { value: 'healthy', labelKey: 'odontogram.statusHealthy', dotClass: 'bg-slate-200' },
+  { value: 'caries', labelKey: 'odontogram.statusCaries', dotClass: 'bg-red-500' },
+  { value: 'filling', labelKey: 'odontogram.statusFilling', dotClass: 'bg-blue-500' },
+  { value: 'crown', labelKey: 'odontogram.statusCrown', dotClass: 'bg-amber-500' },
+  { value: 'missing', labelKey: 'odontogram.statusMissing', dotClass: 'bg-slate-400' }
 ]
 
 const servicesList = [
-  { value: 'filling', label: 'Plomba', price: 150000, status: 'filling', dotClass: 'bg-blue-500' },
-  { value: 'root_canal', label: 'Kanal tozalash', price: 250000, status: 'caries', dotClass: 'bg-red-500' },
-  { value: 'crown', label: 'Krona', price: 350000, status: 'crown', dotClass: 'bg-amber-500' },
-  { value: 'extraction', label: 'Tishni olib tashlash', price: 200000, status: 'missing', dotClass: 'bg-slate-400' }
+  { value: 'filling', labelKey: 'odontogram.serviceFilling', price: 150000, status: 'filling', dotClass: 'bg-blue-500' },
+  { value: 'root_canal', labelKey: 'odontogram.serviceRootCanal', price: 250000, status: 'caries', dotClass: 'bg-red-500' },
+  { value: 'crown', labelKey: 'odontogram.serviceCrown', price: 350000, status: 'crown', dotClass: 'bg-amber-500' },
+  { value: 'extraction', labelKey: 'odontogram.serviceExtraction', price: 200000, status: 'missing', dotClass: 'bg-slate-400' }
 ]
 
 // Computed
@@ -282,7 +285,7 @@ const formatCurrency = (amount) => {
     currency: 'UZS',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(amount).replace('UZS', 'so\'m')
+  }).format(amount).replace('UZS', t('common.currencySuffix'))
 }
 
 const toothStatusMap = computed(() => {
@@ -334,7 +337,7 @@ const addHistoryEntry = async ({ toothId, serviceName, price }) => {
     patientHistory.value.unshift(entry)
   } catch (error) {
     console.error('Failed to save visit service:', error)
-    toast.error('Bajarilgan ishni saqlashda xatolik')
+    toast.error(t('odontogram.errorSaveService'))
   }
 }
 
@@ -351,7 +354,7 @@ const loadVisits = async () => {
     }
   } catch (error) {
     console.error('Failed to load visits:', error)
-    toast.error('Tashriflarni yuklashda xatolik')
+    toast.error(t('odontogram.errorLoadVisits'))
   } finally {
     loading.value = false
   }
@@ -377,7 +380,7 @@ const loadOdontogram = async (visitId) => {
     syncTeethFromOdontogram()
   } catch (error) {
     console.error('Failed to load odontogram:', error)
-    toast.error('Odontogrammani yuklashda xatolik')
+    toast.error(t('odontogram.errorLoadOdontogram'))
   } finally {
     loading.value = false
   }
@@ -400,10 +403,10 @@ const startNewVisit = async () => {
     selectedVisitId.value = newVisit.id
     await loadOdontogram(newVisit.id)
 
-    toast.success('Yangi tashrif boshlandi!')
+    toast.success(t('odontogram.toastVisitStarted'))
   } catch (error) {
     console.error('Failed to create visit:', error)
-    toast.error('Tashrif yaratishda xatolik')
+    toast.error(t('odontogram.errorCreateVisit'))
   } finally {
     loading.value = false
   }
@@ -419,19 +422,51 @@ const completeCurrentVisit = async () => {
 
   loading.value = true
   try {
-    await visitsApi.completeVisit(currentVisit.value.id)
+    const services = await visitServicesApi.getVisitServicesByVisitId(currentVisit.value.id)
+    const totalPrice = services.reduce((sum, entry) => sum + (Number(entry.price) || 0), 0)
+
+    await visitsApi.updateVisit(currentVisit.value.id, {
+      status: 'completed_paid',
+      price: totalPrice,
+      paid_amount: totalPrice,
+      debt_amount: null
+    })
     currentVisit.value.status = 'completed_paid'
+    currentVisit.value.price = totalPrice
+    currentVisit.value.paid_amount = totalPrice
+
+    if (totalPrice > 0) {
+      const existingPayments = await getPaymentsByVisitId(currentVisit.value.id)
+      const netPaid = existingPayments.reduce((sum, entry) => {
+        const amount = Number(entry.amount) || 0
+        return sum + (entry.payment_type === 'refund' ? -amount : amount)
+      }, 0)
+
+      if (netPaid < totalPrice) {
+        await createPayment({
+          visit_id: currentVisit.value.id,
+          patient_id: props.patient.id,
+          doctor_id: props.doctorId,
+          amount: totalPrice - netPaid,
+          payment_type: 'payment',
+          method: 'cash',
+          note: 'Odontogramma yakunlandi'
+        })
+      }
+    }
 
     // Update in list
     const index = visits.value.findIndex(v => v.id === currentVisit.value.id)
     if (index !== -1) {
       visits.value[index].status = 'completed_paid'
+      visits.value[index].price = totalPrice
+      visits.value[index].paid_amount = totalPrice
     }
 
-    toast.success('Tashrif yakunlandi!')
+    toast.success(t('odontogram.toastVisitCompleted'))
   } catch (error) {
     console.error('Failed to complete visit:', error)
-    toast.error('Tashrifni yakunlashda xatolik')
+    toast.error(t('odontogram.errorCompleteVisit'))
   } finally {
     loading.value = false
   }
@@ -483,7 +518,7 @@ const applyMenuSelection = async (option) => {
   if (isDoctor.value && option.price) {
     await addHistoryEntry({
       toothId: selectedToothId.value,
-      serviceName: option.label,
+      serviceName: t(option.labelKey),
       price: option.price
     })
   }
@@ -499,7 +534,7 @@ const saveOdontogram = async () => {
     toast.success('Odontogramma saqlandi!')
   } catch (error) {
     console.error('Failed to save odontogram:', error)
-    toast.error('Odontogrammani saqlashda xatolik')
+    toast.error(t('odontogram.errorSaveOdontogram'))
   } finally {
     saving.value = false
   }

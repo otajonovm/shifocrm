@@ -37,7 +37,7 @@
               <input
                 type="text"
                 v-model="searchQuery"
-                placeholder="Qidirish..."
+                :placeholder="t('common.search')"
                 class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
@@ -80,7 +80,7 @@
                   @click="userMenuOpen = false"
                 >
                   <UserCircleIcon class="w-5 h-5 text-gray-400" />
-                  Profil
+                  {{ t('common.profile') }}
                 </router-link>
                 <router-link
                   to="/settings"
@@ -88,7 +88,7 @@
                   @click="userMenuOpen = false"
                 >
                   <Cog6ToothIcon class="w-5 h-5 text-gray-400" />
-                  Sozlamalar
+                  {{ t('common.settings') }}
                 </router-link>
                 <router-link
                   to="/help"
@@ -96,7 +96,7 @@
                   @click="userMenuOpen = false"
                 >
                   <QuestionMarkCircleIcon class="w-5 h-5 text-gray-400" />
-                  Yordam
+                  {{ t('common.help') }}
                 </router-link>
                 <hr class="my-1 border-gray-100" />
                 <button
@@ -104,7 +104,7 @@
                   class="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                 >
                   <ArrowRightOnRectangleIcon class="w-5 h-5" />
-                  Chiqish
+                  {{ t('common.logout') }}
                 </button>
               </div>
             </Transition>
@@ -131,6 +131,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from 'vue-i18n'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import {
   Bars3Icon,
@@ -146,45 +147,48 @@ import {
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { t, locale } = useI18n()
 
 const sidebarOpen = ref(false)
 const userMenuOpen = ref(false)
 const searchQuery = ref('')
 
 const pageTitle = computed(() => {
-  const titles = {
-    '/dashboard': 'Dashboard',
-    '/patients': 'Bemorlar',
-    '/doctors': 'Doktorlar',
-    '/appointments': 'Uchrashuvlar',
-    '/payments': 'To\'lovlar',
-    '/services': 'Xizmatlar',
-    '/reports': 'Hisobotlar',
-    '/settings': 'Sozlamalar',
-    '/my-patients': 'Mening Bemorlarim',
-    '/my-appointments': 'Mening Uchrashuvlarim',
-    '/treatment-plans': 'Davolash Rejalari',
-    '/doctor/profile': 'Mening Profilim',
+  const map = {
+    '/dashboard': 'page.dashboard.title',
+    '/patients': 'page.patients.title',
+    '/doctors': 'page.doctors.title',
+    '/appointments': 'page.appointments.title',
+    '/payments': 'page.payments.title',
+    '/services': 'page.services.title',
+    '/reports': 'page.reports.title',
+    '/settings': 'page.settings.title',
+    '/my-patients': 'page.myPatients.title',
+    '/my-appointments': 'page.myAppointments.title',
+    '/treatment-plans': 'page.treatmentPlans.title',
+    '/doctor/profile': 'page.doctorProfile.title',
   }
-  return titles[route.path] || 'Dashboard'
+  const key = map[route.path] || 'page.dashboard.title'
+  return t(key)
 })
 
 const pageSubtitle = computed(() => {
-  const subtitles = {
-    '/dashboard': 'Umumiy ko\'rsatkichlar',
-    '/patients': 'Bemorlar ro\'yxati va boshqaruvi',
-    '/doctors': 'Shifokorlar ro\'yxati',
-    '/appointments': 'Qabullar jadvali',
-    '/payments': 'Moliyaviy hisobotlar',
-    '/services': 'Xizmatlar narxlari',
-    '/reports': 'Statistika va tahlillar',
-    '/settings': 'Tizim sozlamalari',
-    '/my-patients': 'Sizga biriktirilgan bemorlar',
-    '/my-appointments': 'Sizning qabullar jadvalingiz',
-    '/treatment-plans': 'Davolash protokollari',
-    '/doctor/profile': 'Shaxsiy ma\'lumotlar',
+  const map = {
+    '/dashboard': 'page.dashboard.subtitle',
+    '/patients': 'page.patients.subtitle',
+    '/doctors': 'page.doctors.subtitle',
+    '/appointments': 'page.appointments.subtitle',
+    '/payments': 'page.payments.subtitle',
+    '/services': 'page.services.subtitle',
+    '/reports': 'page.reports.subtitle',
+    '/settings': 'page.settings.subtitle',
+    '/my-patients': 'page.myPatients.subtitle',
+    '/my-appointments': 'page.myAppointments.subtitle',
+    '/treatment-plans': 'page.treatmentPlans.subtitle',
+    '/doctor/profile': 'page.doctorProfile.subtitle',
   }
-  return subtitles[route.path] || ''
+  const key = map[route.path] || ''
+  return key ? t(key) : ''
 })
 
 const userInitials = computed(() => {
@@ -197,4 +201,5 @@ const handleLogout = () => {
   authStore.logout()
   router.push('/login')
 }
+
 </script>

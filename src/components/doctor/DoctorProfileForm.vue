@@ -3,7 +3,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label for="full_name" class="block text-sm font-medium text-gray-700 mb-2">
-          Full Name *
+          {{ t('doctorProfile.fullName') }} *
         </label>
         <input
           id="full_name"
@@ -16,7 +16,7 @@
 
       <div>
         <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
-          Phone *
+          {{ t('doctorProfile.phone') }} *
         </label>
         <input
           id="phone"
@@ -29,7 +29,7 @@
 
       <div>
         <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-          Email
+          {{ t('doctorProfile.email') }}
         </label>
         <input
           id="email"
@@ -38,19 +38,19 @@
           disabled
           class="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500 cursor-not-allowed"
         />
-        <p class="mt-1 text-xs text-gray-500">Email cannot be changed</p>
+        <p class="mt-1 text-xs text-gray-500">{{ t('doctorProfile.emailLocked') }}</p>
       </div>
 
       <div>
         <label for="specialization" class="block text-sm font-medium text-gray-700 mb-2">
-          Specialization
+          {{ t('doctorProfile.specialization') }}
         </label>
         <input
           id="specialization"
           v-model="profile.specialization"
           type="text"
           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          placeholder="e.g., Cardiologist, Therapist"
+          :placeholder="t('doctorProfile.specializationPlaceholder')"
         />
       </div>
     </div>
@@ -63,7 +63,7 @@
         class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
       />
       <label for="is_active" class="text-sm font-medium text-gray-700">
-        Active Status
+        {{ t('doctorProfile.activeStatus') }}
       </label>
     </div>
 
@@ -75,13 +75,14 @@
       :disabled="isSubmitting"
       class="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
-      {{ isSubmitting ? 'Saving...' : 'Save Changes' }}
+      {{ isSubmitting ? t('doctorProfile.saving') : t('doctorProfile.saveChanges') }}
     </button>
   </form>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   initialData: {
@@ -97,6 +98,7 @@ const props = defineProps({
 const emit = defineEmits(['submit'])
 
 const profile = ref({ ...props.initialData })
+const { t } = useI18n()
 
 watch(() => props.initialData, (newData) => {
   profile.value = { ...newData }

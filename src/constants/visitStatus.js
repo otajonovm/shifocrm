@@ -2,6 +2,7 @@
  * Visit Status Constants
  * Tashriflar uchun status konstantalari va konfiguratsiyasi
  */
+import i18n from '@/i18n'
 
 export const VISIT_STATUSES = {
   PENDING: 'pending',
@@ -20,8 +21,8 @@ export const VISIT_STATUSES = {
  */
 export const VISIT_STATUS_CONFIG = {
   [VISIT_STATUSES.PENDING]: {
-    label: 'Yozildi',
-    description: 'Onlayn yozilgan, hali klinikaga kelmagan',
+    labelKey: 'visitStatus.pending',
+    descriptionKey: 'visitStatus.pendingDesc',
     bgClass: 'bg-gray-100',
     textClass: 'text-gray-700',
     borderClass: 'border-gray-300',
@@ -29,8 +30,8 @@ export const VISIT_STATUS_CONFIG = {
     order: 1
   },
   [VISIT_STATUSES.ARRIVED]: {
-    label: 'Keldi',
-    description: 'Klinikaga keldi, navbat kutyapti',
+    labelKey: 'visitStatus.arrived',
+    descriptionKey: 'visitStatus.arrivedDesc',
     bgClass: 'bg-blue-100',
     textClass: 'text-blue-700',
     borderClass: 'border-blue-300',
@@ -38,8 +39,8 @@ export const VISIT_STATUS_CONFIG = {
     order: 2
   },
   [VISIT_STATUSES.IN_PROGRESS]: {
-    label: 'Davolanish boshlandi',
-    description: 'Doktor qabul boshladi',
+    labelKey: 'visitStatus.inProgress',
+    descriptionKey: 'visitStatus.inProgressDesc',
     bgClass: 'bg-yellow-100',
     textClass: 'text-yellow-700',
     borderClass: 'border-yellow-300',
@@ -47,8 +48,8 @@ export const VISIT_STATUS_CONFIG = {
     order: 3
   },
   [VISIT_STATUSES.COMPLETED_DEBT]: {
-    label: 'Qarzdor',
-    description: 'Davolash tugadi, lekin bemor qarzdor',
+    labelKey: 'visitStatus.completedDebt',
+    descriptionKey: 'visitStatus.completedDebtDesc',
     bgClass: 'bg-red-100',
     textClass: 'text-red-700',
     borderClass: 'border-red-300',
@@ -56,8 +57,8 @@ export const VISIT_STATUS_CONFIG = {
     order: 4
   },
   [VISIT_STATUSES.COMPLETED_PAID]: {
-    label: 'Yakunlandi',
-    description: 'Davolash va to\'lov ham to\'liq tugadi',
+    labelKey: 'visitStatus.completedPaid',
+    descriptionKey: 'visitStatus.completedPaidDesc',
     bgClass: 'bg-green-100',
     textClass: 'text-green-700',
     borderClass: 'border-green-300',
@@ -65,8 +66,8 @@ export const VISIT_STATUS_CONFIG = {
     order: 5
   },
   [VISIT_STATUSES.CANCELLED]: {
-    label: 'Bekor qilingan',
-    description: 'Tashrif bekor qilingan',
+    labelKey: 'visitStatus.cancelled',
+    descriptionKey: 'visitStatus.cancelledDesc',
     bgClass: 'bg-pink-100',
     textClass: 'text-pink-700',
     borderClass: 'border-pink-300',
@@ -74,8 +75,8 @@ export const VISIT_STATUS_CONFIG = {
     order: 6
   },
   [VISIT_STATUSES.NO_SHOW]: {
-    label: 'Kelmagan',
-    description: 'Bemor kelmadi',
+    labelKey: 'visitStatus.noShow',
+    descriptionKey: 'visitStatus.noShowDesc',
     bgClass: 'bg-red-100',
     textClass: 'text-red-700',
     borderClass: 'border-red-300',
@@ -83,8 +84,8 @@ export const VISIT_STATUS_CONFIG = {
     order: 7
   },
   [VISIT_STATUSES.ARCHIVED]: {
-    label: 'Arxivlangan',
-    description: 'Statistika uchun arxivlangan (faqat admin)',
+    labelKey: 'visitStatus.archived',
+    descriptionKey: 'visitStatus.archivedDesc',
     bgClass: 'bg-gray-200',
     textClass: 'text-gray-600',
     borderClass: 'border-gray-400',
@@ -99,9 +100,18 @@ export const VISIT_STATUS_CONFIG = {
  * @returns {object} - Status konfiguratsiyasi
  */
 export const getVisitStatusConfig = (status) => {
-  return VISIT_STATUS_CONFIG[status] || {
-    label: status || 'Noma\'lum',
-    description: 'Status noma\'lum',
+  const config = VISIT_STATUS_CONFIG[status]
+  if (config) {
+    return {
+      ...config,
+      label: i18n.global.t(config.labelKey),
+      description: i18n.global.t(config.descriptionKey)
+    }
+  }
+
+  return {
+    label: status || i18n.global.t('visitStatus.unknown'),
+    description: i18n.global.t('visitStatus.unknownDesc'),
     bgClass: 'bg-gray-100',
     textClass: 'text-gray-600',
     borderClass: 'border-gray-300',
