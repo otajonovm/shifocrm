@@ -7,7 +7,7 @@
           <img src="/logo.jpg" alt="ShifoCRM Logo" class="w-12 h-12 rounded-lg object-cover">
         </div>
         <h1 class="text-3xl font-bold text-gray-900">ShifoCRM</h1>
-        <p class="text-gray-500 mt-2">{{ $t('common.clinicManagement') }}</p>
+        <p class="text-gray-500 mt-2">{{ t('login.subtitle') }}</p>
       </div>
 
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-8">
@@ -26,7 +26,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
-              {{ $t('common.administrator') }}
+              {{ t('login.roleAdmin') }}
             </span>
           </button>
           <button
@@ -42,7 +42,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {{ $t('common.doctor') }}
+              {{ t('login.roleDoctor') }}
             </span>
           </button>
         </div>
@@ -51,7 +51,7 @@
         <form v-if="loginType === 'admin'" @submit.prevent="handleAdminLogin" class="space-y-5">
           <div>
             <label for="admin-login" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ $t('auth.login') }}
+              {{ t('login.adminLoginLabel') }}
             </label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -65,14 +65,14 @@
                 type="text"
                 required
                 class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
-                :placeholder="$t('auth.loginPlaceholder')"
+                :placeholder="t('login.adminLoginPlaceholder')"
               />
             </div>
           </div>
 
           <div>
             <label for="admin-password" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ $t('common.password') || 'Parol' }}
+              {{ t('login.passwordLabel') }}
             </label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -86,7 +86,7 @@
                 type="password"
                 required
                 class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
-                :placeholder="$t('auth.passwordPlaceholder')"
+                :placeholder="t('login.passwordPlaceholder')"
               />
             </div>
           </div>
@@ -105,9 +105,9 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              {{ $t('auth.loggingIn') }}
+              {{ t('login.loading') }}
             </span>
-            <span v-else>{{ $t('auth.adminLogin') }}</span>
+            <span v-else>{{ t('login.submitAdmin') }}</span>
           </button>
         </form>
 
@@ -136,7 +136,7 @@
 
           <div>
             <label for="doctor-password" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ $t('common.password') }}
+              {{ t('login.passwordLabel') }}
             </label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -150,7 +150,7 @@
                 type="password"
                 required
                 class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
-                :placeholder="$t('auth.passwordPlaceholder')"
+                :placeholder="t('login.passwordPlaceholder')"
               />
             </div>
           </div>
@@ -169,16 +169,16 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              {{ $t('auth.loggingIn') }}
+              {{ t('login.loading') }}
             </span>
-            <span v-else>{{ $t('auth.doctorLogin') }}</span>
+            <span v-else>{{ t('login.submitDoctor') }}</span>
           </button>
         </form>
       </div>
 
       <!-- Footer -->
       <p class="text-center text-gray-400 text-sm mt-6">
-        {{ $t('common.copyright') }}
+        {{ t('login.footer') }}
       </p>
     </div>
   </div>
