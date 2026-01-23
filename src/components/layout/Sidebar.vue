@@ -94,6 +94,7 @@ import {
   CalendarDaysIcon,
   CreditCardIcon,
   ClipboardDocumentListIcon,
+  ArchiveBoxIcon,
   ChartBarIcon,
   Cog6ToothIcon,
   UserCircleIcon,
@@ -143,6 +144,7 @@ const adminMenuItems = [
   { labelKey: 'nav.appointments', to: '/appointments', icon: CalendarDaysIcon },
   { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
   { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
+  { labelKey: 'nav.inventory', to: '/inventory', icon: ArchiveBoxIcon },
   { labelKey: 'nav.reports', to: '/reports', icon: ChartBarIcon },
   { labelKey: 'nav.settings', to: '/settings', icon: Cog6ToothIcon },
 ]

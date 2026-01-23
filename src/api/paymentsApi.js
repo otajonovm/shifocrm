@@ -4,7 +4,7 @@
  * Viewlar: income_daily, income_monthly
  */
 
-import { supabaseGet, supabasePost, supabaseDelete } from './supabaseConfig'
+import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supabaseConfig'
 
 const TABLE = 'payments'
 const INCOME_DAILY_VIEW = 'income_daily'
@@ -77,6 +77,26 @@ export const deletePayment = async (paymentId) => {
     return true
   } catch (error) {
     console.error('❌ Failed to delete payment:', error)
+    throw error
+  }
+}
+
+export const updatePayment = async (paymentId, payload) => {
+  try {
+    const numId = Number(paymentId)
+    if (!Number.isFinite(numId)) {
+      throw new Error('Invalid payment ID')
+    }
+    const updateData = { ...payload }
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key]
+      }
+    })
+    const result = await supabasePatch(TABLE, numId, updateData)
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to update payment:', error)
     throw error
   }
 }
