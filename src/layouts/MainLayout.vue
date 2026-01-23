@@ -144,8 +144,6 @@ import {
   ArrowRightOnRectangleIcon,
 } from '@heroicons/vue/24/outline'
 
-const { t } = useI18n()
-
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -156,39 +154,6 @@ const userMenuOpen = ref(false)
 const searchQuery = ref('')
 
 const pageTitle = computed(() => {
-<<<<<<< HEAD
-  const titles = {
-    '/dashboard': t('dashboard.title'),
-    '/patients': t('patients.allPatients'),
-    '/doctors': t('doctors.title'),
-    '/appointments': t('appointments.title'),
-    '/payments': t('payments.title'),
-    '/services': t('services.title'),
-    '/reports': t('reports.title'),
-    '/settings': t('settings.title'),
-    '/my-patients': t('patients.myPatients'),
-    '/my-appointments': t('appointments.myAppointments'),
-    '/treatment-plans': t('dashboard.treatmentPlans'),
-    '/doctor/profile': t('profile.title'),
-  }
-  return titles[route.path] || t('dashboard.title')
-})
-
-const pageSubtitle = computed(() => {
-  const subtitles = {
-    '/dashboard': t('dashboard.overview'),
-    '/patients': t('patients.patientList'),
-    '/doctors': t('doctors.doctorsList'),
-    '/appointments': t('appointments.appointmentsCalendar'),
-    '/payments': t('payments.financialReports'),
-    '/services': t('services.servicePrices'),
-    '/reports': t('reports.statistics'),
-    '/settings': t('settings.systemSettings'),
-    '/my-patients': t('patients.myPatientList'),
-    '/my-appointments': t('appointments.appointmentsCalendar'),
-    '/treatment-plans': t('dashboard.treatmentPlans'),
-    '/doctor/profile': t('profile.personalInfo'),
-=======
   const map = {
     '/dashboard': 'page.dashboard.title',
     '/patients': 'page.patients.title',
@@ -221,7 +186,6 @@ const pageSubtitle = computed(() => {
     '/my-appointments': 'page.myAppointments.subtitle',
     '/treatment-plans': 'page.treatmentPlans.subtitle',
     '/doctor/profile': 'page.doctorProfile.subtitle',
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
   }
   const key = map[route.path] || ''
   return key ? t(key) : ''

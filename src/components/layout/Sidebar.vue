@@ -116,27 +116,6 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 // Admin menu items
-<<<<<<< HEAD
-const adminMenuItems = computed(() => [
-  { name: t('dashboard.title'), to: '/dashboard', icon: HomeIcon },
-  { name: t('patients.title'), to: '/patients', icon: UsersIcon },
-  { name: t('doctors.title'), to: '/doctors', icon: UserGroupIcon },
-  { name: t('appointments.title'), to: '/appointments', icon: CalendarDaysIcon },
-  { name: t('payments.title'), to: '/payments', icon: CreditCardIcon },
-  { name: t('services.title'), to: '/services', icon: ClipboardDocumentListIcon },
-  { name: t('reports.title'), to: '/reports', icon: ChartBarIcon },
-  { name: t('settings.title'), to: '/settings', icon: Cog6ToothIcon },
-])
-
-// Doctor menu items
-const doctorMenuItems = computed(() => [
-  { name: t('dashboard.title'), to: '/dashboard', icon: HomeIcon },
-  { name: t('patients.myPatients'), to: '/my-patients', icon: UsersIcon },
-  { name: t('appointments.myAppointments'), to: '/my-appointments', icon: CalendarDaysIcon },
-  { name: t('treatmentPlans.title'), to: '/treatment-plans', icon: DocumentTextIcon },
-  { name: t('profile.title'), to: '/doctor/profile', icon: UserCircleIcon },
-])
-=======
 const adminMenuItems = [
   { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
   { labelKey: 'nav.patients', to: '/patients', icon: UsersIcon },
@@ -157,20 +136,14 @@ const doctorMenuItems = [
   { labelKey: 'nav.treatmentPlans', to: '/treatment-plans', icon: DocumentTextIcon },
   { labelKey: 'nav.doctorProfile', to: '/doctor/profile', icon: UserCircleIcon },
 ]
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 
 const menuItems = computed(() => {
-  return authStore.userRole === 'admin' ? adminMenuItems.value : doctorMenuItems.value
+  return authStore.userRole === 'admin' ? adminMenuItems : doctorMenuItems
 })
 
 const userName = computed(() => {
-<<<<<<< HEAD
-  if (authStore.userRole === 'admin') return t('common.administrator')
-  return authStore.userEmail || t('common.doctor')
-=======
   if (authStore.userRole === 'admin') return t('role.admin')
   return authStore.userEmail || t('role.doctor')
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 })
 
 const userInitials = computed(() => {
@@ -179,11 +152,7 @@ const userInitials = computed(() => {
 })
 
 const roleLabel = computed(() => {
-<<<<<<< HEAD
-  return authStore.userRole === 'admin' ? t('common.administrator') : t('common.doctor')
-=======
   return authStore.userRole === 'admin' ? t('role.admin') : t('role.doctor')
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 })
 
 const roleBadgeClass = computed(() => {

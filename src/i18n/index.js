@@ -1,6 +1,6 @@
 import { createI18n } from 'vue-i18n'
-import uz from './locales/uz.json'
-import ru from './locales/ru.json'
+import uz from './uz.json'
+import ru from './ru.json'
 
 // localStorage'dan saqlangan tilni olish
 const savedLocale = localStorage.getItem('locale') || 'uz'
