@@ -129,7 +129,6 @@
                 type="email"
                 required
                 class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
-<<<<<<< HEAD
                 :placeholder="t('login.emailPlaceholder')"
               />
             </div>

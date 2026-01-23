@@ -242,14 +242,6 @@ const showPatientStatusModal = ref(false)
 const newPatientStatus = ref('')
 const updatingPatientStatus = ref(false)
 
-<<<<<<< HEAD
-const tabs = computed(() => [
-  { id: 'visits', label: t('patients.visits'), count: null },
-  { id: 'odontogram', label: t('patients.odontogram'), count: null },
-  { id: 'payments', label: t('patients.payments'), count: null },
-  { id: 'documents', label: t('patients.documents'), count: null },
-])
-=======
 const tabs = [
   { id: 'visits', labelKey: 'patientDetail.tabVisits', count: null },
   { id: 'odontogram', labelKey: 'patientDetail.tabOdontogram', count: null },
@@ -257,7 +249,6 @@ const tabs = [
   { id: 'plans', labelKey: 'patientDetail.tabPlans', count: null },
   { id: 'documents', labelKey: 'patientDetail.tabDocuments', count: null },
 ]
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 
 const isAdmin = computed(() => authStore.userRole === 'admin')
 const isDoctor = computed(() => authStore.userRole === 'doctor')
