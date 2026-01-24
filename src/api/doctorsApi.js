@@ -22,7 +22,11 @@ export const listDoctors = async () => {
 // ID bo'yicha doktorni olish
 export const getDoctorById = async (id) => {
   try {
-    const doctors = await supabaseGet(TABLE, `id=eq.${id}`)
+    const numId = Number(id)
+    if (!Number.isFinite(numId)) {
+      return null
+    }
+    const doctors = await supabaseGet(TABLE, `id=eq.${numId}`)
     return doctors[0] || null
   } catch (error) {
     console.error('❌ Failed to fetch doctor:', error)

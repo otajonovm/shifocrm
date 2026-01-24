@@ -55,9 +55,7 @@
               @click="userMenuOpen = !userMenuOpen"
               class="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <div class="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white font-semibold text-sm">
-                {{ userInitials }}
-              </div>
+              <UserCircleIcon class="w-6 h-6 text-gray-500" />
               <ChevronDownIcon class="w-4 h-4 text-gray-500 hidden sm:block" />
             </button>
 
