@@ -144,8 +144,6 @@ import {
   ArrowRightOnRectangleIcon,
 } from '@heroicons/vue/24/outline'
 
-const { t } = useI18n()
-
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -156,7 +154,6 @@ const userMenuOpen = ref(false)
 const searchQuery = ref('')
 
 const pageTitle = computed(() => {
-<<<<<<< HEAD
   const titles = {
     '/dashboard': t('dashboard.title'),
     '/patients': t('patients.allPatients'),
@@ -188,43 +185,9 @@ const pageSubtitle = computed(() => {
     '/my-appointments': t('appointments.appointmentsCalendar'),
     '/treatment-plans': t('dashboard.treatmentPlans'),
     '/doctor/profile': t('profile.personalInfo'),
-=======
-  const map = {
-    '/dashboard': 'page.dashboard.title',
-    '/patients': 'page.patients.title',
-    '/doctors': 'page.doctors.title',
-    '/appointments': 'page.appointments.title',
-    '/payments': 'page.payments.title',
-    '/services': 'page.services.title',
-    '/reports': 'page.reports.title',
-    '/settings': 'page.settings.title',
-    '/my-patients': 'page.myPatients.title',
-    '/my-appointments': 'page.myAppointments.title',
-    '/treatment-plans': 'page.treatmentPlans.title',
-    '/doctor/profile': 'page.doctorProfile.title',
   }
-  const key = map[route.path] || 'page.dashboard.title'
-  return t(key)
-})
-
-const pageSubtitle = computed(() => {
-  const map = {
-    '/dashboard': 'page.dashboard.subtitle',
-    '/patients': 'page.patients.subtitle',
-    '/doctors': 'page.doctors.subtitle',
-    '/appointments': 'page.appointments.subtitle',
-    '/payments': 'page.payments.subtitle',
-    '/services': 'page.services.subtitle',
-    '/reports': 'page.reports.subtitle',
-    '/settings': 'page.settings.subtitle',
-    '/my-patients': 'page.myPatients.subtitle',
-    '/my-appointments': 'page.myAppointments.subtitle',
-    '/treatment-plans': 'page.treatmentPlans.subtitle',
-    '/doctor/profile': 'page.doctorProfile.subtitle',
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
-  }
-  const key = map[route.path] || ''
-  return key ? t(key) : ''
+  const key = route.path
+  return subtitles[key] || ''
 })
 
 const userInitials = computed(() => {
