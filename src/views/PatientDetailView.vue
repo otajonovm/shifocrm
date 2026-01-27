@@ -26,29 +26,21 @@
               </div>
               <div class="flex items-center gap-6 mt-2 flex-wrap">
                 <div>
-                  <span class="text-xs text-gray-500">{{ $t('patients.medId') }}</span>
+                  <span class="text-xs text-gray-500">{{ t('patients.medId') }}</span>
                   <p class="text-sm font-semibold text-gray-900">{{ patient.med_id || `#${patient.id}` }}</p>
                 </div>
                 <div>
-<<<<<<< HEAD
-                  <span class="text-xs text-gray-500">{{ $t('common.phone') }}</span>
-=======
                   <span class="text-xs text-gray-500">{{ t('patientDetail.phone') }}</span>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <p class="text-sm font-semibold text-gray-900">{{ patient.phone || '-' }}</p>
                 </div>
                 <div>
-                  <span class="text-xs text-gray-500">{{ $t('patients.balance') }}</span>
+                  <span class="text-xs text-gray-500">{{ t('patients.balance') }}</span>
                   <p class="text-sm font-semibold" :class="balance >= 0 ? 'text-green-600' : 'text-red-600'">
                     {{ formatBalance(balance) }}
                   </p>
                 </div>
                 <div v-if="patient.doctor_name">
-<<<<<<< HEAD
-                  <span class="text-xs text-gray-500">{{ $t('common.doctor') }}</span>
-=======
                   <span class="text-xs text-gray-500">{{ t('patientDetail.doctor') }}</span>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <p class="text-sm font-semibold text-gray-900">{{ patient.doctor_name }}</p>
                 </div>
                 <div v-if="lastVisitStatus">
@@ -70,11 +62,7 @@
           <button
             @click="goBack"
             class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-<<<<<<< HEAD
-            :title="$t('common.back')"
-=======
             :title="t('patientDetail.back')"
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           >
             <ArrowLeftIcon class="w-5 h-5" />
           </button>
@@ -131,20 +119,12 @@
     </div>
 
     <div v-else class="text-center py-12">
-<<<<<<< HEAD
-      <p class="text-gray-500">{{ $t('patients.patientNotFound') }}</p>
-=======
       <p class="text-gray-500">{{ t('patientDetail.notFound') }}</p>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
       <button
         @click="$router.push('/patients')"
         class="mt-4 text-primary-600 hover:text-primary-700 font-medium"
       >
-<<<<<<< HEAD
-        {{ $t('patients.backToPatients') }}
-=======
         {{ t('patientDetail.backToList') }}
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
       </button>
     </div>
 
@@ -227,7 +207,6 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
@@ -248,8 +227,6 @@ import * as visitsApi from '@/api/visitsApi'
 const toast = useToast()
 const { t } = useI18n()
 
-const { t } = useI18n()
-
 const route = useRoute()
 const router = useRouter()
 const patientsStore = usePatientsStore()
@@ -265,14 +242,6 @@ const showPatientStatusModal = ref(false)
 const newPatientStatus = ref('')
 const updatingPatientStatus = ref(false)
 
-<<<<<<< HEAD
-const tabs = computed(() => [
-  { id: 'visits', label: t('patients.visits'), count: null },
-  { id: 'odontogram', label: t('patients.odontogram'), count: null },
-  { id: 'payments', label: t('patients.payments'), count: null },
-  { id: 'documents', label: t('patients.documents'), count: null },
-])
-=======
 const tabs = [
   { id: 'visits', labelKey: 'patientDetail.tabVisits', count: null },
   { id: 'odontogram', labelKey: 'patientDetail.tabOdontogram', count: null },
@@ -280,7 +249,6 @@ const tabs = [
   { id: 'plans', labelKey: 'patientDetail.tabPlans', count: null },
   { id: 'documents', labelKey: 'patientDetail.tabDocuments', count: null },
 ]
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 
 const isAdmin = computed(() => authStore.userRole === 'admin')
 const isDoctor = computed(() => authStore.userRole === 'doctor')

@@ -14,205 +14,158 @@
       </div>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
-      <!-- Mening Bemorlarim -->
-      <div class="bg-white rounded-2xl p-6 shadow-card border border-gray-100 hover:shadow-card-hover transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-gray-500 text-sm font-medium">{{ t('doctorDashboard.myPatients') }}</p>
-            <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.myPatients }}</p>
-            <p class="text-sm text-gray-500 mt-2">
-              <span class="text-green-600">+{{ stats.newThisWeek }}</span> {{ t('doctorDashboard.thisWeek') }}
-            </p>
-          </div>
-          <div class="p-3 bg-blue-100 rounded-xl">
-            <UsersIcon class="w-8 h-8 text-blue-600" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Bugungi Uchrashuvlarim -->
-      <div class="bg-white rounded-2xl p-6 shadow-card border border-gray-100 hover:shadow-card-hover transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-gray-500 text-sm font-medium">{{ t('doctorDashboard.todayAppointments') }}</p>
-            <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.todayAppointments }}</p>
-            <p class="text-sm text-gray-500 mt-2">
-              <span class="text-purple-600">{{ stats.remaining }}</span> {{ t('doctorDashboard.remaining') }}
-            </p>
-          </div>
-          <div class="p-3 bg-purple-100 rounded-xl">
-            <CalendarDaysIcon class="w-8 h-8 text-purple-600" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Yakunlangan Ko'riklar -->
-      <div class="bg-white rounded-2xl p-6 shadow-card border border-gray-100 hover:shadow-card-hover transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-gray-500 text-sm font-medium">{{ t('doctorDashboard.completedVisits') }}</p>
-            <p class="text-3xl font-bold text-gray-900 mt-1">{{ stats.completed }}</p>
-            <p class="text-sm text-gray-500 mt-2">
-              {{ t('doctorDashboard.thisMonth') }}: <span class="text-green-600">{{ stats.completedThisMonth }}</span>
-            </p>
-          </div>
-          <div class="p-3 bg-green-100 rounded-xl">
-            <CheckCircleIcon class="w-8 h-8 text-green-600" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Today's Plans -->
-    <div class="bg-white rounded-2xl shadow-card border border-gray-100">
-      <div class="p-6 border-b border-gray-100">
-        <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.todayPlansTitle') }}</h2>
-        <p class="text-sm text-gray-500">{{ t('doctorDashboard.todayPlansSubtitle') }}</p>
-      </div>
-      <div class="p-6 space-y-4">
-        <div v-if="todayPlans.length === 0" class="text-sm text-gray-500">
-          {{ t('doctorDashboard.noPlans') }}
-        </div>
-        <div
-          v-for="plan in todayPlans"
-          :key="plan.id"
-          class="flex items-center justify-between gap-4 rounded-xl border border-gray-100 p-4"
-        >
-          <div>
-            <p class="text-sm font-semibold text-gray-900">{{ plan.title }}</p>
-            <p class="text-xs text-gray-500">{{ plan.patientName }}</p>
-            <p class="text-xs text-gray-400">{{ plan.notes || '-' }}</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <button
-              v-if="!plan.visit_id"
-              @click="convertPlanToVisit(plan)"
-              class="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 rounded-lg"
-            >
-              {{ t('doctorDashboard.planToVisit') }}
-            </button>
-            <button
-              v-if="plan.status !== 'done'"
-              @click="markPlanDone(plan)"
-              class="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg"
-            >
-              {{ t('doctorDashboard.planDone') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Revenue Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
-      <div class="bg-white rounded-2xl p-6 shadow-card border border-gray-100 hover:shadow-card-hover transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-gray-500 text-sm font-medium">{{ t('doctorDashboard.dailyRevenue') }}</p>
-            <p class="text-3xl font-bold text-gray-900 mt-1">{{ formatCurrency(revenue.today) }}</p>
-            <p class="text-sm text-gray-500 mt-2">
-              <span :class="revenue.weeklyGrowth >= 0 ? 'text-green-600' : 'text-red-600'">
-                {{ revenue.weeklyGrowth >= 0 ? '+' : '' }}{{ revenue.weeklyGrowth }}%
-              </span>
-              {{ t('doctorDashboard.weeklyChange') }}
-            </p>
-          </div>
-          <div class="p-3 bg-orange-100 rounded-xl">
-            <CurrencyDollarIcon class="w-8 h-8 text-orange-600" />
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-2xl p-6 shadow-card border border-gray-100 hover:shadow-card-hover transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-gray-500 text-sm font-medium">{{ t('doctorDashboard.weeklyRevenue') }}</p>
-            <p class="text-3xl font-bold text-gray-900 mt-1">{{ formatCurrency(revenue.weekly) }}</p>
-            <p class="text-sm text-gray-500 mt-2">
-              <span :class="revenue.weeklyGrowth >= 0 ? 'text-green-600' : 'text-red-600'">
-                {{ revenue.weeklyGrowth >= 0 ? '+' : '' }}{{ revenue.weeklyGrowth }}%
-              </span>
-              {{ t('doctorDashboard.weeklyCompared') }}
-            </p>
-          </div>
-          <div class="p-3 bg-teal-100 rounded-xl">
-            <CurrencyDollarIcon class="w-8 h-8 text-teal-600" />
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-2xl p-6 shadow-card border border-gray-100 hover:shadow-card-hover transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-gray-500 text-sm font-medium">{{ t('doctorDashboard.monthlyRevenue') }}</p>
-            <p class="text-3xl font-bold text-gray-900 mt-1">{{ formatCurrency(revenue.monthly) }}</p>
-            <p class="text-sm text-gray-500 mt-2">
-              <span :class="revenue.monthlyGrowth >= 0 ? 'text-green-600' : 'text-red-600'">
-                {{ revenue.monthlyGrowth >= 0 ? '+' : '' }}{{ revenue.monthlyGrowth }}%
-              </span>
-              {{ t('doctorDashboard.monthlyCompared') }}
-            </p>
-          </div>
-          <div class="p-3 bg-indigo-100 rounded-xl">
-            <CurrencyDollarIcon class="w-8 h-8 text-indigo-600" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Quick Action -->
-    <div>
-      <button
-        @click="startAppointment"
-        class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
-      >
-        <PlayIcon class="w-5 h-5" />
-        {{ t('doctorDashboard.startAppointment') }}
-      </button>
-    </div>
-
-    <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Today's Timeline -->
+    <!-- Next Patient + Quick Actions -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 bg-white rounded-2xl shadow-card border border-gray-100">
         <div class="p-6 border-b border-gray-100">
-        <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.todayScheduleTitle') }}</h2>
-        <p class="text-sm text-gray-500">{{ t('doctorDashboard.todayScheduleSubtitle') }}</p>
+          <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.nextPatientTitle') }}</h2>
+          <p class="text-sm text-gray-500">{{ t('doctorDashboard.nextPatientSubtitle') }}</p>
+        </div>
+        <div class="p-6">
+          <div v-if="nextAppointment" class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-sm text-gray-500">{{ nextAppointment.time }} · {{ nextAppointment.date }}</p>
+              <p class="text-lg font-semibold text-gray-900 mt-1">{{ nextAppointment.patientName }}</p>
+              <p class="text-xs text-gray-400 mt-1">{{ nextAppointment.reason }}</p>
+            </div>
+            <button
+              @click="startAppointment"
+              class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all"
+            >
+              <PlayIcon class="w-5 h-5" />
+              {{ t('doctorDashboard.startAppointment') }}
+            </button>
+          </div>
+          <div v-else class="text-sm text-gray-500">
+            {{ t('doctorDashboard.nextPatientEmpty') }}
+          </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-card border border-gray-100">
+        <div class="p-6 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.quickActionsTitle') }}</h2>
+          <p class="text-sm text-gray-500">{{ t('doctorDashboard.quickActionsSubtitle') }}</p>
+        </div>
+        <div class="p-6 space-y-3">
+          <button
+            @click="startAppointment"
+            class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all"
+          >
+            <PlayIcon class="w-5 h-5" />
+            {{ t('doctorDashboard.startAppointment') }}
+          </button>
+          <button
+            @click="goToAppointments"
+            class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-gray-700 font-medium rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-all"
+          >
+            <CalendarDaysIcon class="w-5 h-5 text-primary-500" />
+            {{ t('doctorDashboard.addAppointment') }}
+          </button>
+          <button
+            @click="goToPlans"
+            class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-gray-700 font-medium rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-all"
+          >
+            <CheckCircleIcon class="w-5 h-5 text-primary-500" />
+            {{ t('doctorDashboard.writePlan') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's Timeline -->
+    <div class="bg-white rounded-2xl shadow-card border border-gray-100">
+      <div class="p-6 border-b border-gray-100">
+      <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.todayScheduleTitle') }}</h2>
+      <p class="text-sm text-gray-500">{{ t('doctorDashboard.todayScheduleSubtitle') }}</p>
+      </div>
+      <div v-if="todaySchedule.length === 0" class="p-6 text-sm text-gray-500">
+        {{ t('doctorDashboard.todayScheduleEmpty') }}
+      </div>
+      <div v-else class="p-6 space-y-4">
+        <div
+          v-for="(appointment, index) in todaySchedule"
+          :key="appointment.id"
+          class="relative flex gap-4"
+        >
+          <!-- Timeline line -->
+          <div class="flex flex-col items-center">
+            <div
+              class="w-3 h-3 rounded-full"
+              :class="getTimelineColor(appointment.status)"
+            />
+            <div
+              v-if="index < todaySchedule.length - 1"
+              class="w-0.5 h-full bg-gray-200 mt-1"
+            />
+          </div>
+          <!-- Content -->
+          <div class="flex-1 pb-4">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-gray-900">{{ appointment.time }}</span>
+              <span
+                class="text-xs px-2 py-0.5 rounded-full"
+                :class="getStatusBadge(appointment.status)"
+              >
+                {{ appointment.statusLabel }}
+              </span>
+            </div>
+            <p class="text-sm text-gray-600 mt-1">{{ appointment.patientName }}</p>
+            <p class="text-xs text-gray-400">{{ appointment.reason }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plans + My Patients -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 bg-white rounded-2xl shadow-card border border-gray-100">
+        <div class="p-6 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.todayPlansTitle') }}</h2>
+          <p class="text-sm text-gray-500">{{ t('doctorDashboard.todayPlansSubtitle') }}</p>
         </div>
         <div class="p-6 space-y-4">
+          <div v-if="todayPlans.length === 0" class="text-sm text-gray-500">
+            {{ t('doctorDashboard.noPlans') }}
+          </div>
           <div
-            v-for="(appointment, index) in todaySchedule"
-            :key="appointment.id"
-            class="relative flex gap-4"
+            v-for="plan in todayPlans"
+            :key="plan.id"
+            class="flex items-center justify-between gap-4 rounded-xl border border-gray-100 p-4"
           >
-            <!-- Timeline line -->
-            <div class="flex flex-col items-center">
-              <div
-                class="w-3 h-3 rounded-full"
-                :class="getTimelineColor(appointment.status)"
-              />
-              <div
-                v-if="index < todaySchedule.length - 1"
-                class="w-0.5 h-full bg-gray-200 mt-1"
-              />
+            <div>
+              <p class="text-sm font-semibold text-gray-900">{{ plan.title }}</p>
+              <p class="text-xs text-gray-500">{{ plan.patientName }}</p>
+              <p class="text-xs text-gray-400">{{ plan.notes || '-' }}</p>
             </div>
-            <!-- Content -->
-            <div class="flex-1 pb-4">
-              <div class="flex items-center justify-between">
-                <span class="text-sm font-medium text-gray-900">{{ appointment.time }}</span>
-                <span
-                  class="text-xs px-2 py-0.5 rounded-full"
-                  :class="getStatusBadge(appointment.status)"
-                >
-                  {{ appointment.statusLabel }}
-                </span>
-              </div>
-              <p class="text-sm text-gray-600 mt-1">{{ appointment.patientName }}</p>
-              <p class="text-xs text-gray-400">{{ appointment.reason }}</p>
+            <div class="flex items-center gap-2">
+              <button
+                v-if="!plan.visit_id"
+                @click="convertPlanToVisit(plan)"
+                class="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 rounded-lg"
+              >
+                {{ t('doctorDashboard.planToVisit') }}
+              </button>
+              <button
+                v-if="plan.status !== 'done'"
+                @click="markPlanDone(plan)"
+                class="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg"
+              >
+                {{ t('doctorDashboard.planDone') }}
+              </button>
             </div>
           </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-card border border-gray-100">
+        <div class="p-6 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.myPatientsTitle') }}</h2>
+          <p class="text-sm text-gray-500">{{ t('doctorDashboard.myPatientsSubtitle') }}</p>
+        </div>
+        <div class="p-6">
+          <p class="text-3xl font-bold text-gray-900">{{ stats.myPatients }}</p>
+          <p class="text-sm text-gray-500 mt-2">
+            <span class="text-green-600">+{{ stats.newThisWeek }}</span> {{ t('doctorDashboard.thisWeek') }}
+          </p>
         </div>
       </div>
     </div>
@@ -222,25 +175,23 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { usePatientsStore } from '@/stores/patients'
 import { useDoctorsStore } from '@/stores/doctors'
 import { getVisitsByDate, getVisitsByDoctorAndDate, getVisitsByDoctorId } from '@/api/visitsApi'
-import { getVisitStatusLabel, getVisitStatusColors, getCompletedStatuses, getActiveVisitStatuses } from '@/constants/visitStatus'
+import { getVisitStatusLabel, getVisitStatusColors, getActiveVisitStatuses } from '@/constants/visitStatus'
 import { getTodayISO, formatDate } from '@/lib/date'
 import {
-  UsersIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
-  CurrencyDollarIcon,
   PlayIcon,
-  EyeIcon,
 } from '@heroicons/vue/24/outline'
-import { getPaymentsByDoctorAndDateRange } from '@/api/paymentsApi'
 import { getPlansByDoctorAndDateRange, updatePlan, updatePlanStatus } from '@/api/treatmentPlansApi'
 import { createVisit } from '@/api/visitsApi'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const patientsStore = usePatientsStore()
 const doctorsStore = useDoctorsStore()
 const { t } = useI18n()
@@ -274,23 +225,12 @@ onUnmounted(() => {
 const stats = ref({
   myPatients: 0,
   newThisWeek: 0,
-  todayAppointments: 0,
-  remaining: 0,
-  completed: 0,
-  completedThisMonth: 0,
-})
-
-const revenue = ref({
-  today: 0,
-  weekly: 0,
-  monthly: 0,
-  weeklyGrowth: 0,
-  monthlyGrowth: 0,
 })
 
 const todaySchedule = ref([])
 const upcomingAppointments = ref([])
 const todayPlans = ref([])
+const nextAppointment = computed(() => upcomingAppointments.value[0] || null)
 
 const toISODate = (value) => {
   if (!value) return null
@@ -356,7 +296,6 @@ const loadDoctorDashboard = async () => {
   const patientMap = new Map(
     patientsStore.items.map(patient => [Number(patient.id), patient])
   )
-  const completedStatuses = getCompletedStatuses()
   const activeStatuses = getActiveVisitStatuses()
 
   const now = new Date()
@@ -368,18 +307,6 @@ const loadDoctorDashboard = async () => {
     newThisWeek: patientsStore.items.filter(patient => {
       const created = new Date(patient.created_at)
       return !Number.isNaN(created.getTime()) && created >= weekAgo
-    }).length,
-    todayAppointments: todayVisits.length,
-    remaining: todayVisits.filter(visit => activeStatuses.includes(visit.status)).length,
-    completed: todayVisits.filter(visit => completedStatuses.includes(visit.status)).length,
-    completedThisMonth: allVisits.filter(visit => {
-      const created = new Date(visit.created_at)
-      return (
-        !Number.isNaN(created.getTime()) &&
-        created.getFullYear() === now.getFullYear() &&
-        created.getMonth() === now.getMonth() &&
-        completedStatuses.includes(visit.status)
-      )
     }).length,
   }
 
@@ -411,6 +338,7 @@ const loadDoctorDashboard = async () => {
     const patient = patientMap.get(Number(visit.patient_id))
     return {
       id: visit.id,
+      patientId: visit.patient_id,
       date: formatDate(visit.date || visit.created_at),
       time: formatTime(visit.created_at),
       patientName: patient?.full_name || `#${visit.patient_id}`,
@@ -420,7 +348,6 @@ const loadDoctorDashboard = async () => {
   })
 
   await loadDoctorPlans(doctorId, today, patientMap)
-  await loadDoctorRevenue(doctorId)
 }
 
 onMounted(() => {
@@ -493,103 +420,19 @@ const markPlanDone = async (plan) => {
   }
 }
 
-const loadDoctorRevenue = async (doctorId) => {
-  if (!doctorId) {
-    revenue.value = {
-      today: 0,
-      weekly: 0,
-      monthly: 0,
-      weeklyGrowth: 0,
-      monthlyGrowth: 0,
-    }
+const startAppointment = () => {
+  if (nextAppointment.value?.patientId) {
+    router.push(`/patients/${nextAppointment.value.patientId}`)
     return
   }
-
-  const now = new Date()
-  const weekStart = startOfWeek(now)
-  const weekEnd = addDays(weekStart, 6)
-  const prevWeekStart = addDays(weekStart, -7)
-  const prevWeekEnd = addDays(weekEnd, -7)
-
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
-
-  const todayRange = getLocalDayRange(new Date())
-  const weekRange = getLocalRangeForDates(weekStart, weekEnd)
-  const prevWeekRange = getLocalRangeForDates(prevWeekStart, prevWeekEnd)
-  const monthRange = getLocalRangeForDates(monthStart, monthEnd)
-  const prevMonthRange = getLocalRangeForDates(prevMonthStart, prevMonthEnd)
-
-  const [todayPayments, weekPayments, monthPayments, prevWeekPayments, prevMonthPayments] = await Promise.all([
-    getPaymentsByDoctorAndDateRange(doctorId, todayRange.startISO, todayRange.endISO),
-    getPaymentsByDoctorAndDateRange(doctorId, weekRange.startISO, weekRange.endISO),
-    getPaymentsByDoctorAndDateRange(doctorId, monthRange.startISO, monthRange.endISO),
-    getPaymentsByDoctorAndDateRange(doctorId, prevWeekRange.startISO, prevWeekRange.endISO),
-    getPaymentsByDoctorAndDateRange(doctorId, prevMonthRange.startISO, prevMonthRange.endISO),
-  ])
-
-  const todayRevenue = getNetIncomeFromPayments(todayPayments)
-  const weeklyRevenue = getNetIncomeFromPayments(weekPayments)
-  const monthlyRevenue = getNetIncomeFromPayments(monthPayments)
-  const prevWeekRevenue = getNetIncomeFromPayments(prevWeekPayments)
-  const prevMonthRevenue = getNetIncomeFromPayments(prevMonthPayments)
-
-  revenue.value = {
-    today: todayRevenue,
-    weekly: weeklyRevenue,
-    monthly: monthlyRevenue,
-    weeklyGrowth: calculateGrowth(weeklyRevenue, prevWeekRevenue),
-    monthlyGrowth: calculateGrowth(monthlyRevenue, prevMonthRevenue),
-  }
+  router.push('/my-appointments')
 }
 
-const getNetIncomeFromPayments = (payments) => {
-  return payments.reduce((sum, entry) => {
-    const amount = Number(entry.amount) || 0
-    return sum + (entry.payment_type === 'refund' ? -amount : amount)
-  }, 0)
+const goToAppointments = () => {
+  router.push('/my-appointments')
 }
 
-const calculateGrowth = (current, previous) => {
-  if (!previous || previous === 0) return current > 0 ? 100 : 0
-  return Math.round(((current - previous) / previous) * 100)
-}
-
-const getLocalDayRange = (date) => {
-  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999)
-  return { startISO: start.toISOString(), endISO: end.toISOString() }
-}
-
-const getLocalRangeForDates = (startDate, endDate) => {
-  const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
-  const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999)
-  return { startISO: start.toISOString(), endISO: end.toISOString() }
-}
-
-const startOfWeek = (date) => {
-  const day = date.getDay()
-  const diff = date.getDate() - (day === 0 ? 6 : day - 1)
-  return new Date(date.getFullYear(), date.getMonth(), diff)
-}
-
-const addDays = (date, days) => {
-  const next = new Date(date)
-  next.setDate(next.getDate() + days)
-  return next
-}
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('uz-UZ', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount || 0)
-}
-
-const startAppointment = () => {
-  // Navigate to appointment or open modal
-  console.log('Starting appointment...')
+const goToPlans = () => {
+  router.push('/treatment-plans')
 }
 </script>

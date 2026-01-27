@@ -55,6 +55,9 @@ export const useDoctorsStore = defineStore('doctors', () => {
   const getById = async (id) => {
     error.value = null
     try {
+      if (!id) {
+        return null
+      }
       return await doctorsApi.getDoctorById(id)
     } catch (err) {
       error.value = err.message || 'Failed to get doctor'

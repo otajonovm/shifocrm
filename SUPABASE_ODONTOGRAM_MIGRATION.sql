@@ -1,7 +1,3 @@
--- Odontograms Table Migration for Supabase
--- Odontogramma (tish xaritasi) snapshot'lari uchun jadval
-
--- 1. Odontograms jadvalini yaratish
 CREATE TABLE IF NOT EXISTS odontograms (
   id INTEGER PRIMARY KEY,
   patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
@@ -10,10 +6,9 @@ CREATE TABLE IF NOT EXISTS odontograms (
   data JSONB NOT NULL DEFAULT '{"teeth": {}}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(visit_id) -- Har bir visit uchun faqat bitta odontogramma
+  UNIQUE(visit_id) 
 );
 
--- 2. Indexlar yaratish
 CREATE INDEX IF NOT EXISTS idx_odontograms_patient_id ON odontograms(patient_id);
 CREATE INDEX IF NOT EXISTS idx_odontograms_visit_id ON odontograms(visit_id);
 CREATE INDEX IF NOT EXISTS idx_odontograms_doctor_id ON odontograms(doctor_id);

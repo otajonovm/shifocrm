@@ -1,141 +1,71 @@
 <template>
   <div class="space-y-6 animate-fade-in">
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-      <!-- Jami Bemorlar -->
-      <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-blue-100 text-sm font-medium">{{ t('adminDashboard.totalPatients') }}</p>
-            <p class="text-3xl font-bold mt-1">{{ stats.totalPatients }}</p>
-            <p class="text-blue-100 text-sm mt-2">
-              <span class="text-green-300">+{{ stats.newPatientsToday }}</span> {{ t('adminDashboard.today') }}
-            </p>
-          </div>
-          <div class="p-3 bg-white/20 rounded-xl">
-            <UsersIcon class="w-8 h-8" />
-          </div>
-        </div>
-        <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
-      </div>
-
-      <!-- Jami Doktorlar -->
-      <div class="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-emerald-100 text-sm font-medium">{{ t('adminDashboard.totalDoctors') }}</p>
-            <p class="text-3xl font-bold mt-1">{{ stats.totalDoctors }}</p>
-            <p class="text-emerald-100 text-sm mt-2">
-              <span class="text-green-300">{{ stats.activeDoctors }}</span> {{ t('adminDashboard.active') }}
-            </p>
-          </div>
-          <div class="p-3 bg-white/20 rounded-xl">
-            <UserGroupIcon class="w-8 h-8" />
-          </div>
-        </div>
-        <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
-      </div>
-
-      <!-- Bugungi Uchrashuvlar -->
-      <div class="relative overflow-hidden bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-purple-100 text-sm font-medium">{{ t('adminDashboard.todayAppointments') }}</p>
-            <p class="text-3xl font-bold mt-1">{{ stats.todayAppointments }}</p>
-            <p class="text-purple-100 text-sm mt-2">
-              <span class="text-green-300">{{ stats.completedToday }}</span> {{ t('adminDashboard.completed') }}
-            </p>
-          </div>
-          <div class="p-3 bg-white/20 rounded-xl">
-            <CalendarDaysIcon class="w-8 h-8" />
-          </div>
-        </div>
-        <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
-      </div>
-
-      <!-- Kunlik Daromad -->
-      <div class="relative overflow-hidden bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-orange-100 text-sm font-medium">{{ t('adminDashboard.dailyRevenue') }}</p>
-            <p class="text-3xl font-bold mt-1">{{ formatCurrency(stats.dailyRevenue) }}</p>
-            <p class="text-orange-100 text-sm mt-2">
-              <span :class="stats.weeklyGrowth >= 0 ? 'text-green-300' : 'text-red-200'">
-                {{ stats.weeklyGrowth >= 0 ? '+' : '' }}{{ stats.weeklyGrowth }}%
-              </span>
-              {{ t('adminDashboard.weeklyChange') }}
-            </p>
-          </div>
-          <div class="p-3 bg-white/20 rounded-xl">
-            <CurrencyDollarIcon class="w-8 h-8" />
-          </div>
-        </div>
-        <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
-      </div>
-
-      <!-- Haftalik Daromad -->
-      <div class="relative overflow-hidden bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-teal-100 text-sm font-medium">{{ t('adminDashboard.weeklyRevenue') }}</p>
-            <p class="text-3xl font-bold mt-1">{{ formatCurrency(stats.weeklyRevenue) }}</p>
-            <p class="text-teal-100 text-sm mt-2">
-              <span :class="stats.weeklyGrowth >= 0 ? 'text-green-300' : 'text-red-200'">
-                {{ stats.weeklyGrowth >= 0 ? '+' : '' }}{{ stats.weeklyGrowth }}%
-              </span>
-              {{ t('adminDashboard.weeklyCompared') }}
-            </p>
-          </div>
-          <div class="p-3 bg-white/20 rounded-xl">
-            <CurrencyDollarIcon class="w-8 h-8" />
-          </div>
-        </div>
-        <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
-      </div>
-
-      <!-- Oylik Daromad -->
-      <div class="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-indigo-100 text-sm font-medium">{{ t('adminDashboard.monthlyRevenue') }}</p>
-            <p class="text-3xl font-bold mt-1">{{ formatCurrency(stats.monthlyRevenue) }}</p>
-            <p class="text-indigo-100 text-sm mt-2">
-              <span :class="stats.monthlyGrowth >= 0 ? 'text-green-300' : 'text-red-200'">
-                {{ stats.monthlyGrowth >= 0 ? '+' : '' }}{{ stats.monthlyGrowth }}%
-              </span>
-              {{ t('adminDashboard.monthlyCompared') }}
-            </p>
-          </div>
-          <div class="p-3 bg-white/20 rounded-xl">
-            <CurrencyDollarIcon class="w-8 h-8" />
-          </div>
-        </div>
-        <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
-      </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="flex flex-wrap gap-3">
-      <button
-        @click="showNewPatientModal = true"
-        class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
-      >
-        <PlusIcon class="w-5 h-5" />
-        {{ t('adminDashboard.newPatient') }}
-      </button>
-      <button
-        @click="showNewAppointmentModal = true"
-        class="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 font-medium rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 hover:scale-[1.02] transition-all"
-      >
-        <CalendarDaysIcon class="w-5 h-5 text-primary-500" />
-        {{ t('adminDashboard.scheduleAppointment') }}
-      </button>
-    </div>
-
-    <!-- Main Content Grid -->
+    <!-- Revenue + Debt -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Today's Appointments Table -->
       <div class="lg:col-span-2 bg-white rounded-2xl shadow-card border border-gray-100">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-6 border-b border-gray-100">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">{{ t('adminDashboard.revenueTitle') }}</h2>
+            <p class="text-sm text-gray-500">{{ t('adminDashboard.revenueSubtitle') }}</p>
+          </div>
+          <div class="inline-flex items-center rounded-lg bg-gray-100 p-1">
+            <button
+              v-for="range in revenueRanges"
+              :key="range.id"
+              @click="selectedRevenueRange = range.id"
+              class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
+              :class="selectedRevenueRange === range.id
+                ? 'bg-white text-primary-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'"
+            >
+              {{ range.label }}
+            </button>
+          </div>
+        </div>
+        <div class="p-6">
+          <p class="text-3xl font-bold text-gray-900">{{ formatCurrency(revenueDisplay.amount) }}</p>
+          <p class="mt-2 text-sm text-gray-500">
+            <span
+              v-if="revenueDisplay.growth !== null"
+              :class="revenueDisplay.growth >= 0 ? 'text-green-600' : 'text-red-600'"
+            >
+              {{ revenueDisplay.growth >= 0 ? '+' : '' }}{{ revenueDisplay.growth }}%
+            </span>
+            <span class="ml-1">{{ revenueDisplay.growthLabel }}</span>
+          </p>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-card border border-gray-100">
+        <div class="p-6 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">{{ t('adminDashboard.debtTitle') }}</h2>
+          <p class="text-sm text-gray-500">{{ t('adminDashboard.debtSubtitle') }}</p>
+        </div>
+        <div class="p-6">
+          <p class="text-3xl font-bold text-gray-900">{{ formatCurrency(debtSummary.total) }}</p>
+          <div v-if="debtSummary.topDebtors.length" class="mt-4 space-y-3">
+            <div
+              v-for="debtor in debtSummary.topDebtors"
+              :key="debtor.id"
+              class="flex items-center justify-between text-sm"
+            >
+              <router-link
+                :to="`/patients/${debtor.id}`"
+                class="text-gray-700 hover:text-primary-600 font-medium"
+              >
+                {{ debtor.name }}
+              </router-link>
+              <span class="font-semibold text-gray-900">{{ formatCurrency(debtor.amount) }}</span>
+            </div>
+          </div>
+          <div v-else class="mt-4 text-sm text-gray-500">
+            {{ t('adminDashboard.debtEmpty') }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's Appointments Table -->
+    <div class="bg-white rounded-2xl shadow-card border border-gray-100">
         <div class="flex items-center justify-between p-6 border-b border-gray-100">
           <div>
           <h2 class="text-lg font-semibold text-gray-900">{{ t('adminDashboard.todayAppointmentsTitle') }}</h2>
@@ -148,7 +78,7 @@
             {{ t('adminDashboard.viewAll') }}
           </router-link>
         </div>
-        <div class="overflow-x-auto">
+        <div v-if="hasTodayAppointments" class="overflow-x-auto">
           <table class="w-full">
             <thead class="bg-gray-50">
               <tr>
@@ -196,59 +126,53 @@
             </tbody>
           </table>
         </div>
-        <div v-if="todayAppointments.length === 0" class="p-12 text-center">
+        <div v-else class="p-12 text-center">
           <CalendarDaysIcon class="w-12 h-12 text-gray-300 mx-auto" />
           <p class="mt-4 text-gray-500">{{ t('adminDashboard.noTodayAppointments') }}</p>
         </div>
-      </div>
+    </div>
 
-      <!-- Recent Activity -->
-      <div class="bg-white rounded-2xl shadow-card border border-gray-100">
-        <div class="p-6 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-gray-900">{{ t('adminDashboard.recentActivityTitle') }}</h2>
-          <p class="text-sm text-gray-500">{{ t('adminDashboard.recentActivitySubtitle') }}</p>
-        </div>
-        <div class="p-6 space-y-4">
-          <div
-            v-for="activity in recentActivities"
-            :key="activity.id"
-            class="flex items-start gap-3"
-          >
-            <div
-              class="p-2 rounded-lg"
-              :class="activity.iconBg"
-            >
-              <component :is="activity.icon" class="w-4 h-4" :class="activity.iconColor" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm text-gray-900">{{ activity.title }}</p>
-              <p class="text-xs text-gray-500">{{ activity.time }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- Quick Actions -->
+    <div class="flex flex-wrap gap-3">
+      <button
+        @click="showNewPatientModal = true"
+        class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
+      >
+        <PlusIcon class="w-5 h-5" />
+        {{ t('adminDashboard.newPatient') }}
+      </button>
+      <button
+        @click="showNewAppointmentModal = true"
+        class="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 font-medium rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 hover:scale-[1.02] transition-all"
+      >
+        <CalendarDaysIcon class="w-5 h-5 text-primary-500" />
+        {{ t('adminDashboard.scheduleAppointment') }}
+      </button>
+      <router-link
+        to="/payments"
+        class="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 font-medium rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 hover:scale-[1.02] transition-all"
+      >
+        <CurrencyDollarIcon class="w-5 h-5 text-primary-500" />
+        {{ t('adminDashboard.recordPayment') }}
+      </router-link>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePatientsStore } from '@/stores/patients'
 import { useDoctorsStore } from '@/stores/doctors'
-import { getVisitsByDate } from '@/api/visitsApi'
+import { getVisitsByDate, getDebtVisits } from '@/api/visitsApi'
 import { getPaymentsByDateRange } from '@/api/paymentsApi'
 import { getVisitStatusLabel, getVisitStatusColors, getCompletedStatuses } from '@/constants/visitStatus'
-import { getTodayISO, formatDateTime } from '@/lib/date'
+import { getTodayISO } from '@/lib/date'
 import {
-  UsersIcon,
-  UserGroupIcon,
   CalendarDaysIcon,
   CurrencyDollarIcon,
   PlusIcon,
   EyeIcon,
-  UserPlusIcon,
-  CheckCircleIcon,
 } from '@heroicons/vue/24/outline'
 
 const showNewPatientModal = ref(false)
@@ -259,10 +183,6 @@ const patientsStore = usePatientsStore()
 const doctorsStore = useDoctorsStore()
 
 const stats = ref({
-  totalPatients: 0,
-  newPatientsToday: 0,
-  totalDoctors: 0,
-  activeDoctors: 0,
   todayAppointments: 0,
   completedToday: 0,
   dailyRevenue: 0,
@@ -273,14 +193,43 @@ const stats = ref({
 })
 
 const todayAppointments = ref([])
-const recentActivities = ref([])
+const debtSummary = ref({
+  total: 0,
+  topDebtors: [],
+})
 
-const toISODate = (value) => {
-  if (!value) return null
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return date.toISOString().split('T')[0]
-}
+const selectedRevenueRange = ref('day')
+const revenueRanges = computed(() => ([
+  { id: 'day', label: t('adminDashboard.dailyRevenue') },
+  { id: 'week', label: t('adminDashboard.weeklyRevenue') },
+  { id: 'month', label: t('adminDashboard.monthlyRevenue') },
+]))
+
+const revenueDisplay = computed(() => {
+  if (selectedRevenueRange.value === 'week') {
+    return {
+      amount: stats.value.weeklyRevenue,
+      growth: stats.value.weeklyGrowth,
+      growthLabel: t('adminDashboard.weeklyCompared'),
+    }
+  }
+
+  if (selectedRevenueRange.value === 'month') {
+    return {
+      amount: stats.value.monthlyRevenue,
+      growth: stats.value.monthlyGrowth,
+      growthLabel: t('adminDashboard.monthlyCompared'),
+    }
+  }
+
+  return {
+    amount: stats.value.dailyRevenue,
+    growth: null,
+    growthLabel: t('adminDashboard.today'),
+  }
+})
+
+const hasTodayAppointments = computed(() => todayAppointments.value.length > 0)
 
 const formatTime = (value) => {
   if (!value) return '--:--'
@@ -297,40 +246,6 @@ const getInitials = (name) => {
     .slice(0, 2)
     .map(part => part[0].toUpperCase())
     .join('')
-}
-
-const buildRecentActivities = (visits) => {
-  const activities = visits.slice(0, 3).map((visit) => {
-    const hasPayment = (visit.paid_amount || 0) > 0
-    const isCompleted = getCompletedStatuses().includes(visit.status)
-    let title = t('adminDashboard.activityNewVisit')
-    let icon = UserPlusIcon
-    let iconBg = 'bg-blue-100'
-    let iconColor = 'text-blue-600'
-
-    if (hasPayment) {
-      title = t('adminDashboard.activityPaymentReceived')
-      icon = CurrencyDollarIcon
-      iconBg = 'bg-orange-100'
-      iconColor = 'text-orange-600'
-    } else if (isCompleted) {
-      title = t('adminDashboard.activityVisitCompleted')
-      icon = CheckCircleIcon
-      iconBg = 'bg-green-100'
-      iconColor = 'text-green-600'
-    }
-
-    return {
-      id: visit.id,
-      title,
-      time: formatDateTime(visit.created_at || visit.date),
-      icon,
-      iconBg,
-      iconColor,
-    }
-  })
-
-  recentActivities.value = activities
 }
 
 const loadDashboard = async () => {
@@ -426,10 +341,6 @@ const loadDashboard = async () => {
   monthlyGrowth = calculateGrowth(monthlyRevenue, prevMonthRevenue)
 
   stats.value = {
-    totalPatients: patientsStore.items.length,
-    newPatientsToday: patientsStore.items.filter(patient => toISODate(patient.created_at) === today).length,
-    totalDoctors: doctorsStore.items.length,
-    activeDoctors: doctorsStore.items.filter(doctor => doctor.is_active !== false).length,
     todayAppointments: visits.length,
     completedToday: completedVisits.length,
     dailyRevenue,
@@ -454,7 +365,45 @@ const loadDashboard = async () => {
     }
   })
 
-  buildRecentActivities(visits)
+  let debtVisits = []
+  try {
+    debtVisits = await getDebtVisits()
+  } catch {
+    debtVisits = []
+  }
+
+  const debtByPatient = new Map()
+  let totalDebt = 0
+
+  debtVisits.forEach((visit) => {
+    const rawDebt = visit.debt_amount !== null && visit.debt_amount !== undefined
+      ? Number(visit.debt_amount)
+      : Number(visit.price || 0) - Number(visit.paid_amount || 0)
+    const debt = Number.isNaN(rawDebt) ? 0 : rawDebt
+    if (debt <= 0) return
+
+    totalDebt += debt
+    const patientId = Number(visit.patient_id)
+    const prev = debtByPatient.get(patientId) || 0
+    debtByPatient.set(patientId, prev + debt)
+  })
+
+  const topDebtors = Array.from(debtByPatient.entries())
+    .map(([patientId, amount]) => {
+      const patient = patientMap.get(Number(patientId))
+      return {
+        id: patientId,
+        name: patient?.full_name || `#${patientId}`,
+        amount,
+      }
+    })
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 3)
+
+  debtSummary.value = {
+    total: totalDebt,
+    topDebtors,
+  }
 }
 
 onMounted(() => {

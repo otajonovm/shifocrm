@@ -5,17 +5,10 @@
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">
-<<<<<<< HEAD
-            {{ isAdmin ? $t('patients.allPatients') : $t('patients.myPatients') }}
-          </h1>
-          <p class="text-sm text-gray-500 mt-1">
-            {{ isAdmin ? $t('patients.patientList') : $t('patients.myPatientList') }}
-=======
             {{ isAdmin ? t('patients.allPatients') : t('patients.myPatients') }}
           </h1>
           <p class="text-sm text-gray-500 mt-1">
             {{ isAdmin ? t('patients.allPatientsSubtitle') : t('patients.myPatientsSubtitle') }}
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </p>
         </div>
         <div class="flex items-center gap-3">
@@ -26,11 +19,7 @@
 
 
             <ArrowDownTrayIcon class="w-5 h-5" />
-<<<<<<< HEAD
-            {{ $t('common.export') }}
-=======
             {{ t('patients.export') }}
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </button>
           <button
             v-if="isAdmin"
@@ -38,11 +27,7 @@
             class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
           >
             <PlusIcon class="w-5 h-5" />
-<<<<<<< HEAD
-            {{ $t('patients.addPatient') }}
-=======
             {{ t('patients.newPatient') }}
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </button>
         </div>
       </div>
@@ -54,11 +39,7 @@
             <input
               type="text"
               v-model="searchQuery"
-<<<<<<< HEAD
-              :placeholder="$t('patients.searchPlaceholder')"
-=======
               :placeholder="t('patients.searchPlaceholder')"
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
@@ -67,11 +48,7 @@
             v-model="selectedDoctor"
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
-<<<<<<< HEAD
-            <option value="">{{ $t('patients.allDoctors') }}</option>
-=======
             <option value="">{{ t('patients.allDoctors') }}</option>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
             <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
               {{ doctor.full_name }}
             </option>
@@ -80,16 +57,10 @@
             v-model="selectedStatus"
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
-<<<<<<< HEAD
-            <option value="">{{ $t('patients.allStatuses') }}</option>
-            <option value="active">{{ $t('common.active') }}</option>
-            <option value="inactive">{{ $t('common.inactive') }}</option>
-=======
             <option value="">{{ t('patients.allStatuses') }}</option>
             <option v-for="status in statusOptions" :key="status.value" :value="status.value">
               {{ status.label }}
             </option>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </select>
         </div>
       </div>
@@ -177,11 +148,7 @@
                     <button
                       @click.stop="openEditModal(patient)"
                       class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-<<<<<<< HEAD
-                      :title="$t('common.edit')"
-=======
                       :title="t('patients.edit')"
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                     >
                       <PencilIcon class="w-4 h-4" />
                     </button>
@@ -189,11 +156,7 @@
                       v-if="isAdmin"
                       @click.stop="confirmDelete(patient)"
                       class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-<<<<<<< HEAD
-                      :title="$t('common.delete')"
-=======
                       :title="t('patients.delete')"
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                     >
                       <TrashIcon class="w-4 h-4" />
                     </button>
@@ -247,22 +210,14 @@
             class="mt-4 inline-flex items-center gap-2 px-4 py-2 text-primary-600 hover:text-primary-700 font-medium"
           >
             <PlusIcon class="w-5 h-5" />
-<<<<<<< HEAD
-            {{ $t('patients.addNewPatient') }}
-=======
             {{ t('patients.addNewPatient') }}
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </button>
         </div>
 
         <!-- Pagination -->
         <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100">
           <p class="text-sm text-gray-500">
-<<<<<<< HEAD
-            {{ $t('patients.total') }}: <span class="font-medium">{{ filteredPatients.length }}</span> {{ $t('patients.patients') }}
-=======
             {{ t('patients.total') }}: <span class="font-medium">{{ filteredPatients.length }}</span> {{ t('patients.patientsCount') }}
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
           </p>
         </div>
       </div>
@@ -288,17 +243,10 @@
             <div class="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white">
               <div>
                 <h2 class="text-xl font-semibold text-gray-900">
-<<<<<<< HEAD
-                  {{ isEditing ? $t('patients.editPatient') : $t('patients.addPatient') }}
-                </h2>
-                <p class="text-sm text-gray-500">
-                  {{ isEditing ? $t('patients.enterPatientData') : 'Bemor yaratilganda avtomatik birinchi tashrif yaratiladi' }}
-=======
                   {{ isEditing ? t('patients.editPatient') : t('patients.newPatient') }}
                 </h2>
                 <p class="text-sm text-gray-500">
                   {{ isEditing ? t('patients.editSubtitle') : t('patients.createSubtitle') }}
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                 </p>
               </div>
               <button
@@ -313,41 +261,25 @@
             <div class="p-6 space-y-4">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-<<<<<<< HEAD
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.fullName') }} *</label>
-=======
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.fullName') }} *</label>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <input
                     type="text"
                     v-model="patientForm.full_name"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-<<<<<<< HEAD
-                    :placeholder="$t('patients.fullNamePlaceholder')"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('common.phone') }} *</label>
-=======
                     :placeholder="t('patients.fullNamePlaceholder')"
                   />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.phone') }} *</label>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <input
                     type="tel"
                     v-model="patientForm.phone"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    :placeholder="$t('patients.phonePlaceholder')"
+                    :placeholder="t('patients.phonePlaceholder')"
                   />
                 </div>
                 <div>
-<<<<<<< HEAD
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.birthDate') }}</label>
-=======
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.birthDate') }}</label>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <input
                     type="date"
                     v-model="patientForm.birth_date"
@@ -355,24 +287,11 @@
                   />
                 </div>
                 <div>
-<<<<<<< HEAD
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.gender') }}</label>
-=======
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.gender') }}</label>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <select
                     v-model="patientForm.gender"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
-<<<<<<< HEAD
-                    <option value="">{{ $t('patients.selectGender') }}</option>
-                    <option value="male">{{ $t('patients.male') }}</option>
-                    <option value="female">{{ $t('patients.female') }}</option>
-                  </select>
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.address') }}</label>
-=======
                     <option value="">{{ t('patients.select') }}</option>
                     <option value="male">{{ t('patients.genderMale') }}</option>
                     <option value="female">{{ t('patients.genderFemale') }}</option>
@@ -380,38 +299,24 @@
                 </div>
                 <div class="sm:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.address') }}</label>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <input
                     type="text"
                     v-model="patientForm.address"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-<<<<<<< HEAD
-                    :placeholder="$t('patients.addressPlaceholder')"
-=======
                     :placeholder="t('patients.addressPlaceholder')"
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
-<<<<<<< HEAD
-                    {{ $t('patients.assignedDoctor') }}
-                    <span class="text-xs text-gray-400 font-normal">(ixtiyoriy)</span>
-=======
                     {{ t('patients.assignedDoctor') }}
                     <span class="text-xs text-gray-400 font-normal">({{ t('patients.optional') }})</span>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   </label>
                   <select
                     v-model="patientForm.doctor_id"
                     @change="updateDoctorName"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
-<<<<<<< HEAD
-                    <option value="">{{ $t('patients.selectDoctor') }}</option>
-=======
                     <option value="">{{ t('patients.unassignedDoctor') }}</option>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                     <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
                       {{ doctor.full_name }}
                       <span v-if="doctor.specialization"> - {{ doctor.specialization }}</span>
@@ -423,55 +328,31 @@
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
-<<<<<<< HEAD
-                    {{ $t('common.status') }}
-                    <span class="text-xs text-gray-400 font-normal">(default: {{ $t('common.active') }})</span>
-=======
                     {{ t('patients.status') }}
                     <span class="text-xs text-gray-400 font-normal">({{ t('patients.defaultActive') }})</span>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   </label>
                   <div class="flex items-center gap-3">
                     <select
                       v-model="patientForm.status"
                       class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     >
-<<<<<<< HEAD
-                      <option value="active">{{ $t('common.active') }}</option>
-                      <option value="inactive">{{ $t('common.inactive') }}</option>
-                      <option value="archived">Arxivlangan</option>
-                      <option value="deceased">Vafot etgan</option>
-=======
                       <option v-for="status in statusOptions" :key="status.value" :value="status.value">
                         {{ status.label }}
                       </option>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                     </select>
                     <PatientStatusBadge :status="patientForm.status || 'active'" :show-tooltip="false" />
                   </div>
                   <p class="mt-1 text-xs text-gray-500">
-<<<<<<< HEAD
-                    Yangi bemor default "{{ $t('common.active') }}" statusida yaratiladi va avtomatik birinchi tashrif yaratiladi
-                  </p>
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ $t('patients.notes') }}</label>
-=======
                     {{ t('patients.defaultActiveNote') }}
                   </p>
                 </div>
                 <div class="sm:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.notes') }}</label>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   <textarea
                     v-model="patientForm.notes"
                     rows="3"
                     class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-<<<<<<< HEAD
-                    :placeholder="$t('patients.notesPlaceholder')"
-=======
                     :placeholder="t('patients.notesPlaceholder')"
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
                   ></textarea>
                 </div>
               </div>
@@ -483,22 +364,14 @@
                 @click="closeModal"
                 class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-<<<<<<< HEAD
-                {{ $t('common.cancel') }}
-=======
                 {{ t('patients.cancel') }}
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
               </button>
               <button
                 @click="savePatient"
                 :disabled="patientsStore.loading"
                 class="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50"
               >
-<<<<<<< HEAD
-                {{ patientsStore.loading ? $t('common.saving') : $t('common.save') }}
-=======
                 {{ patientsStore.loading ? t('patients.saving') : t('patients.save') }}
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
               </button>
             </div>
           </div>
@@ -537,11 +410,7 @@
               <div class="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
                 <ExclamationTriangleIcon class="w-8 h-8 text-red-600" />
               </div>
-<<<<<<< HEAD
-              <h3 class="mt-4 text-lg font-semibold text-gray-900">{{ $t('patients.deleteConfirm') }}</h3>
-=======
               <h3 class="mt-4 text-lg font-semibold text-gray-900">{{ t('patients.deleteTitle') }}</h3>
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
               <p class="mt-2 text-sm text-gray-500">
                 <span class="font-medium text-gray-700">{{ deletingPatient?.full_name }}</span>
                 {{ t('patients.deleteQuestion') }}

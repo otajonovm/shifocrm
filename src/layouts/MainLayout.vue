@@ -37,7 +37,7 @@
               <input
                 type="text"
                 v-model="searchQuery"
-                :placeholder="$t('common.search')"
+                :placeholder="t('common.search')"
                 class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
@@ -55,9 +55,7 @@
               @click="userMenuOpen = !userMenuOpen"
               class="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <div class="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white font-semibold text-sm">
-                {{ userInitials }}
-              </div>
+              <UserCircleIcon class="w-6 h-6 text-gray-500" />
               <ChevronDownIcon class="w-4 h-4 text-gray-500 hidden sm:block" />
             </button>
 
@@ -161,6 +159,7 @@ const pageTitle = computed(() => {
     '/appointments': t('appointments.title'),
     '/payments': t('payments.title'),
     '/services': t('services.title'),
+    '/inventory': t('inventory.title'),
     '/reports': t('reports.title'),
     '/settings': t('settings.title'),
     '/my-patients': t('patients.myPatients'),
@@ -179,6 +178,7 @@ const pageSubtitle = computed(() => {
     '/appointments': t('appointments.appointmentsCalendar'),
     '/payments': t('payments.financialReports'),
     '/services': t('services.servicePrices'),
+    '/inventory': t('inventory.title'),
     '/reports': t('reports.statistics'),
     '/settings': t('settings.systemSettings'),
     '/my-patients': t('patients.myPatientList'),
@@ -186,8 +186,7 @@ const pageSubtitle = computed(() => {
     '/treatment-plans': t('dashboard.treatmentPlans'),
     '/doctor/profile': t('profile.personalInfo'),
   }
-  const key = route.path
-  return subtitles[key] || ''
+  return subtitles[route.path] || ''
 })
 
 const userInitials = computed(() => {

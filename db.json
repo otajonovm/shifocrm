@@ -1,7 +1,8 @@
 {
   "admin": {
     "login": "admin",
-    "password": "admin123"
+    "password": "admin123",
+    "role": "admin"
   },
   "doctors": [
     {

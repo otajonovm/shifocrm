@@ -67,6 +67,7 @@ const profile = ref({
   email: '',
   specialization: '',
   is_active: true,
+  work_schedule: null,
 })
 
 const existingDoctor = ref(null)
@@ -85,10 +86,24 @@ onMounted(async () => {
   await loadProfile()
 })
 
+const resolveDoctorId = async () => {
+  if (authStore.user?.id) return authStore.user.id
+  if (!authStore.userEmail) return null
+  if (doctorsStore.items.length === 0) {
+    await doctorsStore.fetchAll()
+  }
+  const doctor = doctorsStore.items.find(item => item.email === authStore.userEmail)
+  return doctor?.id || null
+}
+
 const loadProfile = async () => {
   isLoading.value = true
   try {
-    const doctor = await doctorsStore.getById(authStore.userId)
+    const doctorId = await resolveDoctorId()
+    if (!doctorId) {
+      throw new Error(t('doctorProfile.errorProfileNotLoaded'))
+    }
+    const doctor = await doctorsStore.getById(doctorId)
     if (!doctor) throw new Error('Doctor profile not found')
     existingDoctor.value = doctor
     profile.value = {
@@ -97,6 +112,7 @@ const loadProfile = async () => {
       email: doctor.email || '',
       specialization: doctor.specialization || '',
       is_active: doctor.is_active ?? true,
+      work_schedule: doctor.work_schedule || null,
     }
   } catch (err) {
     updateError.value = err.message || 'Failed to load profile'
@@ -112,11 +128,16 @@ const handleUpdateProfile = async (profileData) => {
   updateSuccess.value = false
 
   try {
-    const updated = await doctorsStore.update(authStore.userId, {
+    const doctorId = await resolveDoctorId()
+    if (!doctorId) {
+      throw new Error(t('doctorProfile.errorProfileNotLoaded'))
+    }
+    const updated = await doctorsStore.update(doctorId, {
       full_name: profileData.full_name,
       phone: profileData.phone,
       specialization: profileData.specialization,
       is_active: profileData.is_active,
+      work_schedule: profileData.work_schedule,
     })
     existingDoctor.value = updated
     profile.value = {
@@ -160,7 +181,11 @@ const handleChangePassword = async (passwordData) => {
   passwordSuccess.value = false
 
   try {
-    const updated = await doctorsStore.update(authStore.userId, {
+    const doctorId = await resolveDoctorId()
+    if (!doctorId) {
+      throw new Error(t('doctorProfile.errorProfileNotLoaded'))
+    }
+    const updated = await doctorsStore.update(doctorId, {
       password: passwordData.newPassword,
     })
     existingDoctor.value = updated

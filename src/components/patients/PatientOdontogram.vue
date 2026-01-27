@@ -119,6 +119,45 @@
         </span>
       </div>
 
+      <div class="bg-white rounded-xl p-4 border border-gray-100 space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="text-sm font-semibold text-gray-700">{{ t('odontogram.materialTitle') }}</h4>
+          <button
+            v-if="canEdit && isDoctor"
+            class="text-sm text-primary-600 hover:text-primary-700"
+            @click="openConsumptionModal"
+          >
+            {{ t('odontogram.addMaterial') }}
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-100 text-sm">
+            <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <tr>
+                <th class="px-4 py-3">{{ t('odontogram.materialDate') }}</th>
+                <th class="px-4 py-3">{{ t('odontogram.materialItem') }}</th>
+                <th class="px-4 py-3">{{ t('odontogram.materialQty') }}</th>
+                <th class="px-4 py-3">{{ t('odontogram.materialNote') }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr v-if="consumptionsLoading">
+                <td class="px-4 py-4 text-gray-500" colspan="4">{{ t('odontogram.loadingMaterials') }}</td>
+              </tr>
+              <tr v-else-if="consumptions.length === 0">
+                <td class="px-4 py-4 text-gray-500" colspan="4">{{ t('odontogram.noMaterials') }}</td>
+              </tr>
+              <tr v-for="entry in consumptions" :key="entry.id" class="bg-white">
+                <td class="px-4 py-3 text-slate-700">{{ formatDate(entry.created_at) }}</td>
+                <td class="px-4 py-3 text-slate-700">{{ itemLabel(entry.item_id) }}</td>
+                <td class="px-4 py-3 text-slate-700">{{ entry.quantity }}</td>
+                <td class="px-4 py-3 text-slate-700">{{ entry.note || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div
         v-if="menuOpen && selectedToothId"
         ref="menuRef"
@@ -139,7 +178,7 @@
               class="h-2.5 w-2.5 rounded-full"
               :class="option.dotClass"
             ></span>
-            <span class="text-slate-700">{{ t(option.labelKey) }}</span>
+            <span class="text-slate-700">{{ option.labelKey ? t(option.labelKey) : option.label }}</span>
           </span>
           <span v-if="option.price" class="text-xs text-slate-500">{{ formatCurrency(option.price) }}</span>
         </button>
@@ -156,7 +195,7 @@
             >
               {{ state.icon }}
             </span>
-            <span class="text-sm text-gray-600">{{ t(state.labelKey) }}</span>
+            <span class="text-sm text-gray-600">{{ state.labelKey ? t(state.labelKey) : state.label }}</span>
           </div>
         </div>
       </div>
@@ -180,6 +219,56 @@
     </div>
 
   </div>
+
+  <Transition
+    enter-active-class="transition ease-out duration-200"
+    enter-from-class="opacity-0"
+    enter-to-class="opacity-100"
+    leave-active-class="transition ease-in duration-150"
+    leave-from-class="opacity-100"
+    leave-to-class="opacity-0"
+  >
+    <div v-if="showConsumptionModal" class="fixed inset-0 z-50 overflow-y-auto" @click.self="closeConsumptionModal">
+      <div class="flex items-center justify-center min-h-screen px-4 py-8">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        <div class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl">
+          <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">{{ t('odontogram.addMaterial') }}</h3>
+            <button class="text-gray-400 hover:text-gray-600" @click="closeConsumptionModal">×</button>
+          </div>
+          <div class="px-6 py-4 space-y-4">
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('odontogram.materialItem') }}</label>
+                <select v-model="consumptionForm.item_id" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
+                  <option value="">{{ t('odontogram.selectMaterial') }}</option>
+                  <option v-for="item in inventoryItems" :key="item.id" :value="String(item.id)">
+                    {{ item.name }} ({{ item.current_stock ?? 0 }})
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('odontogram.materialQty') }}</label>
+                <input v-model="consumptionForm.quantity" type="number" min="0" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('odontogram.materialNote') }}</label>
+                <input v-model="consumptionForm.note" type="text" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+              </div>
+            </div>
+          </div>
+          <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
+            <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" @click="closeConsumptionModal">
+              {{ t('odontogram.cancel') }}
+            </button>
+            <button class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700" @click="saveConsumption">
+              {{ t('odontogram.save') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Transition>
 </template>
 
 <script setup>
@@ -193,6 +282,8 @@ import { getVisitStatusLabel } from '@/constants/visitStatus'
 import * as visitsApi from '@/api/visitsApi'
 import * as odontogramApi from '@/api/odontogramApi'
 import * as visitServicesApi from '@/api/visitServicesApi'
+import { listServices } from '@/api/servicesApi'
+import { listInventoryItems, listInventoryConsumptionsByVisitId, createInventoryConsumption } from '@/api/inventoryApi'
 import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
 import Tooth from './Tooth.vue'
 
@@ -240,19 +331,23 @@ const menuStyle = ref({ left: '0px', top: '0px', transform: 'translate(-50%, 0)'
 const ignoreClose = ref(false)
 
 const statusOptions = [
-  { value: 'healthy', labelKey: 'odontogram.statusHealthy', dotClass: 'bg-slate-200' },
-  { value: 'caries', labelKey: 'odontogram.statusCaries', dotClass: 'bg-red-500' },
-  { value: 'filling', labelKey: 'odontogram.statusFilling', dotClass: 'bg-blue-500' },
-  { value: 'crown', labelKey: 'odontogram.statusCrown', dotClass: 'bg-amber-500' },
-  { value: 'missing', labelKey: 'odontogram.statusMissing', dotClass: 'bg-slate-400' }
+  { type: 'status', value: 'healthy', labelKey: 'odontogram.statusHealthy', dotClass: 'bg-slate-200' },
+  { type: 'status', value: 'caries', labelKey: 'odontogram.statusCaries', dotClass: 'bg-red-500' },
+  { type: 'status', value: 'filling', labelKey: 'odontogram.statusFilling', dotClass: 'bg-blue-500' },
+  { type: 'status', value: 'crown', labelKey: 'odontogram.statusCrown', dotClass: 'bg-amber-500' },
+  { type: 'status', value: 'missing', labelKey: 'odontogram.statusMissing', dotClass: 'bg-slate-400' }
 ]
 
-const servicesList = [
-  { value: 'filling', labelKey: 'odontogram.serviceFilling', price: 150000, status: 'filling', dotClass: 'bg-blue-500' },
-  { value: 'root_canal', labelKey: 'odontogram.serviceRootCanal', price: 250000, status: 'caries', dotClass: 'bg-red-500' },
-  { value: 'crown', labelKey: 'odontogram.serviceCrown', price: 350000, status: 'crown', dotClass: 'bg-amber-500' },
-  { value: 'extraction', labelKey: 'odontogram.serviceExtraction', price: 200000, status: 'missing', dotClass: 'bg-slate-400' }
-]
+const servicesList = ref([])
+const inventoryItems = ref([])
+const consumptions = ref([])
+const consumptionsLoading = ref(false)
+const showConsumptionModal = ref(false)
+const consumptionForm = ref({
+  item_id: '',
+  quantity: '',
+  note: ''
+})
 
 // Computed
 const hasActiveVisit = computed(() => {
@@ -271,7 +366,7 @@ const hasChanges = computed(() => {
 const activeUserRole = computed(() => authStore.userRole || 'doctor')
 const isDoctor = computed(() => activeUserRole.value === 'doctor')
 
-const menuOptions = computed(() => (isDoctor.value ? servicesList : statusOptions))
+const menuOptions = computed(() => (isDoctor.value ? servicesList.value : statusOptions))
 
 // Methods
 const formatVisitDate = (date) => formatDate(date)
@@ -316,6 +411,101 @@ const loadPatientHistory = async () => {
   } catch (error) {
     console.error('Failed to load visit services:', error)
     patientHistory.value = []
+  }
+}
+
+const loadInventoryItems = async () => {
+  try {
+    inventoryItems.value = await listInventoryItems('order=created_at.desc')
+  } catch (error) {
+    console.error('Failed to load inventory items:', error)
+    inventoryItems.value = []
+  }
+}
+
+const loadConsumptions = async () => {
+  if (!currentVisit.value?.id) {
+    consumptions.value = []
+    return
+  }
+  consumptionsLoading.value = true
+  try {
+    consumptions.value = await listInventoryConsumptionsByVisitId(currentVisit.value.id)
+  } catch (error) {
+    console.error('Failed to load consumptions:', error)
+    consumptions.value = []
+  } finally {
+    consumptionsLoading.value = false
+  }
+}
+
+const itemLabel = (itemId) => {
+  const match = inventoryItems.value.find(item => Number(item.id) === Number(itemId))
+  return match ? match.name : `#${itemId}`
+}
+
+const openConsumptionModal = () => {
+  consumptionForm.value = {
+    item_id: '',
+    quantity: '',
+    note: ''
+  }
+  showConsumptionModal.value = true
+}
+
+const closeConsumptionModal = () => {
+  showConsumptionModal.value = false
+}
+
+const saveConsumption = async () => {
+  if (!currentVisit.value?.id) return
+  if (!consumptionForm.value.item_id) {
+    toast.error(t('odontogram.errorMaterialRequired'))
+    return
+  }
+  const quantity = Number(consumptionForm.value.quantity)
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    toast.error(t('odontogram.errorMaterialQty'))
+    return
+  }
+  const selectedItem = inventoryItems.value.find(item => Number(item.id) === Number(consumptionForm.value.item_id))
+  if (selectedItem && Number.isFinite(Number(selectedItem.current_stock)) && quantity > Number(selectedItem.current_stock)) {
+    toast.error(t('odontogram.errorMaterialStock'))
+    return
+  }
+  try {
+    await createInventoryConsumption({
+      visit_id: currentVisit.value.id,
+      patient_id: props.patient.id,
+      doctor_id: props.doctorId,
+      item_id: Number(consumptionForm.value.item_id),
+      quantity,
+      note: consumptionForm.value.note || null
+    })
+    toast.success(t('odontogram.toastMaterialAdded'))
+    await Promise.all([loadConsumptions(), loadInventoryItems()])
+    closeConsumptionModal()
+  } catch (error) {
+    console.error('Failed to save consumption:', error)
+    toast.error(t('odontogram.errorMaterialSave'))
+  }
+}
+
+const loadServicesMenu = async () => {
+  try {
+    const data = await listServices('order=created_at.desc')
+    servicesList.value = (data || [])
+      .filter(service => service.is_active !== false)
+      .map(service => ({
+        type: 'service',
+        value: String(service.id),
+        label: service.name,
+        price: Number(service.base_price) || 0,
+        dotClass: 'bg-cyan-500'
+      }))
+  } catch (error) {
+    console.error('Failed to load services list:', error)
+    servicesList.value = []
   }
 }
 
@@ -378,6 +568,7 @@ const loadOdontogram = async (visitId) => {
     })
     originalOdontogramData.value = JSON.parse(JSON.stringify(currentOdontogram.value.data))
     syncTeethFromOdontogram()
+    await loadConsumptions()
   } catch (error) {
     console.error('Failed to load odontogram:', error)
     toast.error(t('odontogram.errorLoadOdontogram'))
@@ -512,15 +703,22 @@ const setToothStatus = (status) => {
 
 const applyMenuSelection = async (option) => {
   if (!selectedToothId.value) return
-  const status = option.status || option.value
-  setToothStatus(status)
+
+  if (option.type === 'status' || option.status) {
+    const status = option.status || option.value
+    setToothStatus(status)
+  }
 
   if (isDoctor.value && option.price) {
     await addHistoryEntry({
       toothId: selectedToothId.value,
-      serviceName: t(option.labelKey),
+      serviceName: option.labelKey ? t(option.labelKey) : option.label,
       price: option.price
     })
+  }
+
+  if (!option.status && option.type !== 'status') {
+    closeStatusMenu()
   }
 }
 
@@ -556,7 +754,7 @@ const handleEscape = (event) => {
 onMounted(async () => {
   loadVisits()
   syncTeethFromOdontogram()
-  await loadPatientHistory()
+  await Promise.all([loadPatientHistory(), loadServicesMenu(), loadInventoryItems()])
   document.addEventListener('click', handleDocumentClick)
   window.addEventListener('keydown', handleEscape)
 })

@@ -15,7 +15,7 @@
       </div>
       <div>
         <h1 class="text-xl font-bold text-gray-900">SHIFOCRM</h1>
-        <p class="text-xs text-gray-500">{{ $t('common.medicalSystem') }}</p>
+        <p class="text-xs text-gray-500">{{ t('common.medicalSystem') }}</p>
       </div>
     </div>
 
@@ -66,7 +66,7 @@
         <button
           @click="$emit('logout')"
           class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-          :title="$t('common.logout')"
+          :title="t('common.logout')"
         >
           <ArrowRightOnRectangleIcon class="w-5 h-5" />
         </button>
@@ -94,6 +94,7 @@ import {
   CalendarDaysIcon,
   CreditCardIcon,
   ClipboardDocumentListIcon,
+  ArchiveBoxIcon,
   ChartBarIcon,
   Cog6ToothIcon,
   UserCircleIcon,
@@ -115,27 +116,6 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 // Admin menu items
-<<<<<<< HEAD
-const adminMenuItems = computed(() => [
-  { name: t('dashboard.title'), to: '/dashboard', icon: HomeIcon },
-  { name: t('patients.title'), to: '/patients', icon: UsersIcon },
-  { name: t('doctors.title'), to: '/doctors', icon: UserGroupIcon },
-  { name: t('appointments.title'), to: '/appointments', icon: CalendarDaysIcon },
-  { name: t('payments.title'), to: '/payments', icon: CreditCardIcon },
-  { name: t('services.title'), to: '/services', icon: ClipboardDocumentListIcon },
-  { name: t('reports.title'), to: '/reports', icon: ChartBarIcon },
-  { name: t('settings.title'), to: '/settings', icon: Cog6ToothIcon },
-])
-
-// Doctor menu items
-const doctorMenuItems = computed(() => [
-  { name: t('dashboard.title'), to: '/dashboard', icon: HomeIcon },
-  { name: t('patients.myPatients'), to: '/my-patients', icon: UsersIcon },
-  { name: t('appointments.myAppointments'), to: '/my-appointments', icon: CalendarDaysIcon },
-  { name: t('treatmentPlans.title'), to: '/treatment-plans', icon: DocumentTextIcon },
-  { name: t('profile.title'), to: '/doctor/profile', icon: UserCircleIcon },
-])
-=======
 const adminMenuItems = [
   { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
   { labelKey: 'nav.patients', to: '/patients', icon: UsersIcon },
@@ -143,6 +123,7 @@ const adminMenuItems = [
   { labelKey: 'nav.appointments', to: '/appointments', icon: CalendarDaysIcon },
   { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
   { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
+  { labelKey: 'nav.inventory', to: '/inventory', icon: ArchiveBoxIcon },
   { labelKey: 'nav.reports', to: '/reports', icon: ChartBarIcon },
   { labelKey: 'nav.settings', to: '/settings', icon: Cog6ToothIcon },
 ]
@@ -155,20 +136,14 @@ const doctorMenuItems = [
   { labelKey: 'nav.treatmentPlans', to: '/treatment-plans', icon: DocumentTextIcon },
   { labelKey: 'nav.doctorProfile', to: '/doctor/profile', icon: UserCircleIcon },
 ]
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 
 const menuItems = computed(() => {
-  return authStore.userRole === 'admin' ? adminMenuItems.value : doctorMenuItems.value
+  return authStore.userRole === 'admin' ? adminMenuItems : doctorMenuItems
 })
 
 const userName = computed(() => {
-<<<<<<< HEAD
-  if (authStore.userRole === 'admin') return t('common.administrator')
-  return authStore.userEmail || t('common.doctor')
-=======
   if (authStore.userRole === 'admin') return t('role.admin')
   return authStore.userEmail || t('role.doctor')
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 })
 
 const userInitials = computed(() => {
@@ -177,11 +152,7 @@ const userInitials = computed(() => {
 })
 
 const roleLabel = computed(() => {
-<<<<<<< HEAD
-  return authStore.userRole === 'admin' ? t('common.administrator') : t('common.doctor')
-=======
   return authStore.userRole === 'admin' ? t('role.admin') : t('role.doctor')
->>>>>>> 15c7b98d3af6412713edde1f137b3b8bc0c92b18
 })
 
 const roleBadgeClass = computed(() => {
