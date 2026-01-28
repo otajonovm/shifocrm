@@ -74,11 +74,19 @@
           <p class="text-xs text-gray-500">{{ t('doctorProfile.scheduleSubtitle') }}</p>
         </div>
       </div>
+      <div class="hidden md:grid md:grid-cols-6 md:items-center md:gap-2 mt-4 text-xs text-gray-500">
+        <span class="md:col-span-2"></span>
+        <span>{{ t('doctorProfile.startTime') }}</span>
+        <span>{{ t('doctorProfile.endTime') }}</span>
+        <span>{{ t('doctorProfile.breakStart') }}</span>
+        <span>{{ t('doctorProfile.breakEnd') }}</span>
+      </div>
       <div class="mt-4 space-y-3">
         <div
           v-for="day in dayOptions"
           :key="day.key"
           class="grid grid-cols-1 gap-3 md:grid-cols-6 md:items-center"
+          :class="profile.work_schedule.days[day.key].enabled ? '' : 'opacity-60'"
         >
           <div class="flex items-center gap-2 md:col-span-2">
             <input
@@ -92,32 +100,44 @@
             </label>
           </div>
           <div class="md:col-span-4 grid grid-cols-2 gap-2">
-            <input
-              v-model="profile.work_schedule.days[day.key].start"
-              type="time"
-              :disabled="!profile.work_schedule.days[day.key].enabled"
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
-            />
-            <input
-              v-model="profile.work_schedule.days[day.key].end"
-              type="time"
-              :disabled="!profile.work_schedule.days[day.key].enabled"
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
-            />
-            <input
-              v-model="profile.work_schedule.days[day.key].break_start"
-              type="time"
-              :placeholder="t('doctorProfile.breakStart')"
-              :disabled="!profile.work_schedule.days[day.key].enabled"
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
-            />
-            <input
-              v-model="profile.work_schedule.days[day.key].break_end"
-              type="time"
-              :placeholder="t('doctorProfile.breakEnd')"
-              :disabled="!profile.work_schedule.days[day.key].enabled"
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
-            />
+            <div class="space-y-1">
+              <span class="text-xs text-gray-500 md:hidden">{{ t('doctorProfile.startTime') }}</span>
+              <input
+                v-model="profile.work_schedule.days[day.key].start"
+                type="time"
+                :disabled="!profile.work_schedule.days[day.key].enabled"
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+              />
+            </div>
+            <div class="space-y-1">
+              <span class="text-xs text-gray-500 md:hidden">{{ t('doctorProfile.endTime') }}</span>
+              <input
+                v-model="profile.work_schedule.days[day.key].end"
+                type="time"
+                :disabled="!profile.work_schedule.days[day.key].enabled"
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+              />
+            </div>
+            <div class="space-y-1">
+              <span class="text-xs text-gray-500 md:hidden">{{ t('doctorProfile.breakStart') }}</span>
+              <input
+                v-model="profile.work_schedule.days[day.key].break_start"
+                type="time"
+                :placeholder="t('doctorProfile.breakStart')"
+                :disabled="!profile.work_schedule.days[day.key].enabled"
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+              />
+            </div>
+            <div class="space-y-1">
+              <span class="text-xs text-gray-500 md:hidden">{{ t('doctorProfile.breakEnd') }}</span>
+              <input
+                v-model="profile.work_schedule.days[day.key].break_end"
+                type="time"
+                :placeholder="t('doctorProfile.breakEnd')"
+                :disabled="!profile.work_schedule.days[day.key].enabled"
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+              />
+            </div>
           </div>
         </div>
       </div>

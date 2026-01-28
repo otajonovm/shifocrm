@@ -6,15 +6,26 @@
       isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
     ]"
   >
-    <!-- Logo -->
+    <!-- Logo + clinic name -->
     <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-      <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-600 shadow-lg">
-        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-        </svg>
+      <div class="flex shrink-0 items-center justify-center w-10 h-10 rounded-xl overflow-hidden bg-gray-100">
+        <img
+          v-if="clinicStore.isCustomLogo"
+          :src="clinicStore.logoUrl"
+          alt="Logo"
+          class="w-full h-full object-contain"
+        />
+        <div
+          v-else
+          class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-500 to-cyan-600"
+        >
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </div>
       </div>
-      <div>
-        <h1 class="text-xl font-bold text-gray-900">SHIFOCRM</h1>
+      <div class="min-w-0 flex-1">
+        <h1 class="text-xl font-bold text-gray-900 truncate">{{ clinicStore.displayName }}</h1>
         <p class="text-xs text-gray-500">{{ $t('common.medicalSystem') }}</p>
       </div>
     </div>
@@ -86,6 +97,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useClinicStore } from '@/stores/clinic'
 import { useI18n } from 'vue-i18n'
 import {
   HomeIcon,
@@ -113,6 +125,7 @@ defineEmits(['close', 'logout'])
 
 const route = useRoute()
 const authStore = useAuthStore()
+const clinicStore = useClinicStore()
 const { t } = useI18n()
 
 // Admin menu items

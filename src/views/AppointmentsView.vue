@@ -218,7 +218,12 @@
                 <td class="px-4 py-3 text-gray-700">{{ formatDate(visit.date) }}</td>
                 <td class="px-4 py-3 text-gray-700">{{ formatTimeRange(visit) }}</td>
                 <td class="px-4 py-3 text-gray-700">
-                  <div class="font-medium">{{ getPatientName(visit.patient_id) }}</div>
+                  <router-link
+                    :to="{ name: 'patient-detail', params: { id: visit.patient_id } }"
+                    class="block font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                  >
+                    {{ getPatientName(visit.patient_id) }}
+                  </router-link>
                   <div class="text-xs text-gray-400">{{ getPatientPhone(visit.patient_id) }}</div>
                 </td>
                 <td class="px-4 py-3 text-gray-700">{{ visit.doctor_name || getDoctorName(visit.doctor_id) }}</td>
@@ -242,7 +247,15 @@
                 </td>
                 <td class="px-4 py-3 text-gray-600 line-clamp-2 max-w-xs">{{ visit.notes || '-' }}</td>
                 <td class="px-4 py-3 text-right">
-                  <div class="flex items-center justify-end gap-2">
+                  <div class="flex items-center justify-end gap-2 flex-wrap">
+                    <router-link
+                      :to="{ name: 'patient-detail', params: { id: visit.patient_id } }"
+                      class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary-700 bg-primary-50 rounded hover:bg-primary-100"
+                      :title="t('appointments.goToPatient')"
+                    >
+                      <UserCircleIcon class="w-4 h-4" />
+                      {{ t('appointments.goToPatient') }}
+                    </router-link>
                     <button
                       v-if="visit.status === 'pending'"
                       @click="updateStatus(visit, 'arrived')"
@@ -547,7 +560,8 @@ import {
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
-  XMarkIcon
+  XMarkIcon,
+  UserCircleIcon
 } from '@heroicons/vue/24/outline'
 
 const authStore = useAuthStore()

@@ -3,10 +3,17 @@
     <div class="max-w-md w-full">
       <!-- Logo & Title -->
       <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl shadow-lg mb-4">
-          <img src="/logo.jpg" alt="ShifoCRM Logo" class="w-12 h-12 rounded-lg object-cover">
+        <div
+          class="inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-lg mb-4 overflow-hidden"
+          :class="clinicStore.isCustomLogo ? 'bg-white border border-gray-100' : 'bg-gradient-to-r from-primary-500 to-primary-600'"
+        >
+          <img
+            :src="clinicStore.logoUrl"
+            alt="Logo"
+            class="w-12 h-12 rounded-lg object-contain"
+          />
         </div>
-        <h1 class="text-3xl font-bold text-gray-900">ShifoCRM</h1>
+        <h1 class="text-3xl font-bold text-gray-900">{{ clinicStore.displayName }}</h1>
         <p class="text-gray-500 mt-2">{{ t('login.subtitle') }}</p>
       </div>
 
@@ -188,12 +195,14 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useClinicStore } from '@/stores/clinic'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const clinicStore = useClinicStore()
 const toast = useToast()
 const { t } = useI18n()
 

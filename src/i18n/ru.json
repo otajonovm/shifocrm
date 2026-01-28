@@ -12,7 +12,8 @@
     "dashboard": "Панель",
     "yes": "Да",
     "no": "Нет",
-    "currencySuffix": "сум"
+    "currencySuffix": "сум",
+    "medicalSystem": "Медицинская система"
   },
   "role": {
     "admin": "Администратор",
@@ -220,6 +221,7 @@
     "arrived": "Пришёл",
     "started": "Начал",
     "complete": "Завершить",
+    "goToPatient": "К пациенту",
     "createTitle": "Новый приём",
     "select": "Выберите...",
     "startTime": "Время начала",
@@ -845,7 +847,17 @@
     "title": "Настройки",
     "subtitle": "Системные настройки",
     "languageTitle": "Языковые настройки",
-    "languageHint": "Выбранный язык применяется ко всей системе."
+    "languageHint": "Выбранный язык применяется ко всей системе.",
+    "logoTitle": "Логотип и название клиники",
+    "logoHint": "Загрузите логотип и введите название. Отображается в меню и на странице входа — врачи воспринимают систему как \"свою\".",
+    "logoUpload": "Загрузить логотип",
+    "logoRemove": "Удалить",
+    "logoUploaded": "Логотип сохранён",
+    "logoRemoved": "Логотип удалён",
+    "logoError": "Не удалось загрузить изображение. Только PNG, JPG или WEBP.",
+    "clinicNameLabel": "Название клиники",
+    "clinicNamePlaceholder": "Например: Shifo Stomatologiya",
+    "clinicNameHint": "Если оставить пустым, отображается \"SHIFOCRM\"."
   },
   "treatmentPlansView": {
     "title": "Планы лечения",
@@ -888,6 +900,8 @@
     "changePasswordAction": "Сменить пароль",
     "scheduleTitle": "График работы",
     "scheduleSubtitle": "Недельное расписание и перерывы",
+    "startTime": "Начало",
+    "endTime": "Окончание",
     "breakStart": "Начало перерыва",
     "breakEnd": "Конец перерыва",
     "dayMon": "Понедельник",

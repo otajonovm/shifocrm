@@ -12,7 +12,8 @@
     "dashboard": "Dashboard",
     "yes": "Ha",
     "no": "Yo'q",
-    "currencySuffix": "so'm"
+    "currencySuffix": "so'm",
+    "medicalSystem": "Tibbiyot tizimi"
   },
   "role": {
     "admin": "Administrator",
@@ -220,6 +221,7 @@
     "arrived": "Keldi",
     "started": "Boshlandi",
     "complete": "Yakunlash",
+    "goToPatient": "Bemorga o'tish",
     "createTitle": "Yangi uchrashuv",
     "select": "Tanlang...",
     "startTime": "Boshlanish vaqti",
@@ -845,7 +847,17 @@
     "title": "Sozlamalar",
     "subtitle": "Tizim sozlamalari",
     "languageTitle": "Til sozlamalari",
-    "languageHint": "Tanlangan til butun tizimga qo'llanadi."
+    "languageHint": "Tanlangan til butun tizimga qo'llanadi.",
+    "logoTitle": "Klinika logotipi va nomi",
+    "logoHint": "Logotip va klinika nomini kiriting. Sidebar va login da ko'rinadi — shifokorlar tizimni \"o'zlariniki\" deb qabul qiladi.",
+    "logoUpload": "Logotip yuklash",
+    "logoRemove": "Olib tashlash",
+    "logoUploaded": "Logotip saqlandi",
+    "logoRemoved": "Logotip olib tashlandi",
+    "logoError": "Rasm yuklanmadi. Faqat PNG, JPG yoki WEBP.",
+    "clinicNameLabel": "Klinika nomi",
+    "clinicNamePlaceholder": "Masalan: Shifo Stomatologiya",
+    "clinicNameHint": "Bo'sh qoldirsangiz \"SHIFOCRM\" ko'rinadi."
   },
   "treatmentPlansView": {
     "title": "Davolash Rejalari",
@@ -889,6 +901,8 @@
     ,
     "scheduleTitle": "Ish jadvali",
     "scheduleSubtitle": "Haftalik ish vaqti va tanaffus",
+    "startTime": "Boshlanish",
+    "endTime": "Tugash",
     "breakStart": "Tanaffus boshlanishi",
     "breakEnd": "Tanaffus tugashi",
     "dayMon": "Dushanba",

@@ -7,7 +7,7 @@
     <div v-else-if="patient" class="space-y-6 animate-fade-in">
       <!-- Patient Profile Header -->
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-        <div class="flex items-start justify-between">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div class="flex items-center gap-4">
             <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-xl">
               {{ getInitials(patient.full_name) }}
@@ -35,7 +35,10 @@
                 </div>
                 <div>
                   <span class="text-xs text-gray-500">{{ $t('patients.balance') }}</span>
-                  <p class="text-sm font-semibold" :class="balance >= 0 ? 'text-green-600' : 'text-red-600'">
+                  <p
+                    class="text-sm font-semibold"
+                    :class="balance >= 0 ? 'text-green-600' : 'text-red-600'"
+                  >
                     {{ formatBalance(balance) }}
                   </p>
                 </div>
@@ -61,7 +64,7 @@
           </div>
           <button
             @click="goBack"
-            class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors self-start sm:self-auto"
             :title="t('patientDetail.back')"
           >
             <ArrowLeftIcon class="w-5 h-5" />
@@ -71,12 +74,12 @@
 
       <!-- Tabs -->
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
-        <div class="flex border-b border-gray-100">
+        <div class="flex border-b border-gray-100 overflow-x-auto">
           <button
             v-for="tab in tabs"
             :key="tab.id"
             @click="activeTab = tab.id"
-            class="px-6 py-4 text-sm font-medium transition-colors relative"
+            class="px-6 py-4 text-sm font-medium transition-colors relative whitespace-nowrap"
             :class="activeTab === tab.id
               ? 'text-primary-600 border-b-2 border-primary-600'
               : 'text-gray-600 hover:text-gray-900'"
@@ -336,12 +339,20 @@ const getInitials = (name) => {
   return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 }
 
+const balance = computed(() => {
+  const raw = patient.value?.balance ?? patient.value?.account_balance ?? patient.value?.current_balance ?? 0
+  const numeric = Number(raw)
+  return Number.isFinite(numeric) ? numeric : 0
+})
+
 const formatBalance = (amount) => {
+  const numeric = Number(amount)
+  const safe = Number.isFinite(numeric) ? numeric : 0
   return new Intl.NumberFormat('uz-UZ', {
     style: 'currency',
     currency: 'UZS',
     minimumFractionDigits: 0,
-  }).format(amount)
+  }).format(safe)
 }
 
 onMounted(async () => {
