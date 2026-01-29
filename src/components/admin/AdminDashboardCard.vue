@@ -2,7 +2,7 @@
   <router-link
     v-if="to"
     :to="to"
-    class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer block"
+    class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
   >
     <div class="flex items-center justify-between">
       <div>

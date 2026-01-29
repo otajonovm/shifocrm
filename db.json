@@ -4,6 +4,11 @@
     "password": "admin123",
     "role": "admin"
   },
+  "superAdmin": {
+    "login": "superadmin",
+    "password": "superadmin123",
+    "role": "super_admin"
+  },
   "doctors": [
     {
       "id": 42830,

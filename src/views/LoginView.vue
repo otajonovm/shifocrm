@@ -3,27 +3,34 @@
     <div class="max-w-md w-full">
       <!-- Logo & Title -->
       <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl shadow-lg mb-4">
-          <img src="/logo.jpg" alt="ShifoCRM Logo" class="w-12 h-12 rounded-lg object-cover">
+        <div
+          class="inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-lg mb-4 overflow-hidden"
+          :class="clinicStore.isCustomLogo ? 'bg-white border border-gray-100' : 'bg-gradient-to-r from-primary-500 to-primary-600'"
+        >
+          <img
+            :src="clinicStore.logoUrl"
+            alt="Logo"
+            class="w-12 h-12 rounded-lg object-contain"
+          />
         </div>
-        <h1 class="text-3xl font-bold text-gray-900">ShifoCRM</h1>
+        <h1 class="text-3xl font-bold text-gray-900">{{ clinicStore.displayName }}</h1>
         <p class="text-gray-500 mt-2">{{ t('login.subtitle') }}</p>
       </div>
 
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-8">
         <!-- Login Type Tabs -->
-        <div class="flex mb-6 bg-gray-100 rounded-xl p-1">
+        <div class="flex flex-wrap gap-1 mb-6 bg-gray-100 rounded-xl p-1">
           <button
             @click="loginType = 'admin'"
             :class="[
-              'flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200',
+              'flex-1 min-w-0 py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200',
               loginType === 'admin'
                 ? 'bg-white text-primary-600 shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
             ]"
           >
-            <span class="flex items-center justify-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <span class="flex items-center justify-center gap-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
               {{ t('login.roleAdmin') }}
@@ -32,23 +39,40 @@
           <button
             @click="loginType = 'doctor'"
             :class="[
-              'flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200',
+              'flex-1 min-w-0 py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200',
               loginType === 'doctor'
                 ? 'bg-white text-primary-600 shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
             ]"
           >
-            <span class="flex items-center justify-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <span class="flex items-center justify-center gap-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               {{ t('login.roleDoctor') }}
             </span>
           </button>
+          <button
+            @click="loginType = 'super_admin'"
+            :class="[
+              'flex-1 min-w-0 py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200',
+              loginType === 'super_admin'
+                ? 'bg-white text-primary-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            ]"
+          >
+            <span class="flex items-center justify-center gap-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {{ t('login.roleSuperAdmin') }}
+            </span>
+          </button>
         </div>
 
-        <!-- Admin Login Form -->
-        <form v-if="loginType === 'admin'" @submit.prevent="handleAdminLogin" class="space-y-5">
+        <!-- Admin / Super Admin Login Form -->
+        <form v-if="loginType === 'admin' || loginType === 'super_admin'" @submit.prevent="handleAdminLogin" class="space-y-5">
           <div>
             <label for="admin-login" class="block text-sm font-medium text-gray-700 mb-2">
               {{ t('login.adminLoginLabel') }}
@@ -107,7 +131,7 @@
               </svg>
               {{ t('login.loading') }}
             </span>
-            <span v-else>{{ t('login.submitAdmin') }}</span>
+            <span v-else>{{ loginType === 'super_admin' ? t('login.submitSuperAdmin') : t('login.submitAdmin') }}</span>
           </button>
         </form>
 
@@ -188,12 +212,14 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useClinicStore } from '@/stores/clinic'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const clinicStore = useClinicStore()
 const toast = useToast()
 const { t } = useI18n() // t() is used in script section for toast messages
 
@@ -213,8 +239,9 @@ const handleAdminLogin = async () => {
   isLoading.value = false
 
   if (success) {
-    toast.success(t('auth.loginSuccess'))
-    const redirect = route.query.redirect || '/dashboard'
+    toast.success(t('login.toastSuccess'))
+    const defaultRedirect = authStore.userRole === 'super_admin' ? '/admin/clinics' : '/dashboard'
+    const redirect = route.query.redirect || defaultRedirect
     router.push(redirect)
   } else {
     toast.error(t('auth.loginOrPasswordWrong'))

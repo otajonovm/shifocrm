@@ -1,7 +1,7 @@
 <template>
   <MainLayout>
     <div class="space-y-6 animate-fade-in">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">{{ t('inventory.title') }}</h1>
           <p class="text-gray-500">{{ t('inventory.subtitle') }}</p>
@@ -32,12 +32,12 @@
       </div>
 
       <div class="bg-white rounded-2xl shadow-card border border-gray-100">
-        <div class="flex border-b border-gray-100">
+        <div class="flex border-b border-gray-100 overflow-x-auto">
           <button
             v-for="tab in tabs"
             :key="tab.id"
             @click="activeTab = tab.id"
-            class="px-6 py-4 text-sm font-medium transition-colors relative"
+            class="px-6 py-4 text-sm font-medium transition-colors relative whitespace-nowrap"
             :class="activeTab === tab.id
               ? 'text-primary-600 border-b-2 border-primary-600'
               : 'text-gray-600 hover:text-gray-900'"
@@ -81,7 +81,7 @@
                     <td class="px-4 py-4 text-slate-500" colspan="6">{{ t('inventory.loading') }}</td>
                   </tr>
                   <tr v-else-if="filteredItems.length === 0">
-                    <td class="px-4 py-4 text-slate-500" colspan="6">{{ t('inventory.noItems') }}</td>
+                    <td class="px-4 py-6 text-center text-slate-500" colspan="6">{{ t('inventory.noItems') }}</td>
                   </tr>
                   <tr v-for="item in filteredItems" :key="item.id" class="bg-white">
                     <td class="px-4 py-3 text-slate-700">{{ item.name }}</td>
@@ -126,7 +126,7 @@
                     <td class="px-4 py-4 text-slate-500" colspan="7">{{ t('inventory.loading') }}</td>
                   </tr>
                   <tr v-else-if="movements.length === 0">
-                    <td class="px-4 py-4 text-slate-500" colspan="7">{{ t('inventory.noMovements') }}</td>
+                    <td class="px-4 py-6 text-center text-slate-500" colspan="7">{{ t('inventory.noMovements') }}</td>
                   </tr>
                   <tr v-for="movement in movements" :key="movement.id" class="bg-white">
                     <td class="px-4 py-3 text-slate-700">{{ formatDate(movement.created_at) }}</td>
@@ -160,7 +160,7 @@
                     <td class="px-4 py-4 text-slate-500" colspan="4">{{ t('inventory.loading') }}</td>
                   </tr>
                   <tr v-else-if="expenses.length === 0">
-                    <td class="px-4 py-4 text-slate-500" colspan="4">{{ t('inventory.noExpenses') }}</td>
+                    <td class="px-4 py-6 text-center text-slate-500" colspan="4">{{ t('inventory.noExpenses') }}</td>
                   </tr>
                   <tr v-for="expense in expenses" :key="expense.id" class="bg-white">
                     <td class="px-4 py-3 text-slate-700">{{ formatDate(expense.paid_at) }}</td>
@@ -192,7 +192,7 @@
               <h3 class="text-lg font-semibold text-gray-900">
                 {{ itemForm.id ? t('inventory.editItem') : t('inventory.addItem') }}
               </h3>
-              <button class="text-gray-400 hover:text-gray-600" @click="closeItemModal">×</button>
+              <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Close" @click="closeItemModal">×</button>
             </div>
             <div class="px-6 py-4 space-y-4">
               <div class="grid gap-4 md:grid-cols-2">
@@ -249,7 +249,7 @@
           <div class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 class="text-lg font-semibold text-gray-900">{{ t('inventory.addMovement') }}</h3>
-              <button class="text-gray-400 hover:text-gray-600" @click="closeMovementModal">×</button>
+              <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Close" @click="closeMovementModal">×</button>
             </div>
             <div class="px-6 py-4 space-y-4">
               <div class="grid gap-4 md:grid-cols-2">
@@ -306,7 +306,7 @@
           <div class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 class="text-lg font-semibold text-gray-900">{{ t('inventory.addExpense') }}</h3>
-              <button class="text-gray-400 hover:text-gray-600" @click="closeExpenseModal">×</button>
+              <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Close" @click="closeExpenseModal">×</button>
             </div>
             <div class="px-6 py-4 space-y-4">
               <div class="grid gap-4 md:grid-cols-2">

@@ -6,15 +6,26 @@
       isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
     ]"
   >
-    <!-- Logo -->
+    <!-- Logo + clinic name -->
     <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-      <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-600 shadow-lg">
-        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-        </svg>
+      <div class="flex shrink-0 items-center justify-center w-10 h-10 rounded-xl overflow-hidden bg-gray-100">
+        <img
+          v-if="clinicStore.isCustomLogo"
+          :src="clinicStore.logoUrl"
+          alt="Logo"
+          class="w-full h-full object-contain"
+        />
+        <div
+          v-else
+          class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-500 to-cyan-600"
+        >
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </div>
       </div>
-      <div>
-        <h1 class="text-xl font-bold text-gray-900">SHIFOCRM</h1>
+      <div class="min-w-0 flex-1">
+        <h1 class="text-xl font-bold text-gray-900 truncate">{{ clinicStore.displayName }}</h1>
         <p class="text-xs text-gray-500">{{ t('common.medicalSystem') }}</p>
       </div>
     </div>
@@ -50,6 +61,29 @@
 
     <!-- User Profile Card -->
     <div class="p-4 border-t border-gray-100">
+      <!-- Super admin clinic session banner -->
+      <div
+        v-if="authStore.isImpersonating"
+        class="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3"
+      >
+        <p class="text-xs font-semibold text-amber-900">Super Admin: klinika rejimi</p>
+        <div class="mt-2 flex items-center gap-2">
+          <router-link
+            to="/admin/clinics"
+            class="px-2.5 py-1.5 text-xs font-medium text-amber-800 bg-white border border-amber-200 rounded-lg hover:bg-amber-100"
+          >
+            Admin panel
+          </router-link>
+          <button
+            type="button"
+            class="px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-white border border-rose-200 rounded-lg hover:bg-rose-50"
+            @click="exitClinicSession"
+          >
+            Chiqish
+          </button>
+        </div>
+      </div>
+
       <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
         <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white font-semibold text-sm">
           {{ userInitials }}
@@ -86,6 +120,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useClinicStore } from '@/stores/clinic'
 import { useI18n } from 'vue-i18n'
 import {
   HomeIcon,
@@ -113,6 +148,7 @@ defineEmits(['close', 'logout'])
 
 const route = useRoute()
 const authStore = useAuthStore()
+const clinicStore = useClinicStore()
 const { t } = useI18n()
 
 // Admin menu items
@@ -138,7 +174,9 @@ const doctorMenuItems = [
 ]
 
 const menuItems = computed(() => {
-  return authStore.userRole === 'admin' ? adminMenuItems : doctorMenuItems
+  // Super admin impersonation uses admin menu
+  if (authStore.userRole === 'admin') return adminMenuItems
+  return doctorMenuItems
 })
 
 const userName = computed(() => {
@@ -163,5 +201,11 @@ const roleBadgeClass = computed(() => {
 
 const isActiveRoute = (to) => {
   return route.path === to || route.path.startsWith(to + '/')
+}
+
+const exitClinicSession = () => {
+  authStore.stopClinicSession()
+  clinicStore.clearClinicName()
+  clinicStore.clearLogo()
 }
 </script>

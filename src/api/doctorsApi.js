@@ -1,33 +1,37 @@
 /**
- * Doctors API - Supabase REST API orqali
- * Jadval: doctors (yoki crm - Supabase jadval nomiga qarab o'zgartiring)
+ * Doctors API - Supabase REST API orqali.
+ * Tenant isolation; clinic_id yo'q bo'lsa filtersiz fallback.
  */
 
-import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supabaseConfig'
+import { supabaseGet, supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
+import {
+  getDefaultClinicId,
+  assertDoctorLimitNotReached,
+  MAX_DOCTORS_ERROR
+} from '@/services/adminService'
+import { getCurrentClinicId } from '@/lib/clinicContext'
+import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
+import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 
-const TABLE = 'doctors'  // Yoki 'crm' - jadval nomiga qarab o'zgartiring
+const TABLE = 'doctors'
 
-// Barcha doktorlarni olish
 export const listDoctors = async () => {
   try {
-    const doctors = await supabaseGet(TABLE, 'order=created_at.desc')
-    console.log('✅ Doctors loaded from Supabase:', doctors.length)
-    return doctors
+    const cid = await getCurrentClinicId()
+    return await supabaseGetWithClinicFallback(TABLE, 'order=created_at.desc', cid)
   } catch (error) {
     console.error('❌ Failed to fetch doctors:', error)
     throw error
   }
 }
 
-// ID bo'yicha doktorni olish
 export const getDoctorById = async (id) => {
   try {
     const numId = Number(id)
-    if (!Number.isFinite(numId)) {
-      return null
-    }
-    const doctors = await supabaseGet(TABLE, `id=eq.${numId}`)
-    return doctors[0] || null
+    if (!Number.isFinite(numId)) return null
+    const cid = await getCurrentClinicId()
+    const rows = await supabaseGetWithClinicFallback(TABLE, `id=eq.${numId}`, cid)
+    return rows && rows[0] ? rows[0] : null
   } catch (error) {
     console.error('❌ Failed to fetch doctor:', error)
     throw error
@@ -63,19 +67,27 @@ const generateId = async () => {
   }
 }
 
-// Yangi doktor yaratish
+// Yangi doktor yaratish (max_doctors limit tekshiriladi)
 export const createDoctor = async ({
   full_name,
   phone,
   email,
   password,
   is_active = true,
-  specialization = null
+  specialization = null,
+  clinic_id: rawClinicId = null
 }) => {
   try {
-    // Email mavjudligini tekshirish
-    const existing = await supabaseGet(TABLE, `email=eq.${encodeURIComponent(email)}`)
-    if (existing.length > 0) {
+    const clinicId = rawClinicId != null
+      ? Number(rawClinicId)
+      : (await getCurrentClinicId()) ?? (await getDefaultClinicId())
+    if (!Number.isFinite(clinicId)) {
+      throw new Error('Clinic not found. Create a clinic first (Super Admin).')
+    }
+    await assertDoctorLimitNotReached(clinicId)
+
+    const existing = await supabaseGet(TABLE, `email=eq.${encodeURIComponent(email)}&clinic_id=eq.${clinicId}`)
+    if (existing && existing.length > 0) {
       throw new Error('Email already exists')
     }
 
@@ -90,6 +102,7 @@ export const createDoctor = async ({
       password,
       specialization,
       is_active,
+      clinic_id: clinicId,
       created_at: now,
       updated_at: now
     }
@@ -98,6 +111,9 @@ export const createDoctor = async ({
     console.log('✅ Doctor created:', result[0])
     return result[0]
   } catch (error) {
+    if (error.code === 'MAX_DOCTORS_REACHED' || error.message === MAX_DOCTORS_ERROR) {
+      throw error
+    }
     console.error('❌ Failed to create doctor:', error)
     throw error
   }
@@ -106,6 +122,8 @@ export const createDoctor = async ({
 // Doktor ma'lumotlarini yangilash
 export const updateDoctor = async (id, payload) => {
   try {
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
     const updateData = {
       ...payload,
       updated_at: new Date().toISOString()
@@ -118,9 +136,12 @@ export const updateDoctor = async (id, payload) => {
       }
     })
 
-    const result = await supabasePatch(TABLE, id, updateData)
+    const numId = Number(id)
+    if (!Number.isFinite(numId)) throw new Error('Invalid doctor id')
+    const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+    const result = await supabasePatchWhere(TABLE, q, updateData)
     console.log('✅ Doctor updated:', result[0])
-    return result[0]
+    return result && result[0] ? result[0] : null
   } catch (error) {
     console.error('❌ Failed to update doctor:', error)
     throw error
@@ -130,10 +151,37 @@ export const updateDoctor = async (id, payload) => {
 // Doktorni o'chirish
 export const deleteDoctor = async (id) => {
   try {
-    await supabaseDelete(TABLE, id)
+    const doctorId = Number(id)
+    if (!Number.isFinite(doctorId)) throw new Error('Invalid doctor id')
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+    const q = mergeClinicQuery(`id=eq.${doctorId}`, cid)
+    await supabaseDeleteWhere(TABLE, q)
     console.log('✅ Doctor deleted:', id)
     return { id }
   } catch (error) {
+    const msg = String(error?.message || '').toLowerCase()
+    // If there are patients linked to this doctor, unassign them first then retry delete
+    if (/foreign key constraint|patients_doctor_id_fkey/.test(msg)) {
+      try {
+        const cid = await getCurrentClinicId()
+        const base = `doctor_id=eq.${Number(id)}`
+        const q = mergeClinicQuery(base, cid)
+        await supabasePatchWhere('patients', q, {
+          doctor_id: null,
+          doctor_name: null,
+          updated_at: new Date().toISOString()
+        })
+        const delQ = mergeClinicQuery(`id=eq.${Number(id)}`, cid)
+        await supabaseDeleteWhere(TABLE, delQ)
+        console.log('✅ Doctor deleted (after unassigning patients):', id)
+        return { id }
+      } catch (e2) {
+        console.error('❌ Failed to delete doctor (after unassign):', e2)
+        throw e2
+      }
+    }
+
     console.error('❌ Failed to delete doctor:', error)
     throw error
   }

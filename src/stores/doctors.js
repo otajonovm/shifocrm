@@ -21,11 +21,6 @@ export const useDoctorsStore = defineStore('doctors', () => {
   }
 
   const create = async (payload) => {
-    if (items.value.length >= 4) {
-      error.value = 'Maximum of 4 doctors allowed'
-      throw new Error('Maximum of 4 doctors allowed')
-    }
-
     error.value = null
     try {
       const newDoctor = await doctorsApi.createDoctor(payload)

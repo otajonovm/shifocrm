@@ -12,7 +12,9 @@
  * }
  */
 
-import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supabaseConfig'
+import { supabaseGet, supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
+import { getCurrentClinicId } from '@/lib/clinicContext'
+import { supabaseGetWithClinicFallback, mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 
 const TABLE = 'odontograms'
 
@@ -85,7 +87,8 @@ export const createEmptyOdontogram = () => {
 export const getOdontogramByVisitId = async (visitId) => {
   try {
     const numId = Number(visitId)
-    const odontograms = await supabaseGet(TABLE, `visit_id=eq.${numId}&limit=1`)
+    const cid = await getCurrentClinicId()
+    const odontograms = await supabaseGetWithClinicFallback(TABLE, `visit_id=eq.${numId}&limit=1`, cid)
     return odontograms[0] || null
   } catch (error) {
     console.error('❌ Failed to fetch odontogram:', error)
@@ -101,8 +104,9 @@ export const getOdontogramByVisitId = async (visitId) => {
 export const getOdontogramsByPatientId = async (patientId) => {
   try {
     const numId = Number(patientId)
-    const odontograms = await supabaseGet(TABLE, `patient_id=eq.${numId}&order=created_at.desc`)
-    return odontograms
+    const cid = await getCurrentClinicId()
+    const odontograms = await supabaseGetWithClinicFallback(TABLE, `patient_id=eq.${numId}&order=created_at.desc`, cid)
+    return odontograms || []
   } catch (error) {
     console.error('❌ Failed to fetch odontograms:', error)
     throw error
@@ -117,7 +121,9 @@ export const getOdontogramsByPatientId = async (patientId) => {
 export const getOdontogramById = async (id) => {
   try {
     const numId = Number(id)
-    const odontograms = await supabaseGet(TABLE, `id=eq.${numId}&limit=1`)
+    const cid = await getCurrentClinicId()
+    const q = cid ? mergeClinicQuery(`id=eq.${numId}&limit=1`, cid) : `id=eq.${numId}&limit=1`
+    const odontograms = await supabaseGet(TABLE, q)
     return odontograms[0] || null
   } catch (error) {
     console.error('❌ Failed to fetch odontogram:', error)
@@ -132,6 +138,8 @@ export const getOdontogramById = async (id) => {
  */
 export const createOdontogramSnapshot = async ({ patient_id, visit_id, doctor_id, data = null }) => {
   try {
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
     const id = await generateId()
     const odontogramData = data || createEmptyOdontogram()
 
@@ -140,7 +148,8 @@ export const createOdontogramSnapshot = async ({ patient_id, visit_id, doctor_id
       patient_id: Number(patient_id),
       visit_id: Number(visit_id),
       doctor_id: doctor_id ? Number(doctor_id) : null,
-      data: odontogramData
+      data: odontogramData,
+      clinic_id: cid
     }
 
     const result = await supabasePost(TABLE, newOdontogram)
@@ -161,15 +170,19 @@ export const createOdontogramSnapshot = async ({ patient_id, visit_id, doctor_id
 export const updateOdontogramSnapshot = async (id, data) => {
   try {
     const numId = Number(id)
+    if (!Number.isFinite(numId)) throw new Error('Invalid odontogram id')
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
     
     // Data JSONB formatida yuborish
     const updateData = {
       data: data
     }
 
-    const result = await supabasePatch(TABLE, numId, updateData)
+    const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+    const result = await supabasePatchWhere(TABLE, q, updateData)
     console.log('✅ Odontogram updated:', result[0])
-    return result[0]
+    return result && result[0] ? result[0] : null
   } catch (error) {
     console.error('❌ Failed to update odontogram:', error)
     throw error
@@ -184,7 +197,11 @@ export const updateOdontogramSnapshot = async (id, data) => {
 export const deleteOdontogramSnapshot = async (id) => {
   try {
     const numId = Number(id)
-    await supabaseDelete(TABLE, numId)
+    if (!Number.isFinite(numId)) throw new Error('Invalid odontogram id')
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+    const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+    await supabaseDeleteWhere(TABLE, q)
     console.log('✅ Odontogram deleted:', numId)
     return true
   } catch (error) {

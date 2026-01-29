@@ -94,6 +94,28 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresRole: 'doctor' },
     },
     {
+      path: '/admin',
+      redirect: { name: 'admin-clinics' },
+    },
+    {
+      path: '/admin/clinics',
+      name: 'admin-clinics',
+      component: () => import('@/views/superadmin/AdminClinicsView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'super_admin' },
+    },
+    {
+      path: '/admin/clinics/new',
+      name: 'admin-clinics-new',
+      component: () => import('@/views/superadmin/AdminClinicFormView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'super_admin' },
+    },
+    {
+      path: '/admin/clinics/:id/edit',
+      name: 'admin-clinics-edit',
+      component: () => import('@/views/superadmin/AdminClinicFormView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'super_admin' },
+    },
+    {
       path: '/',
       redirect: '/dashboard',
     },
@@ -102,10 +124,15 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+  const impersonatorRole = localStorage.getItem('impersonatorRole')
 
   // Redirect authenticated users away from login page
   if (to.name === 'login' && authStore.isAuthenticated) {
-    const defaultRoute = authStore.userRole === 'doctor' ? 'dashboard' : 'dashboard'
+    const defaultRoute = authStore.userRole === 'super_admin'
+      ? 'admin-clinics'
+      : authStore.userRole === 'doctor'
+        ? 'dashboard'
+        : 'dashboard'
     next({ name: defaultRoute })
     return
   }
@@ -116,11 +143,22 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  // Super admin always uses /admin; redirect dashboard to clinics
+  // (except when super admin is impersonating a clinic as admin)
+  if (to.name === 'dashboard' && authStore.userRole === 'super_admin' && impersonatorRole !== 'super_admin') {
+    next({ name: 'admin-clinics' })
+    return
+  }
+
   // Check role requirement
   if (to.meta.requiresRole) {
+    // Allow super admin pages even during impersonation
+    if (to.meta.requiresRole === 'super_admin' && authStore.userRole !== 'super_admin' && impersonatorRole !== 'super_admin') {
+      next({ name: 'dashboard' })
+      return
+    }
     if (to.meta.requiresRole === 'admin' && authStore.userRole !== 'admin') {
-      // Redirect to appropriate dashboard
-      const defaultRoute = authStore.userRole === 'doctor' ? 'dashboard' : 'dashboard'
+      const defaultRoute = authStore.userRole === 'super_admin' ? 'admin-clinics' : 'dashboard'
       next({ name: defaultRoute })
       return
     }

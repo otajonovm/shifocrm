@@ -22,7 +22,7 @@
           <p class="text-sm text-gray-500">{{ t('doctorDashboard.nextPatientSubtitle') }}</p>
         </div>
         <div class="p-6">
-          <div v-if="nextAppointment" class="flex items-center justify-between gap-4">
+          <div v-if="nextAppointment" class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p class="text-sm text-gray-500">{{ nextAppointment.time }} · {{ nextAppointment.date }}</p>
               <p class="text-lg font-semibold text-gray-900 mt-1">{{ nextAppointment.patientName }}</p>
@@ -30,7 +30,7 @@
             </div>
             <button
               @click="startAppointment"
-              class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all"
+              class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all sm:w-auto w-full"
             >
               <PlayIcon class="w-5 h-5" />
               {{ t('doctorDashboard.startAppointment') }}

@@ -1,75 +1,43 @@
-  /**
- * Patients API - Supabase REST API orqali
- * Jadval: patients
+/**
+ * Patients API - Supabase REST API orqali.
+ * Tenant isolation; clinic_id yo'q bo'lsa filtersiz fallback.
  */
 
-import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supabaseConfig'
+import { supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
+import { getCurrentClinicId } from '@/lib/clinicContext'
+import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
+import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 
 const TABLE = 'patients'
 
-// Barcha bemorlarni olish
 export const listPatients = async () => {
   try {
-    const patients = await supabaseGet(TABLE, 'order=created_at.desc')
-    console.log('✅ Patients loaded from Supabase:')
-    return patients
+    const cid = await getCurrentClinicId()
+    return await supabaseGetWithClinicFallback(TABLE, 'order=created_at.desc', cid)
   } catch (error) {
     console.error('❌ Failed to fetch patients:', error)
     throw error
   }
 }
 
-// ID bo'yicha bemorni olish
 export const getPatientById = async (id) => {
   try {
-
-    // ID ni number formatga o'tkazish (Supabase'da ID number)
     const numId = Number(id)
-
-    // NaN tekshiruvi
-    if (isNaN(numId)) {
-      console.error('❌ Invalid ID format:', id)
-      return null
-    }
-
-
-    // Supabase'da ID number formatda, shuning uchun to'g'ridan-to'g'ri number ID bilan qidirish
-    const patients = await supabaseGet(TABLE, `id=eq.${numId}`)
-
-
-    const patient = patients && patients.length > 0 ? patients[0] : null
-
-    if (patient) {
-      console.log('✅ API: Patient found:', {
-        id: patient.id,
-        name: patient.full_name,
-        idType: typeof patient.id,
-        fullData: patient
-      })
-    } else {
-      console.error('❌ API: Patient not found with ID:', numId)
-      console.error('Response was:', patients)
-    }
-
-    return patient
+    if (!Number.isFinite(numId)) return null
+    const cid = await getCurrentClinicId()
+    const rows = await supabaseGetWithClinicFallback(TABLE, `id=eq.${numId}`, cid)
+    return rows && rows[0] ? rows[0] : null
   } catch (error) {
     console.error('❌ Failed to fetch patient:', error)
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      id: id,
-      idType: typeof id
-    })
-    // Xatolik bo'lsa ham null qaytarish, throw qilmaslik
     return null
   }
 }
 
-// Doktor ID bo'yicha bemorlarni olish
 export const getPatientsByDoctorId = async (doctorId) => {
   try {
-    const patients = await supabaseGet(TABLE, `doctor_id=eq.${doctorId}&order=created_at.desc`)
-    return patients
+    const cid = await getCurrentClinicId()
+    const q = `doctor_id=eq.${Number(doctorId)}&order=created_at.desc`
+    return await supabaseGetWithClinicFallback(TABLE, q, cid)
   } catch (error) {
     console.error('❌ Failed to fetch patients by doctor:', error)
     throw error
@@ -94,7 +62,6 @@ const generateId = async () => {
   }
 }
 
-// Yangi bemor yaratish
 export const createPatient = async ({
   full_name,
   phone,
@@ -105,9 +72,12 @@ export const createPatient = async ({
   doctor_name = null,
   status = 'active',
   notes = null,
-  createFirstVisit = true // Avtomatik birinchi visit yaratish
+  createFirstVisit = true
 }) => {
   try {
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+
     const now = new Date().toISOString()
     const id = await generateId()
 
@@ -124,35 +94,29 @@ export const createPatient = async ({
       notes: notes || null,
       last_visit: null,
       next_appointment: null,
+      clinic_id: cid,
       created_at: now,
       updated_at: now
     }
 
     const result = await supabasePost(TABLE, newPatient)
-    console.log('✅ Patient created:', result[0])
-    
-    // Avtomatik birinchi visit yaratish
     if (createFirstVisit) {
       try {
-        // Dynamic import to avoid circular dependency
         const { createVisit } = await import('./visitsApi')
         await createVisit({
           patient_id: result[0].id,
           doctor_id: doctor_id || null,
           doctor_name: doctor_name || null,
-          status: 'pending', // Default: "Yozildi" - onlayn yozilgan
+          status: 'pending',
           notes: 'Birinchi tashrif (avtomatik yaratilgan)',
           price: null,
           paid_amount: null,
           debt_amount: null
         })
-        console.log('✅ First visit created automatically for patient:', result[0].id)
       } catch (visitError) {
-        // Visit yaratishda xatolik bo'lsa ham, patient yaratilgan bo'ladi
-        console.warn('⚠️ Failed to create first visit:', visitError)
+        console.warn('⚠️ First visit create failed:', visitError)
       }
     }
-    
     return result[0]
   } catch (error) {
     console.error('❌ Failed to create patient:', error)
@@ -163,6 +127,8 @@ export const createPatient = async ({
 // Bemor ma'lumotlarini yangilash
 export const updatePatient = async (id, payload) => {
   try {
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
     const updateData = {
       ...payload,
       updated_at: new Date().toISOString()
@@ -175,9 +141,12 @@ export const updatePatient = async (id, payload) => {
       }
     })
 
-    const result = await supabasePatch(TABLE, id, updateData)
+    const numId = Number(id)
+    if (!Number.isFinite(numId)) throw new Error('Invalid patient id')
+    const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+    const result = await supabasePatchWhere(TABLE, q, updateData)
     console.log('✅ Patient updated:', result[0])
-    return result[0]
+    return result && result[0] ? result[0] : null
   } catch (error) {
     console.error('❌ Failed to update patient:', error)
     throw error
@@ -187,7 +156,12 @@ export const updatePatient = async (id, payload) => {
 // Bemorni o'chirish
 export const deletePatient = async (id) => {
   try {
-    await supabaseDelete(TABLE, id)
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+    const numId = Number(id)
+    if (!Number.isFinite(numId)) throw new Error('Invalid patient id')
+    const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+    await supabaseDeleteWhere(TABLE, q)
     console.log('✅ Patient deleted:', id)
     return { id }
   } catch (error) {

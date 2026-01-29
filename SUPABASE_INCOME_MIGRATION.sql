@@ -2,11 +2,11 @@
 -- Daromadni aniq hisoblash uchun payments (tushum) jadvali
 
 -- 1. Payments jadvalini yaratish
-CREATE TABLE IF NOT EXISTS payments (
+CREATE TABLE IF NOT EXISTS public.payments (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  visit_id INTEGER NOT NULL REFERENCES visits(id) ON DELETE CASCADE,
-  patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
-  doctor_id INTEGER REFERENCES doctors(id) ON DELETE SET NULL,
+  visit_id INTEGER NOT NULL REFERENCES public.visits(id) ON DELETE CASCADE,
+  patient_id INTEGER NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
+  doctor_id INTEGER REFERENCES public.doctors(id) ON DELETE SET NULL,
   amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
   payment_type VARCHAR(20) NOT NULL DEFAULT 'payment',
   method VARCHAR(50),
@@ -17,15 +17,16 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 
 -- 2. Check constraint (faqat ruxsat etilgan turlar)
-ALTER TABLE payments
+ALTER TABLE public.payments DROP CONSTRAINT IF EXISTS payments_type_check;
+ALTER TABLE public.payments
   ADD CONSTRAINT payments_type_check
   CHECK (payment_type IN ('payment', 'refund', 'adjustment'));
 
 -- 3. Indexlar
-CREATE INDEX IF NOT EXISTS idx_payments_visit_id ON payments(visit_id);
-CREATE INDEX IF NOT EXISTS idx_payments_patient_id ON payments(patient_id);
-CREATE INDEX IF NOT EXISTS idx_payments_doctor_id ON payments(doctor_id);
-CREATE INDEX IF NOT EXISTS idx_payments_paid_at ON payments(paid_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payments_visit_id ON public.payments(visit_id);
+CREATE INDEX IF NOT EXISTS idx_payments_patient_id ON public.payments(patient_id);
+CREATE INDEX IF NOT EXISTS idx_payments_doctor_id ON public.payments(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_payments_paid_at ON public.payments(paid_at DESC);
 
 -- 4. Updated_at avtomatik yangilanish trigger
 CREATE OR REPLACE FUNCTION update_payments_updated_at()
@@ -36,17 +37,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trigger_update_payments_updated_at ON payments;
+DROP TRIGGER IF EXISTS trigger_update_payments_updated_at ON public.payments;
 CREATE TRIGGER trigger_update_payments_updated_at
-  BEFORE UPDATE ON payments
+  BEFORE UPDATE ON public.payments
   FOR EACH ROW
-  EXECUTE FUNCTION update_payments_updated_at();
+  EXECUTE PROCEDURE update_payments_updated_at();
 
 -- 5. Visits.paid_amount ni payments bo'yicha qayta hisoblash
 CREATE OR REPLACE FUNCTION recalc_visit_paid_amount(p_visit_id INTEGER)
 RETURNS VOID AS $$
 BEGIN
-  UPDATE visits v
+  UPDATE public.visits v
   SET paid_amount = (
     SELECT COALESCE(SUM(
       CASE
@@ -54,7 +55,7 @@ BEGIN
         ELSE p.amount
       END
     ), 0)
-    FROM payments p
+    FROM public.payments p
     WHERE p.visit_id = p_visit_id
   )
   WHERE v.id = p_visit_id;
@@ -81,30 +82,35 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trigger_recalc_visit_paid_amount ON payments;
+DROP TRIGGER IF EXISTS trigger_recalc_visit_paid_amount ON public.payments;
 CREATE TRIGGER trigger_recalc_visit_paid_amount
-  AFTER INSERT OR UPDATE OR DELETE ON payments
+  AFTER INSERT OR UPDATE OR DELETE ON public.payments
   FOR EACH ROW
-  EXECUTE FUNCTION trigger_recalc_visit_paid_amount();
+  EXECUTE PROCEDURE trigger_recalc_visit_paid_amount();
 
 -- 6. Row Level Security (RLS) - Public Access
-ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can view all payments" ON public.payments;
+DROP POLICY IF EXISTS "Public can insert payments" ON public.payments;
+DROP POLICY IF EXISTS "Public can update payments" ON public.payments;
+DROP POLICY IF EXISTS "Public can delete payments" ON public.payments;
 
 CREATE POLICY "Public can view all payments"
-  ON payments FOR SELECT
+  ON public.payments FOR SELECT
   USING (true);
 
 CREATE POLICY "Public can insert payments"
-  ON payments FOR INSERT
+  ON public.payments FOR INSERT
   WITH CHECK (true);
 
 CREATE POLICY "Public can update payments"
-  ON payments FOR UPDATE
+  ON public.payments FOR UPDATE
   USING (true)
   WITH CHECK (true);
 
 CREATE POLICY "Public can delete payments"
-  ON payments FOR DELETE
+  ON public.payments FOR DELETE
   USING (true);
 
 -- 7. Daromad viewlari (kunlik va oylik)
@@ -120,7 +126,7 @@ SELECT
       ELSE amount
     END
   ), 0) AS net_income
-FROM payments
+FROM public.payments
 GROUP BY DATE(paid_at)
 ORDER BY day DESC;
 
@@ -136,11 +142,11 @@ SELECT
       ELSE amount
     END
   ), 0) AS net_income
-FROM payments
+FROM public.payments
 GROUP BY DATE_TRUNC('month', paid_at)
 ORDER BY month DESC;
 
 -- 8. Comments
-COMMENT ON TABLE payments IS 'Bemor to''lovlari va daromad harakatlari';
-COMMENT ON COLUMN payments.payment_type IS 'payment, refund, adjustment';
-COMMENT ON COLUMN payments.amount IS 'Summasi (so''m)';
+COMMENT ON TABLE public.payments IS 'Bemor to''lovlari va daromad harakatlari';
+COMMENT ON COLUMN public.payments.payment_type IS 'payment, refund, adjustment';
+COMMENT ON COLUMN public.payments.amount IS 'Summasi (so''m)';

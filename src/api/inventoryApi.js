@@ -1,8 +1,12 @@
 /**
- * Inventory & Expenses API - Supabase REST API orqali
+ * Inventory & Expenses API - Supabase REST API orqali.
+ * Tenant isolation; clinic_id yo'q bo'lsa filtersiz fallback.
  */
 
-import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supabaseConfig'
+import { supabaseGet, supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
+import { getCurrentClinicId } from '@/lib/clinicContext'
+import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
+import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 
 const ITEMS_TABLE = 'inventory_items'
 const MOVEMENTS_TABLE = 'inventory_movements'
@@ -10,58 +14,94 @@ const EXPENSES_TABLE = 'expenses'
 const CONSUMPTIONS_TABLE = 'inventory_consumptions'
 
 export const listInventoryItems = async (query = 'order=created_at.desc') => {
-  return await supabaseGet(ITEMS_TABLE, query)
+  const cid = await getCurrentClinicId()
+  return await supabaseGetWithClinicFallback(ITEMS_TABLE, query, cid)
 }
 
 export const createInventoryItem = async (payload) => {
-  const result = await supabasePost(ITEMS_TABLE, payload)
+  const cid = await getCurrentClinicId()
+  if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+  const data = { ...payload, clinic_id: cid }
+  const result = await supabasePost(ITEMS_TABLE, data)
   return result[0]
 }
 
 export const updateInventoryItem = async (id, payload) => {
-  const result = await supabasePatch(ITEMS_TABLE, Number(id), payload)
-  return result[0]
+  const cid = await getCurrentClinicId()
+  if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+  const numId = Number(id)
+  if (!Number.isFinite(numId)) throw new Error('Invalid item id')
+  const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+  const result = await supabasePatchWhere(ITEMS_TABLE, q, payload)
+  return result && result[0] ? result[0] : null
 }
 
 export const deleteInventoryItem = async (id) => {
-  await supabaseDelete(ITEMS_TABLE, Number(id))
+  const cid = await getCurrentClinicId()
+  if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+  const numId = Number(id)
+  if (!Number.isFinite(numId)) throw new Error('Invalid item id')
+  const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+  await supabaseDeleteWhere(ITEMS_TABLE, q)
   return true
 }
 
 export const listInventoryMovements = async (query = 'order=created_at.desc') => {
-  return await supabaseGet(MOVEMENTS_TABLE, query)
+  const cid = await getCurrentClinicId()
+  return await supabaseGetWithClinicFallback(MOVEMENTS_TABLE, query, cid)
 }
 
 export const createInventoryMovement = async (payload) => {
-  const result = await supabasePost(MOVEMENTS_TABLE, payload)
+  const cid = await getCurrentClinicId()
+  if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+  const data = { ...payload, clinic_id: cid }
+  const result = await supabasePost(MOVEMENTS_TABLE, data)
   return result[0]
 }
 
 export const deleteInventoryMovement = async (id) => {
-  await supabaseDelete(MOVEMENTS_TABLE, Number(id))
+  const cid = await getCurrentClinicId()
+  if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+  const numId = Number(id)
+  if (!Number.isFinite(numId)) throw new Error('Invalid movement id')
+  const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+  await supabaseDeleteWhere(MOVEMENTS_TABLE, q)
   return true
 }
 
 export const listExpenses = async (query = 'order=paid_at.desc') => {
-  return await supabaseGet(EXPENSES_TABLE, query)
+  const cid = await getCurrentClinicId()
+  return await supabaseGetWithClinicFallback(EXPENSES_TABLE, query, cid)
 }
 
 export const createExpense = async (payload) => {
-  const result = await supabasePost(EXPENSES_TABLE, payload)
+  const cid = await getCurrentClinicId()
+  if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+  const data = { ...payload, clinic_id: cid }
+  const result = await supabasePost(EXPENSES_TABLE, data)
   return result[0]
 }
 
 export const deleteExpense = async (id) => {
-  await supabaseDelete(EXPENSES_TABLE, Number(id))
+  const cid = await getCurrentClinicId()
+  if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+  const numId = Number(id)
+  if (!Number.isFinite(numId)) throw new Error('Invalid expense id')
+  const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+  await supabaseDeleteWhere(EXPENSES_TABLE, q)
   return true
 }
 
 export const listInventoryConsumptionsByVisitId = async (visitId) => {
-  const numId = Number(visitId)
-  return await supabaseGet(CONSUMPTIONS_TABLE, `visit_id=eq.${numId}&order=created_at.desc`)
+  const cid = await getCurrentClinicId()
+  const q = `visit_id=eq.${Number(visitId)}&order=created_at.desc`
+  return await supabaseGetWithClinicFallback(CONSUMPTIONS_TABLE, q, cid)
 }
 
 export const createInventoryConsumption = async (payload) => {
-  const result = await supabasePost(CONSUMPTIONS_TABLE, payload)
+  const cid = await getCurrentClinicId()
+  if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+  const data = { ...payload, clinic_id: cid }
+  const result = await supabasePost(CONSUMPTIONS_TABLE, data)
   return result[0]
 }

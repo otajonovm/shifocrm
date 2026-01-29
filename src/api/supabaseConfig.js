@@ -26,8 +26,12 @@ export const supabaseGet = async (table, query = '') => {
   })
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.message || `GET failed: ${response.status}`)
+    const body = await response.json().catch(() => ({}))
+    const e = new Error(body.message || `GET failed: ${response.status}`)
+    e.status = response.status
+    e.code = body.code
+    e.details = body.details
+    throw e
   }
 
   return response.json()
@@ -43,8 +47,12 @@ export const supabasePost = async (table, data) => {
   })
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.message || `POST failed: ${response.status}`)
+    const body = await response.json().catch(() => ({}))
+    const e = new Error(body.message || `POST failed: ${response.status}`)
+    e.status = response.status
+    e.code = body.code
+    e.details = body.details
+    throw e
   }
 
   return response.json()
@@ -60,11 +68,62 @@ export const supabasePatch = async (table, id, data) => {
   })
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.message || `PATCH failed: ${response.status}`)
+    const body = await response.json().catch(() => ({}))
+    const e = new Error(body.message || `PATCH failed: ${response.status}`)
+    e.status = response.status
+    e.code = body.code
+    e.details = body.details
+    throw e
   }
 
   return response.json()
+}
+
+// Helper: PATCH request by query (bulk update)
+// Example query: "doctor_id=eq.123&clinic_id=eq.1"
+export const supabasePatchWhere = async (table, query, data) => {
+  const q = (query || '').toString().replace(/^\?/, '')
+  if (!q) throw new Error('PATCH WHERE requires query')
+  const url = `${REST_URL}/${table}?${q}`
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    const e = new Error(body.message || `PATCH failed: ${response.status}`)
+    e.status = response.status
+    e.code = body.code
+    e.details = body.details
+    throw e
+  }
+
+  return response.json()
+}
+
+// Helper: DELETE request by query (bulk delete / scoped delete)
+// Example query: "id=eq.123&clinic_id=eq.1"
+export const supabaseDeleteWhere = async (table, query) => {
+  const q = (query || '').toString().replace(/^\?/, '')
+  if (!q) throw new Error('DELETE WHERE requires query')
+  const url = `${REST_URL}/${table}?${q}`
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    const e = new Error(error.message || `DELETE failed: ${response.status}`)
+    e.status = response.status
+    e.code = error.code
+    e.details = error.details
+    throw e
+  }
+
+  return true
 }
 
 // Helper: DELETE request
