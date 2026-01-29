@@ -1,213 +1,130 @@
 /**
- * Visits API - Supabase REST API orqali
- * Jadval: visits
+ * Visits API - Supabase REST API orqali.
+ * Tenant isolation; clinic_id yo'q bo'lsa filtersiz fallback.
  */
 
-import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supabaseConfig'
+import { supabaseGet, supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
+import { getCurrentClinicId } from '@/lib/clinicContext'
+import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
+import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 
 const TABLE = 'visits'
 
-/**
- * Barcha tashriflarni olish
- * @param {string} query - Supabase query
- * @returns {Promise<Array>}
- */
 export const listVisits = async (query = 'order=created_at.desc') => {
   try {
-    const visits = await supabaseGet(TABLE, query)
-    return visits
+    const cid = await getCurrentClinicId()
+    return await supabaseGetWithClinicFallback(TABLE, query, cid)
   } catch (error) {
     console.error('❌ Failed to fetch visits:', error)
     throw error
   }
 }
 
-/**
- * Doktor ID bo'yicha tashriflarni olish
- * @param {number|string} doctorId
- * @returns {Promise<Array>}
- */
 export const getVisitsByDoctorId = async (doctorId) => {
   try {
-    const numId = Number(doctorId)
-    const visits = await supabaseGet(TABLE, `doctor_id=eq.${numId}&order=created_at.desc`)
-    return visits
+    const cid = await getCurrentClinicId()
+    const q = `doctor_id=eq.${Number(doctorId)}&order=created_at.desc`
+    return await supabaseGetWithClinicFallback(TABLE, q, cid)
   } catch (error) {
     console.error('❌ Failed to fetch visits by doctor:', error)
     throw error
   }
 }
 
-/**
- * Sana bo'yicha tashriflarni olish
- * @param {string} date - YYYY-MM-DD
- * @returns {Promise<Array>}
- */
 export const getVisitsByDate = async (date) => {
   try {
-    const visits = await supabaseGet(TABLE, `date=eq.${date}&order=created_at.desc`)
-    return visits
+    const cid = await getCurrentClinicId()
+    const q = `date=eq.${date}&order=created_at.desc`
+    return await supabaseGetWithClinicFallback(TABLE, q, cid)
   } catch (error) {
     console.error('❌ Failed to fetch visits by date:', error)
     throw error
   }
 }
 
-/**
- * Doktor va sana bo'yicha tashriflarni olish
- * @param {number|string} doctorId
- * @param {string} date - YYYY-MM-DD
- * @returns {Promise<Array>}
- */
 export const getVisitsByDoctorAndDate = async (doctorId, date) => {
   try {
-    const numId = Number(doctorId)
-    const visits = await supabaseGet(
-      TABLE,
-      `doctor_id=eq.${numId}&date=eq.${date}&order=created_at.desc`
-    )
-    return visits
+    const cid = await getCurrentClinicId()
+    const q = `doctor_id=eq.${Number(doctorId)}&date=eq.${date}&order=created_at.desc`
+    return await supabaseGetWithClinicFallback(TABLE, q, cid)
   } catch (error) {
     console.error('❌ Failed to fetch visits by doctor and date:', error)
     throw error
   }
 }
 
-/**
- * Sana oralig'ida tashriflarni olish
- * @param {string} startDate - YYYY-MM-DD
- * @param {string} endDate - YYYY-MM-DD
- * @returns {Promise<Array>}
- */
 export const getVisitsByDateRange = async (startDate, endDate) => {
   try {
-    const visits = await supabaseGet(
-      TABLE,
-      `date=gte.${startDate}&date=lte.${endDate}&order=date.asc,created_at.asc`
-    )
-    return visits
+    const cid = await getCurrentClinicId()
+    const q = `date=gte.${startDate}&date=lte.${endDate}&order=date.asc,created_at.asc`
+    return await supabaseGetWithClinicFallback(TABLE, q, cid)
   } catch (error) {
     console.error('❌ Failed to fetch visits by date range:', error)
     throw error
   }
 }
 
-/**
- * Doktor va sana oralig'i bo'yicha tashriflarni olish
- * @param {number|string} doctorId
- * @param {string} startDate - YYYY-MM-DD
- * @param {string} endDate - YYYY-MM-DD
- * @returns {Promise<Array>}
- */
 export const getVisitsByDoctorAndDateRange = async (doctorId, startDate, endDate) => {
   try {
-    const numId = Number(doctorId)
-    const visits = await supabaseGet(
-      TABLE,
-      `doctor_id=eq.${numId}&date=gte.${startDate}&date=lte.${endDate}&order=date.asc,created_at.asc`
-    )
-    return visits
+    const cid = await getCurrentClinicId()
+    const q = `doctor_id=eq.${Number(doctorId)}&date=gte.${startDate}&date=lte.${endDate}&order=date.asc,created_at.asc`
+    return await supabaseGetWithClinicFallback(TABLE, q, cid)
   } catch (error) {
     console.error('❌ Failed to fetch visits by doctor and date range:', error)
     throw error
   }
 }
 
-// 5 xonali unique ID generatsiya qilish (10000-99999)
 const generateId = async () => {
   try {
-    const visits = await supabaseGet(TABLE, 'select=id&order=id.desc&limit=1000')
-    const existingIds = visits.map(v => Number(v.id))
-
+    const cid = await getCurrentClinicId()
+    const q = 'select=id&order=id.desc&limit=1000'
+    const visits = await supabaseGetWithClinicFallback(TABLE, q, cid)
+    const existingIds = (visits || []).map(v => Number(v.id))
     let newId
     let attempts = 0
     do {
       newId = Math.floor(10000 + Math.random() * 90000)
       attempts++
-      if (attempts > 100) {
-        // Agar 100 marta urinishdan keyin ham topilmasa, timestamp based ID ishlatish
-        newId = Math.floor(10000 + Date.now() % 90000)
-        break
-      }
+      if (attempts > 100) newId = Math.floor(10000 + Date.now() % 90000)
     } while (existingIds.includes(newId))
-
     return newId
   } catch {
-    // Fallback: timestamp based ID
     return Math.floor(10000 + Date.now() % 90000)
   }
 }
 
-/**
- * Bemor ID bo'yicha barcha tashriflarni olish
- * @param {number|string} patientId
- * @returns {Promise<Array>}
- */
 export const getVisitsByPatientId = async (patientId) => {
   try {
-    const numId = Number(patientId)
-    const visits = await supabaseGet(TABLE, `patient_id=eq.${numId}&order=created_at.desc`)
-    console.log(`✅ Visits loaded for patient ${patientId}:`, visits.length)
-    return visits
+    const cid = await getCurrentClinicId()
+    const q = `patient_id=eq.${Number(patientId)}&order=created_at.desc`
+    return await supabaseGetWithClinicFallback(TABLE, q, cid)
   } catch (error) {
     console.error('❌ Failed to fetch visits:', error)
     throw error
   }
 }
 
-/**
- * Visit ID bo'yicha olish
- * @param {number|string} id
- * @returns {Promise<Object|null>}
- */
 export const getVisitById = async (id) => {
   try {
     const numId = Number(id)
-    if (!Number.isFinite(numId)) {
-      throw new Error('Invalid visit ID')
-    }
-    const visits = await supabaseGet(TABLE, `id=eq.${numId}`)
-    return visits[0] || null
+    if (!Number.isFinite(numId)) return null
+    const cid = await getCurrentClinicId()
+    const rows = await supabaseGetWithClinicFallback(TABLE, `id=eq.${numId}`, cid)
+    return rows && rows[0] ? rows[0] : null
   } catch (error) {
     console.error('❌ Failed to fetch visit:', error)
     throw error
   }
 }
 
-/**
- * Bemorning active (pending, arrived, in_progress) tashrifini olish
- * @param {number|string} patientId
- * @returns {Promise<Object|null>}
- */
 export const getActiveVisit = async (patientId) => {
   try {
-    const numId = Number(patientId)
+    const allVisits = await getVisitsByPatientId(patientId)
     const activeStatuses = ['pending', 'arrived', 'in_progress']
-    const statusFilter = activeStatuses.map(s => `status.eq.${s}`).join(',')
-    
-    // Supabase'da OR query qilish uchun
-    const visits = await supabaseGet(
-      TABLE,
-      `patient_id=eq.${numId}&or=(${activeStatuses.map(s => `status.eq.${s}`).join(',')})&order=created_at.desc&limit=1`
-    )
-    
-    // Agar OR query ishlamasa, barcha visitlarni olish va filter qilish
-    if (!visits || visits.length === 0) {
-      const allVisits = await supabaseGet(TABLE, `patient_id=eq.${numId}&order=created_at.desc`)
-      return allVisits.find(v => activeStatuses.includes(v.status)) || null
-    }
-    
-    return visits[0] || null
-  } catch (error) {
-    console.error('❌ Failed to fetch active visit:', error)
-    // Fallback: barcha visitlarni olish va filter qilish
-    try {
-      const allVisits = await getVisitsByPatientId(patientId)
-      const activeStatuses = ['pending', 'arrived', 'in_progress']
-      return allVisits.find(v => activeStatuses.includes(v.status)) || null
-    } catch {
-      return null
-    }
+    return allVisits.find(v => activeStatuses.includes(v.status)) || null
+  } catch {
+    return null
   }
 }
 
@@ -225,52 +142,20 @@ export const filterVisitsByStatus = (visits, statusFilter) => {
   return visits.filter(v => v.status === statusFilter)
 }
 
-/**
- * Qarzdor tashriflarni olish
- * @param {number|string|null} patientId - Bemor ID (ixtiyoriy)
- * @returns {Promise<Array>}
- */
 export const getDebtVisits = async (patientId = null) => {
   try {
-    let query = 'debt_amount=gt.0&or=(status.eq.completed_debt)&order=created_at.desc'
-    
-    if (patientId) {
-      const numId = Number(patientId)
-      query = `patient_id=eq.${numId}&${query}`
-    }
-    
-    const visits = await supabaseGet(TABLE, query)
-    
-    // Agar OR query ishlamasa, barcha visitlarni olish va filter qilish
-    if (!visits || visits.length === 0) {
-      const allVisits = patientId 
-        ? await getVisitsByPatientId(patientId)
-        : await supabaseGet(TABLE, 'order=created_at.desc')
-      
-      return allVisits.filter(v => {
-        const hasDebt = v.debt_amount !== null && v.debt_amount > 0
+    const allVisits = patientId
+      ? await getVisitsByPatientId(patientId)
+      : await listVisits('order=created_at.desc')
+    return allVisits
+      .filter(v => {
+        const hasDebt = v.debt_amount != null && Number(v.debt_amount) > 0
         const isDebtStatus = v.status === 'completed_debt'
         return hasDebt || isDebtStatus
-      }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    }
-    
-    return visits
-  } catch (error) {
-    console.error('❌ Failed to fetch debt visits:', error)
-    // Fallback: barcha visitlarni olish va filter qilish
-    try {
-      const allVisits = patientId 
-        ? await getVisitsByPatientId(patientId)
-        : await supabaseGet(TABLE, 'order=created_at.desc')
-      
-      return allVisits.filter(v => {
-        const hasDebt = v.debt_amount !== null && v.debt_amount > 0
-        const isDebtStatus = v.status === 'completed_debt'
-        return hasDebt || isDebtStatus
-      }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    } catch {
-      return []
-    }
+      })
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  } catch {
+    return []
   }
 }
 
@@ -329,14 +214,13 @@ export const createVisit = async ({
   updated_by = null
 }) => {
   try {
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+
     const now = new Date().toISOString()
     const id = await generateId()
-
-    // Qarz avtomatik hisoblash (agar price va paid_amount berilgan bo'lsa)
     let finalDebtAmount = debt_amount
-    if (debt_amount === null && price !== null) {
-      finalDebtAmount = calculateDebt(price, paid_amount)
-    }
+    if (debt_amount === null && price !== null) finalDebtAmount = calculateDebt(price, paid_amount)
 
     const newVisit = {
       id,
@@ -346,20 +230,20 @@ export const createVisit = async ({
       date: date || now.split('T')[0],
       status,
       notes: notes || null,
-      price: price !== null && price !== undefined ? Number(price) : null,
-      paid_amount: paid_amount !== null && paid_amount !== undefined ? Number(paid_amount) : null,
-      debt_amount: finalDebtAmount !== null && finalDebtAmount !== undefined ? Number(finalDebtAmount) : null,
+      price: price != null ? Number(price) : null,
+      paid_amount: paid_amount != null ? Number(paid_amount) : null,
+      debt_amount: finalDebtAmount != null ? Number(finalDebtAmount) : null,
       service_name: service_name || null,
       start_time: start_time || null,
       end_time: end_time || null,
-      duration_minutes: duration_minutes !== null && duration_minutes !== undefined ? Number(duration_minutes) : null,
+      duration_minutes: duration_minutes != null ? Number(duration_minutes) : null,
       room: room || null,
       channel: channel || null,
-      updated_by: updated_by || null
+      updated_by: updated_by || null,
+      clinic_id: cid
     }
 
     const result = await supabasePost(TABLE, newVisit)
-    console.log('✅ Visit created:', result[0])
     return result[0]
   } catch (error) {
     console.error('❌ Failed to create visit:', error)
@@ -379,6 +263,8 @@ export const updateVisit = async (id, payload) => {
     if (!Number.isFinite(numId)) {
       throw new Error('Invalid visit ID')
     }
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
     
     // Avval mavjud visitni olish
     const currentVisit = await getVisitById(id)
@@ -406,9 +292,10 @@ export const updateVisit = async (id, payload) => {
       }
     })
 
-    const result = await supabasePatch(TABLE, numId, updateData)
+    const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+    const result = await supabasePatchWhere(TABLE, q, updateData)
     console.log('✅ Visit updated:', result[0])
-    return result[0]
+    return result && result[0] ? result[0] : null
   } catch (error) {
     console.error('❌ Failed to update visit:', error)
     throw error
@@ -466,7 +353,10 @@ export const deleteVisit = async (id) => {
     if (!Number.isFinite(numId)) {
       throw new Error('Invalid visit ID')
     }
-    await supabaseDelete(TABLE, numId)
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+    const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+    await supabaseDeleteWhere(TABLE, q)
     console.log('✅ Visit deleted:', numId)
     return true
   } catch (error) {

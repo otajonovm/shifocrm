@@ -53,7 +53,7 @@
     "accountInactive": "Аккаунт неактивен",
     "loginPlaceholder": "Введите логин",
     "passwordPlaceholder": "Введите пароль",
-    "emailPlaceholder": "врач@example.com",
+    "emailPlaceholder": "{'врач@example.com'}",
     "loginSuccess": "Вы успешно вошли в систему!",
     "loginOrPasswordWrong": "Неверный логин или пароль",
     "emailOrPasswordWrong": "Неверный email или пароль",

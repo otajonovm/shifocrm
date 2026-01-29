@@ -7,7 +7,7 @@
       <DoctorForm
         :initial-data="form"
         :is-submitting="isSubmitting"
-        :disabled="doctorsStore.items.length >= 4"
+        :disabled="limitReached"
         :button-text="t('doctors.addButton')"
         @submit="handleCreateDoctor"
       >
@@ -15,8 +15,8 @@
           <div v-if="doctorsStore.error && showFormError" class="p-3 bg-red-50 border border-red-200 rounded-md">
             <p class="text-sm text-red-600">{{ doctorsStore.error }}</p>
           </div>
-          <p v-if="doctorsStore.items.length >= 4" class="text-sm text-amber-600 font-medium mt-2">
-            {{ t('doctors.maxDoctorsWarning') }}
+          <p v-if="limitReached" class="text-sm text-amber-600 font-medium mt-2">
+            {{ t('doctors.maxDoctorsWarningDynamic', { max: maxDoctors }) }}
           </p>
         </template>
       </DoctorForm>
@@ -42,15 +42,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
 import { downloadDbJson } from '@/api/doctorsApi'
+import {
+  getDefaultClinicId,
+  getClinic,
+  getDoctorCountByClinic,
+  MAX_DOCTORS_ERROR,
+} from '@/services/adminService'
 import { useToast } from '@/composables/useToast'
 import MainLayout from '@/layouts/MainLayout.vue'
 import DoctorForm from '@/components/admin/DoctorForm.vue'
 import DoctorsTable from '@/components/admin/DoctorsTable.vue'
 
+const authStore = useAuthStore()
 const doctorsStore = useDoctorsStore()
 const toast = useToast()
 const { t } = useI18n()
@@ -66,15 +74,37 @@ const form = ref({
 
 const isSubmitting = ref(false)
 const showFormError = ref(false)
+const maxDoctors = ref(4)
+const doctorCount = ref(0)
 
-onMounted(() => {
-  doctorsStore.fetchAll()
+const limitReached = computed(() => doctorCount.value >= maxDoctors.value)
+
+async function fetchLimit() {
+  try {
+    const cid = authStore.userClinicId != null && Number.isFinite(Number(authStore.userClinicId))
+      ? Number(authStore.userClinicId)
+      : await getDefaultClinicId()
+    if (!cid) return
+    const [clinic, count] = await Promise.all([
+      getClinic(cid),
+      getDoctorCountByClinic(cid),
+    ])
+    if (clinic) maxDoctors.value = Math.max(1, Number(clinic.max_doctors) || 4)
+    doctorCount.value = count
+  } catch {
+    doctorCount.value = doctorsStore.items.length
+  }
+}
+
+onMounted(async () => {
+  await doctorsStore.fetchAll()
+  await fetchLimit()
 })
 
 const handleCreateDoctor = async (formData) => {
-  if (doctorsStore.items.length >= 4) {
+  if (limitReached.value) {
     showFormError.value = true
-    toast.warning(t('doctors.maxDoctorsToast'))
+    toast.warning(MAX_DOCTORS_ERROR)
     return
   }
 
@@ -82,6 +112,9 @@ const handleCreateDoctor = async (formData) => {
   showFormError.value = false
 
   try {
+    const clinicId = authStore.userClinicId != null && Number.isFinite(Number(authStore.userClinicId))
+      ? Number(authStore.userClinicId)
+      : null
     await doctorsStore.create({
       full_name: formData.full_name,
       phone: formData.phone,
@@ -89,6 +122,7 @@ const handleCreateDoctor = async (formData) => {
       password: formData.password,
       specialization: formData.specialization,
       is_active: formData.is_active,
+      ...(clinicId != null && { clinic_id: clinicId }),
     })
 
     form.value = {
@@ -100,10 +134,11 @@ const handleCreateDoctor = async (formData) => {
       is_active: true,
     }
 
+    await fetchLimit()
     toast.success(t('doctors.toastCreated'))
   } catch {
     showFormError.value = true
-    toast.error(t('doctors.errorCreate'))
+    toast.error(doctorsStore.error || t('doctors.errorCreate'))
   } finally {
     isSubmitting.value = false
   }
@@ -113,6 +148,7 @@ const handleDeleteDoctor = async (id) => {
   if (confirm(t('doctors.confirmDelete'))) {
     try {
       await doctorsStore.remove(id)
+      await fetchLimit()
       toast.success(t('doctors.toastDeleted'))
     } catch {
       toast.error(t('doctors.errorDelete'))

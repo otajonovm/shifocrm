@@ -61,6 +61,29 @@
 
     <!-- User Profile Card -->
     <div class="p-4 border-t border-gray-100">
+      <!-- Super admin clinic session banner -->
+      <div
+        v-if="authStore.isImpersonating"
+        class="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3"
+      >
+        <p class="text-xs font-semibold text-amber-900">Super Admin: klinika rejimi</p>
+        <div class="mt-2 flex items-center gap-2">
+          <router-link
+            to="/admin/clinics"
+            class="px-2.5 py-1.5 text-xs font-medium text-amber-800 bg-white border border-amber-200 rounded-lg hover:bg-amber-100"
+          >
+            Admin panel
+          </router-link>
+          <button
+            type="button"
+            class="px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-white border border-rose-200 rounded-lg hover:bg-rose-50"
+            @click="exitClinicSession"
+          >
+            Chiqish
+          </button>
+        </div>
+      </div>
+
       <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
         <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white font-semibold text-sm">
           {{ userInitials }}
@@ -151,7 +174,9 @@ const doctorMenuItems = [
 ]
 
 const menuItems = computed(() => {
-  return authStore.userRole === 'admin' ? adminMenuItems : doctorMenuItems
+  // Super admin impersonation uses admin menu
+  if (authStore.userRole === 'admin') return adminMenuItems
+  return doctorMenuItems
 })
 
 const userName = computed(() => {
@@ -176,5 +201,11 @@ const roleBadgeClass = computed(() => {
 
 const isActiveRoute = (to) => {
   return route.path === to || route.path.startsWith(to + '/')
+}
+
+const exitClinicSession = () => {
+  authStore.stopClinicSession()
+  clinicStore.clearClinicName()
+  clinicStore.clearLogo()
 }
 </script>

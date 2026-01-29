@@ -53,7 +53,7 @@
     "accountInactive": "Hisob faol emas",
     "loginPlaceholder": "Loginingizni kiriting",
     "passwordPlaceholder": "Parolingizni kiriting",
-    "emailPlaceholder": "shifokor@example.com",
+    "emailPlaceholder": "{'shifokor@example.com'}",
     "loginSuccess": "Tizimga muvaffaqiyatli kirdingiz!",
     "loginOrPasswordWrong": "Login yoki parol noto'g'ri",
     "emailOrPasswordWrong": "Email yoki parol noto'g'ri",
