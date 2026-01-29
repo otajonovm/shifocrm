@@ -135,8 +135,8 @@
                 </td>
                 <td v-if="isAdmin" class="px-6 py-4">
                   <span v-if="getLastVisitStatus(patient.id)" class="text-xs">
-                    <VisitStatusBadge 
-                      :status="getLastVisitStatus(patient.id).status" 
+                    <VisitStatusBadge
+                      :status="getLastVisitStatus(patient.id).status"
                       :visit="getLastVisitStatus(patient.id)"
                       :show-icon="false"
                     />
@@ -331,16 +331,73 @@
                     {{ t('patients.status') }}
                     <span class="text-xs text-gray-400 font-normal">({{ t('patients.defaultActive') }})</span>
                   </label>
-                  <div class="flex items-center gap-3">
-                    <select
-                      v-model="patientForm.status"
-                      class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  <div class="relative" ref="statusDropdownRef">
+                    <button
+                      type="button"
+                      @click.stop="statusDropdownOpen = !statusDropdownOpen"
+                      class="w-full flex items-center justify-between gap-3 px-4 py-2.5 border rounded-lg bg-white text-left focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                      :class="{
+                        'border-primary-400 ring-1 ring-primary-200': statusDropdownOpen,
+                        'border-gray-300 hover:border-primary-400': !statusDropdownOpen
+                      }"
                     >
-                      <option v-for="status in statusOptions" :key="status.value" :value="status.value">
-                        {{ status.label }}
-                      </option>
-                    </select>
-                    <PatientStatusBadge :status="patientForm.status || 'active'" :show-tooltip="false" />
+                      <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <PatientStatusBadge :status="patientForm.status || 'active'" :show-tooltip="false" />
+                      </div>
+                      <svg
+                        class="w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0"
+                        :class="{ 'rotate-180': statusDropdownOpen }"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <Transition
+                      enter-active-class="transition ease-out duration-100"
+                      enter-from-class="transform opacity-0 scale-95"
+                      enter-to-class="transform opacity-100 scale-100"
+                      leave-active-class="transition ease-in duration-75"
+                      leave-from-class="transform opacity-100 scale-100"
+                      leave-to-class="transform opacity-0 scale-95"
+                    >
+                      <div
+                        v-if="statusDropdownOpen"
+                        class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-auto"
+                        @click.stop
+                      >
+                        <div class="py-1.5">
+                          <button
+                            v-for="status in statusOptions"
+                            :key="status.value"
+                            type="button"
+                            @click="selectStatus(status.value)"
+                            class="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors group"
+                            :class="{
+                              'bg-primary-50 border-l-2 border-l-primary-500': patientForm.status === status.value,
+                              'hover:bg-gray-50': patientForm.status !== status.value
+                            }"
+                          >
+                            <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                              <PatientStatusBadge :status="status.value" :show-tooltip="false" />
+                            </div>
+                            <svg
+                              v-if="patientForm.status === status.value"
+                              class="w-5 h-5 text-primary-600 flex-shrink-0"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <div v-else class="w-5 h-5 flex-shrink-0"></div>
+                          </button>
+                        </div>
+                      </div>
+                    </Transition>
                   </div>
                   <p class="mt-1 text-xs text-gray-500">
                     {{ t('patients.defaultActiveNote') }}
@@ -440,7 +497,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
@@ -494,6 +551,8 @@ const editingPatientId = ref(null)
 const viewingPatient = ref(null)
 const deletingPatient = ref(null)
 const patientVisits = ref({}) // { patientId: visit }
+const statusDropdownOpen = ref(false)
+const statusDropdownRef = ref(null)
 
 // Form
 const initialFormState = {
@@ -603,6 +662,11 @@ const updateDoctorName = () => {
   patientForm.value.doctor_name = doctor?.full_name || ''
 }
 
+const selectStatus = (status) => {
+  patientForm.value.status = status
+  statusDropdownOpen.value = false
+}
+
 // Modal Actions
 const openAddModal = () => {
   isEditing.value = false
@@ -672,7 +736,7 @@ const savePatient = async () => {
       // Yangi bemor yaratish - avtomatik birinchi visit yaratiladi
       const newPatient = await patientsStore.addPatient(patientForm.value)
       toast.success(t('patients.toastCreated'))
-      
+
       // Yangi bemor uchun visit ma'lumotlarini yuklash
       if (newPatient && newPatient.id) {
         const visits = await visitsApi.getVisitsByPatientId(newPatient.id)
@@ -712,6 +776,13 @@ const exportPatients = () => {
   toast.success(t('patients.toastLoaded'))
 }
 
+// Click outside handler for status dropdown
+const handleClickOutside = (event) => {
+  if (statusDropdownRef.value && !statusDropdownRef.value.contains(event.target)) {
+    statusDropdownOpen.value = false
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   await doctorsStore.fetchAll()
@@ -736,5 +807,33 @@ onMounted(async () => {
     await patientsStore.fetchPatients()
     await loadPatientVisits()
   }
+
+  // Add click outside listener
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  // Remove click outside listener
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
+
+<style scoped>
+.status-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.status-dropdown::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.status-dropdown::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.status-dropdown::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+</style>
