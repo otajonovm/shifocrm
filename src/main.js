@@ -31,3 +31,44 @@ app.use(i18n)
 app.use(Toast, toastOptions)
 
 app.mount('#app')
+
+// PWA Service Worker registration (vite-plugin-pwa handles this automatically)
+// This code helps with update notifications
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.ready
+      console.log('✅ Service Worker ready:', registration.scope)
+      
+      // Check for updates periodically
+      setInterval(async () => {
+        await registration.update()
+      }, 60 * 60 * 1000) // Check every hour
+      
+      // Listen for service worker updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New version available
+              console.log('🔄 New version available')
+              // You can show a toast notification here instead of confirm
+            }
+          })
+        }
+      })
+    } catch (error) {
+      console.error('❌ Service Worker error:', error)
+    }
+  })
+  
+  // Listen for service worker controller changes (app update)
+  let refreshing = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true
+      window.location.reload()
+    }
+  })
+}

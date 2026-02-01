@@ -31,13 +31,12 @@
 
       <div>
         <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-          {{ t('doctors.email') }} *
+          {{ t('doctors.email') }}
         </label>
         <input
           id="email"
           v-model="form.email"
           type="email"
-          required
           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           placeholder="doctor@example.com"
         />

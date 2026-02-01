@@ -57,6 +57,7 @@
     "loginSuccess": "Tizimga muvaffaqiyatli kirdingiz!",
     "loginOrPasswordWrong": "Login yoki parol noto'g'ri",
     "emailOrPasswordWrong": "Email yoki parol noto'g'ri",
+    "phoneOrPasswordWrong": "Telefon raqami yoki parol noto'g'ri",
     "loggingIn": "Kirish..."
   },
   "patients": {

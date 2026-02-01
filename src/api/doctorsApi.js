@@ -38,11 +38,11 @@ export const getDoctorById = async (id) => {
   }
 }
 
-// Doktor autentifikatsiyasi
-export const authenticateDoctor = async (email, password) => {
+// Doktor autentifikatsiyasi (telefon raqami va parol bo'yicha)
+export const authenticateDoctor = async (phone, password) => {
   try {
-    // Supabase da email va password bo'yicha qidirish
-    const doctors = await supabaseGet(TABLE, `email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(password)}`)
+    // Supabase da telefon raqami va password bo'yicha qidirish
+    const doctors = await supabaseGet(TABLE, `phone=eq.${encodeURIComponent(phone)}&password=eq.${encodeURIComponent(password)}`)
     return doctors[0] || null
   } catch (error) {
     console.error('❌ Failed to authenticate doctor:', error)
@@ -86,9 +86,10 @@ export const createDoctor = async ({
     }
     await assertDoctorLimitNotReached(clinicId)
 
-    const existing = await supabaseGet(TABLE, `email=eq.${encodeURIComponent(email)}&clinic_id=eq.${clinicId}`)
+    // Telefon raqami bo'yicha tekshirish (login uchun telefon ishlatiladi)
+    const existing = await supabaseGet(TABLE, `phone=eq.${encodeURIComponent(phone)}&clinic_id=eq.${clinicId}`)
     if (existing && existing.length > 0) {
-      throw new Error('Email already exists')
+      throw new Error('Telefon raqami allaqachon mavjud')
     }
 
     const now = new Date().toISOString()

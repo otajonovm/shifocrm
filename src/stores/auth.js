@@ -90,10 +90,10 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
   }
 
-  const loginDoctor = async ({ email, password }) => {
+  const loginDoctor = async ({ phone, password }) => {
     error.value = null
     try {
-      const doctor = await authenticateDoctor(email, password)
+      const doctor = await authenticateDoctor(phone, password)
       if (!doctor) {
         error.value = 'Invalid credentials'
         return false
@@ -104,6 +104,7 @@ export const useAuthStore = defineStore('auth', () => {
         id: doctor.id,
         full_name: doctor.full_name,
         email: doctor.email,
+        phone: doctor.phone,
         specialization: doctor.specialization,
         is_active: doctor.is_active,
         clinic_id: cid,
@@ -111,7 +112,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       isAuthenticated.value = true
       userRole.value = 'doctor'
-      userEmail.value = doctor.email
+      userEmail.value = doctor.email || doctor.phone
       user.value = safeDoctor
       impersonatorRole.value = null
       if (cid != null) {
@@ -123,7 +124,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
       localStorage.setItem('isAuthenticated', 'true')
       localStorage.setItem('userRole', 'doctor')
-      localStorage.setItem('userEmail', doctor.email)
+      localStorage.setItem('userEmail', doctor.email || doctor.phone)
       localStorage.setItem('user', JSON.stringify(safeDoctor))
       localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
       return true

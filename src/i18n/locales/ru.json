@@ -57,6 +57,7 @@
     "loginSuccess": "Вы успешно вошли в систему!",
     "loginOrPasswordWrong": "Неверный логин или пароль",
     "emailOrPasswordWrong": "Неверный email или пароль",
+    "phoneOrPasswordWrong": "Неверный номер телефона или пароль",
     "loggingIn": "Вход..."
   },
   "patients": {

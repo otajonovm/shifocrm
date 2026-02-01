@@ -138,22 +138,22 @@
         <!-- Doctor Login Form -->
         <form v-else @submit.prevent="handleDoctorLogin" class="space-y-5">
           <div>
-            <label for="doctor-email" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ t('common.email') }}
+            <label for="doctor-phone" class="block text-sm font-medium text-gray-700 mb-2">
+              {{ t('doctors.phone') }}
             </label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
               </div>
               <input
-                id="doctor-email"
-                v-model="doctorEmail"
-                type="email"
+                id="doctor-phone"
+                v-model="doctorPhone"
+                type="tel"
                 required
                 class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
-                :placeholder="t('auth.emailPlaceholder')"
+                :placeholder="t('doctors.phonePlaceholder')"
               />
             </div>
           </div>
@@ -226,7 +226,7 @@ const { t } = useI18n() // t() is used in script section for toast messages
 const loginType = ref('admin')
 const adminLogin = ref('')
 const adminPassword = ref('')
-const doctorEmail = ref('')
+const doctorPhone = ref('')
 const doctorPassword = ref('')
 const isLoading = ref(false)
 
@@ -251,7 +251,7 @@ const handleAdminLogin = async () => {
 const handleDoctorLogin = async () => {
   isLoading.value = true
   const success = await authStore.loginDoctor({
-    email: doctorEmail.value,
+    phone: doctorPhone.value,
     password: doctorPassword.value
   })
   isLoading.value = false
@@ -261,7 +261,7 @@ const handleDoctorLogin = async () => {
     const redirect = route.query.redirect || '/doctor/profile'
     router.push(redirect)
   } else {
-    toast.error(t('auth.emailOrPasswordWrong'))
+    toast.error(t('auth.phoneOrPasswordWrong'))
   }
 }
 </script>
