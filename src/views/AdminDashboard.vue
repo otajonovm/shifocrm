@@ -134,13 +134,13 @@
 
     <!-- Quick Actions -->
     <div class="flex flex-wrap gap-3">
-      <button
-        @click="showNewPatientModal = true"
+      <router-link
+        to="/patients?action=add"
         class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all w-full sm:w-auto"
       >
         <PlusIcon class="w-5 h-5" />
         {{ t('adminDashboard.newPatient') }}
-      </button>
+      </router-link>
       <button
         @click="showNewAppointmentModal = true"
         class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-gray-700 font-medium rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 hover:scale-[1.02] transition-all w-full sm:w-auto"

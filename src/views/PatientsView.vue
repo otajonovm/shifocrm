@@ -22,7 +22,6 @@
             {{ t('patients.export') }}
           </button>
           <button
-            v-if="isAdmin"
             @click="openAddModal"
             class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
           >
@@ -306,7 +305,7 @@
                     :placeholder="t('patients.addressPlaceholder')"
                   />
                 </div>
-                <div>
+                <div v-if="isAdmin">
                   <label class="block text-sm font-medium text-gray-700 mb-2">
                     {{ t('patients.assignedDoctor') }}
                     <span class="text-xs text-gray-400 font-normal">({{ t('patients.optional') }})</span>
@@ -322,6 +321,15 @@
                       <span v-if="doctor.specialization"> - {{ doctor.specialization }}</span>
                     </option>
                   </select>
+                  <p class="mt-1 text-xs text-gray-500">
+                    {{ t('patients.assignedDoctorHint') }}
+                  </p>
+                </div>
+                <div v-else class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <label class="block text-xs font-medium text-gray-500 mb-1">
+                    {{ t('patients.assignedDoctor') }}
+                  </label>
+                  <p class="text-sm font-semibold text-gray-700">{{ currentDoctorName || t('patients.unassignedDoctor') }}</p>
                   <p class="mt-1 text-xs text-gray-500">
                     {{ t('patients.assignedDoctorHint') }}
                   </p>
@@ -519,9 +527,10 @@ import {
   XMarkIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/vue/24/outline'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const doctorsStore = useDoctorsStore()
 const patientsStore = usePatientsStore()
@@ -530,10 +539,23 @@ const { t } = useI18n()
 
 const isAdmin = computed(() => authStore.userRole === 'admin')
 
-// Current doctor name (for odontogram)
+// Doktor ID ni olish
+const getCurrentDoctorId = () => {
+  if (isAdmin.value) return null
+  if (authStore.user?.id) return authStore.user.id
+  if (authStore.userEmail) {
+    const doctor = doctorsStore.items.find(item => item.email === authStore.userEmail || item.phone === authStore.userEmail)
+    return doctor?.id || null
+  }
+  return null
+}
+
+// Current doctor name (for odontogram and modal)
 const currentDoctorName = computed(() => {
   if (isAdmin.value) return t('role.admin')
-  const doctor = doctorsStore.items.find(d => d.id === authStore.userId || d.id === Number(authStore.userId))
+  const doctorId = getCurrentDoctorId()
+  if (!doctorId) return ''
+  const doctor = doctorsStore.items.find(d => Number(d.id) === Number(doctorId))
   return doctor?.full_name || ''
 })
 
@@ -671,7 +693,23 @@ const selectStatus = (status) => {
 const openAddModal = () => {
   isEditing.value = false
   editingPatientId.value = null
-  patientForm.value = { ...initialFormState }
+
+  // Doktor uchun avtomatik to'ldirish
+  const currentDoctorId = getCurrentDoctorId()
+  if (!isAdmin.value && currentDoctorId) {
+    patientForm.value = {
+      ...initialFormState,
+      doctor_id: String(currentDoctorId)
+    }
+    // Doktor nomini ham to'ldirish
+    const doctor = doctors.value.find(d => Number(d.id) === Number(currentDoctorId))
+    if (doctor) {
+      patientForm.value.doctor_name = doctor.full_name
+    }
+  } else {
+    patientForm.value = { ...initialFormState }
+  }
+
   showModal.value = true
 }
 
@@ -786,6 +824,13 @@ const handleClickOutside = (event) => {
 // Lifecycle
 onMounted(async () => {
   await doctorsStore.fetchAll()
+
+  // Check if we should open the modal from query parameter
+  if (route.query.action === 'add') {
+    openAddModal()
+    // Remove query parameter from URL
+    router.replace({ query: {} })
+  }
 
   let doctorId = null
   if (!isAdmin.value) {

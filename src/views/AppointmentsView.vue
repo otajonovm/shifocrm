@@ -24,9 +24,8 @@
             <input type="file" accept=".csv" class="hidden" @change="importAppointments" />
           </label>
           <button
-            v-if="isAdmin"
             @click="openCreateModal"
-            class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all"
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all hover:scale-[1.02]"
           >
             <PlusIcon class="w-5 h-5" />
             {{ t('appointments.newAppointment') }}
@@ -333,50 +332,115 @@
             <div class="p-6 space-y-4 overflow-y-auto flex-1">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.patient') }}</label>
-                  <select v-model="createForm.patient_id" class="w-full px-3 py-2 border rounded-lg">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ t('appointments.patient') }} <span class="text-red-500">*</span>
+                  </label>
+                  <select
+                    v-model="createForm.patient_id"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                    :class="{ 'border-red-300': createError && !createForm.patient_id }"
+                  >
                     <option value="">{{ t('appointments.select') }}</option>
-                    <option v-for="patient in patients" :key="patient.id" :value="patient.id">
+                    <option v-for="patient in availablePatients" :key="patient.id" :value="patient.id">
                       {{ patient.full_name }} ({{ patient.phone }})
                     </option>
                   </select>
+                  <p v-if="availablePatients.length === 0 && !isAdmin" class="mt-1 text-xs text-amber-600">
+                    {{ t('appointments.noPatientsAvailable') }}
+                  </p>
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.doctor') }}</label>
-                  <select v-model="createForm.doctor_id" class="w-full px-3 py-2 border rounded-lg">
+                <div v-if="isAdmin">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ t('appointments.doctor') }} <span class="text-red-500">*</span>
+                  </label>
+                  <select
+                    v-model="createForm.doctor_id"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                    :class="{ 'border-red-300': createError && !createForm.doctor_id }"
+                  >
                     <option value="">{{ t('appointments.select') }}</option>
                     <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
                       {{ doctor.full_name }}
                     </option>
                   </select>
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.date') }}</label>
-                  <input v-model="createForm.date" type="date" class="w-full px-3 py-2 border rounded-lg" />
+                <div v-else class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('appointments.doctor') }}</label>
+                  <p class="text-sm font-semibold text-gray-700">{{ currentDoctorName }}</p>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.startTime') }}</label>
-                  <input v-model="createForm.start_time" type="time" class="w-full px-3 py-2 border rounded-lg" />
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ t('appointments.date') }} <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    v-model="createForm.date"
+                    type="date"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                    :class="{ 'border-red-300': createError && !createForm.date }"
+                    :min="new Date().toISOString().split('T')[0]"
+                  />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.duration') }}</label>
-                  <input v-model.number="createForm.duration_minutes" type="number" min="10" step="5" class="w-full px-3 py-2 border rounded-lg" />
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ t('appointments.startTime') }} <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    v-model="createForm.start_time"
+                    type="time"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                    :class="{ 'border-red-300': createError && !createForm.start_time }"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ t('appointments.duration') }} (min)
+                  </label>
+                  <input
+                    v-model.number="createForm.duration_minutes"
+                    type="number"
+                    min="10"
+                    step="5"
+                    placeholder="30"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.service') }}</label>
-                  <input v-model="createForm.service_name" type="text" class="w-full px-3 py-2 border rounded-lg" />
+                  <input
+                    v-model="createForm.service_name"
+                    type="text"
+                    :placeholder="t('appointments.servicePlaceholder')"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                  />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.price') }}</label>
-                  <input v-model.number="createForm.price" type="number" min="0" step="1000" class="w-full px-3 py-2 border rounded-lg" />
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.price') }} (so'm)</label>
+                  <input
+                    v-model.number="createForm.price"
+                    type="number"
+                    min="0"
+                    step="1000"
+                    placeholder="0"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.room') }}</label>
-                  <input v-model="createForm.room" type="text" class="w-full px-3 py-2 border rounded-lg" />
+                  <input
+                    v-model="createForm.room"
+                    type="text"
+                    :placeholder="t('appointments.roomPlaceholder')"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.channel') }}</label>
-                  <input v-model="createForm.channel" type="text" class="w-full px-3 py-2 border rounded-lg" />
+                  <input
+                    v-model="createForm.channel"
+                    type="text"
+                    :placeholder="t('appointments.channelPlaceholder')"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                  />
                 </div>
               </div>
               <div>
@@ -387,10 +451,26 @@
                 {{ createError }}
               </div>
             </div>
-            <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100 flex-shrink-0">
-              <button @click="closeCreateModal" class="px-4 py-2 text-sm border rounded-lg">{{ t('appointments.cancel') }}</button>
-              <button @click="createAppointment" class="px-4 py-2 text-sm text-white bg-primary-600 rounded-lg">
-                {{ t('appointments.save') }}
+            <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100 flex-shrink-0 bg-gray-50">
+              <button
+                @click="closeCreateModal"
+                class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                {{ t('appointments.cancel') }}
+              </button>
+              <button
+                @click="createAppointment"
+                :disabled="loading"
+                class="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02]"
+              >
+                <span v-if="loading" class="inline-flex items-center gap-2">
+                  <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ t('appointments.saving') }}
+                </span>
+                <span v-else>{{ t('appointments.save') }}</span>
               </button>
             </div>
           </div>
@@ -635,6 +715,26 @@ const statusValue = ref('')
 const doctors = computed(() => doctorsStore.items)
 const patients = computed(() => patientsStore.items)
 
+// Doktor uchun faqat o'z bemorlarini ko'rsatish
+const availablePatients = computed(() => {
+  if (isAdmin.value) {
+    return patients.value
+  }
+  // Doktor uchun faqat o'z bemorlarini qaytarish
+  return patients.value.filter(patient => {
+    const patientDoctorId = patient.doctor_id ? Number(patient.doctor_id) : null
+    const currentDoctorId = doctorId.value ? Number(doctorId.value) : null
+    return patientDoctorId === currentDoctorId
+  })
+})
+
+// Joriy doktor nomi
+const currentDoctorName = computed(() => {
+  if (isAdmin.value) return ''
+  const doctor = doctors.value.find(d => Number(d.id) === Number(doctorId.value))
+  return doctor?.full_name || ''
+})
+
 const statusOptions = computed(() => [
   { value: 'pending', label: t('appointments.statusPending') },
   { value: 'arrived', label: t('appointments.statusArrived') },
@@ -723,10 +823,26 @@ const loadVisits = async () => {
 
 const openCreateModal = () => {
   createError.value = ''
+  // Doktor uchun avtomatik to'ldirish
+  if (!isAdmin.value && doctorId.value) {
+    createForm.value.doctor_id = String(doctorId.value)
+  } else {
+    createForm.value.doctor_id = ''
+  }
+  // Bugungi sanani default qilish
+  if (!createForm.value.date) {
+    createForm.value.date = selectedDate.value || new Date().toISOString().split('T')[0]
+  }
+  showCreateModal.value = true
+}
+
+const closeCreateModal = () => {
+  showCreateModal.value = false
+  // Formani tozalash
   createForm.value = {
     patient_id: '',
-    doctor_id: '',
-    date: selectedDate.value,
+    doctor_id: isAdmin.value ? '' : String(doctorId.value || ''),
+    date: new Date().toISOString().split('T')[0],
     start_time: '',
     duration_minutes: 30,
     service_name: '',
@@ -735,11 +851,6 @@ const openCreateModal = () => {
     room: '',
     channel: ''
   }
-  showCreateModal.value = true
-}
-
-const closeCreateModal = () => {
-  showCreateModal.value = false
 }
 
 const openRescheduleModal = (visit = null) => {
@@ -810,8 +921,16 @@ const applyStatusChange = async () => {
 
 const createAppointment = async () => {
   createError.value = ''
+  loading.value = true
+
+  // Doktor uchun avtomatik to'ldirish
+  if (!isAdmin.value && doctorId.value && !createForm.value.doctor_id) {
+    createForm.value.doctor_id = String(doctorId.value)
+  }
+
   if (!createForm.value.patient_id || !createForm.value.doctor_id) {
     createError.value = t('appointments.errorSelectPatientDoctor')
+    loading.value = false
     return
   }
   if (!createForm.value.date || !createForm.value.start_time) {
@@ -834,6 +953,7 @@ const createAppointment = async () => {
   })
   if (overlap) {
     createError.value = t('appointments.errorOverlap')
+    loading.value = false
     return
   }
 
@@ -856,11 +976,13 @@ const createAppointment = async () => {
       updated_by: getActorLabel()
     })
     toast.success(t('appointments.toastCreated'))
-    showCreateModal.value = false
+    closeCreateModal()
     await loadVisits()
   } catch (error) {
     console.error('Failed to create appointment:', error)
     createError.value = t('appointments.errorSave')
+  } finally {
+    loading.value = false
   }
 }
 
