@@ -238,3 +238,69 @@ export async function updateClinicAdmin(adminId, data) {
   const result = await supabasePatch(CLINIC_ADMINS_TABLE, id, payload)
   return result && result[0] ? result[0] : result
 }
+
+// -----------------------------------------------------------------------------
+// Yakka doktor (solo doctor) — Super Admin tomonidan yaratiladi
+// -----------------------------------------------------------------------------
+
+/**
+ * Yakka doktor profilini yaratish: klinika (max_doctors=1) + doktor.
+ * Super Admin admin panelida ishlatiladi.
+ * @param {{ full_name: string, email: string, password: string, clinic_name?: string, phone?: string, specialization?: string }} data
+ * @returns {Promise<{ clinic: object, doctor: object, email: string, password: string }>}
+ */
+export async function createSoloDoctor(data) {
+  const fullName = (data.full_name || '').trim()
+  const email = (data.email || '').trim().toLowerCase()
+  const password = (data.password || '').trim()
+  const clinicName = (data.clinic_name || fullName || 'Yakka doktor').trim()
+  if (!fullName || !email || !password) {
+    throw new Error('Ism, email va parol majburiy')
+  }
+
+  const slug = 'solo-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)
+  const clinicPayload = {
+    name: clinicName,
+    slug,
+    max_doctors: 1,
+    logo_url: null,
+    is_active: true
+  }
+  const clinic = await createClinic(clinicPayload)
+  const clinicId = Number(clinic?.id ?? clinic)
+  if (!Number.isFinite(clinicId)) throw new Error('Klinika yaratilmadi')
+
+  const existing = await supabaseGet(DOCTORS_TABLE, `email=eq.${encodeURIComponent(email)}`)
+  if (existing && existing.length > 0) {
+    throw new Error('Bunday email allaqachon ro\'yxatdan o\'tgan')
+  }
+
+  const doctors = await supabaseGet(DOCTORS_TABLE, 'select=id&order=id.desc&limit=100')
+  const existingIds = Array.isArray(doctors) ? doctors.map(d => Number(d.id)).filter(Boolean) : []
+  let doctorId = Math.floor(10000 + Math.random() * 90000)
+  while (existingIds.includes(doctorId)) {
+    doctorId = Math.floor(10000 + Math.random() * 90000)
+  }
+
+  const now = new Date().toISOString()
+  const doctorPayload = {
+    id: doctorId,
+    full_name: fullName,
+    phone: (data.phone || '').trim() || null,
+    email,
+    password,
+    specialization: (data.specialization || '').trim() || null,
+    is_active: true,
+    clinic_id: clinicId,
+    created_at: now,
+    updated_at: now
+  }
+  const doctorResult = await supabasePost(DOCTORS_TABLE, doctorPayload)
+  const doctor = Array.isArray(doctorResult) ? doctorResult[0] : doctorResult
+  return {
+    clinic: clinic,
+    doctor,
+    email,
+    password
+  }
+}

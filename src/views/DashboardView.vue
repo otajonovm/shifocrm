@@ -1,16 +1,8 @@
 <template>
   <MainLayout>
-    <!-- Admin Dashboard -->
     <AdminDashboard v-if="isAdmin" />
-
-    <!-- Doctor Dashboard -->
     <DoctorDashboard v-else-if="isDoctor" />
-
-    <!-- Solo Dashboard -->
-    <div v-else-if="isSolo" class="space-y-8">
-      <AdminDashboard />
-      <DoctorDashboard />
-    </div>
+    <SoloDashboard v-else-if="isSolo" />
   </MainLayout>
 </template>
 
@@ -20,6 +12,7 @@ import { useAuthStore } from '@/stores/auth'
 import MainLayout from '@/layouts/MainLayout.vue'
 import AdminDashboard from '@/views/AdminDashboard.vue'
 import DoctorDashboard from '@/views/DoctorDashboard.vue'
+import SoloDashboard from '@/views/SoloDashboard.vue'
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.userRole === 'admin')

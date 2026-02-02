@@ -255,7 +255,7 @@ import { useI18n } from 'vue-i18n'
 import { listPayments, createPayment, updatePayment, deletePayment } from '@/api/paymentsApi'
 import { listDoctors } from '@/api/doctorsApi'
 import { listPatients } from '@/api/patientsApi'
-import { getVisitById } from '@/api/visitsApi'
+import { getVisitById, updateVisit } from '@/api/visitsApi'
 import { useToast } from '@/composables/useToast'
 
 const payments = ref([])
@@ -487,10 +487,25 @@ const savePayment = async () => {
       toast.success(t('payments.toastCreated'))
     }
     await loadPayments()
+    await syncVisitStatusIfFullyPaid(visitId)
     closeModal()
   } catch (error) {
     console.error('Failed to save payment:', error)
     toast.error(t('payments.errorSave'))
+  }
+}
+
+const syncVisitStatusIfFullyPaid = async (visitId) => {
+  try {
+    const visit = await getVisitById(visitId)
+    if (!visit || visit.status !== 'completed_debt') return
+    const price = Number(visit.price)
+    const paid = Number(visit.paid_amount) || 0
+    if (price > 0 && paid >= price) {
+      await updateVisit(visitId, { status: 'completed_paid', debt_amount: null })
+    }
+  } catch (e) {
+    console.warn('syncVisitStatusIfFullyPaid:', e)
   }
 }
 

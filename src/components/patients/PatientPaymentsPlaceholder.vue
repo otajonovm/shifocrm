@@ -20,6 +20,7 @@
         </div>
       </div>
       <button
+        v-if="isAdmin"
         class="ml-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
         @click="openCreateModal"
       >
@@ -61,7 +62,7 @@
             <td class="px-4 py-3 text-slate-700">{{ entry.method || '-' }}</td>
             <td class="px-4 py-3 text-slate-700">{{ entry.note || '-' }}</td>
             <td class="px-4 py-3 text-slate-700">
-              <div class="flex items-center gap-2">
+              <div v-if="isAdmin" class="flex items-center gap-2">
                 <button class="text-primary-600 hover:text-primary-700 text-sm" @click="openEditModal(entry)">
                   {{ t('patientPayments.edit') }}
                 </button>
@@ -69,6 +70,7 @@
                   {{ t('patientPayments.delete') }}
                 </button>
               </div>
+              <span v-else class="text-slate-400 text-sm">—</span>
             </td>
           </tr>
         </tbody>
@@ -185,10 +187,14 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId } from '@/api/paymentsApi'
 import { getVisitServicesByPatientId } from '@/api/visitServicesApi'
-import { getVisitById } from '@/api/visitsApi'
+import { getVisitById, updateVisit } from '@/api/visitsApi'
 import { useToast } from '@/composables/useToast'
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.userRole === 'admin')
 
 const props = defineProps({
   patientId: {
@@ -361,10 +367,26 @@ const savePayment = async () => {
       toast.success(t('patientPayments.toastCreated'))
     }
     await loadPayments()
+    await syncVisitStatusIfFullyPaid(visitId)
     closeModal()
   } catch (error) {
     console.error('Failed to save payment:', error)
     toast.error(t('patientPayments.errorSave'))
+  }
+}
+
+// To'lov to'liq bo'lsa visitni "To'liq yakunlangan" qilish (faqat admin to'lov qilgach)
+const syncVisitStatusIfFullyPaid = async (visitId) => {
+  try {
+    const visit = await getVisitById(visitId)
+    if (!visit || visit.status !== 'completed_debt') return
+    const price = Number(visit.price)
+    const paid = Number(visit.paid_amount) || 0
+    if (price > 0 && paid >= price) {
+      await updateVisit(visitId, { status: 'completed_paid', debt_amount: null })
+    }
+  } catch (e) {
+    console.warn('syncVisitStatusIfFullyPaid:', e)
   }
 }
 

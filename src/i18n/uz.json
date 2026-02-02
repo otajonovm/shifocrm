@@ -23,7 +23,8 @@
   },
   "role": {
     "admin": "Administrator",
-    "doctor": "Shifokor"
+    "doctor": "Shifokor",
+    "solo": "Yakka doktor"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -165,6 +166,29 @@
     "gotIt": "Tushundim",
     "credentialsEditHint": "Klinika ID va Login — kirish uchun. Parolni faqat yuqorida o'zgartirish mumkin."
   },
+  "soloDoctor": {
+    "title": "Yakka doktor profilini yaratish",
+    "subtitle": "Yakka holda ishlaydigan shifokor uchun tizim — barcha imkoniyatlar ochiq",
+    "createButton": "Yakka doktor qo'shish",
+    "fullName": "To'liq ism",
+    "fullNamePlaceholder": "Masalan: Dr. Karimov Jamshid",
+    "email": "Email",
+    "emailPlaceholder": "shifokor@example.com",
+    "password": "Parol",
+    "passwordPlaceholder": "Kamida 6 ta belgi",
+    "passwordHint": "Doktor shu parol bilan tizimga kiradi (Doktor tab)",
+    "clinicName": "Klinika nomi",
+    "clinicNamePlaceholder": "Bo'sh qoldirsangiz — doktor ismi ishlatiladi",
+    "clinicNameHint": "Bemorlar ko'radigan nom",
+    "specialization": "Mutaxassislik",
+    "specializationPlaceholder": "Masalan: Stomatolog, Terapevt",
+    "phone": "Telefon",
+    "create": "Yaratish",
+    "created": "Yakka doktor yaratildi!",
+    "successTitle": "Profil yaratildi",
+    "successSubtitle": "Quyidagi ma'lumotlar bilan Doktor tab orqali kirishi mumkin",
+    "loginHint": "Kirish sahifasida «Doktor» tabini tanlab, email va parolni kiriting."
+  },
   "adminDashboard": {
     "totalPatients": "Jami Bemorlar",
     "today": "bugun",
@@ -200,6 +224,19 @@
     "activityNewVisit": "Yangi tashrif",
     "activityPaymentReceived": "To'lov qabul qilindi",
     "activityVisitCompleted": "Uchrashuv yakunlandi"
+  },
+  "soloDashboard": {
+    "welcome": "Xush kelibsiz, {name}!",
+    "subtitle": "Bugungi kunni boshqaring",
+    "quickNewPatient": "Yangi bemor",
+    "quickAppointment": "Uchrashuv",
+    "quickPayment": "To'lov",
+    "todayRevenue": "Bugungi daromad",
+    "weeklyRevenue": "Haftalik daromad",
+    "totalDebt": "Jami qarz",
+    "todayAppointments": "Bugungi uchrashuvlar",
+    "topDebtors": "Qarzdor bemorlar",
+    "addFirst": "Birinchi uchrashuv qo'shish"
   },
   "doctorDashboard": {
     "welcome": "Xush kelibsiz, {name}!",
@@ -328,6 +365,8 @@
   "patients": {
     "allPatients": "Barcha Bemorlar",
     "myPatients": "Mening Bemorlarim",
+    "soloTitle": "Bemorlarim",
+    "soloSubtitle": "Barcha bemorlaringiz bir joyda",
     "allPatientsSubtitle": "Tizimdagi barcha bemorlar ro'yxati",
     "myPatientsSubtitle": "Sizga biriktirilgan bemorlar",
     "export": "Export",
@@ -344,6 +383,7 @@
     "actions": "Amallar",
     "edit": "Tahrirlash",
     "delete": "O'chirish",
+    "call": "Qo'ng'iroq",
     "last": "Oxirgi",
     "noPatients": "Bemorlar topilmadi",
     "addNewPatient": "Yangi bemor qo'shish",
@@ -550,6 +590,7 @@
     "servicePrice": "Xizmat narxi (so'm):",
     "paidAmount": "To'langan summa (so'm):",
     "debtLabel": "Qarzdorlik:",
+    "paymentByAdminHint": "To'lovni administrator kiritadi. Siz faqat xizmat narxini belgilang.",
     "completing": "Yakunlanmoqda...",
     "complete": "Yakunlash",
     "paymentExtra": "Qo'shimcha to'lov",

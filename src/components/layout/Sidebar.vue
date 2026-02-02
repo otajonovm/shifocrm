@@ -164,6 +164,20 @@ const adminMenuItems = [
   { labelKey: 'nav.settings', to: '/settings', icon: Cog6ToothIcon },
 ]
 
+// Yakka doktor menyusi — sodda, tushunarli, keraklisi yetadi
+const soloMenuItems = [
+  { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
+  { labelKey: 'nav.patients', to: '/patients', icon: UsersIcon },
+  { labelKey: 'nav.appointments', to: '/appointments', icon: CalendarDaysIcon },
+  { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
+  { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
+  { labelKey: 'nav.inventory', to: '/inventory', icon: ArchiveBoxIcon },
+  { labelKey: 'nav.reports', to: '/reports', icon: ChartBarIcon },
+  { labelKey: 'nav.treatmentPlans', to: '/treatment-plans', icon: DocumentTextIcon },
+  { labelKey: 'nav.doctorProfile', to: '/doctor/profile', icon: UserCircleIcon },
+  { labelKey: 'nav.settings', to: '/settings', icon: Cog6ToothIcon },
+]
+
 // Doctor menu items
 const doctorMenuItems = [
   { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
@@ -174,29 +188,32 @@ const doctorMenuItems = [
 ]
 
 const menuItems = computed(() => {
-  // Super admin impersonation uses admin menu
+  if (authStore.userRole === 'solo') return soloMenuItems
   if (authStore.userRole === 'admin') return adminMenuItems
   return doctorMenuItems
 })
 
 const userName = computed(() => {
   if (authStore.userRole === 'admin') return t('role.admin')
+  if (authStore.userRole === 'solo') return authStore.user?.full_name || authStore.userEmail || t('role.solo')
   return authStore.userEmail || t('role.doctor')
 })
 
 const userInitials = computed(() => {
   const name = userName.value
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'
 })
 
 const roleLabel = computed(() => {
-  return authStore.userRole === 'admin' ? t('role.admin') : t('role.doctor')
+  if (authStore.userRole === 'admin') return t('role.admin')
+  if (authStore.userRole === 'solo') return t('role.solo')
+  return t('role.doctor')
 })
 
 const roleBadgeClass = computed(() => {
-  return authStore.userRole === 'admin'
-    ? 'bg-orange-100 text-orange-700'
-    : 'bg-green-100 text-green-700'
+  if (authStore.userRole === 'admin') return 'bg-orange-100 text-orange-700'
+  if (authStore.userRole === 'solo') return 'bg-teal-100 text-teal-700'
+  return 'bg-green-100 text-green-700'
 })
 
 const isActiveRoute = (to) => {

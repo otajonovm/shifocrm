@@ -1,29 +1,28 @@
 <template>
   <MainLayout>
     <div class="space-y-6 animate-fade-in">
-      <!-- Header -->
+      <!-- Header: solo uchun sodda sarlavha -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">
-            {{ isAdmin ? t('patients.allPatients') : t('patients.myPatients') }}
+            {{ isSolo ? t('patients.soloTitle') : (isAdmin ? t('patients.allPatients') : t('patients.myPatients')) }}
           </h1>
           <p class="text-sm text-gray-500 mt-1">
-            {{ isAdmin ? t('patients.allPatientsSubtitle') : t('patients.myPatientsSubtitle') }}
+            {{ isSolo ? t('patients.soloSubtitle') : (isAdmin ? t('patients.allPatientsSubtitle') : t('patients.myPatientsSubtitle')) }}
           </p>
         </div>
         <div class="flex items-center gap-3">
           <button
             @click="exportPatients"
-            class="inline-flex items-center gap-2 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            class="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 font-medium rounded-lg hover:bg-gray-50 transition-colors"
           >
-
-
             <ArrowDownTrayIcon class="w-5 h-5" />
             {{ t('patients.export') }}
           </button>
+          <!-- Yangi bemor: solo va admin uchun -->
           <button
             @click="openAddModal"
-            class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
+            class="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
           >
             <PlusIcon class="w-5 h-5" />
             {{ t('patients.newPatient') }}
@@ -42,8 +41,9 @@
               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
+          <!-- Doktor filtri: faqat admin uchun (solo uchun emas) -->
           <select
-            v-if="isAdmin"
+            v-if="isAdmin && !isSolo"
             v-model="selectedDoctor"
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
@@ -82,7 +82,8 @@
                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   {{ t('patients.phone') }}
                 </th>
-                <th v-if="isAdmin" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <!-- Doktor ustuni: faqat admin uchun (solo o'zi bitta) -->
+                <th v-if="isAdmin && !isSolo" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   {{ t('patients.doctor') }}
                 </th>
                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -91,7 +92,7 @@
                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   {{ t('patients.status') }}
                 </th>
-                <th v-if="isAdmin" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <th v-if="isAdmin && !isSolo" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   {{ t('patients.lastVisit') }}
                 </th>
                 <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -123,7 +124,7 @@
                 <td class="px-6 py-4">
                   <span class="text-sm text-gray-600">{{ patient.phone }}</span>
                 </td>
-                <td v-if="isAdmin" class="px-6 py-4">
+                <td v-if="isAdmin && !isSolo" class="px-6 py-4">
                   <span class="text-sm text-gray-600">{{ patient.doctor_name || '-' }}</span>
                 </td>
                 <td class="px-6 py-4">
@@ -132,7 +133,7 @@
                 <td class="px-6 py-4">
                   <PatientStatusBadge :status="patient.status || 'active'" />
                 </td>
-                <td v-if="isAdmin" class="px-6 py-4">
+                <td v-if="isAdmin && !isSolo" class="px-6 py-4">
                   <span v-if="getLastVisitStatus(patient.id)" class="text-xs">
                     <VisitStatusBadge
                       :status="getLastVisitStatus(patient.id).status"
@@ -166,34 +167,62 @@
           </table>
         </div>
 
+        <!-- Mobile: yaxshilangan karta ko'rinishi -->
         <div class="md:hidden divide-y divide-gray-100">
           <div
             v-for="patient in filteredPatients"
             :key="patient.id"
             @click="goToPatientDetail(patient.id)"
-            class="p-4 hover:bg-gray-50 cursor-pointer"
+            class="p-4 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors"
           >
-            <div class="flex items-start justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold">
-                  {{ getInitials(patient.full_name) }}
-                </div>
-                <div>
-                  <p class="font-medium text-gray-900">{{ patient.full_name }}</p>
-                  <p class="text-sm text-gray-500">{{ patient.phone }}</p>
-                </div>
+            <div class="flex items-start gap-3">
+              <div class="w-14 h-14 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                {{ getInitials(patient.full_name) }}
               </div>
-              <PatientStatusBadge :status="patient.status || 'active'" />
-            </div>
-            <div class="mt-3 flex items-center justify-between text-sm">
-              <span class="text-gray-500">{{ t('patients.last') }}: {{ formatDate(patient.last_visit) || '-' }}</span>
-              <div class="flex items-center gap-2" @click.stop>
-                <button @click.stop="openEditModal(patient)" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
-                  <PencilIcon class="w-5 h-5" />
-                </button>
-                <button v-if="isAdmin" @click.stop="confirmDelete(patient)" class="p-2 text-red-600 hover:bg-red-50 rounded-lg">
-                  <TrashIcon class="w-5 h-5" />
-                </button>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="font-semibold text-gray-900 truncate">{{ patient.full_name }}</p>
+                    <a
+                      :href="'tel:' + patient.phone"
+                      @click.stop
+                      class="text-sm text-primary-600 hover:underline"
+                    >
+                      {{ patient.phone }}
+                    </a>
+                  </div>
+                  <PatientStatusBadge :status="patient.status || 'active'" />
+                </div>
+                <div class="mt-2 flex items-center justify-between">
+                  <span class="text-xs text-gray-500">
+                    {{ t('patients.last') }}: {{ formatDate(patient.last_visit) || '-' }}
+                  </span>
+                  <!-- Tezkor amallar -->
+                  <div class="flex items-center gap-1" @click.stop>
+                    <a
+                      :href="'tel:' + patient.phone"
+                      class="p-2.5 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
+                      :title="t('patients.call')"
+                    >
+                      <PhoneIcon class="w-5 h-5" />
+                    </a>
+                    <button
+                      @click.stop="openEditModal(patient)"
+                      class="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                      :title="t('patients.edit')"
+                    >
+                      <PencilIcon class="w-5 h-5" />
+                    </button>
+                    <button
+                      v-if="isAdmin"
+                      @click.stop="confirmDelete(patient)"
+                      class="p-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                      :title="t('patients.delete')"
+                    >
+                      <TrashIcon class="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -305,7 +334,8 @@
                     :placeholder="t('patients.addressPlaceholder')"
                   />
                 </div>
-                <div v-if="isAdmin">
+                <!-- Doktor tanlash: solo uchun yashirin (avtomatik o'zi) -->
+                <div v-if="!isSolo">
                   <label class="block text-sm font-medium text-gray-700 mb-2">
                     {{ t('patients.assignedDoctor') }}
                     <span class="text-xs text-gray-400 font-normal">({{ t('patients.optional') }})</span>
@@ -526,6 +556,7 @@ import {
   UsersIcon,
   XMarkIcon,
   ExclamationTriangleIcon,
+  PhoneIcon,
 } from '@heroicons/vue/24/outline'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -537,7 +568,8 @@ const patientsStore = usePatientsStore()
 const toast = useToast()
 const { t } = useI18n()
 
-const isAdmin = computed(() => authStore.userRole === 'admin')
+const isAdmin = computed(() => authStore.userRole === 'admin' || authStore.userRole === 'solo')
+const isSolo = computed(() => authStore.userRole === 'solo')
 
 // Doktor ID ni olish
 const getCurrentDoctorId = () => {
@@ -693,21 +725,20 @@ const selectStatus = (status) => {
 const openAddModal = () => {
   isEditing.value = false
   editingPatientId.value = null
+  patientForm.value = { ...initialFormState }
 
-  // Doktor uchun avtomatik to'ldirish
-  const currentDoctorId = getCurrentDoctorId()
-  if (!isAdmin.value && currentDoctorId) {
-    patientForm.value = {
-      ...initialFormState,
-      doctor_id: String(currentDoctorId)
+  // Solo doktor: avtomatik o'zini doktor sifatida tayinlash
+  if (isSolo.value && authStore.user?.id) {
+    patientForm.value.doctor_id = authStore.user.id
+    patientForm.value.doctor_name = authStore.user.full_name || ''
+  } else if (!isAdmin.value) {
+    // Oddiy doktor uchun avtomatik to'ldirish
+    const currentDoctorId = getCurrentDoctorId()
+    if (currentDoctorId) {
+      patientForm.value.doctor_id = String(currentDoctorId)
+      const doctor = doctors.value.find(d => Number(d.id) === Number(currentDoctorId))
+      if (doctor) patientForm.value.doctor_name = doctor.full_name
     }
-    // Doktor nomini ham to'ldirish
-    const doctor = doctors.value.find(d => Number(d.id) === Number(currentDoctorId))
-    if (doctor) {
-      patientForm.value.doctor_name = doctor.full_name
-    }
-  } else {
-    patientForm.value = { ...initialFormState }
   }
 
   showModal.value = true

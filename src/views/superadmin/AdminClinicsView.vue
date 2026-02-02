@@ -6,13 +6,22 @@
           <h1 class="text-2xl font-bold text-gray-900">{{ t('superAdmin.clinicsListTitle') }}</h1>
           <p class="text-gray-500">{{ t('superAdmin.clinicsListSubtitle') }}</p>
         </div>
-        <router-link
-          :to="{ name: 'admin-clinics-new' }"
-          class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg shadow hover:shadow-lg transition-all"
-        >
-          <PlusIcon class="w-5 h-5" />
-          {{ t('superAdmin.newClinic') }}
-        </router-link>
+        <div class="flex flex-wrap gap-3">
+          <router-link
+            :to="{ name: 'admin-solo-doctor-new' }"
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-lg shadow hover:bg-emerald-700 hover:shadow-lg transition-all"
+          >
+            <UserPlusIcon class="w-5 h-5" />
+            {{ t('soloDoctor.createButton') }}
+          </router-link>
+          <router-link
+            :to="{ name: 'admin-clinics-new' }"
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg shadow hover:shadow-lg transition-all"
+          >
+            <PlusIcon class="w-5 h-5" />
+            {{ t('superAdmin.newClinic') }}
+          </router-link>
+        </div>
       </div>
 
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
@@ -100,7 +109,7 @@ import { listClinics, getDoctorCountByClinic, getClinicAdminByClinic } from '@/s
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useClinicStore } from '@/stores/clinic'
-import { PlusIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, PencilSquareIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 
 const { t } = useI18n()
 const router = useRouter()

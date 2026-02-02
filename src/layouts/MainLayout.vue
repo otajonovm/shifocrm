@@ -30,8 +30,8 @@
 
         <!-- Right: Search, Language, Notifications, User Menu -->
         <div class="flex items-center gap-3">
-          <!-- Search (Admin only) -->
-          <div v-if="authStore.userRole === 'admin'" class="hidden md:block">
+          <!-- Search (Admin + Solo) -->
+          <div v-if="authStore.userRole === 'admin' || authStore.userRole === 'solo'" class="hidden md:block">
             <div class="relative">
               <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -289,8 +289,10 @@ const pageSubtitle = computed(() => {
 
 const userInitials = computed(() => {
   if (authStore.userRole === 'admin') return 'AD'
+  const name = authStore.user?.full_name
+  if (name) return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   const email = authStore.userEmail || ''
-  return email.slice(0, 2).toUpperCase()
+  return email.slice(0, 2).toUpperCase() || '??'
 })
 
 const handleLogout = () => {

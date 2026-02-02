@@ -1,0 +1,25 @@
+# ShifoCRM Project Rules for Cursor AI
+
+## 1. Technology Stack & Style
+- **Framework:** Vue 3 (Composition API, `<script setup>`).
+- **Styling:** Tailwind CSS.
+- **Backend:** Supabase (PostgreSQL).
+- **Language:** JavaScript (Vue components), SQL (Database).
+
+## 2. Architecture: Service Layer Pattern (MANDATORY)
+- **Rule:** NEVER call `supabase` client directly inside `.vue` components.
+- **Action:** - All database interactions must be inside `src/services/` folder (e.g., `patientService.js`, `authService.js`).
+  - Components should import these services and call functions like `patientService.getAll()`.
+  - If a service doesn't exist for a feature, create it first.
+
+## 3. Multi-Tenancy & Security
+- **Clinic Isolation:** Every database query (SELECT, INSERT, UPDATE) regarding patients, visits, or staff MUST include `clinic_id`.
+- **RLS Awareness:** Remember that Row Level Security is active. Do not write manual `WHERE clinic_id = ...` in frontend code if RLS handles it automatically, BUT always ensure the data payload for INSERT includes `clinic_id`.
+
+## 4. Coding Standards
+- **Refactoring:** When modifying existing code, always check if it violates the "Service Layer" rule. If it does, refactor it immediately.
+- **Error Handling:** Services should return `{ data, error }` or throw managed errors so components can display UI alerts.
+
+## 5. Context
+- We are building a Medical CRM for Uzbekistan.
+- Current stage: Moving from MVP to Scalable Multi-tenant Architecture.

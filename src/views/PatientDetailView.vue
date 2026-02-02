@@ -42,7 +42,8 @@
                     {{ formatBalance(balance) }}
                   </p>
                 </div>
-                <div v-if="patient.doctor_name">
+                <!-- Doktor: solo uchun yashirin (o'zi bitta) -->
+                <div v-if="patient.doctor_name && !isSolo">
                   <span class="text-xs text-gray-500">{{ t('patientDetail.doctor') }}</span>
                   <p class="text-sm font-semibold text-gray-900">{{ patient.doctor_name }}</p>
                 </div>
@@ -253,11 +254,12 @@ const tabs = [
   { id: 'documents', labelKey: 'patientDetail.tabDocuments', count: null },
 ]
 
-const isAdmin = computed(() => authStore.userRole === 'admin')
+const isAdmin = computed(() => authStore.userRole === 'admin' || authStore.userRole === 'solo')
+const isSolo = computed(() => authStore.userRole === 'solo')
 const isDoctor = computed(() => authStore.userRole === 'doctor')
 
 const goBack = () => {
-  if (isDoctor.value) {
+  if (isDoctor.value && !isSolo.value) {
     router.push('/my-patients')
     return
   }

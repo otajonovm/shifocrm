@@ -289,5 +289,5 @@ const filtered = visitsApi.filterVisitsByStatus(visits, ['completed_debt', 'comp
 
 ---
 
-**Oxirgi Yangilanish:** 2024  
+**Oxirgi Yangilanish:** 2026  
 **Versiya:** 1.0

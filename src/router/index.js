@@ -116,6 +116,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresRole: 'super_admin' },
     },
     {
+      path: '/admin/solo-doctor/new',
+      name: 'admin-solo-doctor-new',
+      component: () => import('@/views/superadmin/AdminSoloDoctorFormView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'super_admin' },
+    },
+    {
       path: '/',
       redirect: '/dashboard',
     },
@@ -150,6 +156,12 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  // Solo doktor /doctors ga kirmasa — o'zi bitta, profilga yo'naltirish
+  if (to.name === 'doctors' && authStore.userRole === 'solo') {
+    next({ name: 'doctor-profile' })
+    return
+  }
+
   // Check role requirement
   if (to.meta.requiresRole) {
     // Allow super admin pages even during impersonation
@@ -157,12 +169,14 @@ router.beforeEach(async (to, from, next) => {
       next({ name: 'dashboard' })
       return
     }
-    if (to.meta.requiresRole === 'admin' && authStore.userRole !== 'admin') {
+    // Admin: admin yoki solo (yakka doktor) kirishi mumkin
+    if (to.meta.requiresRole === 'admin' && authStore.userRole !== 'admin' && authStore.userRole !== 'solo') {
       const defaultRoute = authStore.userRole === 'super_admin' ? 'admin-clinics' : 'dashboard'
       next({ name: defaultRoute })
       return
     }
-    if (to.meta.requiresRole === 'doctor' && authStore.userRole !== 'doctor') {
+    // Doctor: doctor yoki solo kirishi mumkin
+    if (to.meta.requiresRole === 'doctor' && authStore.userRole !== 'doctor' && authStore.userRole !== 'solo') {
       next({ name: 'dashboard' })
       return
     }

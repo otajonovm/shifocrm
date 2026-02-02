@@ -23,7 +23,8 @@
   },
   "role": {
     "admin": "Администратор",
-    "doctor": "Врач"
+    "doctor": "Врач",
+    "solo": "Частный врач"
   },
   "nav": {
     "dashboard": "Панель",
@@ -165,6 +166,29 @@
     "gotIt": "Понятно",
     "credentialsEditHint": "ID клиники и логин — для входа. Пароль можно изменить только выше."
   },
+  "soloDoctor": {
+    "title": "Создание профиля частного врача",
+    "subtitle": "Врач, работающий самостоятельно — все функции доступны",
+    "createButton": "Добавить частного врача",
+    "fullName": "Полное имя",
+    "fullNamePlaceholder": "Например: Др. Каримов Джамшид",
+    "email": "Email",
+    "emailPlaceholder": "doctor@example.com",
+    "password": "Пароль",
+    "passwordPlaceholder": "Минимум 6 символов",
+    "passwordHint": "Врач входит с этим паролем (вкладка «Врач»)",
+    "clinicName": "Название клиники",
+    "clinicNamePlaceholder": "Если оставить пустым — имя врача",
+    "clinicNameHint": "Название, которое видят пациенты",
+    "specialization": "Специализация",
+    "specializationPlaceholder": "Например: Стоматолог, Терапевт",
+    "phone": "Телефон",
+    "create": "Создать",
+    "created": "Профиль создан!",
+    "successTitle": "Профиль создан",
+    "successSubtitle": "Войти можно по данным ниже (вкладка «Врач»)",
+    "loginHint": "На странице входа выберите вкладку «Врач», введите email и пароль."
+  },
   "adminDashboard": {
     "totalPatients": "Всего пациентов",
     "today": "сегодня",
@@ -200,6 +224,19 @@
     "activityNewVisit": "Новый визит",
     "activityPaymentReceived": "Платёж получен",
     "activityVisitCompleted": "Приём завершён"
+  },
+  "soloDashboard": {
+    "welcome": "Добро пожаловать, {name}!",
+    "subtitle": "Управляйте своим рабочим днём",
+    "quickNewPatient": "Новый пациент",
+    "quickAppointment": "Запись",
+    "quickPayment": "Оплата",
+    "todayRevenue": "Доход за сегодня",
+    "weeklyRevenue": "Доход за неделю",
+    "totalDebt": "Всего долг",
+    "todayAppointments": "Сегодняшние приёмы",
+    "topDebtors": "Должники",
+    "addFirst": "Добавить первый приём"
   },
   "doctorDashboard": {
     "welcome": "Добро пожаловать, {name}!",
@@ -328,6 +365,8 @@
   "patients": {
     "allPatients": "Все пациенты",
     "myPatients": "Мои пациенты",
+    "soloTitle": "Мои пациенты",
+    "soloSubtitle": "Все ваши пациенты в одном месте",
     "allPatientsSubtitle": "Список всех пациентов в системе",
     "myPatientsSubtitle": "Пациенты, закреплённые за вами",
     "export": "Экспорт",
@@ -344,6 +383,7 @@
     "actions": "Действия",
     "edit": "Редактировать",
     "delete": "Удалить",
+    "call": "Позвонить",
     "last": "Последний",
     "noPatients": "Пациенты не найдены",
     "addNewPatient": "Добавить пациента",
@@ -550,6 +590,7 @@
     "servicePrice": "Стоимость услуги (сум):",
     "paidAmount": "Оплаченная сумма (сум):",
     "debtLabel": "Долг:",
+    "paymentByAdminHint": "Оплату вносит администратор. Укажите только стоимость услуги.",
     "completing": "Завершение...",
     "complete": "Завершить",
     "paymentExtra": "Доплата",

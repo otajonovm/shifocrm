@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import adminCredentials from '../../db.json'
 import { authenticateDoctor } from '@/api/doctorsApi'
-import { authenticateClinicAdmin } from '@/services/adminService'
+import { authenticateClinicAdmin, getClinic } from '@/services/adminService'
 
 const USER_CLINIC_KEY = 'userClinicId'
 const IMPERSONATOR_ROLE_KEY = 'impersonatorRole'
@@ -110,8 +110,19 @@ export const useAuthStore = defineStore('auth', () => {
         clinic_id: cid,
       }
 
+      // Yakka doktor: klinikada max 1 doktor bo'lsa → solo rol
+      let role = 'doctor'
+      if (cid != null) {
+        try {
+          const clinic = await getClinic(cid)
+          if (clinic && Number(clinic.max_doctors) === 1) {
+            role = 'solo'
+          }
+        } catch (_) { /* clinic topilmasa oddiy doctor */ }
+      }
+
       isAuthenticated.value = true
-      userRole.value = 'doctor'
+      userRole.value = role
       userEmail.value = doctor.email || doctor.phone
       user.value = safeDoctor
       impersonatorRole.value = null
@@ -123,7 +134,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem(USER_CLINIC_KEY)
       }
       localStorage.setItem('isAuthenticated', 'true')
-      localStorage.setItem('userRole', 'doctor')
+      localStorage.setItem('userRole', role)
       localStorage.setItem('userEmail', doctor.email || doctor.phone)
       localStorage.setItem('user', JSON.stringify(safeDoctor))
       localStorage.removeItem(IMPERSONATOR_ROLE_KEY)

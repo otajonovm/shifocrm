@@ -275,8 +275,8 @@
                   />
                 </div>
 
-                <!-- Paid Amount -->
-                <div>
+                <!-- To'langan summa — faqat administrator kiritadi -->
+                <div v-if="isAdmin">
                   <label class="block text-sm font-medium text-gray-700 mb-2">
                     {{ t('patientVisits.paidAmount') }}
                   </label>
@@ -290,8 +290,8 @@
                   />
                 </div>
 
-                <!-- Calculated Debt -->
-                <div v-if="completePrice && completePrice > 0" class="bg-gray-50 rounded-lg p-3">
+                <!-- Qoldiq — faqat admin ko'rsatiladi (doktor faqat narx kiritadi, to'lovni admin qiladi) -->
+                <div v-if="isAdmin && completePrice && completePrice > 0" class="bg-gray-50 rounded-lg p-3">
                   <div class="flex items-center justify-between">
                     <span class="text-sm text-gray-600">{{ t('patientVisits.debtLabel') }}</span>
                     <span
@@ -302,6 +302,9 @@
                     </span>
                   </div>
                 </div>
+                <p v-else-if="!isAdmin && completePrice && completePrice > 0" class="text-sm text-amber-600 bg-amber-50 rounded-lg p-2">
+                  {{ t('patientVisits.paymentByAdminHint') }}
+                </p>
 
                 <!-- Error Message -->
                 <div v-if="statusError" class="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -412,10 +415,18 @@ const filteredVisits = computed(() => {
   return visits.value.filter(v => v.status === statusFilter.value)
 })
 
+// Doktor "Qarzdor" dan "To'liq to'langan" ga o'tkaza olmaydi — faqat admin to'lov qilgach
 const allowedStatuses = computed(() => {
   if (!selectedVisit.value) return []
-  return getAllowedNextStatuses(selectedVisit.value.status)
+  const next = getAllowedNextStatuses(selectedVisit.value.status)
+  if (!isAdmin.value && selectedVisit.value.status === VISIT_STATUSES.COMPLETED_DEBT) {
+    return next.filter(s => s !== VISIT_STATUSES.COMPLETED_PAID)
+  }
+  return next
 })
+
+// To'lovni faqat administrator kiritadi; doktor faqat narx va status belgilaydi
+const isAdmin = computed(() => authStore.userRole === 'admin')
 
 // Methods
 const formatDate = (dateStr) => {
@@ -486,7 +497,8 @@ const completeVisit = async () => {
   statusError.value = ''
   
   const price = completePrice.value ? Number(completePrice.value) : null
-  const paidAmount = completePaidAmount.value ? Number(completePaidAmount.value) : null
+  // Doktor to'lov kiritmaydi — faqat admin to'lov qiladi
+  const paidAmount = isAdmin.value ? (completePaidAmount.value ? Number(completePaidAmount.value) : null) : 0
   
   // Qarz hisoblash
   let debt = null
@@ -514,7 +526,8 @@ const completeVisit = async () => {
     
     await visitsApi.updateVisit(selectedVisit.value.id, updateData)
 
-    if (paidAmount && paidAmount > 0) {
+    // To'lov yozuvini faqat administrator kiritadi
+    if (isAdmin.value && paidAmount && paidAmount > 0) {
       try {
         const existingPayments = await getPaymentsByVisitId(selectedVisit.value.id)
         const netPaid = existingPayments.reduce((sum, entry) => {
@@ -531,7 +544,7 @@ const completeVisit = async () => {
             amount: diff,
             payment_type: 'payment',
             method: 'cash',
-      note: netPaid > 0 ? t('patientVisits.paymentExtra') : t('patientVisits.paymentVisit')
+            note: netPaid > 0 ? t('patientVisits.paymentExtra') : t('patientVisits.paymentVisit')
           })
         }
       } catch (paymentError) {

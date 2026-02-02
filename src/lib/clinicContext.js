@@ -31,7 +31,7 @@ export async function getCurrentClinicId() {
   const cid = user?.clinic_id
   if (cid != null && Number.isFinite(Number(cid))) return Number(cid)
 
-  if (role === 'admin' || role === 'doctor') {
+  if (role === 'admin' || role === 'doctor' || role === 'solo') {
     const defaultId = await getDefaultClinicId()
     return defaultId
   }
