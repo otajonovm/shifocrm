@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import adminCredentials from '../../db.json'
 import { authenticateDoctor } from '@/api/doctorsApi'
-import { authenticateClinicAdmin, getClinic } from '@/services/adminService'
+import { authenticateClinicAdmin, getClinic, getDoctorByClinicId } from '@/services/adminService'
 
 const USER_CLINIC_KEY = 'userClinicId'
 const IMPERSONATOR_ROLE_KEY = 'impersonatorRole'
@@ -51,16 +51,41 @@ export const useAuthStore = defineStore('auth', () => {
       }
       const clinicAdmin = await authenticateClinicAdmin(login, password)
       if (clinicAdmin) {
+        const clinic = await getClinic(clinicAdmin.clinic_id)
+        const isSoloClinic = clinic && Number(clinic.max_doctors) === 1
+        let role = 'admin'
+        let userData = { login: clinicAdmin.login, clinic_id: clinicAdmin.clinic_id }
+
+        if (isSoloClinic) {
+          const doctor = await getDoctorByClinicId(clinicAdmin.clinic_id)
+          if (doctor) {
+            role = 'solo'
+            userData = {
+              id: doctor.id,
+              full_name: doctor.full_name,
+              email: doctor.email,
+              phone: doctor.phone,
+              specialization: doctor.specialization,
+              is_active: doctor.is_active,
+              clinic_id: clinicAdmin.clinic_id
+            }
+          }
+        }
+
         isAuthenticated.value = true
-        userRole.value = 'admin'
-        userEmail.value = null
-        user.value = { login: clinicAdmin.login, clinic_id: clinicAdmin.clinic_id }
+        userRole.value = role
+        userEmail.value = role === 'solo' ? (userData.email || userData.phone) : null
+        user.value = userData
         userClinicId.value = clinicAdmin.clinic_id
         impersonatorRole.value = null
         localStorage.setItem('isAuthenticated', 'true')
-        localStorage.setItem('userRole', 'admin')
-        localStorage.removeItem('userEmail')
-        localStorage.setItem('user', JSON.stringify({ login: clinicAdmin.login, clinic_id: clinicAdmin.clinic_id }))
+        localStorage.setItem('userRole', role)
+        if (role === 'solo') {
+          localStorage.setItem('userEmail', userData.email || userData.phone || '')
+        } else {
+          localStorage.removeItem('userEmail')
+        }
+        localStorage.setItem('user', JSON.stringify(userData))
         localStorage.setItem(USER_CLINIC_KEY, String(clinicAdmin.clinic_id))
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         return true

@@ -170,13 +170,16 @@
     "title": "Создание профиля частного врача",
     "subtitle": "Врач, работающий самостоятельно — все функции доступны",
     "createButton": "Добавить частного врача",
+    "login": "Логин",
+    "loginPlaceholder": "dr.ahmad или doctor123",
+    "loginHint": "Вход через вкладку «Админ» по этому логину и паролю",
+    "successLoginHint": "На странице входа выберите вкладку «Админ», введите логин и пароль.",
     "fullName": "Полное имя",
     "fullNamePlaceholder": "Например: Др. Каримов Джамшид",
     "email": "Email",
     "emailPlaceholder": "doctor@example.com",
     "password": "Пароль",
     "passwordPlaceholder": "Минимум 6 символов",
-    "passwordHint": "Врач входит с этим паролем (вкладка «Врач»)",
     "clinicName": "Название клиники",
     "clinicNamePlaceholder": "Если оставить пустым — имя врача",
     "clinicNameHint": "Название, которое видят пациенты",
@@ -186,8 +189,7 @@
     "create": "Создать",
     "created": "Профиль создан!",
     "successTitle": "Профиль создан",
-    "successSubtitle": "Войти можно по данным ниже (вкладка «Врач»)",
-    "loginHint": "На странице входа выберите вкладку «Врач», введите email и пароль."
+    "successSubtitle": "Войти можно по данным ниже (вкладка «Админ»)"
   },
   "adminDashboard": {
     "totalPatients": "Всего пациентов",

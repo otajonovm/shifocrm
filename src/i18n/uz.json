@@ -170,13 +170,16 @@
     "title": "Yakka doktor profilini yaratish",
     "subtitle": "Yakka holda ishlaydigan shifokor uchun tizim — barcha imkoniyatlar ochiq",
     "createButton": "Yakka doktor qo'shish",
+    "login": "Login",
+    "loginPlaceholder": "dr.ahmad yoki shifokor123",
+    "loginHint": "Admin bo'limidan shu login va parol bilan kirasiz",
+    "successLoginHint": "Kirish sahifasida «Admin» tabini tanlab, login va parolni kiriting.",
     "fullName": "To'liq ism",
     "fullNamePlaceholder": "Masalan: Dr. Karimov Jamshid",
     "email": "Email",
     "emailPlaceholder": "shifokor@example.com",
     "password": "Parol",
     "passwordPlaceholder": "Kamida 6 ta belgi",
-    "passwordHint": "Doktor shu parol bilan tizimga kiradi (Doktor tab)",
     "clinicName": "Klinika nomi",
     "clinicNamePlaceholder": "Bo'sh qoldirsangiz — doktor ismi ishlatiladi",
     "clinicNameHint": "Bemorlar ko'radigan nom",
@@ -186,8 +189,7 @@
     "create": "Yaratish",
     "created": "Yakka doktor yaratildi!",
     "successTitle": "Profil yaratildi",
-    "successSubtitle": "Quyidagi ma'lumotlar bilan Doktor tab orqali kirishi mumkin",
-    "loginHint": "Kirish sahifasida «Doktor» tabini tanlab, email va parolni kiriting."
+    "successSubtitle": "Quyidagi ma'lumotlar bilan Admin bo'limidan kirishi mumkin"
   },
   "adminDashboard": {
     "totalPatients": "Jami Bemorlar",

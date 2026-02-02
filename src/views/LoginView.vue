@@ -192,7 +192,7 @@ const clinicStore = useClinicStore()
 const toast = useToast()
 const { t } = useI18n() // t() is used in script section for toast messages
 
-const loginType = ref('doctor')
+const loginType = ref('admin')
 const adminLogin = ref('')
 const adminPassword = ref('')
 const doctorPhone = ref('')

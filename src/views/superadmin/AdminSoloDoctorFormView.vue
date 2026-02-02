@@ -26,14 +26,15 @@
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('soloDoctor.email') }} *</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('soloDoctor.login') }} *</label>
           <input
-            v-model="form.email"
-            type="email"
+            v-model="form.login"
+            type="text"
             required
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            :placeholder="t('soloDoctor.emailPlaceholder')"
+            :placeholder="t('soloDoctor.loginPlaceholder')"
           />
+          <p class="mt-1 text-xs text-gray-500">{{ t('soloDoctor.loginHint') }}</p>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('soloDoctor.password') }} *</label>
@@ -44,7 +45,15 @@
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             :placeholder="t('soloDoctor.passwordPlaceholder')"
           />
-          <p class="mt-1 text-xs text-gray-500">{{ t('soloDoctor.passwordHint') }}</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('soloDoctor.email') }}</label>
+          <input
+            v-model="form.email"
+            type="email"
+            class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            :placeholder="t('soloDoctor.emailPlaceholder')"
+          />
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('soloDoctor.clinicName') }}</label>
@@ -110,10 +119,10 @@
           </div>
           <div class="space-y-3 bg-gray-50 rounded-xl p-4">
             <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('soloDoctor.email') }}</label>
+              <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('soloDoctor.login') }}</label>
               <div class="flex gap-2">
-                <code class="flex-1 px-3 py-2 bg-white rounded-lg font-mono text-sm border border-gray-200">{{ createdCredentials.email }}</code>
-                <button type="button" @click="copy(createdCredentials.email)" class="px-3 py-2 text-sm font-medium text-primary-700 bg-primary-50 rounded-lg hover:bg-primary-100">
+                <code class="flex-1 px-3 py-2 bg-white rounded-lg font-mono text-sm border border-gray-200">{{ createdCredentials.login }}</code>
+                <button type="button" @click="copy(createdCredentials.login)" class="px-3 py-2 text-sm font-medium text-primary-700 bg-primary-50 rounded-lg hover:bg-primary-100">
                   {{ t('superAdmin.copy') }}
                 </button>
               </div>
@@ -128,7 +137,7 @@
               </div>
             </div>
           </div>
-          <p class="text-sm text-gray-600">{{ t('soloDoctor.loginHint') }}</p>
+          <p class="text-sm text-gray-600">{{ t('soloDoctor.successLoginHint') }}</p>
           <div class="flex justify-end pt-2">
             <button
               type="button"
@@ -159,8 +168,9 @@ const toast = useToast()
 
 const form = ref({
   full_name: '',
-  email: '',
+  login: '',
   password: '',
+  email: '',
   clinic_name: '',
   specialization: '',
   phone: ''
@@ -168,7 +178,7 @@ const form = ref({
 
 const saving = ref(false)
 const showSuccessModal = ref(false)
-const createdCredentials = ref({ email: '', password: '' })
+const createdCredentials = ref({ login: '', password: '' })
 
 function copy(text) {
   navigator.clipboard.writeText(text).then(() => toast.success(t('superAdmin.copied'))).catch(() => {})
@@ -176,7 +186,7 @@ function copy(text) {
 
 function closeSuccessModal() {
   showSuccessModal.value = false
-  createdCredentials.value = { email: '', password: '' }
+    createdCredentials.value = { login: '', password: '' }
   router.push({ name: 'admin-clinics' })
 }
 
@@ -185,13 +195,14 @@ async function handleSubmit() {
   try {
     const result = await createSoloDoctor({
       full_name: form.value.full_name,
-      email: form.value.email,
+      login: form.value.login || undefined,
+      email: form.value.email || undefined,
       password: form.value.password,
       clinic_name: form.value.clinic_name || undefined,
       specialization: form.value.specialization || undefined,
       phone: form.value.phone || undefined
     })
-    createdCredentials.value = { email: result.email, password: result.password }
+    createdCredentials.value = { login: result.login, password: result.password }
     showSuccessModal.value = true
     toast.success(t('soloDoctor.created'))
   } catch (e) {

@@ -107,6 +107,18 @@ export async function getDoctorCountByClinic(clinicId) {
   }
 }
 
+/** Yakka klinika uchun bitta doktor qaytaradi (solo mode). */
+export async function getDoctorByClinicId(clinicId) {
+  const numId = Number(clinicId)
+  if (!Number.isFinite(numId)) return null
+  try {
+    const rows = await supabaseGet(DOCTORS_TABLE, `clinic_id=eq.${numId}&limit=1`)
+    return Array.isArray(rows) && rows[0] ? rows[0] : null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Suspend (deactivate) a clinic.
  * @param {number} id
@@ -246,16 +258,17 @@ export async function updateClinicAdmin(adminId, data) {
 /**
  * Yakka doktor profilini yaratish: klinika (max_doctors=1) + doktor.
  * Super Admin admin panelida ishlatiladi.
- * @param {{ full_name: string, email: string, password: string, clinic_name?: string, phone?: string, specialization?: string }} data
+ * @param {{ full_name: string, email: string, password: string, login?: string, clinic_name?: string, phone?: string, specialization?: string }} data
  * @returns {Promise<{ clinic: object, doctor: object, email: string, password: string }>}
  */
 export async function createSoloDoctor(data) {
   const fullName = (data.full_name || '').trim()
-  const email = (data.email || '').trim().toLowerCase()
+  const login = (data.login || '').trim()
   const password = (data.password || '').trim()
+  const email = (data.email || '').trim().toLowerCase() || (login.includes('@') ? login : `${login}@solo.local`)
   const clinicName = (data.clinic_name || fullName || 'Yakka doktor').trim()
-  if (!fullName || !email || !password) {
-    throw new Error('Ism, email va parol majburiy')
+  if (!fullName || !login || !password) {
+    throw new Error('Ism, login va parol majburiy')
   }
 
   const slug = 'solo-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)
@@ -297,9 +310,14 @@ export async function createSoloDoctor(data) {
   }
   const doctorResult = await supabasePost(DOCTORS_TABLE, doctorPayload)
   const doctor = Array.isArray(doctorResult) ? doctorResult[0] : doctorResult
+
+  // Yakka doktor: clinic_admin yaratish — login+parol bilan Admin bo'limidan kirish
+  await createClinicAdmin(clinicId, { login, password })
+
   return {
-    clinic: clinic,
+    clinic,
     doctor,
+    login,
     email,
     password
   }
