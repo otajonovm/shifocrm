@@ -1,51 +1,52 @@
 <template>
   <MainLayout>
     <div class="space-y-6 animate-fade-in">
-      <!-- Header: solo uchun sodda sarlavha -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <!-- Header: solo uchun sodda va chiroyli -->
+      <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">
             {{ isSolo ? t('patients.soloTitle') : (isAdmin ? t('patients.allPatients') : t('patients.myPatients')) }}
           </h1>
-          <p class="text-sm text-gray-500 mt-1">
+          <p class="mt-1 text-sm text-gray-500">
             {{ isSolo ? t('patients.soloSubtitle') : (isAdmin ? t('patients.allPatientsSubtitle') : t('patients.myPatientsSubtitle')) }}
           </p>
         </div>
         <div class="flex items-center gap-3">
+          <!-- Export: solo uchun yashirin -->
           <button
+            v-if="isAdmin && !isSolo"
             @click="exportPatients"
-            class="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 text-gray-700 bg-white border border-gray-300 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            class="hidden items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:inline-flex"
           >
-            <ArrowDownTrayIcon class="w-5 h-5" />
+            <ArrowDownTrayIcon class="h-5 w-5" />
             {{ t('patients.export') }}
           </button>
-          <!-- Yangi bemor: solo va admin uchun -->
           <button
             @click="openAddModal"
-            class="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
+            class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-cyan-600 px-5 py-3 font-medium text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg"
           >
-            <PlusIcon class="w-5 h-5" />
+            <PlusIcon class="h-5 w-5" />
             {{ t('patients.newPatient') }}
           </button>
         </div>
       </div>
 
-      <div class="bg-white p-4 rounded-xl shadow-card border border-gray-100">
-        <div class="flex flex-col sm:flex-row gap-4">
-          <div class="flex-1 relative">
-            <MagnifyingGlassIcon class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+      <!-- Qidiruv va filter: solo uchun sodda -->
+      <div class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div class="relative flex-1">
+            <MagnifyingGlassIcon class="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <input
-              type="text"
               v-model="searchQuery"
+              type="text"
               :placeholder="t('patients.searchPlaceholder')"
-              class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 text-base focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
-          <!-- Doktor filtri: faqat admin uchun (solo uchun emas) -->
           <select
             v-if="isAdmin && !isSolo"
             v-model="selectedDoctor"
-            class="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            class="rounded-lg border border-gray-300 px-4 py-2.5 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">{{ t('patients.allDoctors') }}</option>
             <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
@@ -54,7 +55,7 @@
           </select>
           <select
             v-model="selectedStatus"
-            class="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            class="rounded-lg border border-gray-300 px-4 py-2.5 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">{{ t('patients.allStatuses') }}</option>
             <option v-for="status in statusOptions" :key="status.value" :value="status.value">
@@ -68,12 +69,13 @@
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
 
-      <div v-else class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+      <div v-else class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full">
-            <thead class="bg-gray-50 sticky top-0">
+            <thead class="sticky top-0 bg-gray-50">
               <tr>
-                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <!-- ID: solo uchun yashirin (joy tejash) -->
+                <th v-if="!isSolo" class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
                   ID
                 </th>
                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -107,7 +109,7 @@
                 @click="goToPatientDetail(patient.id)"
                 class="hover:bg-gray-50 transition-colors cursor-pointer"
               >
-                <td class="px-6 py-4" @click.stop>
+                <td v-if="!isSolo" class="px-6 py-4" @click.stop>
                   <span class="text-sm font-mono text-gray-500">#{{ patient.id }}</span>
                 </td>
                 <td class="px-6 py-4">
@@ -228,24 +230,29 @@
           </div>
         </div>
 
-        <!-- Empty State -->
-        <div v-if="filteredPatients.length === 0 && !patientsStore.loading" class="p-12 text-center">
-          <UsersIcon class="w-12 h-12 text-gray-300 mx-auto" />
-          <p class="mt-4 text-gray-500">{{ t('patients.noPatients') }}</p>
+        <!-- Empty state: solo uchun chiroyli va tushunarli -->
+        <div v-if="filteredPatients.length === 0 && !patientsStore.loading" class="flex flex-col items-center justify-center py-16 px-6">
+          <div class="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
+            <UsersIcon class="h-12 w-12 text-gray-400" />
+          </div>
+          <p class="mt-5 text-lg font-medium text-gray-900">{{ t('patients.noPatients') }}</p>
+          <p v-if="isSolo" class="mt-2 max-w-sm text-center text-sm text-gray-500">
+            {{ t('patients.emptyHint') }}
+          </p>
           <button
             v-if="isAdmin"
             @click="openAddModal"
-            class="mt-4 inline-flex items-center gap-2 px-4 py-2 text-primary-600 hover:text-primary-700 font-medium"
+            class="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-3 font-medium text-white shadow-md transition-all hover:bg-primary-700 hover:shadow-lg"
           >
-            <PlusIcon class="w-5 h-5" />
+            <PlusIcon class="h-5 w-5" />
             {{ t('patients.addNewPatient') }}
           </button>
         </div>
 
-        <!-- Pagination -->
-        <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+        <!-- Footer -->
+        <div class="flex items-center justify-between border-t border-gray-100 px-6 py-4">
           <p class="text-sm text-gray-500">
-            {{ t('patients.total') }}: <span class="font-medium">{{ filteredPatients.length }}</span> {{ t('patients.patientsCount') }}
+            {{ t('patients.total') }}: <span class="font-semibold text-gray-900">{{ filteredPatients.length }}</span> {{ t('patients.patientsCount') }}
           </p>
         </div>
       </div>
@@ -285,186 +292,153 @@
               </button>
             </div>
 
-            <!-- Modal Body -->
-            <div class="p-6 space-y-4">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.fullName') }} *</label>
-                  <input
-                    type="text"
-                    v-model="patientForm.full_name"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    :placeholder="t('patients.fullNamePlaceholder')"
-                  />
+            <!-- Modal Body: majburiy birinchi, tushunarli -->
+            <div class="p-6 space-y-5">
+              <!-- Asosiy: Ism va Telefon -->
+              <div class="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+                <p class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500">
+                  {{ t('patients.requiredFields') }}
+                </p>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label class="mb-2 block text-sm font-semibold text-gray-900">
+                      {{ t('patients.fullName') }} <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      v-model="patientForm.full_name"
+                      type="text"
+                      autofocus
+                      class="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      :placeholder="t('patients.fullNamePlaceholder')"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-2 block text-sm font-semibold text-gray-900">
+                      {{ t('patients.phone') }} <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                      v-model="patientForm.phone"
+                      type="tel"
+                      inputmode="tel"
+                      class="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      :placeholder="t('patients.phonePlaceholder')"
+                    />
+                  </div>
                 </div>
+              </div>
+
+              <!-- Qo'shimcha ma'lumotlar -->
+              <div class="space-y-4">
+                <p class="text-xs font-medium uppercase tracking-wider text-gray-500">
+                  {{ t('patients.optionalFields') }}
+                </p>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.phone') }} *</label>
+                  <label class="mb-2 block text-sm font-medium text-gray-700">{{ t('patients.birthDate') }}</label>
                   <input
-                    type="tel"
-                    v-model="patientForm.phone"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    :placeholder="t('patients.phonePlaceholder')"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.birthDate') }}</label>
-                  <input
-                    type="date"
                     v-model="patientForm.birth_date"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    type="date"
+                    class="w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.gender') }}</label>
+                  <label class="mb-2 block text-sm font-medium text-gray-700">{{ t('patients.gender') }}</label>
                   <select
                     v-model="patientForm.gender"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    class="w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="">{{ t('patients.select') }}</option>
                     <option value="male">{{ t('patients.genderMale') }}</option>
                     <option value="female">{{ t('patients.genderFemale') }}</option>
                   </select>
                 </div>
+                <!-- Manzil: Toshkent sh./vil. → Tuman → Qolgan joylar -->
                 <div class="sm:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.address') }}</label>
+                  <label class="mb-2 block text-sm font-medium text-gray-700">{{ t('patients.address') }}</label>
+                  <select
+                    v-model="patientForm.region"
+                    class="w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    @change="patientForm.district = ''"
+                  >
+                    <option v-for="r in regionOptions" :key="r.value" :value="r.value">
+                      {{ r.value ? t(r.label) : t('patients.regionSelect') }}
+                    </option>
+                  </select>
+                  <select
+                    v-if="patientForm.region"
+                    v-model="patientForm.district"
+                    class="mt-2 w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">{{ t('patients.districtSelect') }}</option>
+                    <option v-for="d in districtOptions" :key="d" :value="d">{{ d }}</option>
+                  </select>
                   <input
+                    v-model="patientForm.address_detail"
                     type="text"
-                    v-model="patientForm.address"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    :placeholder="t('patients.addressPlaceholder')"
+                    class="mt-2 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    :placeholder="t('patients.addressDetailPlaceholder')"
                   />
+                  <p class="mt-1 text-xs text-gray-500">{{ t('patients.addressHint') }}</p>
                 </div>
-                <!-- Doktor tanlash: solo uchun yashirin (avtomatik o'zi) -->
-                <div v-if="!isSolo">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                <!-- Doktor: solo uchun yashirin (avtomatik) -->
+                <div v-if="!isSolo" class="sm:col-span-2">
+                  <label class="mb-2 block text-sm font-medium text-gray-700">
                     {{ t('patients.assignedDoctor') }}
-                    <span class="text-xs text-gray-400 font-normal">({{ t('patients.optional') }})</span>
+                    <span class="font-normal text-gray-400">({{ t('patients.optional') }})</span>
                   </label>
                   <select
                     v-model="patientForm.doctor_id"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     @change="updateDoctorName"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="">{{ t('patients.unassignedDoctor') }}</option>
                     <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
                       {{ doctor.full_name }}
-                      <span v-if="doctor.specialization"> - {{ doctor.specialization }}</span>
+                      <span v-if="doctor.specialization"> — {{ doctor.specialization }}</span>
                     </option>
                   </select>
-                  <p class="mt-1 text-xs text-gray-500">
-                    {{ t('patients.assignedDoctorHint') }}
-                  </p>
+                  <p class="mt-1 text-xs text-gray-500">{{ t('patients.assignedDoctorHint') }}</p>
                 </div>
-                <div v-else class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                  <label class="block text-xs font-medium text-gray-500 mb-1">
-                    {{ t('patients.assignedDoctor') }}
-                  </label>
-                  <p class="text-sm font-semibold text-gray-700">{{ currentDoctorName || t('patients.unassignedDoctor') }}</p>
-                  <p class="mt-1 text-xs text-gray-500">
-                    {{ t('patients.assignedDoctorHint') }}
-                  </p>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    {{ t('patients.status') }}
-                    <span class="text-xs text-gray-400 font-normal">({{ t('patients.defaultActive') }})</span>
-                  </label>
-                  <div class="relative" ref="statusDropdownRef">
-                    <button
-                      type="button"
-                      @click.stop="statusDropdownOpen = !statusDropdownOpen"
-                      class="w-full flex items-center justify-between gap-3 px-4 py-2.5 border rounded-lg bg-white text-left focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
-                      :class="{
-                        'border-primary-400 ring-1 ring-primary-200': statusDropdownOpen,
-                        'border-gray-300 hover:border-primary-400': !statusDropdownOpen
-                      }"
-                    >
-                      <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <PatientStatusBadge :status="patientForm.status || 'active'" :show-tooltip="false" />
-                      </div>
-                      <svg
-                        class="w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0"
-                        :class="{ 'rotate-180': statusDropdownOpen }"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-
-                    <!-- Dropdown Menu -->
-                    <Transition
-                      enter-active-class="transition ease-out duration-100"
-                      enter-from-class="transform opacity-0 scale-95"
-                      enter-to-class="transform opacity-100 scale-100"
-                      leave-active-class="transition ease-in duration-75"
-                      leave-from-class="transform opacity-100 scale-100"
-                      leave-to-class="transform opacity-0 scale-95"
-                    >
-                      <div
-                        v-if="statusDropdownOpen"
-                        class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-auto"
-                        @click.stop
-                      >
-                        <div class="py-1.5">
-                          <button
-                            v-for="status in statusOptions"
-                            :key="status.value"
-                            type="button"
-                            @click="selectStatus(status.value)"
-                            class="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors group"
-                            :class="{
-                              'bg-primary-50 border-l-2 border-l-primary-500': patientForm.status === status.value,
-                              'hover:bg-gray-50': patientForm.status !== status.value
-                            }"
-                          >
-                            <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                              <PatientStatusBadge :status="status.value" :show-tooltip="false" />
-                            </div>
-                            <svg
-                              v-if="patientForm.status === status.value"
-                              class="w-5 h-5 text-primary-600 flex-shrink-0"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                            <div v-else class="w-5 h-5 flex-shrink-0"></div>
-                          </button>
-                        </div>
-                      </div>
-                    </Transition>
-                  </div>
-                  <p class="mt-1 text-xs text-gray-500">
-                    {{ t('patients.defaultActiveNote') }}
-                  </p>
+                <!-- Status: sodda select -->
+                <div class="sm:col-span-2">
+                  <label class="mb-2 block text-sm font-medium text-gray-700">{{ t('patients.status') }}</label>
+                  <select
+                    v-model="patientForm.status"
+                    class="w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option v-for="status in statusOptions" :key="status.value" :value="status.value">
+                      {{ status.label }}
+                    </option>
+                  </select>
+                  <p class="mt-1 text-xs text-gray-500">{{ t('patients.defaultActiveNote') }}</p>
                 </div>
                 <div class="sm:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('patients.notes') }}</label>
+                  <label class="mb-2 block text-sm font-medium text-gray-700">{{ t('patients.notes') }}</label>
                   <textarea
                     v-model="patientForm.notes"
-                    rows="3"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    rows="2"
+                    class="w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     :placeholder="t('patients.notesPlaceholder')"
-                  ></textarea>
+                  />
+                </div>
                 </div>
               </div>
             </div>
 
             <!-- Modal Footer -->
-            <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100 sticky bottom-0 bg-white">
+            <div class="sticky bottom-0 flex items-center justify-end gap-3 border-t border-gray-100 bg-white p-6">
               <button
+                type="button"
                 @click="closeModal"
-                class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                class="rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
               >
                 {{ t('patients.cancel') }}
               </button>
               <button
+                type="button"
                 @click="savePatient"
                 :disabled="patientsStore.loading"
-                class="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                class="rounded-xl bg-gradient-to-r from-primary-500 to-cyan-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
               >
                 {{ patientsStore.loading ? t('patients.saving') : t('patients.save') }}
               </button>
@@ -535,7 +509,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
@@ -547,6 +521,7 @@ import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
 import * as visitsApi from '@/api/visitsApi'
 import { PATIENT_STATUSES, getPatientStatusLabel } from '@/constants/patientStatus'
+import { TASHKENT_OPTIONS, TASHKENT_CITY_DISTRICTS, TASHKENT_REGION_DISTRICTS } from '@/constants/regions'
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -584,7 +559,8 @@ const getCurrentDoctorId = () => {
 
 // Current doctor name (for odontogram and modal)
 const currentDoctorName = computed(() => {
-  if (isAdmin.value) return t('role.admin')
+  if (authStore.userRole === 'solo') return authStore.user?.full_name || ''
+  if (authStore.userRole === 'admin') return t('role.admin')
   const doctorId = getCurrentDoctorId()
   if (!doctorId) return ''
   const doctor = doctorsStore.items.find(d => Number(d.id) === Number(doctorId))
@@ -605,8 +581,15 @@ const editingPatientId = ref(null)
 const viewingPatient = ref(null)
 const deletingPatient = ref(null)
 const patientVisits = ref({}) // { patientId: visit }
-const statusDropdownOpen = ref(false)
-const statusDropdownRef = ref(null)
+
+const regionOptions = TASHKENT_OPTIONS
+
+const districtOptions = computed(() => {
+  const r = patientForm.value?.region || ''
+  if (r === 'Toshkent sh.') return TASHKENT_CITY_DISTRICTS
+  if (r === 'Toshkent vil.') return TASHKENT_REGION_DISTRICTS
+  return []
+})
 
 // Form
 const initialFormState = {
@@ -615,6 +598,9 @@ const initialFormState = {
   birth_date: '',
   gender: '',
   address: '',
+  region: '',
+  district: '',
+  address_detail: '',
   doctor_id: '',
   doctor_name: '',
   status: 'active',
@@ -716,11 +702,6 @@ const updateDoctorName = () => {
   patientForm.value.doctor_name = doctor?.full_name || ''
 }
 
-const selectStatus = (status) => {
-  patientForm.value.status = status
-  statusDropdownOpen.value = false
-}
-
 // Modal Actions
 const openAddModal = () => {
   isEditing.value = false
@@ -747,12 +728,34 @@ const openAddModal = () => {
 const openEditModal = (patient) => {
   isEditing.value = true
   editingPatientId.value = patient.id
+  const addr = (patient.address || '').trim()
+  const parts = addr ? addr.split(/\s*,\s*/) : []
+  let region = ''
+  let district = ''
+  let detail = ''
+
+  if (parts.length >= 1 && (parts[0] === 'Toshkent sh.' || parts[0] === 'Toshkent vil.')) {
+    region = parts[0]
+    const districts = region === 'Toshkent sh.' ? TASHKENT_CITY_DISTRICTS : TASHKENT_REGION_DISTRICTS
+    if (parts.length >= 2 && districts.includes(parts[1])) {
+      district = parts[1]
+      detail = parts.slice(2).join(', ')
+    } else {
+      detail = parts.slice(1).join(', ')
+    }
+  } else if (addr) {
+    detail = addr
+  }
+
   patientForm.value = {
     full_name: patient.full_name || '',
     phone: patient.phone || '',
     birth_date: patient.birth_date || '',
     gender: patient.gender || '',
-    address: patient.address || '',
+    address: addr,
+    region,
+    district,
+    address_detail: detail,
     doctor_id: patient.doctor_id || '',
     doctor_name: patient.doctor_name || '',
     status: patient.status || 'active',
@@ -790,6 +793,14 @@ const confirmDelete = (patient) => {
   showDeleteModal.value = true
 }
 
+const buildAddress = () => {
+  const r = patientForm.value.region || ''
+  const tuman = patientForm.value.district || ''
+  const rest = (patientForm.value.address_detail || '').trim()
+  const parts = [r, tuman, rest].filter(Boolean)
+  return parts.join(', ')
+}
+
 // CRUD Actions
 const savePatient = async () => {
   if (!patientForm.value.full_name || !patientForm.value.phone) {
@@ -797,13 +808,17 @@ const savePatient = async () => {
     return
   }
 
+  const payload = { ...patientForm.value, address: buildAddress() }
+  delete payload.region
+  delete payload.district
+  delete payload.address_detail
+
   try {
     if (isEditing.value && editingPatientId.value) {
-      await patientsStore.editPatient(editingPatientId.value, patientForm.value)
+      await patientsStore.editPatient(editingPatientId.value, payload)
       toast.success(t('patients.toastUpdated'))
     } else {
-      // Yangi bemor yaratish - avtomatik birinchi visit yaratiladi
-      const newPatient = await patientsStore.addPatient(patientForm.value)
+      const newPatient = await patientsStore.addPatient(payload)
       toast.success(t('patients.toastCreated'))
 
       // Yangi bemor uchun visit ma'lumotlarini yuklash
@@ -884,13 +899,6 @@ onMounted(async () => {
     await loadPatientVisits()
   }
 
-  // Add click outside listener
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  // Remove click outside listener
-  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 

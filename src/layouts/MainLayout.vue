@@ -252,7 +252,7 @@ const notifications = ref([])
 const pageTitle = computed(() => {
   const titles = {
     '/dashboard': t('dashboard.title'),
-    '/patients': t('patients.allPatients'),
+    '/patients': authStore.userRole === 'solo' ? t('patients.soloTitle') : t('patients.allPatients'),
     '/doctors': t('doctors.title'),
     '/appointments': t('appointments.title'),
     '/payments': t('payments.title'),
@@ -270,8 +270,8 @@ const pageTitle = computed(() => {
 
 const pageSubtitle = computed(() => {
   const subtitles = {
-    '/dashboard': t('dashboard.overview'),
-    '/patients': t('patients.patientList'),
+    '/dashboard': authStore.userRole === 'solo' ? t('soloDashboard.subtitle') : t('dashboard.overview'),
+    '/patients': authStore.userRole === 'solo' ? t('patients.soloSubtitle') : t('patients.patientList'),
     '/doctors': t('doctors.doctorsList'),
     '/appointments': t('appointments.appointmentsCalendar'),
     '/payments': t('payments.financialReports'),

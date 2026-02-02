@@ -100,7 +100,7 @@
             class="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="">{{ t('appointments.allStatuses') }}</option>
-            <option v-for="status in statusOptions" :key="status.value" :value="status.value">
+            <option v-for="status in statusFilterOptions" :key="status.value" :value="status.value">
               {{ status.label }}
             </option>
           </select>
@@ -245,63 +245,84 @@
                   <div class="text-xs text-gray-400">{{ visit.channel || '-' }}</div>
                 </td>
                 <td class="px-4 py-3 text-gray-600 line-clamp-2 max-w-xs">{{ visit.notes || '-' }}</td>
-                <td class="px-4 py-3 text-right">
-                  <div class="flex items-center justify-end gap-2 flex-wrap">
+                <td class="px-4 py-3">
+                  <div class="flex items-center justify-end gap-1">
                     <router-link
                       :to="{ name: 'patient-detail', params: { id: visit.patient_id } }"
-                      class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary-700 bg-primary-50 rounded hover:bg-primary-100"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100 transition-colors"
                       :title="t('appointments.goToPatient')"
                     >
                       <UserCircleIcon class="w-4 h-4" />
                       {{ t('appointments.goToPatient') }}
                     </router-link>
-                    <button
-                      v-if="visit.status === 'pending'"
-                      @click="updateStatus(visit, 'arrived')"
-                      class="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded"
-                    >
-                      {{ t('appointments.arrived') }}
-                    </button>
-                    <button
-                      v-if="visit.status === 'arrived'"
-                      @click="updateStatus(visit, 'in_progress')"
-                      class="px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-50 rounded"
-                    >
-                      {{ t('appointments.started') }}
-                    </button>
-                    <button
-                      v-if="visit.status === 'in_progress'"
-                      @click="openCompleteModal(visit)"
-                      class="px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 rounded"
-                    >
-                      {{ t('appointments.complete') }}
-                    </button>
-                    <button
-                      v-if="visit.status !== 'cancelled'"
-                      @click="updateStatus(visit, 'cancelled')"
-                      class="px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 rounded"
-                    >
-                      {{ t('appointments.cancel') }}
-                    </button>
-                    <button
-                      v-if="visit.status === 'pending' || visit.status === 'arrived'"
-                      @click="updateStatus(visit, 'no_show')"
-                      class="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded"
-                    >
-                      {{ t('appointments.noShow') }}
-                    </button>
-                    <button
-                      @click="openRescheduleModal(visit)"
-                      class="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded"
-                    >
-                      {{ t('appointments.reschedule') }}
-                    </button>
-                    <button
-                      @click="openStatusModal(visit)"
-                      class="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded"
-                    >
-                      {{ t('appointments.status') }}
-                    </button>
+                    <div class="relative action-menu-wrap">
+                      <button
+                        @click.stop="toggleActionMenu(visit.id)"
+                        type="button"
+                        class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                        :class="{ 'bg-gray-100 text-gray-700': openActionMenuId === visit.id }"
+                      >
+                        <EllipsisVerticalIcon class="w-5 h-5" />
+                      </button>
+                      <Transition
+                        enter-active-class="transition ease-out duration-100"
+                        enter-from-class="opacity-0 scale-95"
+                        enter-to-class="opacity-100 scale-100"
+                        leave-active-class="transition ease-in duration-75"
+                        leave-from-class="opacity-100 scale-100"
+                        leave-to-class="opacity-0 scale-95"
+                      >
+                        <div
+                          v-if="openActionMenuId === visit.id"
+                          class="absolute right-0 top-full mt-1 z-50 w-48 py-1 bg-white rounded-xl shadow-lg border border-gray-100 ring-1 ring-black/5"
+                        >
+                          <template v-if="visit.status === 'pending'">
+                            <button @click="updateStatus(visit, 'arrived'); closeActionMenu()" class="w-full px-4 py-2 text-left text-sm text-blue-700 hover:bg-blue-50 flex items-center gap-2">
+                              <CheckCircleIcon class="w-4 h-4" />
+                              {{ t('appointments.arrived') }}
+                            </button>
+                            <button @click="updateStatus(visit, 'no_show'); closeActionMenu()" class="w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                              <XCircleIcon class="w-4 h-4" />
+                              {{ t('appointments.noShow') }}
+                            </button>
+                          </template>
+                          <template v-if="visit.status === 'arrived'">
+                            <button @click="updateStatus(visit, 'in_progress'); closeActionMenu()" class="w-full px-4 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2">
+                              <PlayCircleIcon class="w-4 h-4" />
+                              {{ t('appointments.started') }}
+                            </button>
+                            <button @click="updateStatus(visit, 'no_show'); closeActionMenu()" class="w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                              <XCircleIcon class="w-4 h-4" />
+                              {{ t('appointments.noShow') }}
+                            </button>
+                          </template>
+                          <template v-if="visit.status === 'in_progress'">
+                            <button @click="openCompleteModal(visit); closeActionMenu()" class="w-full px-4 py-2 text-left text-sm text-emerald-700 hover:bg-emerald-50 flex items-center gap-2">
+                              <CheckIcon class="w-4 h-4" />
+                              {{ t('appointments.complete') }}
+                            </button>
+                          </template>
+                          <div v-if="visit.status !== 'cancelled' && visit.status !== 'completed_paid' && visit.status !== 'completed_debt' && visit.status !== 'no_show'" class="border-t border-gray-100 my-1" />
+                          <button
+                            v-if="visit.status !== 'cancelled' && visit.status !== 'completed_paid' && visit.status !== 'completed_debt' && visit.status !== 'no_show'"
+                            @click="updateStatus(visit, 'cancelled'); closeActionMenu()"
+                            class="w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                          >
+                            <XMarkIcon class="w-4 h-4" />
+                            {{ t('appointments.cancel') }}
+                          </button>
+                          <div class="border-t border-gray-100 my-1" />
+                          <button @click="openRescheduleModal(visit); closeActionMenu()" class="w-full px-4 py-2 text-left text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2">
+                            <CalendarDaysIcon class="w-4 h-4" />
+                            {{ t('appointments.reschedule') }}
+                          </button>
+                          <button @click="openStatusModal(visit); closeActionMenu()" class="w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                            <Cog6ToothIcon class="w-4 h-4" />
+                            {{ t('appointments.changeStatus') }}
+                          </button>
+                        </div>
+                      </Transition>
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -625,7 +646,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
@@ -641,7 +662,14 @@ import {
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   XMarkIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  EllipsisVerticalIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  PlayCircleIcon,
+  CheckIcon,
+  CalendarDaysIcon,
+  Cog6ToothIcon,
 } from '@heroicons/vue/24/outline'
 
 const authStore = useAuthStore()
@@ -712,6 +740,21 @@ const statusError = ref('')
 const statusTarget = ref(null)
 const statusValue = ref('')
 
+const openActionMenuId = ref(null)
+
+const toggleActionMenu = (visitId) => {
+  openActionMenuId.value = openActionMenuId.value === visitId ? null : visitId
+}
+const closeActionMenu = () => {
+  openActionMenuId.value = null
+}
+
+const onDocumentClick = (e) => {
+  if (!openActionMenuId.value) return
+  if (e.target.closest('.action-menu-wrap')) return
+  closeActionMenu()
+}
+
 const doctors = computed(() => doctorsStore.items)
 const patients = computed(() => patientsStore.items)
 
@@ -735,6 +778,16 @@ const currentDoctorName = computed(() => {
   return doctor?.full_name || ''
 })
 
+// Filter: faqat kerakli statuslar (soddalashtirilgan)
+const statusFilterOptions = computed(() => [
+  { value: 'pending', label: t('appointments.statusPending') },
+  { value: 'arrived', label: t('appointments.statusArrived') },
+  { value: 'in_progress', label: t('appointments.statusInProgress') },
+  { value: 'completed', label: t('appointments.statusCompleted') },
+  { value: 'cancelled', label: t('appointments.statusCancelled') },
+  { value: 'no_show', label: t('appointments.statusNoShow') }
+])
+// Modal: barcha statuslar (qo'lda o'zgartirish uchun)
 const statusOptions = computed(() => [
   { value: 'pending', label: t('appointments.statusPending') },
   { value: 'arrived', label: t('appointments.statusArrived') },
@@ -777,7 +830,11 @@ const filteredVisits = computed(() => {
     result = result.filter(v => Number(v.doctor_id) === doctorIdNum)
   }
   if (selectedStatus.value) {
-    result = result.filter(v => v.status === selectedStatus.value)
+    if (selectedStatus.value === 'completed') {
+      result = result.filter(v => v.status === 'completed_paid' || v.status === 'completed_debt')
+    } else {
+      result = result.filter(v => v.status === selectedStatus.value)
+    }
   }
   if (selectedService.value) {
     const serviceQuery = selectedService.value.toLowerCase()
@@ -1373,6 +1430,7 @@ const getActorLabel = () => {
 }
 
 onMounted(async () => {
+  document.addEventListener('click', onDocumentClick)
   const patientLoad = isAdmin.value
     ? patientsStore.fetchPatients()
     : (doctorId.value ? patientsStore.fetchPatientsByDoctor(doctorId.value) : patientsStore.fetchPatients())
@@ -1382,6 +1440,10 @@ onMounted(async () => {
     patientLoad
   ])
   await loadVisits()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onDocumentClick)
 })
 
 watch([viewMode, selectedDate], loadVisits)
