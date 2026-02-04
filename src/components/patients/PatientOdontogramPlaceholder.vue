@@ -3,6 +3,7 @@
     :patient="patient"
     :doctor-id="doctorId"
     :doctor-name="doctorName"
+    :initial-visit-id="visitId"
   />
 </template>
 
@@ -19,6 +20,15 @@ const props = defineProps({
     type: [String, Number],
     required: true,
   },
+  visitId: {
+    type: [String, Number],
+    default: null,
+  },
+})
+
+const visitId = computed(() => {
+  if (!props.visitId) return null
+  return Number(props.visitId)
 })
 
 const patientsStore = usePatientsStore()

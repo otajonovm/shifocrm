@@ -4,96 +4,107 @@
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
     </div>
 
-    <div v-else-if="patient" class="space-y-6 animate-fade-in">
-      <!-- Patient Profile Header -->
-      <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-6">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div class="flex items-center gap-4">
-            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-xl">
+    <div v-else-if="patient" class="space-y-4 sm:space-y-6 animate-fade-in pb-6 pb-safe">
+      <!-- Patient Profile Header — Mobile-first, touch-friendly -->
+      <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-4 sm:p-6">
+        <!-- Top row: Back + Avatar + Name — mobile thumb zone -->
+        <div class="flex items-start gap-3 sm:gap-4">
+          <button
+            @click="goBack"
+            class="flex-shrink-0 p-2.5 -ml-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 active:bg-gray-200 rounded-xl transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+            :title="t('patientDetail.back')"
+          >
+            <ArrowLeftIcon class="w-6 h-6" />
+          </button>
+          <div class="flex-1 min-w-0 flex items-center gap-3 sm:gap-4">
+            <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl flex-shrink-0 shadow-md">
               {{ getInitials(patient.full_name) }}
             </div>
-            <div class="flex-1">
-              <div class="flex items-center gap-3 mb-2">
-                <h1 class="text-2xl font-bold text-gray-900">{{ patient.full_name }}</h1>
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-2 mb-1">
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-900 truncate">{{ patient.full_name }}</h1>
                 <button
                   v-if="isAdmin"
                   @click="openPatientStatusModal"
-                  class="cursor-pointer hover:opacity-80 transition-opacity"
+                  class="cursor-pointer hover:opacity-80 transition-opacity touch-manipulation"
                 >
                   <PatientStatusBadge :status="patient.status || 'active'" />
                 </button>
                 <PatientStatusBadge v-else :status="patient.status || 'active'" />
               </div>
-              <div class="flex items-center gap-6 mt-2 flex-wrap">
-                <div>
-                  <span class="text-xs text-gray-500">{{ t('patients.medId') }}</span>
-                  <p class="text-sm font-semibold text-gray-900">{{ patient.med_id || `#${patient.id}` }}</p>
-                </div>
-                <div>
-                  <span class="text-xs text-gray-500">{{ t('patientDetail.phone') }}</span>
-                  <p class="text-sm font-semibold text-gray-900">{{ patient.phone || '-' }}</p>
-                </div>
-                <div>
-                  <span class="text-xs text-gray-500">{{ t('patients.balance') }}</span>
-                  <p
-                    class="text-sm font-semibold"
-                    :class="balance >= 0 ? 'text-green-600' : 'text-red-600'"
-                  >
-                    {{ formatBalance(balance) }}
-                  </p>
-                </div>
-                <!-- Doktor: solo uchun yashirin (o'zi bitta) -->
-                <div v-if="patient.doctor_name && !isSolo">
-                  <span class="text-xs text-gray-500">{{ t('patientDetail.doctor') }}</span>
-                  <p class="text-sm font-semibold text-gray-900">{{ patient.doctor_name }}</p>
-                </div>
-                <div v-if="lastVisitStatus">
-                  <span class="text-xs text-gray-500">Oxirgi tashrif</span>
-                  <div class="mt-0.5">
-                    <VisitStatusBadge :status="lastVisitStatus.status" :visit="lastVisitStatus" :show-icon="false" />
-                  </div>
-                </div>
-              </div>
-              <!-- Qarzdorlik Banner -->
-              <div v-if="totalDebt > 0" class="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg">
-                <ExclamationCircleIcon class="w-5 h-5 text-red-600" />
-                <span class="text-sm font-medium text-red-700">
-                  Umumiy qarzdorlik: {{ formatCurrency(totalDebt) }}
-                </span>
+              <!-- MED ID — prominent, copyable on mobile -->
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-xs text-gray-500">{{ t('patients.medId') }}</span>
+                <span class="font-mono font-semibold text-primary-600 text-sm sm:text-base">{{ patient.med_id || `#${patient.id}` }}</span>
               </div>
             </div>
           </div>
-          <button
-            @click="goBack"
-            class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors self-start sm:self-auto"
-            :title="t('patientDetail.back')"
-          >
-            <ArrowLeftIcon class="w-5 h-5" />
-          </button>
+        </div>
+
+        <!-- Info grid — 2-col on mobile, readable stacking -->
+        <div class="mt-4 sm:mt-5 grid grid-cols-2 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-1 gap-x-4 gap-y-3">
+          <div class="bg-gray-50/80 sm:bg-transparent rounded-xl sm:rounded-none p-3 sm:p-0 sm:py-1">
+            <span class="text-xs text-gray-500 block">{{ t('patientDetail.phone') }}</span>
+            <a
+              v-if="patient.phone"
+              :href="`tel:${patient.phone}`"
+              class="text-sm font-semibold text-primary-600 hover:underline active:text-primary-700 touch-manipulation"
+            >
+              {{ patient.phone }}
+            </a>
+            <p v-else class="text-sm font-semibold text-gray-900">-</p>
+          </div>
+          <div class="bg-gray-50/80 sm:bg-transparent rounded-xl sm:rounded-none p-3 sm:p-0 sm:py-1">
+            <span class="text-xs text-gray-500 block">{{ t('patients.balance') }}</span>
+            <p
+              class="text-sm font-semibold"
+              :class="balance >= 0 ? 'text-green-600' : 'text-red-600'"
+            >
+              {{ formatBalance(balance) }}
+            </p>
+          </div>
+          <div v-if="patient.doctor_name && !isSolo" class="col-span-2 sm:col-span-1 bg-gray-50/80 sm:bg-transparent rounded-xl sm:rounded-none p-3 sm:p-0 sm:py-1">
+            <span class="text-xs text-gray-500 block">{{ t('patientDetail.doctor') }}</span>
+            <p class="text-sm font-semibold text-gray-900">{{ patient.doctor_name }}</p>
+          </div>
+          <div v-if="lastVisitStatus" class="col-span-2 sm:col-span-1 bg-gray-50/80 sm:bg-transparent rounded-xl sm:rounded-none p-3 sm:p-0 sm:py-1">
+            <span class="text-xs text-gray-500 block">Oxirgi tashrif</span>
+            <div class="mt-0.5">
+              <VisitStatusBadge :status="lastVisitStatus.status" :visit="lastVisitStatus" :show-icon="false" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Qarzdorlik Banner — full width on mobile -->
+        <div v-if="totalDebt > 0" class="mt-4 flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+          <ExclamationCircleIcon class="w-5 h-5 text-red-600 flex-shrink-0" />
+          <span class="text-sm font-medium text-red-700">
+            Umumiy qarzdorlik: {{ formatCurrency(totalDebt) }}
+          </span>
         </div>
       </div>
 
-      <!-- Tabs -->
+      <!-- Tabs — scroll-snap, touch-friendly on mobile -->
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
-        <div class="flex border-b border-gray-100 overflow-x-auto">
+        <div class="flex border-b border-gray-100 overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
           <button
             v-for="tab in tabs"
             :key="tab.id"
             @click="activeTab = tab.id"
-            class="px-6 py-4 text-sm font-medium transition-colors relative whitespace-nowrap"
+            class="flex-shrink-0 px-4 sm:px-6 py-3.5 sm:py-4 min-h-[48px] text-sm font-medium transition-colors relative whitespace-nowrap snap-start touch-manipulation"
             :class="activeTab === tab.id
-              ? 'text-primary-600 border-b-2 border-primary-600'
-              : 'text-gray-600 hover:text-gray-900'"
+              ? 'text-primary-600 border-b-2 border-primary-600 bg-primary-50/50'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'"
           >
-                {{ t(tab.labelKey) }}
-            <span v-if="tab.count" class="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
+            {{ t(tab.labelKey) }}
+            <span v-if="tab.count" class="ml-1.5 sm:ml-2 px-2 py-0.5 text-xs bg-gray-200/80 text-gray-600 rounded-full">
               {{ tab.count }}
             </span>
           </button>
         </div>
 
-        <!-- Tab Content -->
-        <div class="p-6">
+        <!-- Tab Content — reduced padding on mobile -->
+        <div class="p-4 sm:p-6">
           <!-- Tashriflar Tab -->
           <div v-if="activeTab === 'visits'">
             <PatientVisitsTable :patient-id="patient.id" />
@@ -101,7 +112,7 @@
 
           <!-- Odontogramma Tab -->
           <div v-else-if="activeTab === 'odontogram'">
-            <PatientOdontogramPlaceholder :patient-id="patient.id" />
+            <PatientOdontogramPlaceholder :patient-id="patient.id" :visit-id="selectedVisitId" />
           </div>
 
           <!-- To'lovlar Tab -->
@@ -358,6 +369,14 @@ const formatBalance = (amount) => {
 }
 
 onMounted(async () => {
+  // Route query parametrlarini tekshirish (tab va visit)
+  if (route.query.tab && tabs.find(t => t.id === route.query.tab)) {
+    activeTab.value = route.query.tab
+  }
+  if (route.query.visit) {
+    selectedVisitId.value = Number(route.query.visit) || null
+  }
+  
   // Route params har doim string bo'ladi, shuning uchun number formatga o'tkazamiz
   const patientIdParam = route.params.id
   const patientId = Number(patientIdParam)

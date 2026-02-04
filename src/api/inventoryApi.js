@@ -105,3 +105,13 @@ export const createInventoryConsumption = async (payload) => {
   const result = await supabasePost(CONSUMPTIONS_TABLE, data)
   return result[0]
 }
+
+export const deleteInventoryConsumption = async (id) => {
+  const cid = await getCurrentClinicId()
+  if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+  const numId = Number(id)
+  if (!Number.isFinite(numId)) throw new Error('Invalid consumption id')
+  const q = mergeClinicQuery(`id=eq.${numId}`, cid)
+  await supabaseDeleteWhere(CONSUMPTIONS_TABLE, q)
+  return true
+}

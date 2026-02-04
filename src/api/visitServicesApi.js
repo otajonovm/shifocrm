@@ -3,9 +3,9 @@
  * Tenant isolation; clinic_id yo'q bo'lsa filtersiz fallback.
  */
 
-import { supabaseGet, supabasePost } from './supabaseConfig'
+import { supabaseGet, supabasePost, supabaseDeleteWhere } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
-import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
+import { mergeClinicQuery, supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 
 const TABLE = 'visit_services'
 
@@ -55,4 +55,20 @@ export const createVisitService = async ({
   }
   const result = await supabasePost(TABLE, payload)
   return result[0]
+}
+
+/** Tashrif va tish bo'yicha visit_service yozuvlarini o'chirish (tahrirlash uchun) */
+export const deleteVisitServicesByVisitAndTooth = async (visitId, toothId) => {
+  const cid = await getCurrentClinicId()
+  const baseQ = `visit_id=eq.${Number(visitId)}&tooth_id=eq.${Number(toothId)}`
+  const q = mergeClinicQuery(baseQ, cid)
+  await supabaseDeleteWhere(TABLE, q)
+}
+
+/** Bitta visit_service yozuvini ID bo'yicha o'chirish */
+export const deleteVisitServiceById = async (id) => {
+  const cid = await getCurrentClinicId()
+  const baseQ = `id=eq.${Number(id)}`
+  const q = mergeClinicQuery(baseQ, cid)
+  await supabaseDeleteWhere(TABLE, q)
 }

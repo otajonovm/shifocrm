@@ -19,13 +19,29 @@
           <p class="mt-2 text-lg font-semibold text-slate-900">{{ formatCurrency(totalServices) }}</p>
         </div>
       </div>
-      <button
-        v-if="isAdmin"
-        class="ml-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
-        @click="openCreateModal"
-      >
-        {{ t('patientPayments.addPayment') }}
-      </button>
+      <div class="ml-4 flex items-center gap-2">
+        <button
+          class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          @click="loadAll"
+        >
+          {{ t('patientPayments.refresh') }}
+        </button>
+        <button
+          v-if="canManagePayments"
+          class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+          @click="openCreateModal"
+        >
+          {{ t('patientPayments.addPayment') }}
+        </button>
+        <button
+          v-if="canManagePayments && hasIncompleteVisits"
+          class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+          @click="completeAllVisits"
+          :disabled="completingAll"
+        >
+          {{ completingAll ? t('patientPayments.completing') : t('patientPayments.completeAll') }}
+        </button>
+      </div>
     </div>
 
     <div class="overflow-x-auto rounded-xl border border-slate-200">
@@ -52,8 +68,8 @@
             <td class="px-4 py-3 text-slate-700">{{ formatDate(entry.paid_at) }}</td>
             <td class="px-4 py-3 text-slate-700">#{{ entry.visit_id }}</td>
             <td class="px-4 py-3 text-slate-700">
-              <span :class="getTypeClass(entry.payment_type)">
-                {{ getTypeLabel(entry.payment_type) }}
+              <span :class="getTypeClass(entry)">
+                {{ getTypeDisplayLabel(entry) }}
               </span>
             </td>
             <td class="px-4 py-3 text-slate-700">
@@ -62,7 +78,7 @@
             <td class="px-4 py-3 text-slate-700">{{ entry.method || '-' }}</td>
             <td class="px-4 py-3 text-slate-700">{{ entry.note || '-' }}</td>
             <td class="px-4 py-3 text-slate-700">
-              <div v-if="isAdmin" class="flex items-center gap-2">
+              <div v-if="canManagePayments" class="flex items-center gap-2">
                 <button class="text-primary-600 hover:text-primary-700 text-sm" @click="openEditModal(entry)">
                   {{ t('patientPayments.edit') }}
                 </button>
@@ -81,26 +97,40 @@
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
+            <th class="px-4 py-3">{{ t('patientPayments.visitId') }}</th>
             <th class="px-4 py-3">{{ t('patientPayments.services') }}</th>
             <th class="px-4 py-3">{{ t('patientPayments.tooth') }}</th>
             <th class="px-4 py-3">{{ t('patientPayments.price') }}</th>
             <th class="px-4 py-3">{{ t('patientPayments.doctor') }}</th>
             <th class="px-4 py-3">{{ t('patientPayments.date') }}</th>
+            <th v-if="canManagePayments" class="px-4 py-3 w-12"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-if="servicesLoading">
-            <td class="px-4 py-4 text-slate-500" colspan="5">{{ t('patientPayments.loading') }}</td>
+            <td class="px-4 py-4 text-slate-500" :colspan="canManagePayments ? 7 : 6">{{ t('patientPayments.loading') }}</td>
           </tr>
           <tr v-else-if="services.length === 0">
-            <td class="px-4 py-4 text-slate-500" colspan="5">{{ t('patientPayments.noServices') }}</td>
+            <td class="px-4 py-4 text-slate-500" :colspan="canManagePayments ? 7 : 6">{{ t('patientPayments.noServices') }}</td>
           </tr>
           <tr v-for="service in services" :key="service.id" class="bg-white">
+            <td class="px-4 py-3 text-slate-700">#{{ service.visit_id }}</td>
             <td class="px-4 py-3 text-slate-700">{{ service.service_name }}</td>
             <td class="px-4 py-3 text-slate-700">{{ service.tooth_id ? `#${service.tooth_id}` : '-' }}</td>
             <td class="px-4 py-3 text-slate-700">{{ formatCurrency(service.price) }}</td>
             <td class="px-4 py-3 text-slate-700">{{ service.performed_by || '-' }}</td>
             <td class="px-4 py-3 text-slate-700">{{ formatDate(service.created_at) }}</td>
+            <td v-if="canManagePayments" class="px-4 py-3">
+              <button
+                type="button"
+                class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg"
+                :disabled="serviceDeleting === service.id"
+                :title="t('patientPayments.delete')"
+                @click="confirmDeleteService(service)"
+              >
+                <TrashIcon class="w-4 h-4" />
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -140,6 +170,7 @@
                     <option value="payment">{{ t('patientPayments.typePayment') }}</option>
                     <option value="refund">{{ t('patientPayments.typeRefund') }}</option>
                     <option value="adjustment">{{ t('patientPayments.typeAdjustment') }}</option>
+                    <option value="discount">{{ t('patientPayments.typeDiscount') }}</option>
                   </select>
                 </div>
                 <div>
@@ -187,14 +218,16 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { TrashIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId } from '@/api/paymentsApi'
-import { getVisitServicesByPatientId } from '@/api/visitServicesApi'
-import { getVisitById, updateVisit } from '@/api/visitsApi'
+import { getVisitServicesByPatientId, deleteVisitServiceById } from '@/api/visitServicesApi'
+import { getVisitById, updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
 import { useToast } from '@/composables/useToast'
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.userRole === 'admin')
+const canManagePayments = computed(() => ['admin', 'doctor'].includes(authStore.userRole || ''))
 
 const props = defineProps({
   patientId: {
@@ -207,6 +240,9 @@ const payments = ref([])
 const loading = ref(false)
 const services = ref([])
 const servicesLoading = ref(false)
+const serviceDeleting = ref(null)
+const visits = ref([])
+const completingAll = ref(false)
 const { t } = useI18n()
 const toast = useToast()
 const showPaymentModal = ref(false)
@@ -239,9 +275,38 @@ const netIncome = computed(() =>
   }, 0)
 )
 
-const totalServices = computed(() =>
-  services.value.reduce((sum, entry) => sum + (Number(entry.price) || 0), 0)
-)
+const parsePrice = (v) => {
+  if (v == null) return 0
+  const n = typeof v === 'string' ? parseFloat(String(v).replace(/\s|,/g, '')) : Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+// Yakunlanmagan tashriflar bor-yo'qligini tekshirish
+const hasIncompleteVisits = computed(() => {
+  return visits.value.some(v => 
+    v.status === 'in_progress' || 
+    v.status === 'completed_debt' ||
+    (v.status === 'completed_paid' && (Number(v.debt_amount) || 0) > 0)
+  )
+})
+
+// Har tish uchun faqat oxirgi xizmat; faqat tishga bog'liq xizmatlar (tooth_id bo'lganlar)
+const totalServices = computed(() => {
+  const seen = new Set()
+  let sum = 0
+  const sorted = [...services.value].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+  for (const e of sorted) {
+    const tid = e.tooth_id
+    const vid = e.visit_id
+    // tooth_id bo'lmagan yozuvlar tish xizmati emas — jami hisobga kiritmaymiz
+    if (tid == null || vid == null) continue
+    const key = `v${vid}t${tid}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    sum += parsePrice(e.price)
+  }
+  return sum
+})
 
 const formatCurrency = (amount) => {
   if (!amount) return '0 so\'m'
@@ -259,9 +324,19 @@ const getTypeLabel = (type) => {
   return t('patientPayments.typePayment')
 }
 
-const getTypeClass = (type) => {
+const getTypeDisplayLabel = (entry) => {
+  if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0) {
+    return t('patientPayments.typeDiscount')
+  }
+  return getTypeLabel(entry.payment_type)
+}
+
+const getTypeClass = (entry) => {
+  const type = entry?.payment_type
   if (type === 'refund') return 'text-rose-600 font-medium'
-  if (type === 'adjustment') return 'text-amber-600 font-medium'
+  if (type === 'adjustment') {
+    return (Number(entry?.amount) || 0) < 0 ? 'text-violet-600 font-medium' : 'text-amber-600 font-medium'
+  }
   return 'text-emerald-600 font-medium'
 }
 
@@ -296,8 +371,61 @@ const loadServices = async () => {
   }
 }
 
+const loadVisits = async () => {
+  try {
+    visits.value = await getVisitsByPatientId(props.patientId)
+  } catch (error) {
+    console.error('Failed to load visits:', error)
+    visits.value = []
+  }
+}
+
 const loadAll = async () => {
-  await Promise.all([loadPayments(), loadServices()])
+  await Promise.all([loadPayments(), loadServices(), loadVisits()])
+}
+
+const completeAllVisits = async () => {
+  if (!window.confirm(t('patientPayments.confirmCompleteAll'))) return
+  
+  completingAll.value = true
+  try {
+    const incompleteVisits = visits.value.filter(v => 
+      v.status === 'in_progress' || 
+      v.status === 'completed_debt' ||
+      (v.status === 'completed_paid' && (Number(v.debt_amount) || 0) > 0)
+    )
+    
+    for (const visit of incompleteVisits) {
+      const price = Number(visit.price) || 0
+      const paidAmount = Number(visit.paid_amount) || 0
+      const debtAmount = Number(visit.debt_amount) || 0
+      
+      // Agar qarz bo'lsa, to'liq to'langan deb belgilaymiz
+      if (debtAmount > 0 || paidAmount < price) {
+        await updateVisit(visit.id, {
+          status: 'completed_paid',
+          paid_amount: price,
+          debt_amount: null
+        })
+      } else if (visit.status === 'in_progress') {
+        // Agar tashrif davom etmoqda bo'lsa, yakunlangan deb belgilaymiz
+        await updateVisit(visit.id, {
+          status: 'completed_paid',
+          price: price || 0,
+          paid_amount: paidAmount || price || 0,
+          debt_amount: null
+        })
+      }
+    }
+    
+    toast.success(t('patientPayments.toastAllCompleted'))
+    await loadAll() // Ma'lumotlarni yangilash
+  } catch (error) {
+    console.error('Failed to complete all visits:', error)
+    toast.error(t('patientPayments.errorCompleteAll'))
+  } finally {
+    completingAll.value = false
+  }
 }
 
 onMounted(loadAll)
@@ -320,11 +448,13 @@ const openCreateModal = () => {
 
 const openEditModal = (payment) => {
   isEditing.value = true
+  const amt = Number(payment.amount) || 0
+  const isDiscount = payment.payment_type === 'adjustment' && amt < 0
   form.value = {
     id: payment.id,
     visit_id: payment.visit_id ? String(payment.visit_id) : '',
-    amount: payment.amount ?? '',
-    payment_type: payment.payment_type || 'payment',
+    amount: isDiscount ? Math.abs(amt) : (payment.amount ?? ''),
+    payment_type: isDiscount ? 'discount' : (payment.payment_type || 'payment'),
     method: payment.method || 'cash',
     note: payment.note || '',
     paid_at: payment.paid_at ? payment.paid_at.slice(0, 16) : ''
@@ -343,16 +473,21 @@ const savePayment = async () => {
     toast.error(t('patientPayments.errorVisitRequired'))
     return
   }
-  const amount = Number(form.value.amount)
-  if (!Number.isFinite(amount) || amount <= 0) {
+  let amount = Number(form.value.amount)
+  if (!Number.isFinite(amount) || amount === 0) {
     toast.error(t('patientPayments.errorAmountRequired'))
     return
+  }
+  let paymentType = form.value.payment_type
+  if (paymentType === 'discount') {
+    paymentType = 'adjustment'
+    amount = -Math.abs(amount)
   }
   const payload = {
     visit_id: visitId,
     patient_id: Number(props.patientId),
     amount,
-    payment_type: form.value.payment_type,
+    payment_type: paymentType,
     method: form.value.method || null,
     note: form.value.note || null,
     paid_at: form.value.paid_at ? new Date(form.value.paid_at).toISOString() : null
@@ -400,6 +535,21 @@ const confirmDelete = async (payment) => {
   } catch (error) {
     console.error('Failed to delete payment:', error)
     toast.error(t('patientPayments.errorDelete'))
+  }
+}
+
+const confirmDeleteService = async (service) => {
+  if (!window.confirm(t('patientPayments.confirmDeleteService'))) return
+  serviceDeleting.value = service.id
+  try {
+    await deleteVisitServiceById(service.id)
+    toast.success(t('patientPayments.toastServiceDeleted'))
+    await loadServices()
+  } catch (error) {
+    console.error('Failed to delete visit service:', error)
+    toast.error(t('patientPayments.errorServiceDelete'))
+  } finally {
+    serviceDeleting.value = null
   }
 }
 
