@@ -82,6 +82,21 @@
             Umumiy qarzdorlik: {{ formatCurrency(totalDebt) }}
           </span>
         </div>
+
+        <!-- Yakunlash tugmasi - yakka doktor uchun -->
+        <div v-if="canComplete && hasIncompleteVisits" class="mt-4 flex justify-end">
+          <button
+            @click="handleCompleteAll"
+            :disabled="completing"
+            class="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white hover:bg-green-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg v-if="!completing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            {{ completing ? 'Yakunlanmoqda...' : 'Yakunlash' }}
+          </button>
+        </div>
       </div>
 
       <!-- Tabs — scroll-snap, touch-friendly on mobile -->
@@ -238,6 +253,8 @@ import { useToast } from '@/composables/useToast'
 import { PATIENT_STATUSES, getPatientStatusLabel } from '@/constants/patientStatus'
 import { ArrowLeftIcon, ExclamationCircleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import * as visitsApi from '@/api/visitsApi'
+import { completeAllPatientVisits } from '@/lib/completePatientVisits'
+import { getVisitServicesByPatientId } from '@/api/visitServicesApi'
 
 const toast = useToast()
 const { t } = useI18n()
@@ -256,6 +273,8 @@ const visits = ref([])
 const showPatientStatusModal = ref(false)
 const newPatientStatus = ref('')
 const updatingPatientStatus = ref(false)
+const completing = ref(false)
+const hasIncompleteVisits = ref(false)
 
 const tabs = [
   { id: 'visits', labelKey: 'patientDetail.tabVisits', count: null },
@@ -268,6 +287,11 @@ const tabs = [
 const isAdmin = computed(() => authStore.userRole === 'admin' || authStore.userRole === 'solo')
 const isSolo = computed(() => authStore.userRole === 'solo')
 const isDoctor = computed(() => authStore.userRole === 'doctor')
+
+const canComplete = computed(() => {
+  const role = authStore.userRole
+  return ['doctor', 'solo', 'admin'].includes(role)
+})
 
 const goBack = () => {
   if (isDoctor.value && !isSolo.value) {
@@ -302,6 +326,53 @@ const loadTotalDebt = async (patientId) => {
   } catch (error) {
     console.error('Failed to load total debt:', error)
     totalDebt.value = 0
+  }
+}
+
+// Yakunlanmagan tashriflar bor-yo'qligini tekshirish
+const checkIncompleteVisits = async (patientId) => {
+  try {
+    const [visits, services] = await Promise.all([
+      visitsApi.getVisitsByPatientId(patientId),
+      getVisitServicesByPatientId(patientId)
+    ])
+    
+    hasIncompleteVisits.value = visits.some(v => 
+      v.status === 'in_progress' || 
+      v.status === 'completed_debt' ||
+      (v.status === 'completed_paid' && (Number(v.debt_amount) || 0) > 0)
+    ) || services.length > 0
+  } catch (error) {
+    console.error('Failed to check incomplete visits:', error)
+    hasIncompleteVisits.value = false
+  }
+}
+
+// Barcha tashriflarni yakunlash
+const handleCompleteAll = async () => {
+  if (!patient.value) return
+  if (!window.confirm('Barcha tashriflarni yakunlashni tasdiqlaysizmi?')) return
+  
+  completing.value = true
+  try {
+    const doctorId = isSolo.value ? authStore.user?.id : (patient.value.doctor_id || null)
+    const result = await completeAllPatientVisits(patient.value.id, doctorId)
+    
+    if (result.success) {
+      toast.success(`Muvaffaqiyatli yakunlandi: ${result.completed} ta tashrif`)
+      await Promise.all([
+        loadLastVisit(patient.value.id),
+        loadTotalDebt(patient.value.id),
+        checkIncompleteVisits(patient.value.id)
+      ])
+    } else {
+      toast.error(result.error || 'Xatolik yuz berdi')
+    }
+  } catch (error) {
+    console.error('Failed to complete visits:', error)
+    toast.error('Xatolik yuz berdi')
+  } finally {
+    completing.value = false
   }
 }
 
@@ -459,7 +530,8 @@ onMounted(async () => {
     if (patient.value) {
       await Promise.all([
         loadLastVisit(patient.value.id),
-        loadTotalDebt(patient.value.id)
+        loadTotalDebt(patient.value.id),
+        checkIncompleteVisits(patient.value.id)
       ])
     }
   } catch (error) {

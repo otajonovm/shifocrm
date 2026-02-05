@@ -35,11 +35,15 @@
         </button>
         <button
           v-if="canManagePayments && hasIncompleteVisits"
-          class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+          class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 shadow-md hover:shadow-lg transition-all"
           @click="completeAllVisits"
           :disabled="completingAll"
         >
-          {{ completingAll ? t('patientPayments.completing') : t('patientPayments.completeAll') }}
+          <svg v-if="!completingAll" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          {{ completingAll ? t('patientPayments.completing') : (t('patientPayments.yakunlash') || 'Yakunlash') }}
         </button>
       </div>
     </div>
@@ -220,9 +224,11 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TrashIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
-import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId } from '@/api/paymentsApi'
-import { getVisitServicesByPatientId, deleteVisitServiceById } from '@/api/visitServicesApi'
+import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId, getPaymentsByVisitId } from '@/api/paymentsApi'
+import { getVisitServicesByPatientId, getVisitServicesByVisitId, deleteVisitServiceById } from '@/api/visitServicesApi'
 import { getVisitById, updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
+import { listInventoryConsumptionsByVisitId, listInventoryItems } from '@/api/inventoryApi'
+import { completeAllPatientVisits } from '@/lib/completePatientVisits'
 import { useToast } from '@/composables/useToast'
 
 const authStore = useAuthStore()
@@ -243,6 +249,7 @@ const servicesLoading = ref(false)
 const serviceDeleting = ref(null)
 const visits = ref([])
 const completingAll = ref(false)
+const inventoryItems = ref([])
 const { t } = useI18n()
 const toast = useToast()
 const showPaymentModal = ref(false)
@@ -281,8 +288,60 @@ const parsePrice = (v) => {
   return Number.isFinite(n) ? n : 0
 }
 
+const loadInventoryItems = async () => {
+  try {
+    inventoryItems.value = await listInventoryItems('order=created_at.desc')
+  } catch (error) {
+    console.error('Failed to load inventory items for billing:', error)
+    inventoryItems.value = []
+  }
+}
+
+const getItemPrice = (itemId) => {
+  const match = inventoryItems.value.find(item => Number(item.id) === Number(itemId))
+  return match ? (Number(match.cost_price) || 0) : 0
+}
+
+// Bitta tashrif uchun xizmatlar yig'indisi (faqat tooth_id bor yozuvlar, har tish uchun oxirgi yozuv)
+const getVisitServicesTotal = (visitId) => {
+  const byVisit = services.value.filter(s => Number(s.visit_id) === Number(visitId))
+  if (!byVisit.length) return 0
+
+  const seen = new Set()
+  let sum = 0
+  const sorted = [...byVisit].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+  for (const e of sorted) {
+    const tid = e.tooth_id
+    if (tid == null) continue
+    const key = `t${tid}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    sum += parsePrice(e.price)
+  }
+  return sum
+}
+
+// Bitta tashrif uchun material sarfi yig'indisi (inventory_consumptions + inventory_items.cost_price)
+const getVisitConsumptionsTotal = async (visitId) => {
+  try {
+    const consumptions = await listInventoryConsumptionsByVisitId(visitId)
+    return consumptions.reduce((sum, entry) => {
+      const qty = Number(entry.quantity) || 0
+      const price = getItemPrice(entry.item_id)
+      return sum + qty * price
+    }, 0)
+  } catch (error) {
+    console.error('Failed to load consumptions for visit:', error)
+    return 0
+  }
+}
+
 // Yakunlanmagan tashriflar bor-yo'qligini tekshirish
 const hasIncompleteVisits = computed(() => {
+  // Agar xizmatlar mavjud bo'lsa va to'lovlar bo'lmasa, yakunlash tugmasi ko'rinishi kerak
+  if (totalServices.value > 0 && payments.value.length === 0) return true
+  
+  // Yoki yakunlanmagan tashriflar bo'lsa
   return visits.value.some(v => 
     v.status === 'in_progress' || 
     v.status === 'completed_debt' ||
@@ -381,45 +440,23 @@ const loadVisits = async () => {
 }
 
 const loadAll = async () => {
-  await Promise.all([loadPayments(), loadServices(), loadVisits()])
+  await Promise.all([loadPayments(), loadServices(), loadVisits(), loadInventoryItems()])
 }
 
 const completeAllVisits = async () => {
-  if (!window.confirm(t('patientPayments.confirmCompleteAll'))) return
+  if (!window.confirm(t('patientPayments.confirmCompleteAll') || 'Barcha tashriflarni yakunlashni tasdiqlaysizmi?')) return
   
   completingAll.value = true
   try {
-    const incompleteVisits = visits.value.filter(v => 
-      v.status === 'in_progress' || 
-      v.status === 'completed_debt' ||
-      (v.status === 'completed_paid' && (Number(v.debt_amount) || 0) > 0)
-    )
+    const doctorId = authStore.user?.id || null
+    const result = await completeAllPatientVisits(props.patientId, doctorId)
     
-    for (const visit of incompleteVisits) {
-      const price = Number(visit.price) || 0
-      const paidAmount = Number(visit.paid_amount) || 0
-      const debtAmount = Number(visit.debt_amount) || 0
-      
-      // Agar qarz bo'lsa, to'liq to'langan deb belgilaymiz
-      if (debtAmount > 0 || paidAmount < price) {
-        await updateVisit(visit.id, {
-          status: 'completed_paid',
-          paid_amount: price,
-          debt_amount: null
-        })
-      } else if (visit.status === 'in_progress') {
-        // Agar tashrif davom etmoqda bo'lsa, yakunlangan deb belgilaymiz
-        await updateVisit(visit.id, {
-          status: 'completed_paid',
-          price: price || 0,
-          paid_amount: paidAmount || price || 0,
-          debt_amount: null
-        })
-      }
+    if (result.success) {
+      toast.success(t('patientPayments.toastAllCompleted') || `Muvaffaqiyatli yakunlandi: ${result.completed} ta tashrif`)
+      await loadAll() // Ma'lumotlarni yangilash
+    } else {
+      toast.error(result.error || t('patientPayments.errorCompleteAll'))
     }
-    
-    toast.success(t('patientPayments.toastAllCompleted'))
-    await loadAll() // Ma'lumotlarni yangilash
   } catch (error) {
     console.error('Failed to complete all visits:', error)
     toast.error(t('patientPayments.errorCompleteAll'))

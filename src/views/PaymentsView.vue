@@ -39,7 +39,7 @@
             {{ t('payments.clearFilters') }}
           </button>
         </div>
-        <div class="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <div class="grid gap-4 md:grid-cols-3">
           <div>
             <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('payments.startDate') }}</label>
             <input v-model="filters.startDate" type="date" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
@@ -55,33 +55,6 @@
               <option v-for="patient in patients" :key="patient.id" :value="String(patient.id)">
                 {{ patient.full_name }} (#{{ patient.id }})
               </option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('payments.doctor') }}</label>
-            <select v-model="filters.doctorId" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
-              <option value="">{{ t('payments.allDoctors') }}</option>
-              <option v-for="doctor in doctors" :key="doctor.id" :value="String(doctor.id)">
-                {{ doctor.full_name }} (#{{ doctor.id }})
-              </option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('payments.type') }}</label>
-            <select v-model="filters.type" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
-              <option value="">{{ t('payments.allTypes') }}</option>
-              <option value="payment">{{ t('payments.typePayment') }}</option>
-              <option value="refund">{{ t('payments.typeRefund') }}</option>
-              <option value="adjustment">{{ t('payments.typeAdjustment') }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('payments.method') }}</label>
-            <select v-model="filters.method" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
-              <option value="">{{ t('payments.allMethods') }}</option>
-              <option value="cash">{{ t('payments.methodCash') }}</option>
-              <option value="card">{{ t('payments.methodCard') }}</option>
-              <option value="transfer">{{ t('payments.methodTransfer') }}</option>
             </select>
           </div>
         </div>
@@ -272,10 +245,7 @@ const visitPreviewLoading = ref(false)
 const filters = ref({
   startDate: '',
   endDate: '',
-  doctorId: '',
-  patientId: '',
-  type: '',
-  method: ''
+  patientId: ''
 })
 
 const form = ref({
@@ -322,12 +292,9 @@ const doctorMap = computed(() => {
 })
 
 const filteredPayments = computed(() => {
-  const { startDate, endDate, doctorId, patientId, type, method } = filters.value
+  const { startDate, endDate, patientId } = filters.value
   return payments.value.filter(entry => {
-    if (doctorId && String(entry.doctor_id || '') !== doctorId) return false
     if (patientId && String(entry.patient_id || '') !== patientId) return false
-    if (type && entry.payment_type !== type) return false
-    if (method && (entry.method || '') !== method) return false
     if (startDate || endDate) {
       const paidDate = entry.paid_at ? new Date(entry.paid_at) : null
       if (!paidDate || Number.isNaN(paidDate.getTime())) return false
@@ -394,9 +361,7 @@ const loadPayments = async () => {
 
 const loadFiltersData = async () => {
   try {
-    const [doctorList, patientList] = await Promise.all([listDoctors(), listPatients()])
-    doctors.value = doctorList || []
-    patients.value = patientList || []
+    patients.value = await listPatients() || []
   } catch (error) {
     console.error('Failed to load filters data:', error)
   }
@@ -406,10 +371,7 @@ const resetFilters = () => {
   filters.value = {
     startDate: '',
     endDate: '',
-    doctorId: '',
-    patientId: '',
-    type: '',
-    method: ''
+    patientId: ''
   }
 }
 

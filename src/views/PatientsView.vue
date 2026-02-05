@@ -148,6 +148,18 @@
                 <td class="px-6 py-4" @click.stop>
                   <div class="flex items-center justify-end gap-1">
                     <button
+                      v-if="canCompletePatient(patient.id)"
+                      @click.stop="completePatientVisits(patient)"
+                      :disabled="completingPatients.has(patient.id)"
+                      class="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                      :title="'Yakunlash'"
+                    >
+                      <svg v-if="!completingPatients.has(patient.id)" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <div v-else class="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
+                    </button>
+                    <button
                       @click.stop="openEditModal(patient)"
                       class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       :title="t('patients.edit')"
@@ -201,6 +213,18 @@
                   </span>
                   <!-- Tezkor amallar -->
                   <div class="flex items-center gap-1" @click.stop>
+                    <button
+                      v-if="canCompletePatient(patient.id)"
+                      @click.stop="completePatientVisits(patient)"
+                      :disabled="completingPatients.has(patient.id)"
+                      class="p-2.5 text-green-600 hover:bg-green-50 rounded-xl transition-colors disabled:opacity-50"
+                      :title="'Yakunlash'"
+                    >
+                      <svg v-if="!completingPatients.has(patient.id)" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                    </button>
                     <a
                       :href="'tel:' + patient.phone"
                       class="p-2.5 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
@@ -534,6 +558,9 @@ import {
   PhoneIcon,
 } from '@heroicons/vue/24/outline'
 import { useRouter, useRoute } from 'vue-router'
+import { completeAllPatientVisits } from '@/lib/completePatientVisits'
+import { getVisitsByPatientId } from '@/api/visitsApi'
+import { getVisitServicesByPatientId } from '@/api/visitServicesApi'
 
 const router = useRouter()
 const route = useRoute()
@@ -545,6 +572,10 @@ const { t } = useI18n()
 
 const isAdmin = computed(() => authStore.userRole === 'admin' || authStore.userRole === 'solo')
 const isSolo = computed(() => authStore.userRole === 'solo')
+
+// Yakunlash holati
+const completingPatients = ref(new Set())
+const patientIncompleteStatus = ref({}) // { patientId: boolean }
 
 // Doktor ID ni olish
 const getCurrentDoctorId = () => {
@@ -692,8 +723,74 @@ const loadPatientVisits = async (doctorId = null) => {
     })
 
     patientVisits.value = visitsMap
+    
+    // Yakunlanmagan tashriflar bor-yo'qligini tekshirish
+    await checkIncompleteVisitsForAll()
   } catch (error) {
     console.error('Failed to load patient visits:', error)
+  }
+}
+
+// Barcha bemorlar uchun yakunlanmagan tashriflar bor-yo'qligini tekshirish
+const checkIncompleteVisitsForAll = async () => {
+  try {
+    const statusMap = {}
+    for (const patient of patientsStore.items) {
+      try {
+        const [visits, services] = await Promise.all([
+          getVisitsByPatientId(patient.id),
+          getVisitServicesByPatientId(patient.id)
+        ])
+        
+        const hasIncomplete = visits.some(v => 
+          v.status === 'in_progress' || 
+          v.status === 'completed_debt' ||
+          (v.status === 'completed_paid' && (Number(v.debt_amount) || 0) > 0)
+        ) || services.length > 0
+        
+        statusMap[patient.id] = hasIncomplete
+      } catch (err) {
+        console.warn('Failed to check incomplete visits for patient', patient.id, err)
+        statusMap[patient.id] = false
+      }
+    }
+    patientIncompleteStatus.value = statusMap
+  } catch (error) {
+    console.error('Failed to check incomplete visits:', error)
+  }
+}
+
+// Bemor uchun yakunlash mumkinligini tekshirish
+const canCompletePatient = (patientId) => {
+  const role = authStore.userRole
+  if (!['doctor', 'solo', 'admin'].includes(role)) return false
+  return patientIncompleteStatus.value[patientId] === true
+}
+
+// Bemor tashriflarini yakunlash
+const completePatientVisits = async (patient) => {
+  if (!window.confirm(`"${patient.full_name}" bemorning barcha tashriflarini yakunlashni tasdiqlaysizmi?`)) return
+  
+  completingPatients.value.add(patient.id)
+  try {
+    const doctorId = isSolo.value ? authStore.user?.id : (getCurrentDoctorId() || null)
+    const result = await completeAllPatientVisits(patient.id, doctorId)
+    
+    if (result.success) {
+      toast.success(`"${patient.full_name}" - ${result.completed} ta tashrif yakunlandi`)
+      // Ma'lumotlarni yangilash
+      await Promise.all([
+        patientsStore.fetchPatients(),
+        loadPatientVisits(getCurrentDoctorId())
+      ])
+    } else {
+      toast.error(result.error || 'Xatolik yuz berdi')
+    }
+  } catch (error) {
+    console.error('Failed to complete patient visits:', error)
+    toast.error('Xatolik yuz berdi')
+  } finally {
+    completingPatients.value.delete(patient.id)
   }
 }
 
@@ -899,6 +996,8 @@ onMounted(async () => {
     await loadPatientVisits()
   }
 
+  // Yakunlanmagan tashriflar holatini yuklash
+  await checkIncompleteVisitsForAll()
 })
 </script>
 

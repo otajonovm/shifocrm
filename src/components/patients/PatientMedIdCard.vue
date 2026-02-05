@@ -94,6 +94,21 @@
       <p class="text-sm text-gray-700">{{ patient.notes }}</p>
     </div>
 
+    <!-- Yakunlash tugmasi - yakka doktor uchun -->
+    <div v-if="canComplete" class="mt-4 pt-4 border-t border-gray-200">
+      <button
+        @click="handleComplete"
+        :disabled="completing"
+        class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <svg v-if="!completing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+        {{ completing ? 'Yakunlanmoqda...' : 'Yakunlash' }}
+      </button>
+    </div>
+
     <!-- Ro'yxatdan o'tgan sana -->
     <div class="mt-4 pt-4 border-t border-gray-200">
       <p class="text-xs text-gray-400 text-center">
@@ -104,12 +119,17 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline'
 import { copyToClipboard } from '@/lib/clipboard'
 import { formatDate, formatDateTime, calculateAge } from '@/lib/date'
 import { getInitials, formatGender, formatPhone, formatMedId, getStatusBadge } from '@/lib/patientHelpers'
+import { completeAllPatientVisits } from '@/lib/completePatientVisits'
+import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
+import { getVisitsByPatientId } from '@/api/visitsApi'
+import { getVisitServicesByPatientId } from '@/api/visitServicesApi'
 
 const props = defineProps({
   patient: {
@@ -119,10 +139,20 @@ const props = defineProps({
   isAdmin: {
     type: Boolean,
     default: false
+  },
+  doctorId: {
+    type: [Number, String],
+    default: null
   }
 })
 
 const { t } = useI18n()
+const authStore = useAuthStore()
+const toast = useToast()
+const completing = ref(false)
+const hasIncompleteVisits = ref(false)
+
+const emit = defineEmits(['completed'])
 
 // Computed
 const initials = computed(() => getInitials(props.patient.full_name))
@@ -134,6 +164,57 @@ const age = computed(() => calculateAge(props.patient.birth_date))
 const formattedGender = computed(() => formatGender(props.patient.gender))
 const formattedLastVisit = computed(() => formatDate(props.patient.last_visit))
 const formattedCreatedAt = computed(() => formatDateTime(props.patient.created_at))
+
+const canComplete = computed(() => {
+  const role = authStore.userRole
+  if (!['doctor', 'solo', 'admin'].includes(role)) return false
+  return hasIncompleteVisits.value
+})
+
+// Yakunlanmagan tashriflar bor-yo'qligini tekshirish
+const checkIncompleteVisits = async () => {
+  try {
+    const visits = await getVisitsByPatientId(props.patient.id)
+    const services = await getVisitServicesByPatientId(props.patient.id)
+    
+    hasIncompleteVisits.value = visits.some(v => 
+      v.status === 'in_progress' || 
+      v.status === 'completed_debt' ||
+      (v.status === 'completed_paid' && (Number(v.debt_amount) || 0) > 0)
+    ) || services.length > 0
+  } catch (error) {
+    console.error('Failed to check incomplete visits:', error)
+    hasIncompleteVisits.value = false
+  }
+}
+
+const handleComplete = async () => {
+  if (!window.confirm('Barcha tashriflarni yakunlashni tasdiqlaysizmi?')) return
+  
+  completing.value = true
+  try {
+    const doctorId = props.doctorId || authStore.user?.id || null
+    const result = await completeAllPatientVisits(props.patient.id, doctorId)
+    
+    if (result.success) {
+      toast.success(`Muvaffaqiyatli yakunlandi: ${result.completed} ta tashrif`)
+      await checkIncompleteVisits()
+      emit('completed')
+    } else {
+      toast.error(result.error || 'Xatolik yuz berdi')
+    }
+  } catch (error) {
+    console.error('Failed to complete visits:', error)
+    toast.error('Xatolik yuz berdi')
+  } finally {
+    completing.value = false
+  }
+}
+
+// Komponent yuklanganda tekshirish
+onMounted(() => {
+  checkIncompleteVisits()
+})
 
 // Actions
 const copyMedId = () => {
