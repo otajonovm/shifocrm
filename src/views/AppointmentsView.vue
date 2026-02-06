@@ -7,25 +7,10 @@
           <h1 class="text-2xl font-bold text-gray-900">{{ t('appointments.title') }}</h1>
           <p class="text-gray-500">{{ t('appointments.subtitle') }}</p>
         </div>
-        <div class="flex items-center gap-2">
-          <button
-            @click="exportAppointments"
-            class="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 border border-gray-200 font-medium rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <ArrowDownTrayIcon class="w-5 h-5" />
-            {{ t('appointments.export') }}
-          </button>
-          <label
-            v-if="isAdmin"
-            class="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 border border-gray-200 font-medium rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-          >
-            <ArrowUpTrayIcon class="w-5 h-5" />
-            {{ t('appointments.import') }}
-            <input type="file" accept=".csv" class="hidden" @change="importAppointments" />
-          </label>
+        <div class="w-full">
           <button
             @click="openCreateModal"
-            class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all hover:scale-[1.02]"
+            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-lg transition-all hover:scale-[1.01] active:scale-[0.99] touch-target-lg"
           >
             <PlusIcon class="w-5 h-5" />
             {{ t('appointments.newAppointment') }}
@@ -35,91 +20,101 @@
 
       <!-- Filters -->
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-4 space-y-4">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-          <div class="flex items-center gap-2">
+        <!-- Kunlik/Haftalik/Oylik filtrlash -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div class="w-full grid grid-cols-3 gap-2">
             <button
-              @click="setToday"
-              class="px-3 py-2 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50"
+              @click="viewMode = 'day'; setToday()"
+              class="w-full px-4 py-2.5 text-sm font-medium rounded-lg border transition-all touch-target"
+              :class="viewMode === 'day' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500 shadow-sm' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
             >
-              {{ t('appointments.today') }}
+              {{ t('appointments.viewDay') }}
             </button>
             <button
-              @click="shiftRange(-1)"
-              class="px-3 py-2 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50"
+              @click="viewMode = 'week'; setToday()"
+              class="w-full px-4 py-2.5 text-sm font-medium rounded-lg border transition-all touch-target"
+              :class="viewMode === 'week' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500 shadow-sm' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
             >
-              ←
+              {{ t('appointments.viewWeek') }}
             </button>
             <button
-              @click="shiftRange(1)"
-              class="px-3 py-2 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50"
+              @click="viewMode = 'month'; setToday()"
+              class="w-full px-4 py-2.5 text-sm font-medium rounded-lg border transition-all touch-target"
+              :class="viewMode === 'month' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500 shadow-sm' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
             >
-              →
+              {{ t('appointments.viewMonth') }}
+            </button>
+          </div>
+          <!-- Sana navigatsiyasi -->
+          <div class="flex items-center gap-2 flex-1">
+            <button
+              @click="shiftDate(-1)"
+              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-target"
+              :title="t('appointments.previous')"
+            >
+              <ChevronLeftIcon class="w-5 h-5" />
             </button>
             <input
               v-model="selectedDate"
               type="date"
-              class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mobile-input"
             />
-            <span class="text-sm text-gray-500">{{ dateRangeLabel }}</span>
-          </div>
-          <div class="flex items-center gap-2">
             <button
-              v-for="mode in viewModes"
-              :key="mode.value"
-              @click="viewMode = mode.value"
-              class="px-3 py-2 text-sm font-medium rounded-lg border"
-              :class="viewMode === mode.value ? 'bg-primary-50 border-primary-200 text-primary-700' : 'border-gray-200 hover:bg-gray-50'"
+              @click="shiftDate(1)"
+              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-target"
+              :title="t('appointments.next')"
             >
-              {{ t(mode.labelKey) }}
+              <ChevronRightIcon class="w-5 h-5" />
+            </button>
+            <button
+              @click="setToday"
+              class="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg hover:from-primary-600 hover:to-cyan-700 transition-all active:scale-[0.98] touch-target"
+            >
+              {{ t('appointments.today') }}
             </button>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-6 gap-3">
+        <!-- Qidiruv va boshqa filtrlashlar -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <!-- Qidiruv -->
           <div class="lg:col-span-2 relative">
             <MagnifyingGlassIcon class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               v-model="searchQuery"
               type="text"
               :placeholder="t('appointments.searchPlaceholder')"
-              class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mobile-input"
             />
           </div>
+          <!-- Status -->
+          <div>
+            <select
+              v-model="selectedStatus"
+              class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mobile-input"
+            >
+              <option value="">{{ t('appointments.allStatuses') }}</option>
+              <option v-for="status in statusFilterOptions" :key="status.value" :value="status.value">
+                {{ status.label }}
+              </option>
+            </select>
+          </div>
+          <!-- Doktor (faqat admin uchun) -->
           <select
             v-if="isAdmin"
             v-model="selectedDoctor"
-            class="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mobile-input"
           >
             <option value="">{{ t('appointments.allDoctors') }}</option>
             <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
               {{ doctor.full_name }}
             </option>
           </select>
-          <select
-            v-model="selectedStatus"
-            class="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          >
-            <option value="">{{ t('appointments.allStatuses') }}</option>
-            <option v-for="status in statusFilterOptions" :key="status.value" :value="status.value">
-              {{ status.label }}
-            </option>
-          </select>
-            <input
-            v-model="selectedService"
-            type="text"
-              :placeholder="t('appointments.servicePlaceholder')"
-            class="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          />
-          <select
-            v-model="selectedPayment"
-            class="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          >
-            <option value="">{{ t('appointments.paymentStatus') }}</option>
-            <option value="paid">{{ t('appointments.paymentPaid') }}</option>
-            <option value="partial">{{ t('appointments.paymentPartial') }}</option>
-            <option value="unpaid">{{ t('appointments.paymentUnpaid') }}</option>
-            <option value="debt">{{ t('appointments.paymentDebt') }}</option>
-          </select>
+        </div>
+        
+        <!-- Sana oralig'i ko'rsatkich -->
+        <div class="text-sm text-gray-600 text-center sm:text-left">
+          {{ dateRangeLabel }}
         </div>
       </div>
 
@@ -670,6 +665,8 @@ import {
   CheckIcon,
   CalendarDaysIcon,
   Cog6ToothIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@heroicons/vue/24/outline'
 
 const authStore = useAuthStore()
@@ -684,19 +681,13 @@ const doctorId = computed(() => authStore.user?.id || null)
 const loading = ref(false)
 const visits = ref([])
 
-const viewModes = [
-  { labelKey: 'appointments.viewDay', value: 'day' },
-  { labelKey: 'appointments.viewWeek', value: 'week' },
-  { labelKey: 'appointments.viewMonth', value: 'month' }
-]
+// Kunlik/Haftalik/Oylik filtrlash
 const viewMode = ref('day')
 const selectedDate = ref(new Date().toISOString().split('T')[0])
 
 const searchQuery = ref('')
 const selectedDoctor = ref('')
 const selectedStatus = ref('')
-const selectedService = ref('')
-const selectedPayment = ref('')
 
 const selectedIds = ref([])
 const bulkDoctorId = ref('')
@@ -798,6 +789,7 @@ const statusOptions = computed(() => [
   { value: 'no_show', label: t('appointments.statusNoShow') }
 ])
 
+// Kunlik/Haftalik/Oylik sana oralig'i
 const dateRange = computed(() => {
   const base = new Date(selectedDate.value)
   if (Number.isNaN(base.getTime())) return { start: selectedDate.value, end: selectedDate.value }
@@ -805,11 +797,14 @@ const dateRange = computed(() => {
   if (viewMode.value === 'day') {
     return { start: toISODate(base), end: toISODate(base) }
   }
+  
   if (viewMode.value === 'week') {
     const start = startOfWeek(base)
     const end = addDays(start, 6)
     return { start: toISODate(start), end: toISODate(end) }
   }
+  
+  // Month
   const start = new Date(base.getFullYear(), base.getMonth(), 1)
   const end = new Date(base.getFullYear(), base.getMonth() + 1, 0)
   return { start: toISODate(start), end: toISODate(end) }
@@ -835,13 +830,6 @@ const filteredVisits = computed(() => {
     } else {
       result = result.filter(v => v.status === selectedStatus.value)
     }
-  }
-  if (selectedService.value) {
-    const serviceQuery = selectedService.value.toLowerCase()
-    result = result.filter(v => (v.service_name || '').toLowerCase().includes(serviceQuery))
-  }
-  if (selectedPayment.value) {
-    result = result.filter(v => getPaymentStatus(v) === selectedPayment.value)
   }
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
@@ -1285,17 +1273,39 @@ const importAppointments = async (event) => {
   }
 }
 
+// Bugungi sanaga o'tish
 const setToday = () => {
   selectedDate.value = new Date().toISOString().split('T')[0]
 }
 
-const shiftRange = (direction) => {
+// Sana navigatsiyasi (kunlik/haftalik/oylik bo'yicha)
+const shiftDate = (direction) => {
   const base = new Date(selectedDate.value)
   if (Number.isNaN(base.getTime())) return
+  
   let delta = 1
   if (viewMode.value === 'week') delta = 7
-  if (viewMode.value === 'month') delta = 30
-  selectedDate.value = toISODate(addDays(base, delta * direction))
+  if (viewMode.value === 'month') {
+    const newDate = new Date(base.getFullYear(), base.getMonth() + direction, base.getDate())
+    selectedDate.value = toISODate(newDate)
+    return
+  }
+  
+  const newDate = addDays(base, delta * direction)
+  selectedDate.value = toISODate(newDate)
+}
+
+// Helper funksiyalar
+const addDays = (date, days) => {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+const startOfWeek = (date) => {
+  const day = date.getDay()
+  const diff = date.getDate() - (day === 0 ? 6 : day - 1)
+  return new Date(date.getFullYear(), date.getMonth(), diff)
 }
 
 const getPatientName = (patientId) => {
@@ -1362,18 +1372,6 @@ const formatCurrency = (amount) => {
 }
 
 const toISODate = (date) => date.toISOString().split('T')[0]
-
-const addDays = (date, days) => {
-  const next = new Date(date)
-  next.setDate(next.getDate() + days)
-  return next
-}
-
-const startOfWeek = (date) => {
-  const day = date.getDay()
-  const diff = date.getDate() - (day === 0 ? 6 : day - 1)
-  return new Date(date.getFullYear(), date.getMonth(), diff)
-}
 
 const buildEndTime = (startTime, durationMinutes) => {
   if (!startTime || !durationMinutes) return null

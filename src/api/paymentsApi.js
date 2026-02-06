@@ -58,8 +58,8 @@ export const createPayment = async ({
 
     const safePaidAt = paid_at || new Date().toISOString()
     const payload = {
-      visit_id: Number(visit_id),
-      patient_id: Number(patient_id),
+      visit_id: visit_id != null ? Number(visit_id) : null,
+      patient_id: patient_id != null ? Number(patient_id) : null,
       doctor_id: doctor_id != null ? Number(doctor_id) : null,
       amount: Number(amount),
       payment_type,
@@ -75,6 +75,59 @@ export const createPayment = async ({
     console.error('❌ Failed to create payment:', error)
     throw error
   }
+}
+
+// Qo'shimcha to'lovlar uchun (yakka doktorlar uchun)
+export const createAdditionalPayment = async ({
+  amount,
+  category, // 'rent', 'inventory', 'other'
+  method = null,
+  note = null,
+  paid_at = null
+}) => {
+  try {
+    const cid = await getCurrentClinicId()
+    if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
+
+    const safePaidAt = paid_at || new Date().toISOString()
+    // category ni note maydoniga saqlaymiz: [CATEGORY:rent] Izoh matni
+    const categoryPrefix = `[CATEGORY:${category || 'other'}]`
+    const formattedNote = note ? `${categoryPrefix} ${note}` : categoryPrefix
+    
+    // Qo'shimcha to'lovlar uchun visit_id va patient_id null bo'lishi mumkin
+    // Database migration qilingandan keyin (visit_id va patient_id nullable bo'lgandan keyin)
+    // payment_type ni 'adjustment' qilib ishlatamiz, chunki 'expense' check constraint'da yo'q
+    const payload = {
+      visit_id: null, // Migration qilingandan keyin null bo'lishi mumkin
+      patient_id: null, // Migration qilingandan keyin null bo'lishi mumkin
+      doctor_id: null,
+      amount: Number(amount),
+      payment_type: 'adjustment', // Qo'shimcha xarajatlar uchun (expense o'rniga)
+      method: method || null,
+      note: formattedNote,
+      paid_at: safePaidAt,
+      clinic_id: cid
+    }
+
+    const result = await supabasePost(TABLE, payload)
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to create additional payment:', error)
+    throw error
+  }
+}
+
+// category ni note dan parse qilish
+export const parseCategoryFromNote = (note) => {
+  if (!note) return null
+  const match = note.match(/\[CATEGORY:(\w+)\]/)
+  return match ? match[1] : null
+}
+
+// note dan category ni olib tashlash
+export const removeCategoryFromNote = (note) => {
+  if (!note) return ''
+  return note.replace(/\[CATEGORY:\w+\]\s*/, '').trim()
 }
 
 export const deletePayment = async (paymentId) => {

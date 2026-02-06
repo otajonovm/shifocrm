@@ -1,0 +1,455 @@
+/* Mobile-First Utilities for ShifoCRM */
+
+/* Touch-friendly targets - minimum 44x44px for iOS/Android */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.touch-target-lg {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* Prevent text selection on buttons */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Safe area insets for notched devices */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Mobile-optimized spacing */
+.mobile-padding {
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .mobile-padding {
+    padding: 1.5rem;
+  }
+}
+
+/* Card-based mobile layout */
+.mobile-card {
+  background-color: white;
+  border-radius: 1rem;
+  border: 1px solid rgb(243 244 246);
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .mobile-card {
+    padding: 1.5rem;
+  }
+}
+
+/* Mobile table to card conversion */
+.mobile-table-card {
+  background-color: white;
+  border-radius: 1rem;
+  border: 1px solid rgb(243 244 246);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .mobile-table-card {
+    padding: 1.5rem;
+  }
+}
+
+/* Swipeable container */
+.swipeable {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Bottom sheet styles */
+.bottom-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: white;
+  border-top-left-radius: 1.5rem;
+  border-top-right-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  z-index: 50;
+  max-height: 90vh;
+  padding-bottom: env(safe-area-inset-bottom);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bottom-sheet.open {
+  transform: translateY(0);
+}
+
+/* Mobile filter button */
+.mobile-filter-btn {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 9999px;
+  background-color: rgb(37 99 235);
+  color: white;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  min-height: 48px;
+  min-width: 48px;
+  transition: all 0.2s;
+}
+
+.mobile-filter-btn:hover {
+  background-color: rgb(29 78 216);
+}
+
+.mobile-filter-btn:active {
+  transform: scale(0.95);
+}
+
+/* Floating Action Button */
+.fab {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 9999px;
+  background: linear-gradient(to right, rgb(14 165 233), rgb(8 145 178));
+  color: white;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  min-height: 48px;
+  min-width: 48px;
+  transition: all 0.2s;
+}
+
+.fab:hover {
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+@media (min-width: 768px) {
+  .fab {
+    position: static;
+    width: auto;
+    height: auto;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+}
+
+/* Mobile-optimized input */
+.mobile-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(209 213 219);
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  min-height: 48px;
+  font-size: 16px; /* Prevents zoom on iOS */
+}
+
+.mobile-input:focus {
+  border-color: rgb(14 165 233);
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(14 165 233 / 0.2);
+}
+
+/* Mobile-optimized button */
+.mobile-btn {
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.mobile-btn:active {
+  transform: scale(0.95);
+}
+
+.mobile-btn-primary {
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  background: linear-gradient(to right, rgb(14 165 233), rgb(8 145 178));
+  color: white;
+}
+
+.mobile-btn-primary:hover {
+  filter: brightness(0.98);
+}
+
+.mobile-btn-primary:active {
+  transform: scale(0.95);
+}
+
+.mobile-btn-secondary {
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  background-color: white;
+  color: rgb(55 65 81);
+  border: 1px solid rgb(209 213 219);
+}
+
+.mobile-btn-secondary:hover {
+  background-color: rgb(249 250 251);
+}
+
+.mobile-btn-secondary:active {
+  transform: scale(0.95);
+}
+
+/* Horizontal scroll container */
+.mobile-scroll-x {
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+}
+
+.mobile-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-scroll-x > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* Tab navigation mobile */
+.mobile-tabs {
+  display: flex;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  border-bottom: 1px solid rgb(229 231 235);
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+}
+
+.mobile-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-tab {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  min-height: 44px;
+  min-width: 44px;
+  scroll-snap-align: start;
+}
+
+/* Mobile modal backdrop */
+.mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Mobile modal content */
+.mobile-modal {
+  background-color: white;
+  border-top-left-radius: 1.5rem;
+  border-top-right-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Card list item */
+.mobile-list-item {
+  background-color: white;
+  border-radius: 1rem;
+  border: 1px solid rgb(243 244 246);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  transition: background-color 0.2s;
+}
+
+@media (min-width: 640px) {
+  .mobile-list-item {
+    padding: 1.5rem;
+  }
+}
+
+.mobile-list-item:active {
+  background-color: rgb(249 250 251);
+}
+
+/* Status badge mobile */
+.mobile-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  min-height: 24px;
+}
+
+/* Action buttons row */
+.mobile-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgb(243 244 246);
+}
+
+.mobile-action-btn {
+  flex: 1 1 0%;
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.mobile-action-btn:active {
+  transform: scale(0.95);
+}
+
+/* Empty state mobile */
+.mobile-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  text-align: center;
+}
+
+/* Loading skeleton mobile */
+.mobile-skeleton {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background-color: rgb(229 231 235);
+  border-radius: 0.75rem;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Pull to refresh indicator */
+.pull-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  color: rgb(107 114 128);
+}
+
+/* Sticky header mobile */
+.mobile-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: white;
+  border-bottom: 1px solid rgb(229 231 235);
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Bottom navigation safe area */
+.mobile-bottom-nav {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Mobile-specific animations */
+@keyframes slideUpMobile {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDownMobile {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.animate-slide-up-mobile {
+  animation: slideUpMobile 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-slide-down-mobile {
+  animation: slideDownMobile 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+/* iOS specific fixes */
+@supports (-webkit-touch-callout: none) {
+  .mobile-input,
+  .mobile-textarea {
+    font-size: 16px; /* Prevents zoom on focus */
+  }
+}

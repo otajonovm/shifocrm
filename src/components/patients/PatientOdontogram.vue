@@ -141,24 +141,38 @@
       </div>
 
       <!-- Material sarfi — mobil: kartalar, desktop: jadval -->
-      <div class="bg-white rounded-xl p-4 border border-gray-100 space-y-3">
-        <div class="flex items-center justify-between">
-          <h4 class="text-sm font-semibold text-gray-700">{{ t('odontogram.materialTitle') }}</h4>
-          <div class="flex items-center gap-3">
-            <span v-if="consumptions.length > 0" class="text-sm font-medium text-primary-600">
-              {{ t('odontogram.materialTotal') }}: {{ formatCurrency(consumptionsTotal) }}
-            </span>
-            <button
+      <div class="bg-white rounded-xl p-4 border border-gray-100 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h4 class="text-base font-semibold text-gray-900">{{ t('odontogram.materialTitle') }}</h4>
+            <p v-if="consumptions.length > 0" class="text-sm text-gray-500 mt-0.5">
+              Jami: {{ formatCurrency(consumptionsTotal) }}
+            </p>
+          </div>
+          <button
             v-if="canEdit && isDoctor"
-            class="text-sm font-medium text-primary-600 hover:text-primary-700 px-3 py-2 rounded-lg hover:bg-primary-50 touch-manipulation min-h-[44px]"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg hover:from-primary-600 hover:to-cyan-700 transition-all active:scale-[0.98] touch-manipulation min-h-[44px]"
             @click="openConsumptionModal"
           >
+            <PlusIcon class="w-5 h-5" />
             {{ t('odontogram.addMaterial') }}
           </button>
-          </div>
         </div>
-        <div v-if="consumptionsLoading" class="py-6 text-center text-slate-500 text-sm">{{ t('odontogram.loadingMaterials') }}</div>
-        <div v-else-if="consumptions.length === 0" class="py-6 text-center text-slate-500 text-sm rounded-lg bg-slate-50">{{ t('odontogram.noMaterials') }}</div>
+        <div v-if="consumptionsLoading" class="py-8 text-center text-slate-500 text-sm">
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500 mx-auto mb-2"></div>
+          {{ t('odontogram.loadingMaterials') }}
+        </div>
+        <div v-else-if="consumptions.length === 0" class="py-8 text-center rounded-lg bg-slate-50 border border-slate-100">
+          <p class="text-sm text-slate-500 mb-3">{{ t('odontogram.noMaterials') }}</p>
+          <button
+            v-if="canEdit && isDoctor"
+            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 bg-white border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors touch-manipulation"
+            @click="openConsumptionModal"
+          >
+            <PlusIcon class="w-4 h-4" />
+            Material qo'shish
+          </button>
+        </div>
         <template v-else>
           <!-- Mobil: kartalar -->
           <div class="md:hidden space-y-2">

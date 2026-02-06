@@ -21,9 +21,10 @@
             <ArrowDownTrayIcon class="h-5 w-5" />
             {{ t('patients.export') }}
           </button>
+          <!-- Desktop Button -->
           <button
             @click="openAddModal"
-            class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-cyan-600 px-5 py-3 font-medium text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg"
+            class="hidden md:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-cyan-600 px-5 py-3 font-medium text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg touch-target-lg"
           >
             <PlusIcon class="h-5 w-5" />
             {{ t('patients.newPatient') }}
@@ -148,18 +149,6 @@
                 <td class="px-6 py-4" @click.stop>
                   <div class="flex items-center justify-end gap-1">
                     <button
-                      v-if="canCompletePatient(patient.id)"
-                      @click.stop="completePatientVisits(patient)"
-                      :disabled="completingPatients.has(patient.id)"
-                      class="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                      :title="'Yakunlash'"
-                    >
-                      <svg v-if="!completingPatients.has(patient.id)" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <div v-else class="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
-                    </button>
-                    <button
                       @click.stop="openEditModal(patient)"
                       class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       :title="t('patients.edit')"
@@ -181,60 +170,50 @@
           </table>
         </div>
 
-        <!-- Mobile: yaxshilangan karta ko'rinishi -->
-        <div class="md:hidden divide-y divide-gray-100">
+        <!-- Mobile: Optimized Card Layout -->
+        <div class="md:hidden space-y-3 pb-20">
           <div
             v-for="patient in filteredPatients"
             :key="patient.id"
+            class="mobile-list-item"
             @click="goToPatientDetail(patient.id)"
-            class="p-4 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors"
           >
-            <div class="flex items-start gap-3">
-              <div class="w-14 h-14 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+            <div class="flex items-start gap-3 sm:gap-4">
+              <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl shrink-0 shadow-md">
                 {{ getInitials(patient.full_name) }}
               </div>
               <div class="flex-1 min-w-0">
-                <div class="flex items-start justify-between gap-2">
-                  <div class="min-w-0">
-                    <p class="font-semibold text-gray-900 truncate">{{ patient.full_name }}</p>
+                <div class="flex items-start justify-between gap-2 mb-2">
+                  <div class="min-w-0 flex-1">
+                    <p class="text-base sm:text-lg font-semibold text-gray-900 truncate">{{ patient.full_name }}</p>
                     <a
                       :href="'tel:' + patient.phone"
                       @click.stop
-                      class="text-sm text-primary-600 hover:underline"
+                      class="text-sm sm:text-base text-primary-600 hover:underline touch-manipulation mt-0.5 inline-block"
                     >
                       {{ patient.phone }}
                     </a>
                   </div>
-                  <PatientStatusBadge :status="patient.status || 'active'" />
+                  <PatientStatusBadge :status="patient.status || 'active'" class="flex-shrink-0" />
                 </div>
-                <div class="mt-2 flex items-center justify-between">
-                  <span class="text-xs text-gray-500">
-                    {{ t('patients.last') }}: {{ formatDate(patient.last_visit) || '-' }}
-                  </span>
-                  <!-- Tezkor amallar -->
-                  <div class="flex items-center gap-1" @click.stop>
-                    <button
-                      v-if="canCompletePatient(patient.id)"
-                      @click.stop="completePatientVisits(patient)"
-                      :disabled="completingPatients.has(patient.id)"
-                      class="p-2.5 text-green-600 hover:bg-green-50 rounded-xl transition-colors disabled:opacity-50"
-                      :title="'Yakunlash'"
-                    >
-                      <svg v-if="!completingPatients.has(patient.id)" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
-                    </button>
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs sm:text-sm text-gray-500">
+                      {{ t('patients.last') }}: {{ formatDate(patient.last_visit) || '-' }}
+                    </span>
+                  </div>
+                  <!-- Mobile Actions - Larger touch targets -->
+                  <div class="flex items-center gap-2" @click.stop>
                     <a
                       :href="'tel:' + patient.phone"
-                      class="p-2.5 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
+                      class="mobile-action-btn text-emerald-700 bg-emerald-50 hover:bg-emerald-100 active:scale-95 touch-manipulation flex items-center justify-center"
                       :title="t('patients.call')"
                     >
                       <PhoneIcon class="w-5 h-5" />
                     </a>
                     <button
                       @click.stop="openEditModal(patient)"
-                      class="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                      class="mobile-action-btn text-blue-700 bg-blue-50 hover:bg-blue-100 active:scale-95 touch-manipulation flex items-center justify-center"
                       :title="t('patients.edit')"
                     >
                       <PencilIcon class="w-5 h-5" />
@@ -242,7 +221,7 @@
                     <button
                       v-if="isAdmin"
                       @click.stop="confirmDelete(patient)"
-                      class="p-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                      class="mobile-action-btn text-red-700 bg-red-50 hover:bg-red-100 active:scale-95 touch-manipulation flex items-center justify-center"
                       :title="t('patients.delete')"
                     >
                       <TrashIcon class="w-5 h-5" />
@@ -483,6 +462,14 @@
       @edit="handleEditFromProfile"
     />
 
+    <!-- Mobile FAB -->
+    <MobileFAB
+      :icon="PlusIcon"
+      :label="t('patients.newPatient')"
+      @click="openAddModal"
+      class="md:hidden"
+    />
+
     <!-- Delete Confirmation Modal -->
     <Teleport to="body">
       <Transition
@@ -539,6 +526,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
 import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
 import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
+import MobileFAB from '@/components/shared/MobileFAB.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'

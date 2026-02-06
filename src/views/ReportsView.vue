@@ -1,297 +1,341 @@
 <template>
   <MainLayout>
-    <div class="space-y-6 animate-fade-in">
-      <div class="flex items-center justify-between">
+    <div class="space-y-4 sm:space-y-6 animate-fade-in pb-6 pb-safe">
+      <!-- Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">{{ t('reports.title') }}</h1>
-          <p class="text-gray-500">{{ t('reports.subtitle') }}</p>
+          <h1 class="text-xl sm:text-2xl font-bold text-gray-900">{{ t('reports.title') }}</h1>
+          <p class="text-sm text-gray-500 mt-1">{{ t('reports.subtitle') }}</p>
         </div>
-        <button class="inline-flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 font-medium rounded-lg hover:bg-gray-50 transition-colors">
-          <ArrowDownTrayIcon class="w-5 h-5" />
-          {{ t('reports.export') }}
-        </button>
       </div>
 
-      <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-card space-y-4">
-        <div class="flex items-center justify-between">
+      <!-- Filters -->
+      <div class="mobile-card">
+        <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-semibold text-gray-900">{{ t('reports.filtersTitle') }}</h2>
-          <button class="text-sm text-gray-500 hover:text-gray-700" @click="resetFilters">
+          <button 
+            @click="resetFilters" 
+            class="text-xs sm:text-sm text-gray-500 hover:text-gray-700 transition-colors touch-target"
+          >
             {{ t('reports.clearFilters') }}
           </button>
         </div>
-        <div class="grid gap-4 md:grid-cols-4">
+        <div class="grid gap-3 sm:gap-4 sm:grid-cols-3">
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('reports.startDate') }}</label>
-            <input v-model="filters.startDate" type="date" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+            <label class="block text-xs font-medium text-gray-500 mb-1.5">{{ t('reports.startDate') }}</label>
+            <input 
+              v-model="filters.startDate" 
+              type="date" 
+              class="mobile-input w-full"
+            />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('reports.endDate') }}</label>
-            <input v-model="filters.endDate" type="date" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+            <label class="block text-xs font-medium text-gray-500 mb-1.5">{{ t('reports.endDate') }}</label>
+            <input 
+              v-model="filters.endDate" 
+              type="date" 
+              class="mobile-input w-full"
+            />
           </div>
-          <div class="flex items-end">
-            <button class="w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700" @click="loadReports">
-              {{ t('reports.applyFilters') }}
+          <div class="flex items-end gap-2">
+            <button 
+              @click="loadReports" 
+              class="mobile-btn-primary flex-1 touch-target-lg"
+              :disabled="loading.payments"
+            >
+              {{ loading.payments ? 'Yuklanmoqda...' : t('reports.applyFilters') }}
             </button>
           </div>
-          <div class="flex items-end">
-            <button class="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700" @click="loadReports">
-              {{ t('reports.refresh') }}
-            </button>
-          </div>
         </div>
       </div>
 
-      <div class="grid gap-4 md:grid-cols-4">
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-          <p class="text-xs text-slate-500">{{ t('reports.totalPayments') }}</p>
-          <p class="mt-2 text-lg font-semibold text-slate-900">{{ formatCurrency(summary.totalPayments) }}</p>
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div class="mobile-card">
+          <p class="text-xs text-gray-500 mb-1">{{ t('reports.totalPayments') }}</p>
+          <p class="text-lg sm:text-xl font-bold text-gray-900">{{ formatCurrency(summary.totalPayments) }}</p>
         </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-          <p class="text-xs text-slate-500">{{ t('reports.totalRefunds') }}</p>
-          <p class="mt-2 text-lg font-semibold text-rose-600">{{ formatCurrency(summary.totalRefunds) }}</p>
+        <div class="mobile-card">
+          <p class="text-xs text-gray-500 mb-1">{{ t('reports.totalRefunds') }}</p>
+          <p class="text-lg sm:text-xl font-bold text-rose-600">{{ formatCurrency(summary.totalRefunds) }}</p>
         </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-          <p class="text-xs text-slate-500">{{ t('reports.netIncome') }}</p>
-          <p class="mt-2 text-lg font-semibold text-emerald-600">{{ formatCurrency(summary.netIncome) }}</p>
+        <div class="mobile-card">
+          <p class="text-xs text-gray-500 mb-1">{{ t('reports.netIncome') }}</p>
+          <p class="text-lg sm:text-xl font-bold text-emerald-600">{{ formatCurrency(summary.netIncome) }}</p>
         </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-          <p class="text-xs text-slate-500">{{ t('reports.totalDebt') }}</p>
-          <p class="mt-2 text-lg font-semibold text-amber-600">{{ formatCurrency(summary.totalDebt) }}</p>
-        </div>
-      </div>
-
-      <div class="grid gap-6 xl:grid-cols-2">
-        <div class="rounded-2xl border border-gray-100 bg-white shadow-card">
-          <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <h3 class="text-sm font-semibold text-gray-900">{{ t('reports.paymentMethods') }}</h3>
-          </div>
-          <div v-if="paymentMethods.length" class="px-4 py-4">
-            <ApexChart type="donut" height="240" :options="paymentMethodsOptions" :series="paymentMethodsSeries" />
-          </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-100 text-sm">
-              <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th class="px-6 py-3">{{ t('reports.method') }}</th>
-                  <th class="px-6 py-3">{{ t('reports.count') }}</th>
-                  <th class="px-6 py-3">{{ t('reports.total') }}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr v-if="loading.payments">
-                  <td class="px-6 py-4 text-gray-500" colspan="3">{{ t('reports.loading') }}</td>
-                </tr>
-                <tr v-else-if="paymentMethods.length === 0">
-                  <td class="px-6 py-4 text-gray-500" colspan="3">{{ t('reports.noData') }}</td>
-                </tr>
-                <tr v-for="row in paymentMethods" :key="row.method" class="bg-white">
-                  <td class="px-6 py-4 text-gray-700">{{ row.label }}</td>
-                  <td class="px-6 py-4 text-gray-700">{{ row.count }}</td>
-                  <td class="px-6 py-4 text-gray-700">{{ formatCurrency(row.total) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="rounded-2xl border border-gray-100 bg-white shadow-card">
-          <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <h3 class="text-sm font-semibold text-gray-900">{{ t('reports.doctorRevenue') }}</h3>
-          </div>
-          <div v-if="doctorRevenue.length" class="px-4 py-4">
-            <ApexChart type="bar" height="240" :options="doctorRevenueOptions" :series="doctorRevenueSeries" />
-          </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-100 text-sm">
-              <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th class="px-6 py-3">{{ t('reports.doctor') }}</th>
-                  <th class="px-6 py-3">{{ t('reports.total') }}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr v-if="loading.payments">
-                  <td class="px-6 py-4 text-gray-500" colspan="2">{{ t('reports.loading') }}</td>
-                </tr>
-                <tr v-else-if="doctorRevenue.length === 0">
-                  <td class="px-6 py-4 text-gray-500" colspan="2">{{ t('reports.noData') }}</td>
-                </tr>
-                <tr v-for="row in doctorRevenue" :key="row.doctor_id" class="bg-white">
-                  <td class="px-6 py-4 text-gray-700">{{ row.label }}</td>
-                  <td class="px-6 py-4 text-gray-700">{{ formatCurrency(row.total) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="mobile-card">
+          <p class="text-xs text-gray-500 mb-1">{{ t('reports.totalDebt') }}</p>
+          <p class="text-lg sm:text-xl font-bold text-amber-600">{{ formatCurrency(summary.totalDebt) }}</p>
         </div>
       </div>
 
-      <div class="grid gap-6 xl:grid-cols-2">
-        <div class="rounded-2xl border border-gray-100 bg-white shadow-card">
-          <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <h3 class="text-sm font-semibold text-gray-900">{{ t('reports.debtors') }}</h3>
+      <!-- Qo'shimcha xarajatlar (yakka doktorlar uchun) -->
+      <div v-if="isSolo && additionalExpenses.length > 0" class="mobile-card">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-semibold text-gray-900">Qo'shimcha xarajatlar</h2>
+            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Ijara, ombor xizmatlari va boshqa xarajatlar</p>
           </div>
-          <div v-if="debtors.length" class="px-4 py-4">
-            <ApexChart type="bar" height="240" :options="debtorsOptions" :series="debtorsSeries" />
-          </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-100 text-sm">
-              <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th class="px-6 py-3">{{ t('reports.patient') }}</th>
-                  <th class="px-6 py-3">{{ t('reports.total') }}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr v-if="loading.debts">
-                  <td class="px-6 py-4 text-gray-500" colspan="2">{{ t('reports.loading') }}</td>
-                </tr>
-                <tr v-else-if="debtors.length === 0">
-                  <td class="px-6 py-4 text-gray-500" colspan="2">{{ t('reports.noData') }}</td>
-                </tr>
-                <tr v-for="row in debtors" :key="row.patient_id" class="bg-white">
-                  <td class="px-6 py-4 text-gray-700">{{ row.label }}</td>
-                  <td class="px-6 py-4 text-gray-700">{{ formatCurrency(row.total) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="rounded-2xl border border-gray-100 bg-white shadow-card">
-          <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <h3 class="text-sm font-semibold text-gray-900">{{ t('reports.topServices') }}</h3>
-          </div>
-          <div v-if="topServices.length" class="px-4 py-4">
-            <ApexChart type="bar" height="240" :options="topServicesOptions" :series="topServicesSeries" />
-          </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-100 text-sm">
-              <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th class="px-6 py-3">{{ t('reports.service') }}</th>
-                  <th class="px-6 py-3">{{ t('reports.count') }}</th>
-                  <th class="px-6 py-3">{{ t('reports.total') }}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr v-if="loading.services">
-                  <td class="px-6 py-4 text-gray-500" colspan="3">{{ t('reports.loading') }}</td>
-                </tr>
-                <tr v-else-if="topServices.length === 0">
-                  <td class="px-6 py-4 text-gray-500" colspan="3">{{ t('reports.noData') }}</td>
-                </tr>
-                <tr v-for="row in topServices" :key="row.service_name" class="bg-white">
-                  <td class="px-6 py-4 text-gray-700">{{ row.service_name }}</td>
-                  <td class="px-6 py-4 text-gray-700">{{ row.total_count }}</td>
-                  <td class="px-6 py-4 text-gray-700">{{ formatCurrency(row.total_revenue) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div class="rounded-2xl border border-gray-100 bg-white shadow-card">
-        <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h3 class="text-sm font-semibold text-gray-900">{{ t('reports.monthlyServiceRevenue') }}</h3>
-        </div>
-        <div v-if="monthlyServiceRevenue.length" class="px-4 py-4">
-          <ApexChart type="bar" height="260" :options="monthlyServiceRevenueOptions" :series="monthlyServiceRevenueSeries" />
         </div>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-100 text-sm">
-            <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3">{{ t('reports.month') }}</th>
-                <th class="px-6 py-3">{{ t('reports.service') }}</th>
-                <th class="px-6 py-3">{{ t('reports.count') }}</th>
-                <th class="px-6 py-3">{{ t('reports.total') }}</th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Kategoriya
+                </th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Sana
+                </th>
+                <th class="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Summa
+                </th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  To'lov usuli
+                </th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Izoh
+                </th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody class="divide-y divide-gray-100 bg-white">
+              <tr 
+                v-for="expense in additionalExpenses" 
+                :key="expense.id" 
+                class="hover:bg-gray-50 transition-colors"
+              >
+                <td class="px-4 sm:px-6 py-4">
+                  <span class="px-2 py-1 rounded text-xs font-medium" :class="getExpenseCategoryClass(expense.category)">
+                    {{ getExpenseCategoryLabel(expense.category) }}
+                  </span>
+                </td>
+                <td class="px-4 sm:px-6 py-4 text-gray-600">
+                  {{ formatDate(expense.paid_at) }}
+                </td>
+                <td class="px-4 sm:px-6 py-4 text-right font-semibold text-orange-600">
+                  {{ formatCurrency(expense.amount) }}
+                </td>
+                <td class="px-4 sm:px-6 py-4 text-gray-600">
+                  {{ getMethodLabel(expense.method) }}
+                </td>
+                <td class="px-4 sm:px-6 py-4 text-gray-600">
+                  {{ removeCategoryFromNote(expense.note) || '-' }}
+                </td>
+              </tr>
+            </tbody>
+            <tfoot class="bg-gray-50">
+              <tr>
+                <td colspan="2" class="px-4 sm:px-6 py-3 text-sm font-semibold text-gray-900">
+                  Jami:
+                </td>
+                <td class="px-4 sm:px-6 py-3 text-right text-sm font-bold text-orange-600">
+                  {{ formatCurrency(summary.totalAdditionalExpenses) }}
+                </td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- 1. Daromad dinamikasi (Line Chart) - Kun/Hafta/Oy toggle -->
+      <div class="mobile-card">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-semibold text-gray-900">Daromad dinamikasi</h2>
+            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Daromad o'sishi yoki tushishi</p>
+          </div>
+          <div class="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+            <button
+              v-for="period in ['day', 'week', 'month']"
+              :key="period"
+              @click="revenuePeriod = period"
+              :class="[
+                'px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all touch-target',
+                revenuePeriod === period
+                  ? 'bg-white text-primary-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              ]"
+            >
+              {{ period === 'day' ? 'Kunlik' : period === 'week' ? 'Haftalik' : 'Oylik' }}
+            </button>
+          </div>
+        </div>
+        <div v-if="revenueData.length > 0" class="mb-4">
+          <ApexChart 
+            type="line" 
+            height="300" 
+            :options="revenueChartOptions" 
+            :series="revenueChartSeries" 
+          />
+        </div>
+        <div v-else class="py-12 text-center">
+          <p class="text-sm text-gray-500">Ma'lumotlar yo'q</p>
+        </div>
+      </div>
+
+      <!-- 2. Xizmatlar bo'yicha tushum (Bar Chart) -->
+      <div class="mobile-card">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-semibold text-gray-900">Xizmatlar bo'yicha tushum</h2>
+            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Qaysi xizmat ko'p pul keltiryapti</p>
+          </div>
+        </div>
+        <div v-if="topServices.length > 0" class="mb-6">
+          <ApexChart 
+            type="bar" 
+            height="300" 
+            :options="servicesChartOptions" 
+            :series="servicesChartSeries" 
+          />
+        </div>
+        <div v-else class="py-12 text-center mb-6">
+          <p class="text-sm text-gray-500">Ma'lumotlar yo'q</p>
+        </div>
+        <!-- Jadval -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-100 text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {{ t('reports.service') }}
+                </th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {{ t('reports.count') }}
+                </th>
+                <th class="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {{ t('reports.total') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
               <tr v-if="loading.services">
-                <td class="px-6 py-4 text-gray-500" colspan="4">{{ t('reports.loading') }}</td>
+                <td class="px-4 sm:px-6 py-4 text-gray-500" colspan="3">{{ t('reports.loading') }}</td>
               </tr>
-              <tr v-else-if="monthlyServiceRevenue.length === 0">
-                <td class="px-6 py-4 text-gray-500" colspan="4">{{ t('reports.noData') }}</td>
+              <tr v-else-if="topServices.length === 0">
+                <td class="px-4 sm:px-6 py-4 text-gray-500" colspan="3">{{ t('reports.noData') }}</td>
               </tr>
-              <tr v-for="row in monthlyServiceRevenue" :key="`${row.month}-${row.service_name}`" class="bg-white">
-                <td class="px-6 py-4 text-gray-700">{{ row.month }}</td>
-                <td class="px-6 py-4 text-gray-700">{{ row.service_name }}</td>
-                <td class="px-6 py-4 text-gray-700">{{ row.total_count }}</td>
-                <td class="px-6 py-4 text-gray-700">{{ formatCurrency(row.total_revenue) }}</td>
+              <tr 
+                v-for="row in topServices" 
+                :key="row.service_name" 
+                class="hover:bg-gray-50 transition-colors"
+              >
+                <td class="px-4 sm:px-6 py-4 font-medium text-gray-900">{{ row.service_name || 'Noma\'lum' }}</td>
+                <td class="px-4 sm:px-6 py-4 text-gray-600">{{ row.total_count || 0 }}</td>
+                <td class="px-4 sm:px-6 py-4 text-right font-semibold text-gray-900">
+                  {{ formatCurrency(row.total_revenue) }}
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <div class="grid gap-6 xl:grid-cols-2">
-        <div class="rounded-2xl border border-gray-100 bg-white shadow-card">
-          <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <h3 class="text-sm font-semibold text-gray-900">{{ t('reports.dailyIncome') }}</h3>
-          </div>
-          <div v-if="dailyIncome.length" class="px-4 py-4">
-            <ApexChart type="line" height="240" :options="dailyIncomeOptions" :series="dailyIncomeSeries" />
-          </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-100 text-sm">
-              <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th class="px-6 py-3">{{ t('reports.date') }}</th>
-                  <th class="px-6 py-3">{{ t('reports.total') }}</th>
-                  <th class="px-6 py-3">{{ t('reports.netIncome') }}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr v-if="loading.income">
-                  <td class="px-6 py-4 text-gray-500" colspan="3">{{ t('reports.loading') }}</td>
-                </tr>
-                <tr v-else-if="dailyIncome.length === 0">
-                  <td class="px-6 py-4 text-gray-500" colspan="3">{{ t('reports.noData') }}</td>
-                </tr>
-                <tr v-for="row in dailyIncome" :key="row.day" class="bg-white">
-                  <td class="px-6 py-4 text-gray-700">{{ row.day }}</td>
-                  <td class="px-6 py-4 text-gray-700">{{ formatCurrency(row.total_payments) }}</td>
-                  <td class="px-6 py-4 text-gray-700">{{ formatCurrency(row.net_income) }}</td>
-                </tr>
-              </tbody>
-            </table>
+      <!-- 3. To'lov usullari (Donut Chart) -->
+      <div class="mobile-card">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-semibold text-gray-900">To'lov usullari</h2>
+            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Naqd, karta, o'tkazma</p>
           </div>
         </div>
+        <div v-if="paymentMethods.length > 0" class="mb-6">
+          <ApexChart 
+            type="donut" 
+            height="300" 
+            :options="paymentMethodsChartOptions" 
+            :series="paymentMethodsChartSeries" 
+          />
+        </div>
+        <div v-else class="py-12 text-center mb-6">
+          <p class="text-sm text-gray-500">Ma'lumotlar yo'q</p>
+        </div>
+        <!-- Jadval -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-100 text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {{ t('reports.method') }}
+                </th>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {{ t('reports.count') }}
+                </th>
+                <th class="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {{ t('reports.total') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+              <tr v-if="loading.payments">
+                <td class="px-4 sm:px-6 py-4 text-gray-500" colspan="3">{{ t('reports.loading') }}</td>
+              </tr>
+              <tr v-else-if="paymentMethods.length === 0">
+                <td class="px-4 sm:px-6 py-4 text-gray-500" colspan="3">{{ t('reports.noData') }}</td>
+              </tr>
+              <tr 
+                v-for="row in paymentMethods" 
+                :key="row.method" 
+                class="hover:bg-gray-50 transition-colors"
+              >
+                <td class="px-4 sm:px-6 py-4 font-medium text-gray-900">{{ row.label }}</td>
+                <td class="px-4 sm:px-6 py-4 text-gray-600">{{ row.count }}</td>
+                <td class="px-4 sm:px-6 py-4 text-right font-semibold text-gray-900">
+                  {{ formatCurrency(row.total) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-        <div class="rounded-2xl border border-gray-100 bg-white shadow-card">
-          <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <h3 class="text-sm font-semibold text-gray-900">{{ t('reports.monthlyIncome') }}</h3>
+      <!-- Qarzdorlar ro'yxati (Faqat jadval, chart yo'q) -->
+      <div class="mobile-card">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-semibold text-gray-900">Qarzdorlar</h2>
+            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Qarz miqdori bo'yicha tartiblangan</p>
           </div>
-          <div v-if="monthlyIncome.length" class="px-4 py-4">
-            <ApexChart type="bar" height="240" :options="monthlyIncomeOptions" :series="monthlyIncomeSeries" />
-          </div>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-100 text-sm">
-              <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th class="px-6 py-3">{{ t('reports.month') }}</th>
-                  <th class="px-6 py-3">{{ t('reports.total') }}</th>
-                  <th class="px-6 py-3">{{ t('reports.netIncome') }}</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr v-if="loading.income">
-                  <td class="px-6 py-4 text-gray-500" colspan="3">{{ t('reports.loading') }}</td>
-                </tr>
-                <tr v-else-if="monthlyIncome.length === 0">
-                  <td class="px-6 py-4 text-gray-500" colspan="3">{{ t('reports.noData') }}</td>
-                </tr>
-                <tr v-for="row in monthlyIncome" :key="row.month" class="bg-white">
-                  <td class="px-6 py-4 text-gray-700">{{ row.month }}</td>
-                  <td class="px-6 py-4 text-gray-700">{{ formatCurrency(row.total_payments) }}</td>
-                  <td class="px-6 py-4 text-gray-700">{{ formatCurrency(row.net_income) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-100 text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {{ t('reports.patient') }}
+                </th>
+                <th class="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {{ t('reports.total') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+              <tr v-if="loading.debts">
+                <td class="px-4 sm:px-6 py-4 text-gray-500" colspan="2">{{ t('reports.loading') }}</td>
+              </tr>
+              <tr v-else-if="debtors.length === 0">
+                <td class="px-4 sm:px-6 py-4 text-gray-500" colspan="2">{{ t('reports.noData') }}</td>
+              </tr>
+              <tr 
+                v-for="row in debtors" 
+                :key="row.patient_id" 
+                class="hover:bg-red-50 transition-colors"
+              >
+                <td class="px-4 sm:px-6 py-4">
+                  <router-link 
+                    :to="`/patients/${row.patient_id}`"
+                    class="font-medium text-gray-900 hover:text-primary-600 transition-colors"
+                  >
+                    {{ row.label }}
+                  </router-link>
+                </td>
+                <td class="px-4 sm:px-6 py-4 text-right font-semibold text-red-600">
+                  {{ formatCurrency(row.total) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -300,16 +344,17 @@
 
 <script setup>
 import MainLayout from '@/layouts/MainLayout.vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 import ApexChart from 'vue3-apexcharts'
 import { useToast } from '@/composables/useToast'
 import { listDoctors } from '@/api/doctorsApi'
 import { listPatients } from '@/api/patientsApi'
 import * as paymentsApi from '@/api/paymentsApi'
+import { parseCategoryFromNote, removeCategoryFromNote } from '@/api/paymentsApi'
 import * as visitsApi from '@/api/visitsApi'
-import { getTopServices, getServiceRevenueMonthly } from '@/api/servicesApi'
+import { getTopServices } from '@/api/servicesApi'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -318,6 +363,8 @@ const filters = ref({
   startDate: '',
   endDate: ''
 })
+
+const revenuePeriod = ref('day') // 'day', 'week', 'month'
 
 const loading = ref({
   payments: false,
@@ -330,28 +377,25 @@ const summary = ref({
   totalPayments: 0,
   totalRefunds: 0,
   netIncome: 0,
-  totalDebt: 0
+  totalDebt: 0,
+  totalAdditionalExpenses: 0
 })
 
 const payments = ref([])
 const paymentMethods = ref([])
-const doctorRevenue = ref([])
 const debtors = ref([])
-const dailyIncome = ref([])
-const monthlyIncome = ref([])
 const topServices = ref([])
-const monthlyServiceRevenue = ref([])
+const revenueData = ref([])
 const doctors = ref([])
 const patients = ref([])
+const additionalExpenses = ref([])
 
 const formatCurrency = (amount) => {
   if (amount === null || amount === undefined) return '-'
   return new Intl.NumberFormat('uz-UZ', {
-    style: 'currency',
-    currency: 'UZS',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(amount).replace('UZS', t('common.currencySuffix'))
+  }).format(amount) + ' so\'m'
 }
 
 const resetFilters = () => {
@@ -365,21 +409,159 @@ const resetFilters = () => {
   }
 }
 
+// Daromad dinamikasi chart
+const revenueChartSeries = computed(() => [
+  {
+    name: 'Daromad',
+    data: revenueData.value.map(row => Number(row.net_income) || 0)
+  }
+])
+
+const revenueChartOptions = computed(() => ({
+  chart: {
+    type: 'line',
+    toolbar: { show: false },
+    zoom: { enabled: false }
+  },
+  stroke: {
+    curve: 'smooth',
+    width: 3,
+    colors: ['#0ea5e9']
+  },
+  markers: {
+    size: 4,
+    colors: ['#0ea5e9'],
+    strokeColors: '#fff',
+    strokeWidth: 2
+  },
+  xaxis: {
+    categories: revenueData.value.map(row => {
+      if (revenuePeriod.value === 'day') {
+        return new Date(row.day).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit' })
+      } else if (revenuePeriod.value === 'week') {
+        return row.week || row.day
+      } else {
+        return new Date(row.month).toLocaleDateString('uz-UZ', { month: 'short', year: 'numeric' })
+      }
+    }),
+    labels: {
+      style: {
+        fontSize: '12px',
+        colors: '#6b7280'
+      }
+    }
+  },
+  yaxis: {
+    labels: {
+      formatter: (val) => formatCurrency(val)
+    }
+  },
+  tooltip: {
+    y: {
+      formatter: (val) => formatCurrency(val)
+    }
+  },
+  colors: ['#0ea5e9'],
+  grid: {
+    borderColor: '#e5e7eb',
+    strokeDashArray: 4
+  }
+}))
+
+// Xizmatlar chart
+const servicesChartSeries = computed(() => [
+  {
+    name: 'Tushum',
+    data: topServices.value.map(row => Number(row.total_revenue) || 0)
+  }
+])
+
+const servicesChartOptions = computed(() => ({
+  chart: {
+    type: 'bar',
+    toolbar: { show: false }
+  },
+  xaxis: {
+    categories: topServices.value.map(row => row.service_name || 'Noma\'lum'),
+    labels: {
+      style: {
+        fontSize: '11px',
+        colors: '#6b7280'
+      },
+      rotate: -45,
+      rotateAlways: false
+    }
+  },
+  yaxis: {
+    labels: {
+      formatter: (val) => formatCurrency(val)
+    }
+  },
+  tooltip: {
+    y: {
+      formatter: (val) => formatCurrency(val)
+    }
+  },
+  colors: ['#10b981'],
+  dataLabels: {
+    enabled: false
+  },
+  plotOptions: {
+    bar: {
+      borderRadius: 4,
+      horizontal: false
+    }
+  }
+}))
+
+// To'lov usullari chart
+const paymentMethodsChartSeries = computed(() => 
+  paymentMethods.value.map(row => Number(row.total) || 0)
+)
+
+const paymentMethodsChartOptions = computed(() => ({
+  chart: {
+    type: 'donut'
+  },
+  labels: paymentMethods.value.map(row => row.label),
+  legend: {
+    position: 'bottom',
+    fontSize: '12px'
+  },
+  dataLabels: {
+    enabled: true,
+    formatter: (val) => `${val.toFixed(1)}%`
+  },
+  tooltip: {
+    y: {
+      formatter: (val) => formatCurrency(val)
+    }
+  },
+  colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
+}))
+
 const applySummary = () => {
   const totals = payments.value.reduce(
     (acc, entry) => {
       const amount = Number(entry.amount) || 0
       if (entry.payment_type === 'payment') acc.totalPayments += amount
       if (entry.payment_type === 'refund') acc.totalRefunds += amount
-      if (entry.payment_type === 'refund') acc.netIncome -= amount
-      else acc.netIncome += amount
+      if (entry.payment_type === 'expense') {
+        acc.totalAdditionalExpenses += amount
+        acc.netIncome -= amount // Xarajatlar daromaddan ayiriladi
+      } else if (entry.payment_type === 'refund') {
+        acc.netIncome -= amount
+      } else {
+        acc.netIncome += amount
+      }
       return acc
     },
-    { totalPayments: 0, totalRefunds: 0, netIncome: 0 }
+    { totalPayments: 0, totalRefunds: 0, netIncome: 0, totalAdditionalExpenses: 0 }
   )
   summary.value.totalPayments = totals.totalPayments
   summary.value.totalRefunds = totals.totalRefunds
   summary.value.netIncome = totals.netIncome
+  summary.value.totalAdditionalExpenses = totals.totalAdditionalExpenses
 }
 
 const buildPaymentMethodStats = () => {
@@ -400,99 +582,42 @@ const buildPaymentMethodStats = () => {
 }
 
 const resolveMethodLabel = (method) => {
-  const key = `reports.methodLabels.${method}`
-  const translated = t(key)
-  return translated === key ? method : translated
+  const labels = {
+    cash: 'Naqd',
+    card: 'Karta',
+    transfer: 'O\'tkazma',
+    unknown: 'Noma\'lum'
+  }
+  return labels[method] || method
 }
 
-const paymentMethodsSeries = computed(() => paymentMethods.value.map(row => Number(row.total) || 0))
-const paymentMethodsOptions = computed(() => ({
-  labels: paymentMethods.value.map(row => row.label),
-  legend: { position: 'bottom' },
-  dataLabels: { enabled: true },
-  tooltip: { y: { formatter: (val) => formatCurrency(val) } }
-}))
+const getMethodLabel = (method) => {
+  return resolveMethodLabel(method)
+}
 
-const doctorRevenueSeries = computed(() => [
-  { name: t('reports.total'), data: doctorRevenue.value.map(row => Number(row.total) || 0) }
-])
-const doctorRevenueOptions = computed(() => ({
-  chart: { toolbar: { show: false } },
-  xaxis: { categories: doctorRevenue.value.map(row => row.label) },
-  dataLabels: { enabled: false },
-  tooltip: { y: { formatter: (val) => formatCurrency(val) } }
-}))
+const getExpenseCategoryLabel = (category) => {
+  const labels = {
+    rent: 'Ijara',
+    inventory: 'Ombor xizmatlari',
+    other: 'Boshqa'
+  }
+  return labels[category] || category || 'Noma\'lum'
+}
 
-const debtorsSeries = computed(() => [
-  { name: t('reports.total'), data: debtors.value.map(row => Number(row.total) || 0) }
-])
-const debtorsOptions = computed(() => ({
-  chart: { toolbar: { show: false } },
-  xaxis: { categories: debtors.value.map(row => row.label) },
-  dataLabels: { enabled: false },
-  tooltip: { y: { formatter: (val) => formatCurrency(val) } }
-}))
+const getExpenseCategoryClass = (category) => {
+  const classes = {
+    rent: 'text-purple-700 bg-purple-50',
+    inventory: 'text-blue-700 bg-blue-50',
+    other: 'text-gray-700 bg-gray-50'
+  }
+  return classes[category] || 'text-gray-700 bg-gray-50'
+}
 
-const topServicesSeries = computed(() => [
-  { name: t('reports.total'), data: topServices.value.map(row => Number(row.total_revenue) || 0) }
-])
-const topServicesOptions = computed(() => ({
-  chart: { toolbar: { show: false } },
-  xaxis: { categories: topServices.value.map(row => row.service_name) },
-  dataLabels: { enabled: false },
-  tooltip: { y: { formatter: (val) => formatCurrency(val) } }
-}))
-
-const dailyIncomeSeries = computed(() => [
-  { name: t('reports.netIncome'), data: dailyIncome.value.map(row => Number(row.net_income) || 0) }
-])
-const dailyIncomeOptions = computed(() => ({
-  chart: { toolbar: { show: false } },
-  stroke: { curve: 'smooth', width: 2 },
-  xaxis: { categories: dailyIncome.value.map(row => row.day) },
-  dataLabels: { enabled: false },
-  tooltip: { y: { formatter: (val) => formatCurrency(val) } }
-}))
-
-const monthlyIncomeSeries = computed(() => [
-  { name: t('reports.netIncome'), data: monthlyIncome.value.map(row => Number(row.net_income) || 0) }
-])
-const monthlyIncomeOptions = computed(() => ({
-  chart: { toolbar: { show: false } },
-  xaxis: { categories: monthlyIncome.value.map(row => row.month) },
-  dataLabels: { enabled: false },
-  tooltip: { y: { formatter: (val) => formatCurrency(val) } }
-}))
-
-const monthlyServiceRevenueSeries = computed(() => [
-  { name: t('reports.total'), data: monthlyServiceRevenue.value.map(row => Number(row.total_revenue) || 0) }
-])
-const monthlyServiceRevenueOptions = computed(() => ({
-  chart: { toolbar: { show: false } },
-  xaxis: {
-    categories: monthlyServiceRevenue.value.map(row => `${row.month} • ${row.service_name}`)
-  },
-  dataLabels: { enabled: false },
-  tooltip: { y: { formatter: (val) => formatCurrency(val) } }
-}))
-
-const buildDoctorRevenue = () => {
-  const map = new Map()
-  payments.value.forEach(entry => {
-    const doctorId = entry.doctor_id || 'unknown'
-    if (!map.has(doctorId)) {
-      map.set(doctorId, { doctor_id: doctorId, total: 0 })
-    }
-    const row = map.get(doctorId)
-    const amount = Number(entry.amount) || 0
-    row.total += entry.payment_type === 'refund' ? -amount : amount
-  })
-  doctorRevenue.value = Array.from(map.values())
-    .map(row => ({
-      ...row,
-      label: doctorLabel(row.doctor_id)
-    }))
-    .sort((a, b) => b.total - a.total)
+const formatDate = (value) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 const buildDebtors = (debtVisits) => {
@@ -511,13 +636,9 @@ const buildDebtors = (debtVisits) => {
       label: patientLabel(row.patient_id)
     }))
     .sort((a, b) => b.total - a.total)
+    .slice(0, 20) // Top 20
 
   summary.value.totalDebt = debtors.value.reduce((sum, row) => sum + row.total, 0)
-}
-
-const doctorLabel = (doctorId) => {
-  const match = doctors.value.find(item => Number(item.id) === Number(doctorId))
-  return match ? `${match.full_name} (#${match.id})` : doctorId === 'unknown' ? t('reports.unknownDoctor') : `#${doctorId}`
 }
 
 const patientLabel = (patientId) => {
@@ -525,51 +646,140 @@ const patientLabel = (patientId) => {
   return match ? `${match.full_name} (#${match.id})` : `#${patientId}`
 }
 
+// Daromad ma'lumotlarini yuklash (kun/hafta/oy bo'yicha)
+const loadRevenueData = async () => {
+  try {
+    const { startDate, endDate } = filters.value
+    const allPayments = await paymentsApi.getPaymentsByDateRange(startDate, endDate)
+    
+    if (revenuePeriod.value === 'day') {
+      // Kunlik
+      const byDay = new Map()
+      allPayments.forEach(p => {
+        const day = (p.paid_at || '').slice(0, 10)
+        if (!day) return
+        if (!byDay.has(day)) {
+          byDay.set(day, { day, net_income: 0 })
+        }
+        const amt = Number(p.amount) || 0
+        const isAdditionalExpense = p.payment_type === 'adjustment' && p.note && p.note.includes('[CATEGORY:')
+        if (isAdditionalExpense) {
+          byDay.get(day).net_income -= amt // Xarajatlar ayiriladi
+        } else {
+          byDay.get(day).net_income += p.payment_type === 'refund' ? -amt : amt
+        }
+      })
+      revenueData.value = Array.from(byDay.values())
+        .sort((a, b) => a.day.localeCompare(b.day))
+    } else if (revenuePeriod.value === 'week') {
+      // Haftalik
+      const byWeek = new Map()
+      allPayments.forEach(p => {
+        const date = new Date(p.paid_at || '')
+        if (isNaN(date.getTime())) return
+        const weekStart = getWeekStart(date)
+        const weekKey = weekStart.toISOString().slice(0, 10)
+        if (!byWeek.has(weekKey)) {
+          byWeek.set(weekKey, { 
+            week: `Hafta ${weekStart.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit' })}`,
+            net_income: 0 
+          })
+        }
+        const amt = Number(p.amount) || 0
+        const isAdditionalExpense = p.payment_type === 'adjustment' && p.note && p.note.includes('[CATEGORY:')
+        if (isAdditionalExpense) {
+          byWeek.get(weekKey).net_income -= amt // Xarajatlar ayiriladi
+        } else {
+          byWeek.get(weekKey).net_income += p.payment_type === 'refund' ? -amt : amt
+        }
+      })
+      revenueData.value = Array.from(byWeek.values())
+        .sort((a, b) => a.week.localeCompare(b.week))
+    } else {
+      // Oylik
+      const byMonth = new Map()
+      allPayments.forEach(p => {
+        const date = (p.paid_at || '').slice(0, 7) + '-01'
+        if (!date) return
+        if (!byMonth.has(date)) {
+          byMonth.set(date, { month: date, net_income: 0 })
+        }
+        const amt = Number(p.amount) || 0
+        const isAdditionalExpense = p.payment_type === 'adjustment' && p.note && p.note.includes('[CATEGORY:')
+        if (isAdditionalExpense) {
+          byMonth.get(date).net_income -= amt // Xarajatlar ayiriladi
+        } else {
+          byMonth.get(date).net_income += p.payment_type === 'refund' ? -amt : amt
+        }
+      })
+      revenueData.value = Array.from(byMonth.values())
+        .sort((a, b) => a.month.localeCompare(b.month))
+    }
+  } catch (error) {
+    console.error('Failed to load revenue data:', error)
+    revenueData.value = []
+  }
+}
+
+const getWeekStart = (date) => {
+  const day = date.getDay()
+  const diff = date.getDate() - (day === 0 ? 6 : day - 1)
+  return new Date(date.getFullYear(), date.getMonth(), diff)
+}
+
+// Period o'zgarganda ma'lumotlarni qayta yuklash
+watch(revenuePeriod, () => {
+  loadRevenueData()
+})
+
 const loadReports = async () => {
   loading.value.payments = true
   loading.value.income = true
   loading.value.debts = true
   loading.value.services = true
+  
   try {
     const { startDate, endDate } = filters.value
     const [
       paymentsData,
-      dailyIncomeData,
-      monthlyIncomeData,
       debtVisits,
       doctorsData,
       patientsData,
-      topServicesData,
-      monthlyServiceRevenueData
+      topServicesData
     ] = await Promise.all([
       paymentsApi.getPaymentsByDateRange(startDate, endDate),
-      paymentsApi.getIncomeDailyRange(startDate, endDate),
-      paymentsApi.getMonthlyIncome('order=month.desc&limit=12'),
       visitsApi.getDebtVisits(),
       listDoctors(),
       listPatients(),
-      getTopServices('order=total_revenue.desc&limit=10'),
-      getServiceRevenueMonthly('order=month.desc&limit=6')
+      getTopServices()
     ])
 
     payments.value = paymentsData || []
-    dailyIncome.value = dailyIncomeData || []
-    monthlyIncome.value = monthlyIncomeData || []
     doctors.value = doctorsData || []
     patients.value = patientsData || []
-    topServices.value = topServicesData || []
-    monthlyServiceRevenue.value = monthlyServiceRevenueData || []
+    topServices.value = (topServicesData || []).slice(0, 10) // Top 10
+    
+    // Qo'shimcha xarajatlar (yakka doktorlar uchun)
+    // Qo'shimcha to'lovlar adjustment type bilan saqlanadi va note'da [CATEGORY:...] bor
+    if (isSolo.value) {
+      additionalExpenses.value = payments.value
+        .filter(p => p.payment_type === 'adjustment' && p.note && p.note.includes('[CATEGORY:') && parseCategoryFromNote(p.note))
+        .map(p => ({
+          ...p,
+          category: parseCategoryFromNote(p.note) || 'other'
+        }))
+        .sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at))
+    } else {
+      additionalExpenses.value = []
+    }
+    
     applySummary()
     buildPaymentMethodStats()
-    buildDoctorRevenue()
     buildDebtors(debtVisits || [])
-    monthlyIncome.value = monthlyIncomeData || []
-    if (monthlyServiceRevenue && monthlyServiceRevenue.length) {
-      // attach to topServices section if needed later
-    }
+    await loadRevenueData()
   } catch (error) {
     console.error('Failed to load reports:', error)
-    toast.error(t('reports.errorLoad'))
+    toast.error(t('reports.errorLoad') || 'Xatolik yuz berdi')
   } finally {
     loading.value.payments = false
     loading.value.income = false

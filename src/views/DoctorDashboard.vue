@@ -1,96 +1,94 @@
 <template>
-  <div class="space-y-6 animate-fade-in">
-    <!-- Welcome Banner -->
-    <div class="bg-gradient-to-r from-accent-500 to-purple-600 rounded-2xl p-6 text-white">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-bold">{{ t('doctorDashboard.welcome', { name: doctorName }) }}</h1>
-          <p class="text-purple-100 mt-1">{{ t('doctorDashboard.welcomeSubtitle') }}</p>
+  <div class="space-y-4 sm:space-y-6 animate-fade-in pb-6 pb-safe">
+    <!-- Welcome Banner - Mobile Optimized -->
+    <div class="bg-gradient-to-r from-accent-500 to-purple-600 rounded-2xl p-4 sm:p-6 text-white mobile-card">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex-1">
+          <h1 class="text-xl sm:text-2xl font-bold">{{ t('doctorDashboard.welcome', { name: doctorName }) }}</h1>
+          <p class="text-purple-100 mt-1 text-sm sm:text-base">{{ t('doctorDashboard.welcomeSubtitle') }}</p>
         </div>
-        <div class="hidden sm:block">
-          <p class="text-sm text-purple-200">{{ currentDate }}</p>
-          <p class="text-2xl font-bold">{{ currentTime }}</p>
+        <div class="flex items-center justify-between sm:block sm:text-right">
+          <div class="sm:hidden">
+            <p class="text-xs text-purple-200">{{ currentDate.split(',')[0] }}</p>
+            <p class="text-lg font-bold">{{ currentTime }}</p>
+          </div>
+          <div class="hidden sm:block">
+            <p class="text-sm text-purple-200">{{ currentDate }}</p>
+            <p class="text-2xl font-bold">{{ currentTime }}</p>
+          </div>
         </div>
+      </div>
+      
+      <!-- Quick Action Buttons - Mobile First -->
+      <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+        <button
+          @click="goToAppointments"
+          class="mobile-btn-secondary touch-target-lg text-white border-white/30 hover:bg-white/10 active:scale-95"
+        >
+          <CalendarDaysIcon class="w-5 h-5 mx-auto mb-1 sm:hidden" />
+          <span class="text-xs sm:text-sm">{{ t('doctorDashboard.addAppointment') }}</span>
+        </button>
+        <button
+          @click="goToPlans"
+          class="mobile-btn-secondary touch-target-lg text-white border-white/30 hover:bg-white/10 active:scale-95"
+        >
+          <CheckCircleIcon class="w-5 h-5 mx-auto mb-1 sm:hidden" />
+          <span class="text-xs sm:text-sm">{{ t('doctorDashboard.writePlan') }}</span>
+        </button>
+        <button
+          v-if="nextAppointment"
+          @click="startAppointment"
+          class="col-span-2 sm:col-span-1 mobile-btn-primary touch-target-lg bg-white/20 border-white/30 hover:bg-white/30 active:scale-95"
+        >
+          <PlayIcon class="w-5 h-5 mx-auto mb-1 sm:hidden" />
+          <span class="text-xs sm:text-sm font-semibold">{{ t('doctorDashboard.startAppointment') }}</span>
+        </button>
       </div>
     </div>
 
-    <!-- Next Patient + Quick Actions -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 bg-white rounded-2xl shadow-card border border-gray-100">
-        <div class="p-6 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.nextPatientTitle') }}</h2>
-          <p class="text-sm text-gray-500">{{ t('doctorDashboard.nextPatientSubtitle') }}</p>
+    <!-- Next Patient Card - Mobile Optimized -->
+    <div v-if="nextAppointment" class="mobile-card">
+      <div class="flex items-start gap-3 sm:gap-4">
+        <div class="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-accent-400 to-purple-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl">
+          {{ nextAppointment.patientInitials }}
         </div>
-        <div class="p-6">
-          <div v-if="nextAppointment" class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p class="text-sm text-gray-500">{{ nextAppointment.time }} · {{ nextAppointment.date }}</p>
-              <p class="text-lg font-semibold text-gray-900 mt-1">{{ nextAppointment.patientName }}</p>
-              <p class="text-xs text-gray-400 mt-1">{{ nextAppointment.reason }}</p>
-            </div>
-            <button
-              @click="startAppointment"
-              class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all sm:w-auto w-full"
-            >
-              <PlayIcon class="w-5 h-5" />
-              {{ t('doctorDashboard.startAppointment') }}
-            </button>
-          </div>
-          <div v-else class="text-sm text-gray-500">
-            {{ t('doctorDashboard.nextPatientEmpty') }}
-          </div>
-        </div>
-      </div>
-      <div class="bg-white rounded-2xl shadow-card border border-gray-100">
-        <div class="p-6 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.quickActionsTitle') }}</h2>
-          <p class="text-sm text-gray-500">{{ t('doctorDashboard.quickActionsSubtitle') }}</p>
-        </div>
-        <div class="p-6 space-y-3">
+        <div class="flex-1 min-w-0">
+          <p class="text-xs sm:text-sm text-gray-500">{{ nextAppointment.time }} · {{ nextAppointment.date }}</p>
+          <p class="text-base sm:text-lg font-semibold text-gray-900 mt-1 truncate">{{ nextAppointment.patientName }}</p>
+          <p class="text-xs sm:text-sm text-gray-400 mt-1 line-clamp-2">{{ nextAppointment.reason }}</p>
           <button
             @click="startAppointment"
-            class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all"
+            class="mt-3 w-full sm:w-auto mobile-btn-primary touch-target-lg"
           >
-            <PlayIcon class="w-5 h-5" />
+            <PlayIcon class="w-5 h-5 inline-block mr-2" />
             {{ t('doctorDashboard.startAppointment') }}
-          </button>
-          <button
-            @click="goToAppointments"
-            class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-gray-700 font-medium rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-all"
-          >
-            <CalendarDaysIcon class="w-5 h-5 text-primary-500" />
-            {{ t('doctorDashboard.addAppointment') }}
-          </button>
-          <button
-            @click="goToPlans"
-            class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-gray-700 font-medium rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-all"
-          >
-            <CheckCircleIcon class="w-5 h-5 text-primary-500" />
-            {{ t('doctorDashboard.writePlan') }}
           </button>
         </div>
       </div>
     </div>
+    <div v-else class="mobile-card text-center py-8">
+      <p class="text-sm text-gray-500">{{ t('doctorDashboard.nextPatientEmpty') }}</p>
+    </div>
 
-    <!-- Today's Timeline -->
-    <div class="bg-white rounded-2xl shadow-card border border-gray-100">
-      <div class="p-6 border-b border-gray-100">
-      <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.todayScheduleTitle') }}</h2>
-      <p class="text-sm text-gray-500">{{ t('doctorDashboard.todayScheduleSubtitle') }}</p>
+    <!-- Today's Timeline - Mobile Optimized -->
+    <div class="mobile-card">
+      <div class="pb-4 border-b border-gray-100 mb-4">
+        <h2 class="text-base sm:text-lg font-semibold text-gray-900">{{ t('doctorDashboard.todayScheduleTitle') }}</h2>
+        <p class="text-xs sm:text-sm text-gray-500 mt-0.5">{{ t('doctorDashboard.todayScheduleSubtitle') }}</p>
       </div>
-      <div v-if="todaySchedule.length === 0" class="p-6 text-sm text-gray-500">
-        {{ t('doctorDashboard.todayScheduleEmpty') }}
+      <div v-if="todaySchedule.length === 0" class="mobile-empty py-8">
+        <p class="text-sm text-gray-500">{{ t('doctorDashboard.todayScheduleEmpty') }}</p>
       </div>
-      <div v-else class="p-6 space-y-4">
+      <div v-else class="space-y-3 sm:space-y-4">
         <div
           v-for="(appointment, index) in todaySchedule"
           :key="appointment.id"
-          class="relative flex gap-4"
+          class="relative flex gap-3 sm:gap-4 pb-3 sm:pb-4 last:pb-0"
         >
           <!-- Timeline line -->
-          <div class="flex flex-col items-center">
+          <div class="flex flex-col items-center flex-shrink-0">
             <div
-              class="w-3 h-3 rounded-full"
+              class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full"
               :class="getTimelineColor(appointment.status)"
             />
             <div
@@ -99,73 +97,77 @@
             />
           </div>
           <!-- Content -->
-          <div class="flex-1 pb-4">
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-gray-900">{{ appointment.time }}</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+              <span class="text-xs sm:text-sm font-medium text-gray-900">{{ appointment.time }}</span>
               <span
-                class="text-xs px-2 py-0.5 rounded-full"
+                class="mobile-badge text-xs"
                 :class="getStatusBadge(appointment.status)"
               >
                 {{ appointment.statusLabel }}
               </span>
             </div>
-            <p class="text-sm text-gray-600 mt-1">{{ appointment.patientName }}</p>
-            <p class="text-xs text-gray-400">{{ appointment.reason }}</p>
+            <p class="text-sm sm:text-base text-gray-900 font-medium mt-1 truncate">{{ appointment.patientName }}</p>
+            <p class="text-xs sm:text-sm text-gray-500 mt-0.5 line-clamp-2">{{ appointment.reason }}</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Plans + My Patients -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 bg-white rounded-2xl shadow-card border border-gray-100">
-        <div class="p-6 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.todayPlansTitle') }}</h2>
-          <p class="text-sm text-gray-500">{{ t('doctorDashboard.todayPlansSubtitle') }}</p>
+    <!-- Stats Card - Mobile First -->
+    <div class="mobile-card">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-base sm:text-lg font-semibold text-gray-900">{{ t('doctorDashboard.myPatientsTitle') }}</h2>
+          <p class="text-xs sm:text-sm text-gray-500 mt-0.5">{{ t('doctorDashboard.myPatientsSubtitle') }}</p>
         </div>
-        <div class="p-6 space-y-4">
-          <div v-if="todayPlans.length === 0" class="text-sm text-gray-500">
-            {{ t('doctorDashboard.noPlans') }}
-          </div>
-          <div
-            v-for="plan in todayPlans"
-            :key="plan.id"
-            class="flex items-center justify-between gap-4 rounded-xl border border-gray-100 p-4"
-          >
-            <div>
-              <p class="text-sm font-semibold text-gray-900">{{ plan.title }}</p>
-              <p class="text-xs text-gray-500">{{ plan.patientName }}</p>
-              <p class="text-xs text-gray-400">{{ plan.notes || '-' }}</p>
+        <div class="text-right">
+          <p class="text-2xl sm:text-3xl font-bold text-gray-900">{{ stats.myPatients }}</p>
+          <p class="text-xs sm:text-sm text-gray-500 mt-1">
+            <span class="text-green-600 font-medium">+{{ stats.newThisWeek }}</span> {{ t('doctorDashboard.thisWeek') }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plans - Mobile Optimized -->
+    <div class="mobile-card">
+      <div class="pb-4 border-b border-gray-100 mb-4">
+        <h2 class="text-base sm:text-lg font-semibold text-gray-900">{{ t('doctorDashboard.todayPlansTitle') }}</h2>
+        <p class="text-xs sm:text-sm text-gray-500 mt-0.5">{{ t('doctorDashboard.todayPlansSubtitle') }}</p>
+      </div>
+      <div v-if="todayPlans.length === 0" class="mobile-empty py-8">
+        <p class="text-sm text-gray-500">{{ t('doctorDashboard.noPlans') }}</p>
+      </div>
+      <div v-else class="space-y-3">
+        <div
+          v-for="plan in todayPlans"
+          :key="plan.id"
+          class="rounded-xl border border-gray-100 p-3 sm:p-4 active:bg-gray-50 transition-colors"
+        >
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm sm:text-base font-semibold text-gray-900 truncate">{{ plan.title }}</p>
+              <p class="text-xs sm:text-sm text-gray-600 mt-1">{{ plan.patientName }}</p>
+              <p v-if="plan.notes" class="text-xs text-gray-400 mt-1 line-clamp-2">{{ plan.notes }}</p>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-shrink-0">
               <button
                 v-if="!plan.visit_id"
                 @click="convertPlanToVisit(plan)"
-                class="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 rounded-lg"
+                class="mobile-action-btn text-xs sm:text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg touch-manipulation"
               >
                 {{ t('doctorDashboard.planToVisit') }}
               </button>
               <button
                 v-if="plan.status !== 'done'"
                 @click="markPlanDone(plan)"
-                class="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg"
+                class="mobile-action-btn text-xs sm:text-sm text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg touch-manipulation"
               >
                 {{ t('doctorDashboard.planDone') }}
               </button>
             </div>
           </div>
-        </div>
-      </div>
-      <div class="bg-white rounded-2xl shadow-card border border-gray-100">
-        <div class="p-6 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-gray-900">{{ t('doctorDashboard.myPatientsTitle') }}</h2>
-          <p class="text-sm text-gray-500">{{ t('doctorDashboard.myPatientsSubtitle') }}</p>
-        </div>
-        <div class="p-6">
-          <p class="text-3xl font-bold text-gray-900">{{ stats.myPatients }}</p>
-          <p class="text-sm text-gray-500 mt-2">
-            <span class="text-green-600">+{{ stats.newThisWeek }}</span> {{ t('doctorDashboard.thisWeek') }}
-          </p>
         </div>
       </div>
     </div>

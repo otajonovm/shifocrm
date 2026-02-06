@@ -30,8 +30,8 @@
 
         <!-- Right: Search, Language, Notifications, User Menu -->
         <div class="flex items-center gap-3">
-          <!-- Search (Admin + Solo) -->
-          <div v-if="authStore.userRole === 'admin' || authStore.userRole === 'solo'" class="hidden md:block">
+          <!-- Search (Admin + Solo) - Mobile uchun ham -->
+          <div v-if="authStore.userRole === 'admin' || authStore.userRole === 'solo'" class="relative">
             <div class="relative">
               <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -39,7 +39,7 @@
                 v-model="searchQuery"
                 @keyup.enter="handleGlobalSearch"
                 @focus="showSearchResults = true"
-                :placeholder="t('common.search')"
+                :placeholder="'Bemor, uchrashuv, to\'lov qidirish...'"
                 class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
               <!-- Search Results Dropdown -->
@@ -74,67 +74,6 @@
                 </div>
               </Transition>
             </div>
-          </div>
-
-          <!-- Notifications -->
-          <div class="relative">
-            <button
-              @click="notificationsOpen = !notificationsOpen"
-              class="relative p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <BellIcon class="w-6 h-6" />
-              <span
-                v-if="unreadNotificationsCount > 0"
-                class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"
-              ></span>
-            </button>
-
-            <!-- Notifications Dropdown -->
-            <Transition
-              enter-active-class="transition ease-out duration-100"
-              enter-from-class="transform opacity-0 scale-95"
-              enter-to-class="transform opacity-100 scale-100"
-              leave-active-class="transition ease-in duration-75"
-              leave-from-class="transform opacity-100 scale-100"
-              leave-to-class="transform opacity-0 scale-95"
-            >
-              <div
-                v-if="notificationsOpen"
-                class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 max-h-96 overflow-auto"
-                @click.stop
-              >
-                <div class="px-4 py-3 border-b border-gray-100">
-                  <h3 class="text-sm font-semibold text-gray-900">{{ t('common.notifications') }}</h3>
-                </div>
-                <div v-if="notifications.length === 0" class="px-4 py-8 text-center">
-                  <BellIcon class="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <p class="text-sm text-gray-500">{{ t('common.noNotifications') }}</p>
-                </div>
-                <div v-else class="py-1">
-                  <div
-                    v-for="notification in notifications"
-                    :key="notification.id"
-                    @click="handleNotificationClick(notification)"
-                    class="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0"
-                    :class="{ 'bg-blue-50': !notification.read }"
-                  >
-                      <div class="flex items-start gap-3">
-                      <div class="flex-shrink-0 mt-0.5">
-                        <BellIcon class="w-5 h-5 text-gray-400" />
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900">{{ notification.title }}</p>
-                        <p class="text-xs text-gray-500 mt-0.5">{{ notification.message }}</p>
-                        <p class="text-xs text-gray-400 mt-1">{{ formatNotificationTime(notification.time) }}</p>
-                      </div>
-                      <div v-if="!notification.read" class="flex-shrink-0">
-                        <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Transition>
           </div>
 
           <!-- User Menu -->
@@ -206,9 +145,9 @@
 
     <!-- Click outside to close menus -->
     <div
-      v-if="userMenuOpen || notificationsOpen || showSearchResults"
+      v-if="userMenuOpen || showSearchResults"
       class="fixed inset-0 z-40"
-      @click="userMenuOpen = false; notificationsOpen = false; showSearchResults = false"
+      @click="userMenuOpen = false; showSearchResults = false"
     />
   </div>
 </template>
@@ -220,10 +159,11 @@ import { useAuthStore } from '@/stores/auth'
 import { useI18n } from 'vue-i18n'
 import { usePatientsStore } from '@/stores/patients'
 import { useDoctorsStore } from '@/stores/doctors'
+import { listVisits } from '@/api/visitsApi'
+import { listPayments } from '@/api/paymentsApi'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import {
   Bars3Icon,
-  BellIcon,
   MagnifyingGlassIcon,
   ChevronDownIcon,
   UserCircleIcon,
@@ -232,6 +172,7 @@ import {
   ArrowRightOnRectangleIcon,
   UserGroupIcon,
   CalendarDaysIcon,
+  CreditCardIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -243,11 +184,9 @@ const { t, locale } = useI18n()
 
 const sidebarOpen = ref(false)
 const userMenuOpen = ref(false)
-const notificationsOpen = ref(false)
 const searchQuery = ref('')
 const showSearchResults = ref(false)
 const searchResults = ref([])
-const notifications = ref([])
 
 const pageTitle = computed(() => {
   const titles = {
@@ -300,8 +239,8 @@ const handleLogout = () => {
   router.push('/login')
 }
 
-// Global Search
-const handleGlobalSearch = () => {
+// Global Search - Kuchaytirilgan qidiruv
+const handleGlobalSearch = async () => {
   if (!searchQuery.value.trim()) {
     searchResults.value = []
     return
@@ -309,8 +248,9 @@ const handleGlobalSearch = () => {
 
   const query = searchQuery.value.toLowerCase().trim()
   const results = []
+  const patientMap = new Map(patientsStore.items.map(p => [Number(p.id), p]))
 
-  // Search patients
+  // 1. Bemorlar bo'yicha qidirish (ism/telefon)
   if (patientsStore.items.length > 0) {
     patientsStore.items.forEach(patient => {
       if (
@@ -322,7 +262,7 @@ const handleGlobalSearch = () => {
           id: `patient-${patient.id}`,
           type: 'patient',
           title: patient.full_name,
-          subtitle: patient.phone || patient.med_id || '',
+          subtitle: `Bemor · ${patient.phone || patient.med_id || ''}`,
           route: `/patients/${patient.id}`,
           icon: UserGroupIcon,
         })
@@ -330,7 +270,66 @@ const handleGlobalSearch = () => {
     })
   }
 
-  // Search doctors
+  // 2. Uchrashuvlar bo'yicha qidirish
+  try {
+    const visits = await listVisits('order=created_at.desc&limit=100')
+    visits.forEach(visit => {
+      const patient = patientMap.get(Number(visit.patient_id))
+      const patientName = patient?.full_name || ''
+      const visitDate = visit.date || visit.created_at
+      const formattedDate = visitDate ? new Date(visitDate).toLocaleDateString('uz-UZ') : ''
+      
+      if (
+        patientName.toLowerCase().includes(query) ||
+        visit.service_name?.toLowerCase().includes(query) ||
+        visit.notes?.toLowerCase().includes(query) ||
+        formattedDate.includes(query)
+      ) {
+        results.push({
+          id: `visit-${visit.id}`,
+          type: 'appointment',
+          title: `Uchrashuv: ${patientName || `#${visit.patient_id}`}`,
+          subtitle: `${formattedDate} · ${visit.service_name || visit.notes || 'Qabul'}`,
+          route: `/patients/${visit.patient_id}`,
+          icon: CalendarDaysIcon,
+        })
+      }
+    })
+  } catch (error) {
+    console.error('Failed to search visits:', error)
+  }
+
+  // 3. To'lovlar bo'yicha qidirish
+  try {
+    const payments = await listPayments('order=paid_at.desc&limit=100')
+    payments.forEach(payment => {
+      const patient = patientMap.get(Number(payment.patient_id))
+      const patientName = patient?.full_name || ''
+      const paymentDate = payment.paid_at
+      const formattedDate = paymentDate ? new Date(paymentDate).toLocaleDateString('uz-UZ') : ''
+      const amount = payment.amount ? new Intl.NumberFormat('uz-UZ').format(payment.amount) : '0'
+      
+      if (
+        patientName.toLowerCase().includes(query) ||
+        formattedDate.includes(query) ||
+        amount.includes(query) ||
+        payment.note?.toLowerCase().includes(query)
+      ) {
+        results.push({
+          id: `payment-${payment.id}`,
+          type: 'payment',
+          title: `To'lov: ${patientName || `#${payment.patient_id}`}`,
+          subtitle: `${formattedDate} · ${amount} so'm`,
+          route: `/patients/${payment.patient_id}`,
+          icon: CreditCardIcon,
+        })
+      }
+    })
+  } catch (error) {
+    console.error('Failed to search payments:', error)
+  }
+
+  // 4. Doktorlar bo'yicha qidirish
   if (doctorsStore.items.length > 0) {
     doctorsStore.items.forEach(doctor => {
       if (
@@ -342,7 +341,7 @@ const handleGlobalSearch = () => {
           id: `doctor-${doctor.id}`,
           type: 'doctor',
           title: doctor.full_name,
-          subtitle: doctor.specialization || doctor.email || '',
+          subtitle: `Doktor · ${doctor.specialization || doctor.email || ''}`,
           route: '/doctors',
           icon: UserGroupIcon,
         })
@@ -350,7 +349,13 @@ const handleGlobalSearch = () => {
     })
   }
 
-  searchResults.value = results.slice(0, 5) // Limit to 5 results
+  // Sort: bemorlar birinchi, keyin uchrashuvlar, to'lovlar, doktorlar
+  const sortedResults = results.sort((a, b) => {
+    const order = { patient: 1, appointment: 2, payment: 3, doctor: 4 }
+    return (order[a.type] || 99) - (order[b.type] || 99)
+  })
+
+  searchResults.value = sortedResults.slice(0, 10) // 10 ta natija
 }
 
 const navigateToSearchResult = (result) => {
@@ -370,44 +375,5 @@ watch(searchQuery, (newVal) => {
   }
 })
 
-// Notifications
-const unreadNotificationsCount = computed(() => {
-  return notifications.value.filter(n => !n.read).length
-})
-
-const formatNotificationTime = (time) => {
-  if (!time) return ''
-  const now = new Date()
-  const notificationTime = new Date(time)
-  const diffMs = now - notificationTime
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return t('common.justNow')
-  if (diffMins < 60) return `${diffMins} ${t('common.minutesAgo')}`
-  if (diffHours < 24) return `${diffHours} ${t('common.hoursAgo')}`
-  if (diffDays < 7) return `${diffDays} ${t('common.daysAgo')}`
-  return notificationTime.toLocaleDateString('uz-UZ')
-}
-
-const handleNotificationClick = (notification) => {
-  notification.read = true
-  if (notification.route) {
-    router.push(notification.route)
-    notificationsOpen.value = false
-  }
-}
-
-// Load notifications (mock data for now)
-const loadNotifications = () => {
-  // In real app, this would fetch from API
-  // Mock notifications - you can replace this with real API call
-  notifications.value = []
-}
-
-onMounted(() => {
-  loadNotifications()
-})
 
 </script>

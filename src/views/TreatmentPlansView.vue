@@ -6,9 +6,10 @@
           <h1 class="text-2xl font-bold text-gray-900">{{ t('treatmentPlansView.title') }}</h1>
           <p class="text-gray-500">{{ t('treatmentPlansView.subtitle') }}</p>
         </div>
+        <!-- Desktop Button -->
         <button
           @click="showForm = !showForm"
-          class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all"
+          class="hidden md:inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all touch-target-lg"
         >
           <PlusIcon class="w-5 h-5" />
           {{ t('treatmentPlansView.newPlan') }}
@@ -180,7 +181,8 @@
         </div>
       </div>
 
-      <div class="overflow-x-auto rounded-2xl border border-slate-200">
+      <!-- Desktop Table -->
+      <div class="hidden md:block overflow-x-auto rounded-2xl border border-slate-200">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
           <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
@@ -260,12 +262,112 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Mobile Card List -->
+      <div v-if="loading" class="md:hidden mobile-empty py-12">
+        <p class="text-sm text-gray-500">{{ t('treatmentPlans.loading') }}</p>
+      </div>
+      <div v-else-if="filteredPlans.length === 0" class="md:hidden mobile-empty py-12">
+        <p class="text-sm text-gray-500">{{ t('treatmentPlans.noPlans') }}</p>
+      </div>
+      <div v-else class="md:hidden space-y-3 pb-20">
+        <div
+          v-for="plan in filteredPlans"
+          :key="plan.id"
+          class="mobile-list-item"
+        >
+          <div class="space-y-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-base font-semibold text-gray-900 truncate">{{ plan.title }}</h3>
+                <p class="text-sm text-gray-600 mt-1">{{ plan.patientName || '-' }}</p>
+              </div>
+              <span :class="statusClass(plan.status)" class="mobile-badge flex-shrink-0">
+                {{ statusLabel(plan.status) }}
+              </span>
+            </div>
+            
+            <div v-if="plan.notes" class="text-xs text-gray-500 bg-gray-50 rounded-lg p-2">
+              {{ plan.notes }}
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-xs text-gray-600">
+              <div>
+                <span class="text-gray-500">{{ t('treatmentPlans.date') }}:</span>
+                <span class="font-medium ml-1">{{ formatDate(plan.planned_date) }}</span>
+              </div>
+              <div>
+                <span class="text-gray-500">{{ t('treatmentPlans.priority') }}:</span>
+                <span class="font-medium ml-1">{{ priorityLabel(plan.priority) }}</span>
+              </div>
+              <div v-if="plan.tooth_id">
+                <span class="text-gray-500">{{ t('treatmentPlans.tooth') }}:</span>
+                <span class="font-medium ml-1">#{{ plan.tooth_id }}</span>
+              </div>
+              <div v-if="plan.estimated_cost">
+                <span class="text-gray-500">{{ t('treatmentPlans.price') }}:</span>
+                <span class="font-medium ml-1">{{ formatCurrency(plan.estimated_cost) }} so'm</span>
+              </div>
+            </div>
+
+            <div v-if="plan.remind_at" class="text-xs text-gray-500">
+              {{ t('treatmentPlans.remindAtShort') }}: {{ formatDateTime(plan.remind_at) }}
+            </div>
+
+            <div class="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
+              <button
+                v-if="!plan.visit_id"
+                @click="convertToVisit(plan)"
+                class="mobile-action-btn text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg"
+              >
+                {{ t('treatmentPlans.toVisit') }}
+              </button>
+              <button
+                v-if="plan.status !== 'done'"
+                @click="setStatus(plan, 'done')"
+                class="mobile-action-btn text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg"
+              >
+                {{ t('treatmentPlans.markDone') }}
+              </button>
+              <button
+                v-if="plan.status !== 'postponed'"
+                @click="setStatus(plan, 'postponed')"
+                class="mobile-action-btn text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-lg"
+              >
+                {{ t('treatmentPlans.postpone') }}
+              </button>
+              <button
+                v-if="plan.status !== 'cancelled'"
+                @click="setStatus(plan, 'cancelled')"
+                class="mobile-action-btn text-xs text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-2 rounded-lg"
+              >
+                {{ t('treatmentPlans.cancel') }}
+              </button>
+              <button
+                @click="sendReminder(plan)"
+                class="mobile-action-btn text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg"
+              >
+                {{ t('treatmentPlans.remind') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- Mobile FAB -->
+    <MobileFAB
+      :icon="PlusIcon"
+      :label="t('treatmentPlansView.newPlan')"
+      @click="showForm = !showForm"
+      class="md:hidden"
+    />
   </MainLayout>
 </template>
 
 <script setup>
 import MainLayout from '@/layouts/MainLayout.vue'
+import MobileFAB from '@/components/shared/MobileFAB.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon } from '@heroicons/vue/24/outline'
