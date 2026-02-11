@@ -103,7 +103,7 @@ export default defineConfig({
                   if (!existingDb.admin) {
                     existingDb.admin = { login: 'admin', password: 'admin123' }
                   }
-                } catch (e) {
+                } catch (_e) {
                   console.log('Creating new db.json')
                 }
 
@@ -139,7 +139,7 @@ export default defineConfig({
                 try {
                   const existingContent = readFileSync(dbPath, 'utf-8')
                   existingDb = JSON.parse(existingContent)
-                } catch (e) {
+                } catch (_e) {
                   console.log('Creating new db.json')
                 }
 

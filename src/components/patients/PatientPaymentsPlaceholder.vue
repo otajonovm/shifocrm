@@ -1,37 +1,42 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <div class="grid gap-4 sm:grid-cols-4 flex-1">
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+    <!-- Summary cards + Actions: mobil — kartalar 2x2, tugmalar pastda; desktop — bir qatorda -->
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div class="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4 flex-1 min-w-0">
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
           <p class="text-xs text-slate-500">{{ t('patientPayments.totalPayments') }}</p>
-          <p class="mt-2 text-lg font-semibold text-slate-900">{{ formatCurrency(totalPayments) }}</p>
+          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-semibold text-slate-900 truncate" :title="formatCurrency(totalPayments)">{{ formatCurrency(totalPayments) }}</p>
         </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
           <p class="text-xs text-slate-500">{{ t('patientPayments.refunds') }}</p>
-          <p class="mt-2 text-lg font-semibold text-rose-600">{{ formatCurrency(totalRefunds) }}</p>
+          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-semibold text-rose-600 truncate">{{ formatCurrency(totalRefunds) }}</p>
         </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
           <p class="text-xs text-slate-500">{{ t('patientPayments.netIncome') }}</p>
-          <p class="mt-2 text-lg font-semibold text-emerald-600">{{ formatCurrency(netIncome) }}</p>
+          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-semibold text-emerald-600 truncate">{{ formatCurrency(netIncome) }}</p>
         </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
           <p class="text-xs text-slate-500">{{ t('patientPayments.totalServices') }}</p>
-          <p class="mt-2 text-lg font-semibold text-slate-900">{{ formatCurrency(totalServices) }}</p>
+          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-semibold text-slate-900 truncate" :title="formatCurrency(totalServices)">{{ formatCurrency(totalServices) }}</p>
         </div>
       </div>
-      <div class="ml-4 flex items-center gap-2">
+
+      <!-- Desktop: tugmalar o'ngda -->
+      <div class="hidden md:flex items-center gap-2 shrink-0 ml-4">
         <button
           v-if="canManagePayments"
-          class="inline-flex items-center gap-2 rounded-lg border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100"
+          class="inline-flex items-center gap-2 rounded-lg border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100 transition-colors"
           @click="openDiscountModal"
         >
+          <TagIcon class="w-5 h-5" />
           {{ t('patientPayments.addDiscount') }}
         </button>
         <button
           v-if="canManagePayments"
-          class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+          class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-colors"
           @click="openCreateModal"
         >
+          <BanknotesIcon class="w-5 h-5" />
           {{ t('patientPayments.addPayment') }}
         </button>
         <button
@@ -45,6 +50,40 @@
           </svg>
           <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
           {{ completingAll ? t('patientPayments.completing') : (t('patientPayments.yakunlash') || 'Yakunlash') }}
+        </button>
+      </div>
+
+      <!-- Mobil: Chegirma va To'lov — katta, barmoq uchun qulay, aniq ierarxiya -->
+      <div v-if="canManagePayments" class="md:hidden space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            class="touch-target-lg inline-flex items-center justify-center gap-2 rounded-xl border-2 border-violet-300 bg-violet-50 px-4 py-3.5 text-sm font-semibold text-violet-700 active:bg-violet-100 active:scale-[0.98] transition-all shadow-sm"
+            @click="openDiscountModal"
+          >
+            <TagIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
+            <span class="truncate">{{ t('patientPayments.addDiscount') }}</span>
+          </button>
+          <button
+            type="button"
+            class="touch-target-lg inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-cyan-600 px-4 py-3.5 text-sm font-semibold text-white shadow-md active:scale-[0.98] active:shadow-lg transition-all"
+            @click="openCreateModal"
+          >
+            <BanknotesIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
+            <span class="truncate">{{ t('patientPayments.addPayment') }}</span>
+          </button>
+        </div>
+        <button
+          v-if="hasIncompleteVisits"
+          class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-[0.99] transition-all disabled:opacity-60"
+          @click="completeAllVisits"
+          :disabled="completingAll"
+        >
+          <svg v-if="!completingAll" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <div v-else class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+          <span>{{ completingAll ? t('patientPayments.completing') : (t('patientPayments.yakunlash') || 'Yakunlash') }}</span>
         </button>
       </div>
     </div>
@@ -225,7 +264,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { TrashIcon } from '@heroicons/vue/24/outline'
+import { TrashIcon, TagIcon, BanknotesIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId, getPaymentsByVisitId } from '@/api/paymentsApi'
 import { getVisitServicesByPatientId, getVisitServicesByVisitId, deleteVisitServiceById } from '@/api/visitServicesApi'

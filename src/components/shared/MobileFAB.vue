@@ -1,7 +1,7 @@
 <template>
   <button
     :class="[
-      'fab',
+      'fab md:hidden',
       { 'md:static md:w-auto md:h-auto md:rounded-xl md:px-5 md:py-3': !alwaysFloating }
     ]"
     @click="$emit('click')"
