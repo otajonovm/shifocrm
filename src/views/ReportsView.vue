@@ -358,6 +358,9 @@ import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const toast = useToast()
+const authStore = useAuthStore()
+
+const isSolo = computed(() => authStore.userRole === 'solo')
 
 const filters = ref({
   startDate: '',

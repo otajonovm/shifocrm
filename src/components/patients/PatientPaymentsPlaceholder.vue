@@ -21,10 +21,11 @@
       </div>
       <div class="ml-4 flex items-center gap-2">
         <button
-          class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          @click="loadAll"
+          v-if="canManagePayments"
+          class="inline-flex items-center gap-2 rounded-lg border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100"
+          @click="openDiscountModal"
         >
-          {{ t('patientPayments.refresh') }}
+          {{ t('patientPayments.addDiscount') }}
         </button>
         <button
           v-if="canManagePayments"
@@ -154,7 +155,7 @@
           <div class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 class="text-lg font-semibold text-gray-900">
-                {{ isEditing ? t('patientPayments.editPayment') : t('patientPayments.addPayment') }}
+                {{ isDiscountMode ? t('patientPayments.addDiscount') : (isEditing ? t('patientPayments.editPayment') : t('patientPayments.addPayment')) }}
               </h3>
               <button class="text-gray-400 hover:text-gray-600" @click="closeModal">×</button>
             </div>
@@ -168,7 +169,7 @@
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.paidAt') }}</label>
                   <input v-model="form.paid_at" type="datetime-local" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
                 </div>
-                <div>
+                <div v-if="!isDiscountMode">
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.type') }}</label>
                   <select v-model="form.payment_type" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
                     <option value="payment">{{ t('patientPayments.typePayment') }}</option>
@@ -186,8 +187,10 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.amount') }}</label>
-                  <input v-model="form.amount" type="number" min="0" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" :placeholder="t('patientPayments.amountPlaceholder')" />
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ isDiscountMode ? t('patientPayments.discountAmount') || 'Chegirma summasi' : t('patientPayments.amount') }}
+                  </label>
+                  <input v-model="form.amount" type="number" :min="isDiscountMode ? 0 : 0" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" :placeholder="isDiscountMode ? (t('patientPayments.discountAmountPlaceholder') || 'Masalan: 50000') : t('patientPayments.amountPlaceholder')" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.note') }}</label>
@@ -233,7 +236,7 @@ import { useToast } from '@/composables/useToast'
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.userRole === 'admin')
-const canManagePayments = computed(() => ['admin', 'doctor'].includes(authStore.userRole || ''))
+const canManagePayments = computed(() => ['admin', 'doctor', 'solo'].includes(authStore.userRole || ''))
 
 const props = defineProps({
   patientId: {
@@ -254,6 +257,7 @@ const { t } = useI18n()
 const toast = useToast()
 const showPaymentModal = ref(false)
 const isEditing = ref(false)
+const isDiscountMode = ref(false)
 const visitPreview = ref(null)
 const visitPreviewLoading = ref(false)
 
@@ -383,14 +387,22 @@ const getTypeLabel = (type) => {
   return t('patientPayments.typePayment')
 }
 
+const DISCOUNT_NOTE_PREFIX = '[DISCOUNT]'
+
+const isDiscountEntry = (entry) => {
+  if (entry.payment_type === 'refund' && entry.note && String(entry.note).includes(DISCOUNT_NOTE_PREFIX)) return true
+  if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0) return true // eski yozuvlar
+  return false
+}
+
 const getTypeDisplayLabel = (entry) => {
-  if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0) {
-    return t('patientPayments.typeDiscount')
-  }
+  if (isDiscountEntry(entry)) return t('patientPayments.typeDiscount')
+  if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0) return t('patientPayments.typeDiscount')
   return getTypeLabel(entry.payment_type)
 }
 
 const getTypeClass = (entry) => {
+  if (isDiscountEntry(entry)) return 'text-violet-600 font-medium'
   const type = entry?.payment_type
   if (type === 'refund') return 'text-rose-600 font-medium'
   if (type === 'adjustment') {
@@ -470,6 +482,7 @@ watch(() => props.patientId, loadAll)
 
 const openCreateModal = () => {
   isEditing.value = false
+  isDiscountMode.value = false
   form.value = {
     id: null,
     visit_id: '',
@@ -483,24 +496,48 @@ const openCreateModal = () => {
   showPaymentModal.value = true
 }
 
+const openDiscountModal = () => {
+  isEditing.value = false
+  isDiscountMode.value = true
+  form.value = {
+    id: null,
+    visit_id: '',
+    amount: '',
+    payment_type: 'discount',
+    method: 'cash',
+    note: '',
+    paid_at: new Date().toISOString().slice(0, 16)
+  }
+  visitPreview.value = null
+  showPaymentModal.value = true
+}
+
+const stripDiscountNotePrefix = (note) => {
+  if (!note) return ''
+  return String(note).replace(/^\s*\[DISCOUNT\]\s*/i, '').trim()
+}
+
 const openEditModal = (payment) => {
   isEditing.value = true
+  isDiscountMode.value = false
   const amt = Number(payment.amount) || 0
-  const isDiscount = payment.payment_type === 'adjustment' && amt < 0
+  const isDiscount = isDiscountEntry(payment)
   form.value = {
     id: payment.id,
     visit_id: payment.visit_id ? String(payment.visit_id) : '',
     amount: isDiscount ? Math.abs(amt) : (payment.amount ?? ''),
     payment_type: isDiscount ? 'discount' : (payment.payment_type || 'payment'),
     method: payment.method || 'cash',
-    note: payment.note || '',
+    note: isDiscount ? stripDiscountNotePrefix(payment.note) : (payment.note || ''),
     paid_at: payment.paid_at ? payment.paid_at.slice(0, 16) : ''
   }
+  if (isDiscount) isDiscountMode.value = true
   showPaymentModal.value = true
 }
 
 const closeModal = () => {
   showPaymentModal.value = false
+  isDiscountMode.value = false
   visitPreview.value = null
 }
 
@@ -516,9 +553,12 @@ const savePayment = async () => {
     return
   }
   let paymentType = form.value.payment_type
+  let note = form.value.note || null
+  // DB da amount faqat musbat (payments_amount_check); chegirani refund sifatida musbat summa bilan saqlaymiz
   if (paymentType === 'discount') {
-    paymentType = 'adjustment'
-    amount = -Math.abs(amount)
+    paymentType = 'refund'
+    amount = Math.abs(amount)
+    note = note ? `${DISCOUNT_NOTE_PREFIX} ${note}` : DISCOUNT_NOTE_PREFIX
   }
   const payload = {
     visit_id: visitId,
@@ -526,7 +566,7 @@ const savePayment = async () => {
     amount,
     payment_type: paymentType,
     method: form.value.method || null,
-    note: form.value.note || null,
+    note,
     paid_at: form.value.paid_at ? new Date(form.value.paid_at).toISOString() : null
   }
 

@@ -5,12 +5,20 @@
       ref="buttonRef"
       type="button"
       :disabled="disabled"
-      class="rounded-lg sm:rounded-xl border transition-transform duration-150 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:opacity-60 touch-manipulation min-w-[40px] min-h-[48px] sm:min-w-0 sm:min-h-0"
+      class="rounded-lg sm:rounded-xl border-2 transition-transform duration-150 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:opacity-60 touch-manipulation min-w-[40px] min-h-[48px] sm:min-w-0 sm:min-h-0 overflow-hidden"
       :class="statusContainerClass"
       :style="toothStyle"
       @click="handleSelect"
     >
-      <div class="tooth-svg tooth-svg-responsive" :class="[statusClass, { 'tooth-status--service': !!serviceColor }]" v-html="svgMarkup"></div>
+      <!-- SVG mavjud bo'lsa tish shakli, aks holda tanlangan holat rangini ko'rsatish -->
+      <div v-if="svgMarkup" class="tooth-svg tooth-svg-responsive" :class="[statusClass, { 'tooth-status--service': !!serviceColor }]" v-html="svgMarkup"></div>
+      <div
+        v-else
+        class="tooth-fallback flex items-center justify-center w-full h-full min-h-[48px] sm:min-h-[64px] text-white text-xs font-bold"
+        :class="fallbackClass"
+      >
+        {{ id }}
+      </div>
     </button>
   </div>
 </template>
@@ -45,13 +53,14 @@ const buttonRef = ref(null)
 
 const statusClass = computed(() => `tooth-status--${props.status || 'healthy'}`)
 
-// Xizmat rangi — SVG va/yoki fon uchun
+// Xizmat rangi — SVG va/yoki fon uchun (tanlangan tish aniq ko'rinsin)
 const toothStyle = computed(() => {
   if (props.serviceColor) {
     return {
       '--tooth-service-color': props.serviceColor,
-      backgroundColor: `${props.serviceColor}20`,
-      borderColor: `${props.serviceColor}60`
+      backgroundColor: `${props.serviceColor}25`,
+      borderColor: props.serviceColor,
+      borderWidth: '2px'
     }
   }
   return undefined
@@ -63,18 +72,38 @@ const statusContainerClass = computed(() => {
   }
   switch (props.status) {
     case 'caries':
-      return 'border-red-300 bg-red-50'
+      return 'border-red-400 bg-red-100'
     case 'filling':
     case 'filled':
-      return 'border-blue-300 bg-blue-50'
+      return 'border-blue-400 bg-blue-100'
     case 'missing':
-      return 'border-slate-200 bg-slate-50'
+      return 'border-slate-300 bg-slate-100'
     case 'crown':
-      return 'border-amber-300 bg-amber-50'
+      return 'border-amber-400 bg-amber-100'
     case 'root_canal':
-      return 'border-violet-300 bg-violet-50'
+      return 'border-violet-400 bg-violet-100'
     default:
       return 'border-slate-200 bg-white'
+  }
+})
+
+// SVG yo'q bo'lganda tanlangan tish uchun rangli fallback
+const fallbackClass = computed(() => {
+  if (props.serviceColor) return 'tooth-fallback--service'
+  switch (props.status) {
+    case 'caries':
+      return 'bg-red-500'
+    case 'filling':
+    case 'filled':
+      return 'bg-blue-500'
+    case 'missing':
+      return 'bg-slate-400'
+    case 'crown':
+      return 'bg-amber-500'
+    case 'root_canal':
+      return 'bg-violet-500'
+    default:
+      return 'bg-slate-200 text-slate-500'
   }
 })
 
@@ -161,5 +190,9 @@ watch(() => props.id, fetchSvg)
 .tooth-status--service :deep(svg) {
   fill: var(--tooth-service-color) !important;
   stroke: var(--tooth-service-color) !important;
+}
+
+.tooth-fallback--service {
+  background: var(--tooth-service-color) !important;
 }
 </style>

@@ -80,6 +80,25 @@ export const createEmptyOdontogram = () => {
 }
 
 /**
+ * data.teeth kalitlarini string qilib normallashtiradi (Supabase JSONB bilan bir xil saqlanishi uchun)
+ * @param {Object} data - { teeth: { ... }, ... }
+ * @returns {Object}
+ */
+export const normalizeOdontogramDataForApi = (data) => {
+  if (!data || typeof data !== 'object') return data
+  const out = { ...data }
+  if (out.teeth && typeof out.teeth === 'object' && !Array.isArray(out.teeth)) {
+    const teethNormalized = {}
+    Object.keys(out.teeth).forEach((k) => {
+      const key = String(k)
+      teethNormalized[key] = { ...out.teeth[k], state: out.teeth[k].state || 'healthy' }
+    })
+    out.teeth = teethNormalized
+  }
+  return out
+}
+
+/**
  * Visit ID bo'yicha odontogramma olish
  * @param {number|string} visitId
  * @returns {Promise<Object|null>}
@@ -141,7 +160,8 @@ export const createOdontogramSnapshot = async ({ patient_id, visit_id, doctor_id
     const cid = await getCurrentClinicId()
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
     const id = await generateId()
-    const odontogramData = data || createEmptyOdontogram()
+    const rawData = data || createEmptyOdontogram()
+    const odontogramData = normalizeOdontogramDataForApi(rawData)
 
     const newOdontogram = {
       id,
@@ -153,7 +173,6 @@ export const createOdontogramSnapshot = async ({ patient_id, visit_id, doctor_id
     }
 
     const result = await supabasePost(TABLE, newOdontogram)
-    console.log('✅ Odontogram created:', result[0])
     return result[0]
   } catch (error) {
     console.error('❌ Failed to create odontogram:', error)
@@ -162,9 +181,9 @@ export const createOdontogramSnapshot = async ({ patient_id, visit_id, doctor_id
 }
 
 /**
- * Odontogramma yangilash
+ * Odontogramma yangilash (ranglar va holatlar Supabase'da barqaror saqlanadi)
  * @param {number|string} id
- * @param {Object} data - { teeth: { ... } }
+ * @param {Object} data - { teeth: { "11": { state, service_id?, note? }, ... } }
  * @returns {Promise<Object>}
  */
 export const updateOdontogramSnapshot = async (id, data) => {
@@ -173,15 +192,12 @@ export const updateOdontogramSnapshot = async (id, data) => {
     if (!Number.isFinite(numId)) throw new Error('Invalid odontogram id')
     const cid = await getCurrentClinicId()
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
-    
-    // Data JSONB formatida yuborish
-    const updateData = {
-      data: data
-    }
+
+    const normalized = normalizeOdontogramDataForApi(data)
+    const updateData = { data: normalized }
 
     const q = mergeClinicQuery(`id=eq.${numId}`, cid)
     const result = await supabasePatchWhere(TABLE, q, updateData)
-    console.log('✅ Odontogram updated:', result[0])
     return result && result[0] ? result[0] : null
   } catch (error) {
     console.error('❌ Failed to update odontogram:', error)

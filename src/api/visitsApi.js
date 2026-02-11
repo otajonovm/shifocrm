@@ -3,7 +3,7 @@
  * Tenant isolation; clinic_id yo'q bo'lsa filtersiz fallback.
  */
 
-import { supabaseGet, supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
+import { supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
@@ -265,7 +265,7 @@ export const updateVisit = async (id, payload) => {
     }
     const cid = await getCurrentClinicId()
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
-    
+
     // Avval mavjud visitni olish
     const currentVisit = await getVisitById(id)
     if (!currentVisit) {
@@ -278,7 +278,7 @@ export const updateVisit = async (id, payload) => {
     if (updateData.price !== undefined || updateData.paid_amount !== undefined) {
       const price = updateData.price !== undefined ? updateData.price : currentVisit.price
       const paidAmount = updateData.paid_amount !== undefined ? updateData.paid_amount : currentVisit.paid_amount
-      
+
       // Faqat debt_amount alohida berilmagan bo'lsa, avtomatik hisobla
       if (updateData.debt_amount === undefined) {
         updateData.debt_amount = calculateDebt(price, paidAmount)

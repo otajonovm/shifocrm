@@ -472,6 +472,7 @@
   },
   "patientPayments": {
     "addPayment": "To'lov qo'shish",
+    "addDiscount": "Chegirma qo'shish",
     "editPayment": "To'lovni tahrirlash",
     "totalPayments": "Jami to'lovlar",
     "refunds": "Qaytarimlar",
@@ -497,6 +498,8 @@
     "paidAt": "To'lov vaqti",
     "visitIdPlaceholder": "Masalan: 12345",
     "amountPlaceholder": "Masalan: 200000",
+    "discountAmount": "Chegirma summasi",
+    "discountAmountPlaceholder": "Masalan: 50000",
     "notePlaceholder": "Qo'shimcha izoh",
     "methodCash": "Naqd",
     "methodCard": "Karta",

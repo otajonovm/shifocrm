@@ -627,17 +627,19 @@ const consumptionsTotal = computed(() =>
 const totalBill = computed(() => servicesTotal.value + consumptionsTotal.value)
 
 const syncTeethFromOdontogram = () => {
-  const data = currentOdontogram.value?.data?.teeth || {}
+  const raw = currentOdontogram.value?.data?.teeth
+  const data = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
   teeth.value = toothIds.map((id) => {
-    const toothData = data[id]
-    // Agar tish odontogramda yo'q yoki healthy bo'lsa, healthy qilib qoldiramiz
-    // (healthy - bu default holat, ranglar saqlanib qolmasligi uchun)
+    // API dan kelganda kalitlar string bo'lishi mumkin; raqam bilan ham tekshiramiz
+    const toothData = data[id] ?? data[String(id)]
     if (!toothData || toothData.state === 'healthy') {
       return { id, status: 'healthy', service_id: null }
     }
+    // "filled" ni "filling" ga normallashtirish (API va UI bir xil bo'lishi uchun)
+    const state = toothData.state === 'filled' ? 'filling' : (toothData.state || 'healthy')
     return {
       id,
-      status: toothData.state || 'healthy',
+      status: state,
       service_id: toothData.service_id ?? null
     }
   })
@@ -647,15 +649,19 @@ const syncTeethFromOdontogram = () => {
 const syncTeethFromVisitServices = () => {
   if (!currentOdontogram.value || !visitServices.value.length) return
   
-  const data = currentOdontogram.value.data.teeth || {}
+  if (!currentOdontogram.value.data.teeth) {
+    currentOdontogram.value.data.teeth = {}
+  }
+  const data = currentOdontogram.value.data.teeth
   let hasChanges = false
   
   for (const service of visitServices.value) {
     const tid = service.tooth_id
     if (tid == null) continue
+    const key = String(tid)
     
     // Faqat odontogramda bu tish yo'q bo'lsa qo'shamiz (foydalanuvchi o'zgartirganini overwrite qilmaymiz)
-    if (data[tid]) continue
+    if (data[tid] || data[key]) continue
     
     let serviceId = null
     if (service.service_name && servicesList.value.length > 0) {
@@ -669,7 +675,7 @@ const syncTeethFromVisitServices = () => {
     }
     
     const inferredStatus = inferStatusFromServiceName(service.service_name) || 'filling'
-    data[tid] = {
+    data[key] = {
       state: inferredStatus,
       service_id: serviceId,
       note: ''
@@ -678,7 +684,7 @@ const syncTeethFromVisitServices = () => {
   }
   
   if (hasChanges) {
-    currentOdontogram.value.data.teeth = data
+    currentOdontogram.value.data.teeth = { ...data }
     syncTeethFromOdontogram()
     if (currentOdontogram.value.id) {
       odontogramApi.updateOdontogramSnapshot(currentOdontogram.value.id, currentOdontogram.value.data)
@@ -1076,6 +1082,8 @@ const closeStatusMenu = () => {
   selectedToothId.value = null
 }
 
+const autoSaveOdontogramTimer = ref(null)
+
 const setToothStatus = (status, serviceId = null) => {
   if (!selectedToothId.value) return
   const tid = selectedToothId.value
@@ -1087,21 +1095,32 @@ const setToothStatus = (status, serviceId = null) => {
     if (!currentOdontogram.value.data.teeth) {
       currentOdontogram.value.data.teeth = {}
     }
-    
-    // Agar tish "healthy" (tozalash) bo'lsa, uni odontogramdan butunlay o'chiramiz
-    // chunki healthy - bu default holat va ranglar saqlanib qolmasligi kerak
+    const key = String(tid)
+    const teethData = currentOdontogram.value.data.teeth
+
     if (status === 'healthy') {
-      if (currentOdontogram.value.data.teeth[tid]) {
-        delete currentOdontogram.value.data.teeth[tid]
-      }
+      if (teethData[key] !== undefined) delete teethData[key]
+      if (teethData[tid] !== undefined) delete teethData[tid]
     } else {
-      // Boshqa statuslar uchun yangilaymiz
-      const existing = currentOdontogram.value.data.teeth[tid] || { note: '' }
+      const existing = teethData[key] || teethData[tid] || { note: '' }
       const update = { ...existing, state: status }
       if (serviceId != null) update.service_id = serviceId
       else if ('service_id' in update) delete update.service_id
-      currentOdontogram.value.data.teeth[tid] = update
+      teethData[key] = update
     }
+
+    // Har bir tish o'zgarishida Supabase'ga avto-save (ranglar o'chmasin)
+    if (autoSaveOdontogramTimer.value) clearTimeout(autoSaveOdontogramTimer.value)
+    autoSaveOdontogramTimer.value = setTimeout(() => {
+      autoSaveOdontogramTimer.value = null
+      if (currentOdontogram.value?.id) {
+        odontogramApi.updateOdontogramSnapshot(currentOdontogram.value.id, currentOdontogram.value.data)
+          .then(() => {
+            originalOdontogramData.value = JSON.parse(JSON.stringify(currentOdontogram.value.data))
+          })
+          .catch(err => console.warn('Odontogramma avto-save xatosi:', err))
+      }
+    }, 400)
   }
 
   closeStatusMenu()
