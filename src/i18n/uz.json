@@ -110,7 +110,7 @@
     "adminLoginLabel": "Login",
     "adminLoginPlaceholder": "Loginingizni kiriting",
     "emailLabel": "Email",
-    "emailPlaceholder": "{'shifokor@example.com'}",
+    "emailPlaceholder": "shifokor@example.com",
     "passwordLabel": "Parol",
     "passwordPlaceholder": "Parolingizni kiriting",
     "submitAdmin": "Admin sifatida kirish",

@@ -110,7 +110,7 @@
     "adminLoginLabel": "Логин",
     "adminLoginPlaceholder": "Введите логин",
     "emailLabel": "Email",
-    "emailPlaceholder": "{'doctor@example.com'}",
+    "emailPlaceholder": "doctor@example.com",
     "passwordLabel": "Пароль",
     "passwordPlaceholder": "Введите пароль",
     "submitAdmin": "Войти как админ",
