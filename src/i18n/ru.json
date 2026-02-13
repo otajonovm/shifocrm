@@ -726,7 +726,17 @@
     "tabPlans": "План лечения",
     "tabDocuments": "Документы",
     "toastStatusUpdated": "Статус пациента успешно обновлён",
-    "errorStatusUpdate": "Ошибка при изменении статуса"
+    "errorStatusUpdate": "Ошибка при изменении статуса",
+    "sendMessage": "Отправить сообщение в Telegram",
+    "sendMessageTitle": "Отправить сообщение пациенту",
+    "messagePlaceholder": "Введите текст сообщения...",
+    "sending": "Отправка...",
+    "send": "Отправить",
+    "toastMessageSent": "Сообщение успешно отправлено",
+    "toastMessageFailed": "Ошибка отправки сообщения",
+    "errorNotConfigured": "Telegram API не настроен",
+    "errorChatNotFound": "Пациент не зарегистрирован в Telegram боте",
+    "errorUnauthorized": "Неверный API ключ"
   },
   "payments": {
     "title": "Платежи",

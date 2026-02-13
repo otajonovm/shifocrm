@@ -32,6 +32,10 @@ touch .env
 ```env
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Telegram Bot API (ixtiyoriy)
+VITE_TELEGRAM_API_URL=http://localhost:3001
+VITE_TELEGRAM_API_KEY=my-secret-key-12345
 ```
 
 ### 3. Supabase Ma'lumotlarini Olish

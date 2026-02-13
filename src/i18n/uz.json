@@ -728,7 +728,17 @@
     "tabPlans": "Davolash rejasi",
     "tabDocuments": "Hujjatlar",
     "toastStatusUpdated": "Bemor statusi muvaffaqiyatli o'zgartirildi",
-    "errorStatusUpdate": "Statusni o'zgartirishda xatolik"
+    "errorStatusUpdate": "Statusni o'zgartirishda xatolik",
+    "sendMessage": "Telegram xabar yuborish",
+    "sendMessageTitle": "Bemorga xabar yuborish",
+    "messagePlaceholder": "Xabar matnini kiriting...",
+    "sending": "Yuborilmoqda...",
+    "send": "Yuborish",
+    "toastMessageSent": "Xabar muvaffaqiyatli yuborildi",
+    "toastMessageFailed": "Xabar yuborishda xatolik",
+    "errorNotConfigured": "Telegram API sozlanmagan",
+    "errorChatNotFound": "Bemor Telegram bot'da ro'yxatdan o'tmagan",
+    "errorUnauthorized": "API kalit noto'g'ri"
   },
   "payments": {
     "title": "To'lovlar",
