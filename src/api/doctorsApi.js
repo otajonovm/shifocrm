@@ -109,8 +109,10 @@ export const createDoctor = async ({
     }
 
     const result = await supabasePost(TABLE, newDoctor)
-    console.log('✅ Doctor created:', result[0])
-    return result[0]
+    const created = result && result[0]
+    if (!created) throw new Error('Doktor yaratishda javob olinmadi.')
+    console.log('✅ Doctor created:', created)
+    return created
   } catch (error) {
     if (error.code === 'MAX_DOCTORS_REACHED' || error.message === MAX_DOCTORS_ERROR) {
       throw error

@@ -145,15 +145,89 @@ Agar bot serveri ishlamoqda bo'lsa, xatolik yoki JSON javob ko'rasiz.
 
 ---
 
-## QADAM 6: Production uchun Sozlash
+## QADAM 6: Production (Vercel / boshqa server) — Ma'lumot ketmasligi va server xatoligi
 
-Production'da ishlatish uchun:
+Vercel yoki boshqa noutbookga deploy qilgach xabar yuborilsa "server xatolik" yoki ma'lumot ketmasa, quyidagilarni tekshiring.
 
-### 6.1 Bot Serverini Deploy Qilish
+### 6.1 Sabab
 
-Bot serverini Vercel, Railway, Render yoki boshqa hosting'ga deploy qiling.
+1. **Brauzer CORS** — ShifoCRM (masalan `https://shifocrm.vercel.app`) boshqa domen (bot URL) ga so'rov yuboradi; bot serveri `Access-Control-Allow-Origin` yubormasa brauzer bloklaydi.
+2. **Noto'g'ri URL** — Production'da `VITE_TELEGRAM_API_URL` hali ham `localhost:3001` bo'lsa, foydalanuvchi brauzerida localhost mavjud emas, so'rov muvaffaqiyatsiz bo'ladi.
+3. **Bot public emas** — Bot faqat mahalliy kompyuterdagi noutbookda ishlasa, internetdan unga kirib bo'lmaydi.
 
-### 6.2 `.env` Faylni Yangilash
+### 6.2 Yechim: Bot serverida CORS qo'shish
+
+Bot loyihasida (Express ishlatilsa) **CORS** yoqilishi kerak. Bot papkasida:
+
+```bash
+npm install cors
+```
+
+**index.js yoki server faylida** (boshiga, boshqa middleware'lardan oldin):
+
+```javascript
+const express = require('express');
+const cors = require('cors');
+
+const app = express();
+
+// CORS — barcha frontend domenlaridan so'rovlarni qabul qilish
+const allowedOrigins = [
+  'http://localhost:5173',           // ShifoCRM local
+  'https://shifocrm.vercel.app',     // Vercel (o'z domeningizni yozing)
+  'https://your-app.vercel.app'      // Boshqa production URL
+];
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('CORS not allowed'));
+  },
+  credentials: true
+}));
+
+// yoki oddiy: barcha originlarga ruxsat (faqat API key bilan himoyalangan bo'lsa)
+// app.use(cors());
+```
+
+Agar `cors` paketini ishlatmasangiz, `/api/send` dan oldin qo'lda header qo'shing:
+
+```javascript
+app.use('/api/send', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*'); // yoki aniq: 'https://shifocrm.vercel.app'
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-KEY');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+```
+
+### 6.3 Bot ni public URL da ishlatish
+
+- **Vercel / Railway / Render** da bot ni deploy qiling va **HTTPS** URL oling (masalan `https://shifocrm-bot.vercel.app`).
+- Yoki noutbookda ishlatayotgan bo'lsangiz, **ngrok** yoki **localtunnel** bilan tunnel oching va berilgan `https://...` manzilni ishlating.
+
+### 6.4 ShifoCRM (Vercel) da Environment Variables
+
+1. Vercel Dashboard → loyihangiz → **Settings** → **Environment Variables**.
+2. Qo'shing:
+   - `VITE_TELEGRAM_API_URL` = **bot ning public HTTPS manzili** (masalan `https://shifocrm-bot.vercel.app`, oxirida `/` bo'lmasin).
+   - `VITE_TELEGRAM_API_KEY` = bot dagi `BOT_API_KEY` bilan bir xil kalit.
+3. **Save** dan keyin **Redeploy** qiling (Deployments → ... → Redeploy). Build qayta ishlaganda yangi env ishlaydi.
+
+### 6.5 Eslatma
+
+- `VITE_` o'zgaruvchilari build vaqtida frontend kodiga yoziladi. O'zgartirsangiz, **mutlako qayta deploy** qiling.
+- Bot va ShifoCRM ikkalasi ham **HTTPS** da bo'lishi kerak (Vercel avtomatik beradi).
+
+---
+
+## QADAM 7: Production uchun Sozlash (qisqacha)
+
+### 7.1 Bot Serverini Deploy Qilish
+
+Bot serverini Vercel, Railway, Render'ga deploy qiling; CORS qo'shing (yuqoridagi 6.2).
+
+### 7.2 ShifoCRM `.env` (local) / Vercel Environment Variables (production)
 
 ```env
 # Production Telegram Bot API
@@ -161,23 +235,31 @@ VITE_TELEGRAM_API_URL=https://your-bot-domain.com
 VITE_TELEGRAM_API_KEY=your-production-api-key
 ```
 
-### 6.3 Build va Deploy
+### 7.3 Build va Deploy
 
 ```bash
 npm run build
-# Keyin build qilingan fayllarni hosting'ga yuklang
+# Vercel avtomatik build qiladi; env o'zgartirsangiz Redeploy qiling
 ```
 
 ---
 
 ## Tezkor Tekshirish Ro'yxati
 
+**Local:**
 - [ ] Bot serveri ishlamoqdamimi? (`http://localhost:3001`)
 - [ ] `.env` faylda `VITE_TELEGRAM_API_URL` bormi?
 - [ ] `.env` faylda `VITE_TELEGRAM_API_KEY` bormi?
 - [ ] Development server qayta ishga tushirilganmi?
 - [ ] Patient Telegram bot'da ro'yxatdan o'tganmi?
 - [ ] API kalitlar bir xilmi?
+
+**Production (Vercel / boshqa server):**
+- [ ] Bot public HTTPS URL da deploy qilinganmi?
+- [ ] Bot serverida CORS qo'shilganmi? (TELEGRAM_SETUP_GUIDE.md — 6.2)
+- [ ] Vercel'da `VITE_TELEGRAM_API_URL` = bot ning HTTPS manzili
+- [ ] Vercel'da `VITE_TELEGRAM_API_KEY` = bot dagi kalit
+- [ ] Env o'zgartirgandan keyin Redeploy qilinganmi?
 
 ---
 

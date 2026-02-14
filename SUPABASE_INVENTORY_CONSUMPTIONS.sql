@@ -1,4 +1,8 @@
 -- Inventory consumptions: materials used by doctors
+-- Eslatma: Ilova (inventoryApi.js) material sarfi yozilganda ombor qoldig'ini o'zi kamaytiradi va
+-- sarf o'chirilganda qaytaradi. Agar trigger ham yoqilgan bo'lsa, qoldiq ikki marta kamayadi.
+-- Shuning uchun ilova ishlatilsa, trigger ni o'chiring:
+--   DROP TRIGGER IF EXISTS trigger_inventory_consumption ON inventory_consumptions;
 
 CREATE TABLE IF NOT EXISTS inventory_consumptions (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

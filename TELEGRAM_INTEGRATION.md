@@ -135,6 +135,7 @@ Production uchun:
 - `CHAT_ID_NOT_FOUND` - Patient bot'da ro'yxatdan o'tmagan. Patient'ga `/register` buyrug'ini yuborish kerak.
 - `NOT_CONFIGURED` - `VITE_TELEGRAM_API_URL` sozlanmagan.
 - `UNAUTHORIZED` - API key noto'g'ri.
+- **Production'da "server xatolik" / CORS** — Bot serverida CORS yoqilishi va `VITE_TELEGRAM_API_URL` production bot URL bo'lishi kerak. Batafsil: `TELEGRAM_SETUP_GUIDE.md` (6-qadam) va `TELEGRAM_BOT_CORS_ADD_THIS.md`.
 
 ## 5. Test qilish
 
@@ -155,10 +156,14 @@ patientId: patient.id.toString()
 ### Bot server deploy
 
 1. Bot'ni Vercel/Railway/Render'ga deploy qiling
-2. Environment variables'ni qo'shing
-3. Bot URL'ni oling va ShifoCRM `.env` ga qo'shing
+2. **Bot da CORS qo'shing** — `TELEGRAM_BOT_CORS_ADD_THIS.md` faylida aniq kod bor
+3. Environment variables'ni qo'shing (BOT_API_KEY va h.k.)
+4. Bot ning **HTTPS** URL'ini oling (masalan `https://shifocrm-bot.vercel.app`)
 
-### ShifoCRM deploy
+### ShifoCRM deploy (Vercel)
 
-1. `.env` dagi `VITE_TELEGRAM_API_URL` ni production URL bilan almashtiring
-2. Build qiling va deploy qiling
+1. Vercel → Settings → Environment Variables:
+   - `VITE_TELEGRAM_API_URL` = bot ning **HTTPS** manzili (oxirida `/` bo'lmasin)
+   - `VITE_TELEGRAM_API_KEY` = bot dagi API kalit
+2. **Redeploy** qiling (env o'zgarishi build vaqtida ishlaydi)
+3. ShifoCRM'ni ochib xabar yuborib tekshiring

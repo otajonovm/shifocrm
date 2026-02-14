@@ -1,11 +1,31 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import adminCredentials from '../../db.json'
 import { authenticateDoctor } from '@/api/doctorsApi'
 import { authenticateClinicAdmin, getClinic, getDoctorByClinicId } from '@/services/adminService'
 
 const USER_CLINIC_KEY = 'userClinicId'
 const IMPERSONATOR_ROLE_KEY = 'impersonatorRole'
+
+/** Admin/SuperAdmin kirish ma'lumotlari: avval env, keyin db.json (ixtiyoriy) */
+async function getAdminCredentials() {
+  const env = {
+    admin: import.meta.env.VITE_ADMIN_LOGIN && import.meta.env.VITE_ADMIN_PASSWORD
+      ? { login: import.meta.env.VITE_ADMIN_LOGIN, password: import.meta.env.VITE_ADMIN_PASSWORD }
+      : null,
+    superAdmin: import.meta.env.VITE_SUPERADMIN_LOGIN && import.meta.env.VITE_SUPERADMIN_PASSWORD
+      ? { login: import.meta.env.VITE_SUPERADMIN_LOGIN, password: import.meta.env.VITE_SUPERADMIN_PASSWORD }
+      : null
+  }
+  try {
+    const file = (await import('../../db.json')).default
+    return {
+      admin: env.admin ?? file?.admin ?? null,
+      superAdmin: env.superAdmin ?? file?.superAdmin ?? null
+    }
+  } catch {
+    return { admin: env.admin, superAdmin: env.superAdmin }
+  }
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = ref(localStorage.getItem('isAuthenticated') === 'true')
@@ -16,10 +36,11 @@ export const useAuthStore = defineStore('auth', () => {
   const impersonatorRole = ref(localStorage.getItem(IMPERSONATOR_ROLE_KEY) || null)
   const error = ref(null)
 
-  const login = async ({ login, password }) => {
+  const login = async ({ login: loginVal, password }) => {
     error.value = null
     try {
-      if (adminCredentials.admin?.login === login && adminCredentials.admin?.password === password) {
+      const adminCredentials = await getAdminCredentials()
+      if (adminCredentials.admin?.login === loginVal && adminCredentials.admin?.password === password) {
         isAuthenticated.value = true
         userRole.value = 'admin'
         userEmail.value = null
@@ -34,7 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         return true
       }
-      if (adminCredentials.superAdmin?.login === login && adminCredentials.superAdmin?.password === password) {
+      if (adminCredentials.superAdmin?.login === loginVal && adminCredentials.superAdmin?.password === password) {
         isAuthenticated.value = true
         userRole.value = 'super_admin'
         userEmail.value = null
@@ -49,7 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         return true
       }
-      const clinicAdmin = await authenticateClinicAdmin(login, password)
+      const clinicAdmin = await authenticateClinicAdmin(loginVal, password)
       if (clinicAdmin) {
         const clinic = await getClinic(clinicAdmin.clinic_id)
         const isSoloClinic = clinic && Number(clinic.max_doctors) === 1

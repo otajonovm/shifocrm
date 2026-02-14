@@ -100,11 +100,13 @@ export const createPatient = async ({
     }
 
     const result = await supabasePost(TABLE, newPatient)
+    const created = result && result[0]
+    if (!created) throw new Error('Bemor yaratishda javob olinmadi.')
     if (createFirstVisit) {
       try {
         const { createVisit } = await import('./visitsApi')
         await createVisit({
-          patient_id: result[0].id,
+          patient_id: created.id,
           doctor_id: doctor_id || null,
           doctor_name: doctor_name || null,
           status: 'pending',
@@ -117,7 +119,7 @@ export const createPatient = async ({
         console.warn('⚠️ First visit create failed:', visitError)
       }
     }
-    return result[0]
+    return created
   } catch (error) {
     console.error('❌ Failed to create patient:', error)
     throw error

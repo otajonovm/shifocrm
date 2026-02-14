@@ -68,7 +68,7 @@
             <p class="text-sm font-semibold text-gray-900">{{ patient.doctor_name }}</p>
           </div>
           <div v-if="lastVisitStatus" class="col-span-2 sm:col-span-1 bg-gray-50/80 sm:bg-transparent rounded-xl sm:rounded-none p-3 sm:p-0 sm:py-1">
-            <span class="text-xs text-gray-500 block">Oxirgi tashrif</span>
+            <span class="text-xs text-gray-500 block">{{ t('patients.lastVisit') }}</span>
             <div class="mt-0.5">
               <VisitStatusBadge :status="lastVisitStatus.status" :visit="lastVisitStatus" :show-icon="false" />
             </div>
@@ -107,7 +107,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
             <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            {{ completing ? 'Yakunlanmoqda...' : 'Yakunlash' }}
+            {{ completing ? t('patientVisits.completing') : t('patientVisits.complete') }}
           </button>
         </div>
       </div>

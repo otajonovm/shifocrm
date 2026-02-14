@@ -55,7 +55,8 @@ export const supabasePost = async (table, data) => {
     throw e
   }
 
-  return response.json()
+  const result = await response.json().catch(() => [])
+  return Array.isArray(result) ? result : []
 }
 
 // Helper: PATCH request (update)

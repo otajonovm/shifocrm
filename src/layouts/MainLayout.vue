@@ -76,6 +76,21 @@
             </div>
           </div>
 
+          <!-- ShifoAI -->
+          <div class="relative">
+            <button
+              type="button"
+              @click="shifoAIOpen = true"
+              class="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+              title="ShifoAI — Tizim yordamchisi"
+            >
+              <div class="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
+                <SparklesIcon class="w-4 h-4 text-white" />
+              </div>
+              <span class="hidden sm:inline text-sm font-medium text-gray-700">ShifoAI</span>
+            </button>
+          </div>
+
           <!-- User Menu -->
           <div class="relative">
             <button
@@ -143,6 +158,9 @@
       </main>
     </div>
 
+    <!-- ShifoAI Panel -->
+    <ShifoAIPanel :open="shifoAIOpen" @close="shifoAIOpen = false" />
+
     <!-- Click outside to close menus -->
     <div
       v-if="userMenuOpen || showSearchResults"
@@ -162,6 +180,7 @@ import { useDoctorsStore } from '@/stores/doctors'
 import { listVisits } from '@/api/visitsApi'
 import { listPayments } from '@/api/paymentsApi'
 import Sidebar from '@/components/layout/Sidebar.vue'
+import ShifoAIPanel from '@/components/shared/ShifoAIPanel.vue'
 import {
   Bars3Icon,
   MagnifyingGlassIcon,
@@ -173,6 +192,7 @@ import {
   UserGroupIcon,
   CalendarDaysIcon,
   CreditCardIcon,
+  SparklesIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -184,6 +204,7 @@ const { t, locale } = useI18n()
 
 const sidebarOpen = ref(false)
 const userMenuOpen = ref(false)
+const shifoAIOpen = ref(false)
 const searchQuery = ref('')
 const showSearchResults = ref(false)
 const searchResults = ref([])

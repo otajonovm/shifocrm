@@ -103,9 +103,10 @@ export async function sendAppointmentReminder({ patientId, appointmentDate, doct
  */
 export async function sendDebtReminder({ patientId, amount, dueDate }) {
   try {
+    const safeAmount = amount != null && !Number.isNaN(Number(amount)) ? Number(amount) : 0
     const message = `💰 Qarz eslatmasi:\n\n` +
-      `Miqdor: ${amount.toLocaleString('uz-UZ')} so'm\n` +
-      `Muddat: ${dueDate}\n\n` +
+      `Miqdor: ${safeAmount.toLocaleString('uz-UZ')} so'm\n` +
+      `Muddat: ${dueDate ?? '-'}\n\n` +
       `Iltimos, to'lovni amalga oshiring.`;
     return await sendTelegramNotification({ patientId, message });
   } catch (error) {

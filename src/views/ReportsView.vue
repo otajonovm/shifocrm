@@ -50,22 +50,30 @@
       </div>
 
       <!-- Summary Cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
         <div class="mobile-card">
           <p class="text-xs text-gray-500 mb-1">{{ t('reports.totalPayments') }}</p>
-          <p class="text-lg sm:text-xl font-bold text-gray-900">{{ formatCurrency(summary.totalPayments) }}</p>
+          <p class="text-base sm:text-lg font-bold text-gray-900 truncate" :title="formatCurrency(summary.totalPayments)">{{ formatCurrency(summary.totalPayments) }}</p>
         </div>
         <div class="mobile-card">
           <p class="text-xs text-gray-500 mb-1">{{ t('reports.totalRefunds') }}</p>
-          <p class="text-lg sm:text-xl font-bold text-rose-600">{{ formatCurrency(summary.totalRefunds) }}</p>
+          <p class="text-base sm:text-lg font-bold text-rose-600 truncate">{{ formatCurrency(summary.totalRefunds) }}</p>
         </div>
         <div class="mobile-card">
           <p class="text-xs text-gray-500 mb-1">{{ t('reports.netIncome') }}</p>
-          <p class="text-lg sm:text-xl font-bold text-emerald-600">{{ formatCurrency(summary.netIncome) }}</p>
+          <p class="text-base sm:text-lg font-bold text-emerald-600 truncate">{{ formatCurrency(summary.netIncome) }}</p>
         </div>
         <div class="mobile-card">
           <p class="text-xs text-gray-500 mb-1">{{ t('reports.totalDebt') }}</p>
-          <p class="text-lg sm:text-xl font-bold text-amber-600">{{ formatCurrency(summary.totalDebt) }}</p>
+          <p class="text-base sm:text-lg font-bold text-amber-600 truncate">{{ formatCurrency(summary.totalDebt) }}</p>
+        </div>
+        <div class="mobile-card">
+          <p class="text-xs text-gray-500 mb-1">{{ t('reports.expensesTotal') }}</p>
+          <p class="text-base sm:text-lg font-bold text-orange-600 truncate">{{ formatCurrency(summary.totalExpenses) }}</p>
+        </div>
+        <div class="mobile-card">
+          <p class="text-xs text-gray-500 mb-1">{{ t('reports.movementsOutTotal') }}</p>
+          <p class="text-base sm:text-lg font-bold text-slate-700 truncate">{{ summary.totalMovementsOut }} {{ t('reports.units') }}</p>
         </div>
       </div>
 
@@ -136,6 +144,128 @@
             </tfoot>
           </table>
         </div>
+      </div>
+
+      <!-- Ombor harajatlari -->
+      <div class="mobile-card">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-semibold text-gray-900">{{ t('reports.expensesTitle') }}</h2>
+            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">{{ t('reports.expensesSubtitle') }}</p>
+          </div>
+        </div>
+        <div v-if="loading.expenses" class="py-8 text-center text-gray-500 text-sm">{{ t('reports.loading') }}</div>
+        <div v-else-if="expensesList.length === 0" class="py-8 text-center text-gray-500 text-sm rounded-lg bg-gray-50">{{ t('reports.noData') }}</div>
+        <template v-else>
+          <!-- Mobil: kartalar -->
+          <div class="md:hidden space-y-3">
+            <div
+              v-for="e in expensesList"
+              :key="e.id"
+              class="p-4 rounded-xl border border-gray-100 bg-white shadow-sm"
+            >
+              <div class="flex justify-between items-start gap-2">
+                <div class="min-w-0">
+                  <p class="font-medium text-gray-900">{{ getExpenseCategoryLabel(e.category) }}</p>
+                  <p class="text-xs text-gray-500 mt-0.5">{{ formatDateShort(e.paid_at) }}</p>
+                  <p v-if="e.note" class="text-sm text-gray-600 mt-1 truncate">{{ e.note }}</p>
+                </div>
+                <p class="text-base font-semibold text-orange-600 flex-shrink-0">{{ formatCurrency(e.amount) }}</p>
+              </div>
+            </div>
+          </div>
+          <!-- Desktop: jadval -->
+          <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-100 text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('reports.expenseCategory') }}</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('reports.date') }}</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">{{ t('reports.total') }}</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('reports.expenseNote') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 bg-white">
+                <tr v-for="e in expensesList" :key="e.id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3">
+                    <span class="px-2 py-1 rounded text-xs font-medium" :class="getExpenseCategoryClass(e.category)">{{ getExpenseCategoryLabel(e.category) }}</span>
+                  </td>
+                  <td class="px-4 py-3 text-gray-600">{{ formatDateShort(e.paid_at) }}</td>
+                  <td class="px-4 py-3 text-right font-semibold text-orange-600">{{ formatCurrency(e.amount) }}</td>
+                  <td class="px-4 py-3 text-gray-600">{{ e.note || '-' }}</td>
+                </tr>
+              </tbody>
+              <tfoot class="bg-gray-50">
+                <tr>
+                  <td colspan="2" class="px-4 py-3 font-semibold text-gray-900">{{ t('reports.total') }}</td>
+                  <td class="px-4 py-3 text-right font-bold text-orange-600">{{ formatCurrency(summary.totalExpenses) }}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </template>
+      </div>
+
+      <!-- Kirim / Chiqim -->
+      <div class="mobile-card">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-semibold text-gray-900">{{ t('reports.movementsTitle') }}</h2>
+            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">{{ t('reports.movementsSubtitle') }}</p>
+          </div>
+        </div>
+        <div v-if="loading.movements" class="py-8 text-center text-gray-500 text-sm">{{ t('reports.loading') }}</div>
+        <div v-else-if="movementsList.length === 0" class="py-8 text-center text-gray-500 text-sm rounded-lg bg-gray-50">{{ t('reports.noData') }}</div>
+        <template v-else>
+          <!-- Mobil: kartalar -->
+          <div class="md:hidden space-y-3">
+            <div
+              v-for="m in movementsList"
+              :key="m.id"
+              class="p-4 rounded-xl border border-gray-100 bg-white shadow-sm"
+            >
+              <div class="flex justify-between items-start gap-2">
+                <div class="min-w-0 flex-1">
+                  <p class="font-medium text-gray-900">{{ movementItemName(m.item_id) }}</p>
+                  <p class="text-xs text-gray-500 mt-0.5">{{ formatDateShort(m.created_at) }}</p>
+                  <span :class="m.type === 'in' ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50'" class="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium">
+                    {{ m.type === 'in' ? t('reports.movementIn') : t('reports.movementOut') }}
+                  </span>
+                  <p v-if="m.note" class="text-sm text-gray-600 mt-1 truncate">{{ m.note }}</p>
+                </div>
+                <p class="text-base font-semibold text-gray-900 flex-shrink-0">{{ m.quantity }} {{ t('reports.units') }}</p>
+              </div>
+            </div>
+          </div>
+          <!-- Desktop: jadval -->
+          <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-100 text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('reports.date') }}</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('reports.movementItem') }}</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('reports.movementType') }}</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">{{ t('reports.quantity') }}</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('inventory.note') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 bg-white">
+                <tr v-for="m in movementsList" :key="m.id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-gray-600">{{ formatDateShort(m.created_at) }}</td>
+                  <td class="px-4 py-3 font-medium text-gray-900">{{ movementItemName(m.item_id) }}</td>
+                  <td class="px-4 py-3">
+                    <span :class="m.type === 'in' ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50'" class="px-2 py-0.5 rounded text-xs font-medium">
+                      {{ m.type === 'in' ? t('reports.movementIn') : t('reports.movementOut') }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-right font-medium">{{ m.quantity }}</td>
+                  <td class="px-4 py-3 text-gray-600">{{ m.note || '-' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
       </div>
 
       <!-- 1. Daromad dinamikasi (Line Chart) - Kun/Hafta/Oy toggle -->
@@ -354,6 +484,7 @@ import * as paymentsApi from '@/api/paymentsApi'
 import { parseCategoryFromNote, removeCategoryFromNote } from '@/api/paymentsApi'
 import * as visitsApi from '@/api/visitsApi'
 import { getTopServices } from '@/api/servicesApi'
+import { listExpenses, listInventoryMovements, listInventoryItems } from '@/api/inventoryApi'
 import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
@@ -373,7 +504,9 @@ const loading = ref({
   payments: false,
   income: false,
   debts: false,
-  services: false
+  services: false,
+  expenses: false,
+  movements: false
 })
 
 const summary = ref({
@@ -381,7 +514,9 @@ const summary = ref({
   totalRefunds: 0,
   netIncome: 0,
   totalDebt: 0,
-  totalAdditionalExpenses: 0
+  totalAdditionalExpenses: 0,
+  totalExpenses: 0,
+  totalMovementsOut: 0
 })
 
 const payments = ref([])
@@ -392,6 +527,9 @@ const revenueData = ref([])
 const doctors = ref([])
 const patients = ref([])
 const additionalExpenses = ref([])
+const expensesList = ref([])
+const movementsList = ref([])
+const inventoryItems = ref([])
 
 const formatCurrency = (amount) => {
   if (amount === null || amount === undefined) return '-'
@@ -623,6 +761,13 @@ const formatDate = (value) => {
   return date.toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+const formatDateShort = (value) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString('uz-UZ')
+}
+
 const buildDebtors = (debtVisits) => {
   const map = new Map()
   debtVisits.forEach(visit => {
@@ -735,12 +880,25 @@ watch(revenuePeriod, () => {
   loadRevenueData()
 })
 
+const inDateRange = (dateStr, startDate, endDate) => {
+  if (!dateStr || !startDate || !endDate) return true
+  const d = (dateStr || '').slice(0, 10)
+  return d >= startDate && d <= endDate
+}
+
+const movementItemName = (itemId) => {
+  const item = inventoryItems.value.find(i => Number(i.id) === Number(itemId))
+  return item ? item.name : `#${itemId}`
+}
+
 const loadReports = async () => {
   loading.value.payments = true
   loading.value.income = true
   loading.value.debts = true
   loading.value.services = true
-  
+  loading.value.expenses = true
+  loading.value.movements = true
+
   try {
     const { startDate, endDate } = filters.value
     const [
@@ -748,22 +906,41 @@ const loadReports = async () => {
       debtVisits,
       doctorsData,
       patientsData,
-      topServicesData
+      topServicesData,
+      expensesData,
+      movementsData,
+      itemsData
     ] = await Promise.all([
       paymentsApi.getPaymentsByDateRange(startDate, endDate),
       visitsApi.getDebtVisits(),
       listDoctors(),
       listPatients(),
-      getTopServices()
+      getTopServices(),
+      listExpenses('order=paid_at.desc'),
+      listInventoryMovements('order=created_at.desc'),
+      listInventoryItems('order=name.asc')
     ])
 
     payments.value = paymentsData || []
     doctors.value = doctorsData || []
     patients.value = patientsData || []
-    topServices.value = (topServicesData || []).slice(0, 10) // Top 10
-    
-    // Qo'shimcha xarajatlar (yakka doktorlar uchun)
-    // Qo'shimcha to'lovlar adjustment type bilan saqlanadi va note'da [CATEGORY:...] bor
+    topServices.value = (topServicesData || []).slice(0, 10)
+    inventoryItems.value = itemsData || []
+
+    const allExpenses = expensesData || []
+    const allMovements = movementsData || []
+    expensesList.value = allExpenses
+      .filter(e => inDateRange(e.paid_at, startDate, endDate))
+      .sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at))
+    movementsList.value = allMovements
+      .filter(m => inDateRange(m.created_at, startDate, endDate))
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+    summary.value.totalExpenses = expensesList.value.reduce((s, e) => s + (Number(e.amount) || 0), 0)
+    summary.value.totalMovementsOut = movementsList.value
+      .filter(m => m.type === 'out')
+      .reduce((s, m) => s + (Number(m.quantity) || 0), 0)
+
     if (isSolo.value) {
       additionalExpenses.value = payments.value
         .filter(p => p.payment_type === 'adjustment' && p.note && p.note.includes('[CATEGORY:') && parseCategoryFromNote(p.note))
@@ -775,7 +952,7 @@ const loadReports = async () => {
     } else {
       additionalExpenses.value = []
     }
-    
+
     applySummary()
     buildPaymentMethodStats()
     buildDebtors(debtVisits || [])
@@ -788,6 +965,8 @@ const loadReports = async () => {
     loading.value.income = false
     loading.value.debts = false
     loading.value.services = false
+    loading.value.expenses = false
+    loading.value.movements = false
   }
 }
 

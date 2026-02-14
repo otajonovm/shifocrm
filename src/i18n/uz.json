@@ -101,6 +101,11 @@
     "uz": "O'zbekcha",
     "ru": "Русский"
   },
+  "auth": {
+    "loginSuccess": "Tizimga muvaffaqiyatli kirdingiz!",
+    "loginOrPasswordWrong": "Login yoki parol noto'g'ri",
+    "phoneOrPasswordWrong": "Telefon raqami yoki parol noto'g'ri"
+  },
   "login": {
     "title": "ShifoCRM",
     "subtitle": "Tibbiyot markazingiz uchun boshqaruv tizimi",
@@ -390,6 +395,8 @@
     "karakalpakstan": "Qoraqalpog'iston"
   },
   "patients": {
+    "medId": "MED-ID",
+    "balance": "Balans",
     "allPatients": "Barcha Bemorlar",
     "myPatients": "Mening Bemorlarim",
     "soloTitle": "Bemorlarim",
@@ -974,6 +981,20 @@
     "noData": "Ma'lumot topilmadi.",
     "unknownDoctor": "Noma'lum doktor",
     "errorLoad": "Hisobotlarni yuklashda xatolik",
+    "expensesTotal": "Jami harajatlar",
+    "movementsOutTotal": "Chiqim (jami)",
+    "units": "birlik",
+    "expensesTitle": "Ombor harajatlari",
+    "expensesSubtitle": "Tanlangan davr bo'yicha harajatlar",
+    "expenseCategory": "Kategoriya",
+    "expenseNote": "Izoh",
+    "movementsTitle": "Kirim / Chiqim",
+    "movementsSubtitle": "Materiallar harakati (tanlangan davr)",
+    "movementIn": "Kirim",
+    "movementOut": "Chiqim",
+    "movementItem": "Material",
+    "movementType": "Turi",
+    "quantity": "Miqdor",
     "methodLabels": {
       "cash": "Naqd",
       "card": "Karta",

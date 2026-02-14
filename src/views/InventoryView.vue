@@ -94,12 +94,24 @@
                     </td>
                     <td class="px-4 py-3 text-slate-700">{{ item.min_stock ?? '-' }}</td>
                     <td class="px-4 py-3 text-right">
-                      <button class="text-primary-600 hover:text-primary-700 text-sm mr-3" @click="openItemModal(item)">
-                        {{ t('inventory.edit') }}
-                      </button>
-                      <button class="text-rose-600 hover:text-rose-700 text-sm" @click="deleteItem(item)">
-                        {{ t('inventory.delete') }}
-                      </button>
+                      <div class="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          :title="t('inventory.edit')"
+                          class="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors"
+                          @click="openItemModal(item)"
+                        >
+                          <PencilSquareIcon class="w-5 h-5" />
+                        </button>
+                        <button
+                          type="button"
+                          :title="t('inventory.delete')"
+                          class="p-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
+                          @click="deleteItem(item)"
+                        >
+                          <TrashIcon class="w-5 h-5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -359,6 +371,7 @@ import {
   listExpenses,
   createExpense
 } from '@/api/inventoryApi'
+import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
 
 const { t } = useI18n()
 const toast = useToast()

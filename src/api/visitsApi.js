@@ -244,7 +244,9 @@ export const createVisit = async ({
     }
 
     const result = await supabasePost(TABLE, newVisit)
-    return result[0]
+    const created = result && result[0]
+    if (!created) throw new Error('Tashrif yaratishda javob olinmadi.')
+    return created
   } catch (error) {
     console.error('❌ Failed to create visit:', error)
     throw error

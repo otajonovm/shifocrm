@@ -36,6 +36,12 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 # Telegram Bot API (ixtiyoriy)
 VITE_TELEGRAM_API_URL=http://localhost:3001
 VITE_TELEGRAM_API_KEY=my-secret-key-12345
+
+# Admin / Super Admin (ixtiyoriy — db.json yo'q bo'lsa yoki production da ishlatish uchun)
+# VITE_ADMIN_LOGIN=admin
+# VITE_ADMIN_PASSWORD=your-secure-password
+# VITE_SUPERADMIN_LOGIN=superadmin
+# VITE_SUPERADMIN_PASSWORD=your-superadmin-password
 ```
 
 ### 3. Supabase Ma'lumotlarini Olish
@@ -67,9 +73,16 @@ npm run dev
 
 Agar hamma narsa to'g'ri bo'lsa, browser console da xato bo'lmasligi kerak.
 
+## Admin / Super Admin kirish
+
+- **Development:** `db.json.example` ni `db.json` ga nusxalang va login/parolni o'zgartiring:  
+  `copy db.json.example db.json` (Windows) yoki `cp db.json.example db.json` (Mac/Linux)
+- **Production:** `.env` da `VITE_ADMIN_LOGIN`, `VITE_ADMIN_PASSWORD` (va kerak bo'lsa superadmin) o'rnating; `db.json` commit qilinmaydi.
+
 ## Xavfsizlik / Security
 
 - ⚠️ `.env` faylni git ga commit qilmang (`.gitignore` da bor)
+- ⚠️ `db.json` da haqiqiy parollarni commit qilmang (`db.json` .gitignore da)
 - ⚠️ `VITE_SUPABASE_ANON_KEY` - bu public key, lekin yaxshiroq xavfsizlik uchun hech kimga bermang
 - ⚠️ **Service Role Key** ni hech qachon frontend ga qo'ymang!
 

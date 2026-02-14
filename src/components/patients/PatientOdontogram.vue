@@ -29,7 +29,7 @@
             {{ t('odontogram.newVisit') }}
           </button>
           <button
-            v-if="currentVisit && currentVisit.status === 'in_progress' && isDoctor"
+            v-if="currentVisit && currentVisit.status === 'in_progress' && (isDoctor || isSolo)"
             @click="completeCurrentVisit"
             :disabled="loading"
             class="inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-sm font-medium text-white bg-green-600 rounded-xl hover:bg-green-700 active:scale-[0.98] transition-colors disabled:opacity-50 touch-manipulation min-h-[44px]"
@@ -150,7 +150,7 @@
             </p>
           </div>
           <button
-            v-if="canEdit && isDoctor"
+            v-if="canManageMaterial"
             class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg hover:from-primary-600 hover:to-cyan-700 transition-all active:scale-[0.98] touch-manipulation min-h-[44px]"
             @click="openConsumptionModal"
           >
@@ -165,12 +165,12 @@
         <div v-else-if="consumptions.length === 0" class="py-8 text-center rounded-lg bg-slate-50 border border-slate-100">
           <p class="text-sm text-slate-500 mb-3">{{ t('odontogram.noMaterials') }}</p>
           <button
-            v-if="canEdit && isDoctor"
+            v-if="canManageMaterial"
             class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 bg-white border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors touch-manipulation"
             @click="openConsumptionModal"
           >
             <PlusIcon class="w-4 h-4" />
-            Material qo'shish
+            {{ t('odontogram.addMaterial') }}
           </button>
         </div>
         <template v-else>
@@ -188,7 +188,7 @@
                 <p v-if="entry.note" class="text-xs text-slate-600 mt-1 truncate">{{ entry.note }}</p>
               </div>
               <button
-                v-if="canEdit && isDoctor"
+                v-if="canManageMaterial"
                 type="button"
                 class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg touch-manipulation"
                 :disabled="consumptionDeleting === entry.id"
@@ -208,7 +208,7 @@
                   <th class="px-4 py-3">{{ t('odontogram.materialQty') }}</th>
                   <th class="px-4 py-3">{{ t('odontogram.materialPrice') }}</th>
                   <th class="px-4 py-3">{{ t('odontogram.materialNote') }}</th>
-                  <th v-if="canEdit && isDoctor" class="px-4 py-3 w-12"></th>
+                  <th v-if="canManageMaterial" class="px-4 py-3 w-12"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
@@ -218,7 +218,7 @@
                   <td class="px-4 py-3 text-slate-700">{{ entry.quantity }}</td>
                   <td class="px-4 py-3 text-slate-700 font-medium text-primary-600">{{ formatCurrency(consumptionTotal(entry)) }}</td>
                   <td class="px-4 py-3 text-slate-700">{{ entry.note || '-' }}</td>
-                  <td v-if="canEdit && isDoctor" class="px-4 py-3">
+                  <td v-if="canManageMaterial" class="px-4 py-3">
                     <button
                       type="button"
                       class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg"
@@ -533,6 +533,14 @@ const hasChanges = computed(() => {
 
 const activeUserRole = computed(() => authStore.userRole || 'doctor')
 const isDoctor = computed(() => activeUserRole.value === 'doctor')
+const isAdmin = computed(() => activeUserRole.value === 'admin')
+const isSolo = computed(() => activeUserRole.value === 'solo')
+// Material sarfini: admin — istalgan tashrifda; doktor va yakka doktor — faqat "Davolanish boshlandi" da
+const canManageMaterial = computed(() => {
+  if (!selectedVisitId.value) return false
+  if (isAdmin.value) return true
+  return canEdit.value && (isDoctor.value || isSolo.value)
+})
 
 // Tish bilan ishlashda xizmatlar bo'limidagi xizmatlardan foydalanamiz; bo'sh bo'lsa statuslar
 const menuOptions = computed(() =>
@@ -817,7 +825,8 @@ const saveConsumption = async () => {
     closeConsumptionModal()
   } catch (error) {
     console.error('Failed to save consumption:', error)
-    toast.error(t('odontogram.errorMaterialSave'))
+    const message = error?.message || t('odontogram.errorMaterialSave')
+    toast.error(message)
   }
 }
 

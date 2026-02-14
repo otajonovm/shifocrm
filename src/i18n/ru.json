@@ -101,6 +101,11 @@
     "uz": "O'zbekcha",
     "ru": "Русский"
   },
+  "auth": {
+    "loginSuccess": "Вы успешно вошли в систему!",
+    "loginOrPasswordWrong": "Неверный логин или пароль",
+    "phoneOrPasswordWrong": "Неверный номер телефона или пароль"
+  },
   "login": {
     "title": "ShifoCRM",
     "subtitle": "Система управления для вашего медицинского центра",
@@ -391,6 +396,8 @@
     "karakalpakstan": "Каракалпакстан"
   },
   "patients": {
+    "medId": "MED-ID",
+    "balance": "Баланс",
     "allPatients": "Все пациенты",
     "myPatients": "Мои пациенты",
     "soloTitle": "Мои пациенты",
@@ -971,6 +978,20 @@
     "noData": "Нет данных.",
     "unknownDoctor": "Неизвестный врач",
     "errorLoad": "Ошибка загрузки отчётов",
+    "expensesTotal": "Всего расходов",
+    "movementsOutTotal": "Расход (всего)",
+    "units": "ед.",
+    "expensesTitle": "Расходы склада",
+    "expensesSubtitle": "Расходы за выбранный период",
+    "expenseCategory": "Категория",
+    "expenseNote": "Примечание",
+    "movementsTitle": "Приход / Расход",
+    "movementsSubtitle": "Движение материалов (выбранный период)",
+    "movementIn": "Приход",
+    "movementOut": "Расход",
+    "movementItem": "Материал",
+    "movementType": "Тип",
+    "quantity": "Кол-во",
     "methodLabels": {
       "cash": "Наличные",
       "card": "Карта",

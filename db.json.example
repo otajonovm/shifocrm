@@ -1,0 +1,14 @@
+{
+  "admin": {
+    "login": "admin",
+    "password": "parol",
+    "role": "admin"
+  },
+  "superAdmin": {
+    "login": "superadmin",
+    "password": "parol",
+    "role": "super_admin"
+  },
+  "doctors": [],
+  "patients": []
+}

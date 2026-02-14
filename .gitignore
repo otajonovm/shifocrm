@@ -20,6 +20,9 @@ coverage
 .env.local
 .env.*.local
 
+# Lokal kirish ma'lumotlari (production da env ishlating)
+db.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
