@@ -76,36 +76,73 @@
       </div>
     </div>
 
-    <!-- Schedule grid - Day view -->
-    <div v-if="viewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
-      <div class="flex overflow-x-auto relative">
-        <!-- Left: Time column -->
-        <TimeGrid
-          :start-hour="9"
-          :end-hour="18"
-          :slot-height-px="slotHeightPx"
-        />
+    <!-- Schedule grid - Day view (Dentist+ style) -->
+    <div v-if="viewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden flex flex-col">
+      <!-- Toolbar -->
+      <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-wrap gap-3">
+        <!-- Doctor Filter -->
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium text-gray-700">Shifokor:</label>
+          <select
+            v-model="selectedDoctorForDay"
+            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+          >
+            <option value="">Hammasi</option>
+            <option v-for="doctor in visibleDoctors" :key="doctor.id" :value="doctor.id">
+              {{ doctor.full_name }}
+            </option>
+          </select>
+        </div>
 
-        <!-- Right: Doctor columns -->
-        <div class="flex flex-1 overflow-x-auto relative">
-          <!-- Current time indicator (in scrollable area) -->
+        <!-- New Appointment Button -->
+        <button
+          @click="$emit('open-payment', null)"
+          class="px-4 py-2 bg-gradient-to-r from-primary-500 to-cyan-600 text-white text-sm font-semibold rounded-lg hover:from-primary-600 hover:to-cyan-700 transition-all"
+        >
+          + Yangi uchrashuv
+        </button>
+      </div>
+
+      <!-- Schedule Canvas -->
+      <div class="flex flex-1 overflow-hidden">
+        <!-- Left: Time column (sticky) -->
+        <div class="w-20 bg-gray-50 border-r border-gray-200 overflow-y-auto sticky left-0 z-40">
+          <div v-for="hour in hours" :key="hour.time" class="text-right pr-3 py-0 text-xs font-medium text-gray-600" :style="{ height: slotHeightPx + 'px' }">
+            <div class="pt-1">{{ hour.time }}</div>
+          </div>
+        </div>
+
+        <!-- Right: Schedule canvas with appointments -->
+        <div class="flex-1 overflow-y-auto relative bg-gradient-to-b from-blue-50 via-white to-white">
+          <!-- Background grid lines -->
+          <div v-for="hour in hours" :key="`bg-${hour.time}`" class="border-b border-gray-100" :style="{ height: slotHeightPx + 'px' }"></div>
+
+          <!-- Current time indicator -->
           <CurrentTimeIndicator
             :start-hour="9"
             :end-hour="18"
-            class="absolute left-0 right-0 z-10"
+            class="absolute left-0 right-0 z-20"
           />
 
-          <DoctorColumn
-            v-for="doctor in visibleDoctors"
-            :key="doctor.id"
-            :doctor="doctor"
-            :appointments="dayAppointments"
-            :start-hour="9"
-            :end-hour="18"
-            :slot-height-px="slotHeightPx"
-            @update-status="handleStatusUpdate"
-            @open-payment="handleOpenPayment"
-          />
+          <!-- Appointments for selected doctor or all doctors -->
+          <div class="absolute inset-0 pointer-events-none">
+            <div
+              v-for="appt in filteredDayAppointments"
+              :key="appt.id"
+              class="absolute left-2 right-2 pointer-events-auto"
+              :style="getAppointmentStyle(appt)"
+            >
+              <AppointmentBlock
+                :appointment="appt"
+                :slot-height-px="slotHeightPx"
+                @update-status="handleStatusUpdate"
+                @open-payment="handleOpenPayment"
+              />
+            </div>
+          </div>
+
+          <!-- Hover hint for empty slots -->
+          <div class="absolute inset-0 opacity-0 hover:opacity-10 pointer-events-none bg-primary-500"></div>
         </div>
       </div>
     </div>
@@ -191,7 +228,7 @@
                 </div>
                 <div v-if="day.isCurrentMonth" class="space-y-1 text-xs">
                   <div
-                    v-for="(appt, idx) in getAppointmentsForDateMonth(day.dateStr)"
+                    v-for="appt in getAppointmentsForDateMonth(day.dateStr)"
                     :key="appt.id"
                     :class="['p-1 rounded cursor-pointer hover:shadow-md truncate', getStatusBadgeClass(appt.status)]"
                     :title="`${appt.patient_name} - ${appt.doctor_name} (${appt.start_time})`"
@@ -252,8 +289,19 @@ const appointments = ref([])
 const slotHeightPx = 60 // 30 minut = 60px
 const viewMode = ref('day') // 'day', 'week', 'month'
 const currentDate = ref(props.selectedDate)
+const selectedDoctorForDay = ref('') // Doctor filter for day view
 
 const dayNames = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Yak']
+
+// Time array for day view grid (09:00 - 18:00, 30 min slots)
+const hours = computed(() => {
+  const result = []
+  for (let h = 9; h < 18; h++) {
+    result.push({ time: `${String(h).padStart(2, '0')}:00` })
+    result.push({ time: `${String(h).padStart(2, '0')}:30` })
+  }
+  return result
+})
 
 // Doktor uchun faqat o'z appointmentlari, admin uchun barchasi
 const visibleDoctors = computed(() => {
@@ -269,6 +317,15 @@ const visibleDoctors = computed(() => {
 // Tanlangan kun uchun appointmentlar (day view)
 const dayAppointments = computed(() => {
   return appointments.value.filter(appt => appt.date === currentDate.value)
+})
+
+// Filtered appointments for day view (by selected doctor if any)
+const filteredDayAppointments = computed(() => {
+  let filtered = dayAppointments.value
+  if (selectedDoctorForDay.value) {
+    filtered = filtered.filter(appt => Number(appt.doctor_id) === Number(selectedDoctorForDay.value))
+  }
+  return filtered.sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
 })
 
 // Week days
@@ -380,10 +437,6 @@ const formatDateLabel = (dateStr) => {
   return date.toLocaleDateString('uz-UZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-const getStatusLabel = (status) => {
-  return getVisitStatusLabel(status)
-}
-
 const getStatusBadgeClass = (status) => {
   const colors = getVisitStatusColors(status)
   return `${colors.bg} ${colors.text}`
@@ -454,6 +507,32 @@ const handleStatusUpdate = async ({ appointmentId, newStatus }) => {
 // To'lov modali ochish
 const handleOpenPayment = (appointmentId) => {
   emit('open-payment', appointmentId)
+}
+
+// Appointment'ning pixel position'ini hisoblash (start_time va end_time bo'yicha)
+const getAppointmentStyle = (appt) => {
+  if (!appt.start_time) return {}
+  
+  const [startH, startM] = appt.start_time.split(':').map(Number)
+  const startMinutesFromDay = (startH - 9) * 60 + startM
+  const topPx = (startMinutesFromDay / 30) * slotHeightPx
+  
+  // Default duration 30 minutes agar end_time bo'lmasa
+  let heightPx = slotHeightPx
+  if (appt.end_time) {
+    const [endH, endM] = appt.end_time.split(':').map(Number)
+    const endMinutesFromDay = (endH - 9) * 60 + endM
+    const durationMinutes = endMinutesFromDay - startMinutesFromDay
+    heightPx = (durationMinutes / 30) * slotHeightPx
+  } else if (appt.duration_minutes) {
+    heightPx = (appt.duration_minutes / 30) * slotHeightPx
+  }
+  
+  return {
+    top: `${topPx}px`,
+    height: `${heightPx}px`,
+    minHeight: `${slotHeightPx}px`
+  }
 }
 
 // Watch current date va view mode
