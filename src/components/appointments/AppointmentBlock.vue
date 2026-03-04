@@ -111,14 +111,14 @@ const endTime = computed(() => {
 const appointmentClasses = computed(() => {
   const status = props.appointment.status
   const base = 'bg-white'
-  
+
   if (status === 'pending') return `${base} border-blue-400 bg-blue-50`
   if (status === 'arrived') return `${base} border-amber-400 bg-amber-50`
   if (status === 'in_progress') return `${base} border-purple-400 bg-purple-50`
   if (status === 'completed_paid' || status === 'completed_debt') return `${base} border-emerald-400 bg-emerald-50`
   if (status === 'cancelled') return `${base} border-gray-400 bg-gray-50`
   if (status === 'no_show') return `${base} border-rose-400 bg-rose-50`
-  
+
   return base
 })
 

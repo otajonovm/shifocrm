@@ -20,22 +20,15 @@
 
       <!-- Filters - Clean layout -->
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-4 space-y-3">
-        <!-- View mode selector: List, Schedule or Calendar -->
+        <!-- View mode selector: List or Schedule -->
         <div class="flex items-center justify-between">
-          <div class="grid grid-cols-3 gap-2 md:gap-3 md:flex-none">
+          <div class="grid grid-cols-2 gap-2 md:gap-3 md:flex-none">
             <button
               @click="displayMode = 'list'"
               class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
               :class="displayMode === 'list' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
             >
               {{ t('appointments.viewList') || 'Ro\'yxat' }}
-            </button>
-            <button
-              @click="displayMode = 'calendar'"
-              class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
-              :class="displayMode === 'calendar' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
-            >
-              {{ t('appointments.viewSchedule') || 'Kalender' }}
             </button>
             <button
               @click="displayMode = 'schedule'"
@@ -343,6 +336,7 @@
           </table>
         </div>
       </div>
+      </div>
 
       <!-- Schedule view (Doctor calendar grid) -->
       <div v-else-if="displayMode === 'schedule'">
@@ -350,15 +344,6 @@
           :selected-date="selectedDate"
           @update:selected-date="selectedDate = $event"
           @update-status="handleStatusUpdate"
-          @open-payment="openCompleteModal"
-        />
-      </div>
-
-      <!-- Calendar list view -->
-      <div v-else-if="displayMode === 'calendar'">
-        <CalendarListView
-          :selected-date="selectedDate"
-          @update:selected-date="selectedDate = $event"
           @open-payment="openCompleteModal"
         />
       </div>
@@ -689,7 +674,6 @@ import {
 import { getVisitStatusLabel, getVisitStatusColors } from '@/constants/visitStatus'
 import MainLayout from '@/layouts/MainLayout.vue'
 import DoctorScheduleView from '@/components/appointments/DoctorScheduleView.vue'
-import CalendarListView from '@/components/appointments/CalendarListView.vue'
 import {
   PlusIcon,
   MagnifyingGlassIcon,

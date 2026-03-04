@@ -290,32 +290,32 @@ const weekDays = computed(() => {
 const monthCalendar = computed(() => {
   const date = new Date(currentDate.value + 'T00:00:00')
   const firstDay = new Date(date.getFullYear(), date.getMonth(), 1)
-  
+
   const startDate = new Date(firstDay)
   startDate.setDate(startDate.getDate() - firstDay.getDay())
-  
+
   const calendar = []
   let week = []
   const current = new Date(startDate)
-  
+
   for (let i = 0; i < 42; i++) {
     const dateStr = current.toISOString().split('T')[0]
     const isCurrentMonth = current.getMonth() === date.getMonth()
-    
+
     week.push({
       dateStr,
       dayNum: current.getDate(),
       isCurrentMonth
     })
-    
+
     if (week.length === 7) {
       calendar.push(week)
       week = []
     }
-    
+
     current.setDate(current.getDate() + 1)
   }
-  
+
   return calendar
 })
 
@@ -349,7 +349,7 @@ const selectedDateLocal = computed({
 
 const shiftPeriod = (days) => {
   const date = new Date(currentDate.value)
-  
+
   if (viewMode.value === 'day') {
     date.setDate(date.getDate() + days)
   } else if (viewMode.value === 'week') {
@@ -357,7 +357,7 @@ const shiftPeriod = (days) => {
   } else {
     date.setMonth(date.getMonth() + days)
   }
-  
+
   currentDate.value = date.toISOString().split('T')[0]
 }
 
@@ -390,13 +390,13 @@ const getStatusBadgeClass = (status) => {
 const getAppointmentsForDoctorAndDate = (doctorId, dateStr) => {
   return appointments.value
     .filter(appt => appt.date === dateStr && Number(appt.doctor_id) === Number(doctorId))
-    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
 }
 
 const getAppointmentsForDateMonth = (dateStr) => {
   return appointments.value
     .filter(appt => appt.date === dateStr)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
 }
 
 // Appointmentlarni yuklash
@@ -404,7 +404,7 @@ const loadAppointments = async () => {
   loading.value = true
   try {
     let startDate, endDate
-    
+
     if (viewMode.value === 'day') {
       startDate = currentDate.value
       endDate = currentDate.value
@@ -420,7 +420,7 @@ const loadAppointments = async () => {
       const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0)
       endDate = lastDay.toISOString().split('T')[0]
     }
-    
+
     if (authStore.userRole === 'admin') {
       appointments.value = await visitsApi.getVisitsByDateRange(startDate, endDate)
     } else if (authStore.user?.id) {
