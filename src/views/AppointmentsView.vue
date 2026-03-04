@@ -343,7 +343,6 @@
           </table>
         </div>
       </div>
-      </div>
 
       <!-- Schedule view (Doctor calendar grid) -->
       <div v-else-if="displayMode === 'schedule'">
@@ -363,8 +362,7 @@
           @open-payment="openCompleteModal"
         />
       </div>
-
-    <!-- Create Appointment Modal - Simplified -->
+    </div>
     <Teleport to="body">
       <Transition
         enter-active-class="transition ease-out duration-200"
