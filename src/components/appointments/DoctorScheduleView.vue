@@ -270,6 +270,7 @@ import { getVisitStatusLabel, getVisitStatusColors } from '@/constants/visitStat
 import TimeGrid from './TimeGrid.vue'
 import DoctorColumn from './DoctorColumn.vue'
 import CurrentTimeIndicator from './CurrentTimeIndicator.vue'
+import AppointmentBlock from './AppointmentBlock.vue'
 
 const props = defineProps({
   selectedDate: {
