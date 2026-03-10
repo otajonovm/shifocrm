@@ -181,35 +181,35 @@ export const buildPatientCompletionPrintHtml = (inputData = {}, options = {}) =>
   <style>
     @page { size: A4; margin: 8mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #fff; font-size: 10px; line-height: 1.3; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #fff; font-size: 10px; line-height: 1.35; }
     .controls { position: sticky; top: 0; z-index: 10; display: flex; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
     .controls button { border: 1px solid #cbd5e1; background: #fff; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; font-weight: 600; }
     .controls button:hover { background: #f1f5f9; }
-    .sheet { max-width: 210mm; margin: 0 auto; padding: 4mm; }
+    .sheet { max-width: 210mm; margin: 0 auto; padding: 3mm; }
 
-    .header { border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .header { border: 1px solid #cbd5e1; border-radius: 5px; padding: 8px 10px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: flex-start; }
     .brand { display: flex; gap: 8px; align-items: flex-start; flex: 1; }
-    .logo { width: 40px; height: 40px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px; }
+    .logo { width: 44px; height: 44px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px; }
     .brand-text { flex: 1; }
-    .title { font-size: 14px; font-weight: 800; margin-bottom: 3px; color: #0f172a; }
+    .title { font-size: 15px; font-weight: 800; margin-bottom: 3px; color: #0f172a; }
     .clinic-info { font-size: 9px; color: #475569; line-height: 1.4; }
     .clinic-info div { margin: 1px 0; }
 
-    .meta { text-align: right; font-size: 9px; color: #475569; min-width: 180px; }
+    .meta { text-align: right; font-size: 9px; color: #475569; min-width: 170px; }
     .meta-line { margin: 2px 0; white-space: nowrap; }
     .meta-line b { color: #0f172a; font-weight: 600; }
-    .badge { display: inline-block; border: 1px solid #10b981; background: #d1fae5; color: #065f46; border-radius: 4px; padding: 2px 6px; font-size: 9px; font-weight: 600; margin-left: 4px; }
+    .badge { display: inline-block; border: 1px solid #10b981; background: #d1fae5; color: #065f46; border-radius: 4px; padding: 2px 7px; font-size: 9px; font-weight: 600; margin-left: 3px; }
 
-    .section { border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 6px; overflow: hidden; }
+    .section { border: 1px solid #e2e8f0; border-radius: 5px; margin-bottom: 5px; overflow: hidden; }
     .section-title { background: linear-gradient(to right, #f8fafc, #f1f5f9); border-bottom: 1px solid #cbd5e1; padding: 5px 8px; font-size: 11px; font-weight: 700; color: #0f172a; }
 
     .patient-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px 12px; padding: 6px 8px; background: #fafafa; }
     .patient-item { font-size: 9px; }
-    .patient-item b { color: #334155; font-weight: 600; margin-right: 4px; }
+    .patient-item b { color: #334155; font-weight: 600; margin-right: 3px; }
 
     table { width: 100%; border-collapse: collapse; }
     thead th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 5px; font-size: 9px; font-weight: 700; text-align: left; color: #0f172a; white-space: nowrap; }
-    tbody td { border: 1px solid #e2e8f0; padding: 3px 5px; font-size: 9px; vertical-align: top; }
+    tbody td { border: 1px solid #e2e8f0; padding: 3px 5px; font-size: 9px; vertical-align: top; line-height: 1.3; }
     td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
     tbody tr:nth-child(even) { background: #fafafa; }
     tbody tr:hover { background: #f1f5f9; }
@@ -220,16 +220,16 @@ export const buildPatientCompletionPrintHtml = (inputData = {}, options = {}) =>
 
     .totals-section { background: #f0fdf4; }
     .totals-wrap { display: flex; gap: 8px; padding: 6px 8px; }
-    .totals-note { flex: 1; font-size: 8px; color: #64748b; padding: 4px; }
+    .totals-note { flex: 1; font-size: 8px; color: #64748b; padding: 3px; line-height: 1.3; }
     .totals-calc { min-width: 280px; border: 1px solid #cbd5e1; border-radius: 4px; overflow: hidden; background: #fff; }
     .totals-row { display: flex; justify-content: space-between; padding: 5px 8px; border-bottom: 1px solid #e2e8f0; font-size: 10px; }
     .totals-row:last-child { border-bottom: 0; font-weight: 800; font-size: 11px; background: #f0fdf4; color: #065f46; }
     .totals-row .label { color: #475569; }
     .totals-row .value { font-weight: 600; font-variant-numeric: tabular-nums; }
 
-    .signatures { border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 8px; margin-bottom: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .signatures { border: 1px solid #e2e8f0; border-radius: 5px; padding: 10px 8px; margin-bottom: 5px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .sign-block { font-size: 9px; color: #475569; }
-    .sign-line { margin-top: 30px; border-top: 1px solid #94a3b8; padding-top: 4px; text-align: center; font-size: 8px; color: #64748b; }
+    .sign-line { margin-top: 28px; border-top: 1px solid #94a3b8; padding-top: 4px; text-align: center; font-size: 8px; color: #64748b; }
 
     .footer { display: flex; justify-content: space-between; padding: 4px 0; font-size: 8px; color: #94a3b8; border-top: 1px solid #f1f5f9; }
 
@@ -241,6 +241,8 @@ export const buildPatientCompletionPrintHtml = (inputData = {}, options = {}) =>
       .section, .header, .signatures { page-break-inside: avoid; }
       table { page-break-inside: auto; }
       tr { page-break-inside: avoid; page-break-after: auto; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
     }
   </style>
   ${withControls ? controlsScript : ''}
