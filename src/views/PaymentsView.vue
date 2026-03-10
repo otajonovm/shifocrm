@@ -115,8 +115,11 @@
                   {{ getDoctorLabel(payment.doctor_id) }}
                 </td>
                 <td class="px-6 py-4">
-                  <span :class="getTypeClass(payment.payment_type)">
-                    {{ getTypeLabel(payment.payment_type) }}
+                  <span :class="getTypeClass(payment)">
+                    {{ getTypeLabel(payment) }}
+                  </span>
+                  <span v-if="getDiscountPercent(payment)" class="ml-2 inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                    {{ getDiscountPercent(payment) }}%
                   </span>
                 </td>
                 <td class="px-6 py-4 text-gray-700" v-if="isSolo">
@@ -127,7 +130,7 @@
                 </td>
                 <td class="px-6 py-4 text-gray-700">{{ formatCurrency(payment.amount) }}</td>
                 <td class="px-6 py-4 text-gray-700">{{ payment.method || '-' }}</td>
-                <td class="px-6 py-4 text-gray-700">{{ payment.note || '-' }}</td>
+                <td class="px-6 py-4 text-gray-700">{{ getDisplayNote(payment) }}</td>
                 <td class="px-6 py-4 text-gray-700">
                   <div class="flex items-center gap-2">
                     <button class="text-primary-600 hover:text-primary-700 text-sm" @click="openEditModal(payment)">
@@ -156,19 +159,22 @@
                   <p class="text-sm font-semibold text-gray-900">{{ getPatientLabel(payment.patient_id) }}</p>
                   <p class="text-xs text-gray-500 mt-0.5">{{ formatDate(payment.paid_at) }}</p>
                 </div>
-                <span :class="getTypeClass(payment.payment_type)" class="text-sm font-semibold">
+                <span :class="getTypeClass(payment)" class="text-sm font-semibold">
                   {{ formatCurrency(payment.amount) }}
                 </span>
               </div>
               <div class="flex items-center gap-4 text-xs text-gray-500">
                 <span v-if="payment.visit_id">{{ t('payments.visitId') }}: #{{ payment.visit_id }}</span>
-                <span v-if="payment.category" class="px-2 py-0.5 rounded text-xs font-medium" :class="getCategoryClass(payment.category)">
-                  {{ getCategoryLabel(payment.category) }}
+                <span v-if="getPaymentCategory(payment)" class="px-2 py-0.5 rounded text-xs font-medium" :class="getCategoryClass(getPaymentCategory(payment))">
+                  {{ getCategoryLabel(getPaymentCategory(payment)) }}
+                </span>
+                <span v-if="getDiscountPercent(payment)" class="px-2 py-0.5 rounded text-xs font-medium text-violet-700 bg-violet-50">
+                  {{ getDiscountPercent(payment) }}%
                 </span>
                 <span>{{ payment.method || '-' }}</span>
               </div>
               <div v-if="payment.note" class="text-xs text-gray-400 mt-1">
-                {{ payment.note }}
+                {{ getDisplayNote(payment) }}
               </div>
               <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
                 <button
@@ -396,7 +402,7 @@ import MobileFAB from '@/components/shared/MobileFAB.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon, AdjustmentsHorizontalIcon } from '@heroicons/vue/24/outline'
-import { listPayments, createPayment, updatePayment, deletePayment, createAdditionalPayment, parseCategoryFromNote, removeCategoryFromNote } from '@/api/paymentsApi'
+import { listPayments, createPayment, updatePayment, deletePayment, createAdditionalPayment, getPaymentsByVisitId, parseCategoryFromNote, removeCategoryFromNote } from '@/api/paymentsApi'
 import { listDoctors } from '@/api/doctorsApi'
 import { listPatients } from '@/api/patientsApi'
 import { getVisitById, updateVisit } from '@/api/visitsApi'
@@ -418,6 +424,8 @@ const visitPreview = ref(null)
 const visitPreviewLoading = ref(false)
 
 const isSolo = computed(() => authStore.userRole === 'solo')
+const DISCOUNT_NOTE_PREFIX = '[DISCOUNT]'
+const DISCOUNT_PERCENT_PREFIX = '[DISCOUNT_PERCENT:'
 
 const filters = ref({
   startDate: '',
@@ -492,16 +500,31 @@ const filteredPayments = computed(() => {
   })
 })
 
-const getTypeLabel = (type) => {
-  if (type === 'refund') return t('payments.typeRefund')
-  if (type === 'adjustment') return t('payments.typeAdjustment')
+const getTypeLabel = (entryOrType) => {
+  if (entryOrType && typeof entryOrType === 'object') {
+    if (isDiscountEntry(entryOrType)) return t('payments.typeDiscount')
+    const type = entryOrType.payment_type
+    if (type === 'refund') return t('payments.typeRefund')
+    if (type === 'adjustment') return t('payments.typeAdjustment')
+    return t('payments.typePayment')
+  }
+  if (entryOrType === 'refund') return t('payments.typeRefund')
+  if (entryOrType === 'adjustment') return t('payments.typeAdjustment')
   return t('payments.typePayment')
 }
 
-const getTypeClass = (type) => {
-  if (type === 'refund') return 'text-rose-600 font-medium'
-  // adjustment type qo'shimcha xarajatlar uchun ham ishlatiladi
-  if (type === 'adjustment') return 'text-amber-600 font-medium'
+const getTypeClass = (entryOrType) => {
+  if (entryOrType && typeof entryOrType === 'object') {
+    if (isDiscountEntry(entryOrType)) return 'text-violet-600 font-medium'
+    const type = entryOrType.payment_type
+    if (type === 'refund') return 'text-rose-600 font-medium'
+    if (type === 'adjustment') {
+      return (Number(entryOrType.amount) || 0) < 0 ? 'text-rose-700 font-medium' : 'text-amber-600 font-medium'
+    }
+    return 'text-emerald-600 font-medium'
+  }
+  if (entryOrType === 'refund') return 'text-rose-600 font-medium'
+  if (entryOrType === 'adjustment') return 'text-amber-600 font-medium'
   return 'text-emerald-600 font-medium'
 }
 
@@ -530,6 +553,41 @@ const getPaymentCategory = (payment) => {
   }
   return null
 }
+
+const isDiscountEntry = (entry) => {
+  if (!entry) return false
+  if (entry.payment_type === 'refund' && entry.note && String(entry.note).includes(DISCOUNT_NOTE_PREFIX)) return true
+  if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0 && entry.note && String(entry.note).includes('[DISCOUNT')) return true
+  return false
+}
+
+const getDiscountPercent = (entry) => {
+  if (!entry?.note) return ''
+  const match = String(entry.note).match(/\[DISCOUNT_PERCENT:([\d.]+)\]/i)
+  return match?.[1] || ''
+}
+
+const getDisplayNote = (entry) => {
+  const raw = String(entry?.note || '').trim()
+  if (!raw) return '-'
+  return raw
+    .replace(/^\s*\[DISCOUNT\]\s*/i, '')
+    .replace(/^\s*\[DISCOUNT_PERCENT:[^\]]+\]\s*/i, '')
+    .replace(/^\s*\[CATEGORY:[^\]]+\]\s*/i, '')
+    .trim() || '-'
+}
+
+const getDiscountTotal = (entries = []) => entries
+  .filter(isDiscountEntry)
+  .reduce((sum, entry) => sum + Math.abs(Number(entry.amount) || 0), 0)
+
+const getPaidNetWithoutDiscounts = (entries = []) => entries
+  .reduce((sum, entry) => {
+    const amount = Number(entry.amount) || 0
+    if (isDiscountEntry(entry)) return sum
+    if (entry.payment_type === 'refund') return sum - amount
+    return sum + amount
+  }, 0)
 
 const formatCurrency = (amount) => {
   if (!amount && amount !== 0) return '0 so\'m'
@@ -610,7 +668,7 @@ const openEditModal = (payment) => {
   const note = (payment.payment_type === 'adjustment' && payment.note && payment.note.includes('[CATEGORY:'))
     ? removeCategoryFromNote(payment.note || '')
     : (payment.note || '')
-  
+
   form.value = {
     id: payment.id,
     visit_id: payment.visit_id ? String(payment.visit_id) : '',
@@ -676,7 +734,7 @@ const saveAdditionalPayment = async () => {
 const savePayment = async () => {
   const visitId = form.value.visit_id ? Number(form.value.visit_id) : null
   const patientId = form.value.patient_id ? Number(form.value.patient_id) : null
-  
+
   // Faqat oddiy to'lovlar uchun visit_id va patient_id majburiy
   if (form.value.payment_type === 'payment' && (!Number.isFinite(visitId) || !Number.isFinite(patientId))) {
     if (!Number.isFinite(visitId)) {
@@ -688,7 +746,7 @@ const savePayment = async () => {
       return
     }
   }
-  
+
   const amount = Number(form.value.amount)
   if (!Number.isFinite(amount) || amount <= 0) {
     toast.error(t('payments.errorAmountRequired'))
@@ -725,12 +783,24 @@ const savePayment = async () => {
 const syncVisitStatusIfFullyPaid = async (visitId) => {
   try {
     const visit = await getVisitById(visitId)
-    if (!visit || visit.status !== 'completed_debt') return
-    const price = Number(visit.price)
-    const paid = Number(visit.paid_amount) || 0
-    if (price > 0 && paid >= price) {
-      await updateVisit(visitId, { status: 'completed_paid', debt_amount: null })
+    if (!visit) return
+    const price = Number(visit.price) || 0
+    const entries = await getPaymentsByVisitId(visitId)
+    const discountTotal = getDiscountTotal(entries)
+    const paidNet = getPaidNetWithoutDiscounts(entries)
+    const effectiveDue = Math.max(0, price - discountTotal)
+    const debtAmount = Math.max(0, effectiveDue - paidNet)
+
+    const payload = {
+      paid_amount: paidNet > 0 ? paidNet : null,
+      debt_amount: debtAmount > 0 ? debtAmount : null
     }
+
+    if (visit.status === 'completed_debt' || visit.status === 'completed_paid') {
+      payload.status = debtAmount > 0 ? 'completed_debt' : 'completed_paid'
+    }
+
+    await updateVisit(visitId, payload)
   } catch (e) {
     console.warn('syncVisitStatusIfFullyPaid:', e)
   }

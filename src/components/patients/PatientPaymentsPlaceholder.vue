@@ -40,6 +40,15 @@
           {{ t('patientPayments.addDiscount') }}
         </button>
         <button
+          v-if="canManagePayments && lastCompletionSummary"
+          type="button"
+          class="inline-flex items-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100 transition-colors"
+          @click="printLastCompletion"
+        >
+          <PrinterIcon class="w-5 h-5" />
+          Pechat
+        </button>
+        <button
           v-if="canManagePayments && hasIncompleteVisits"
           class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 shadow-md hover:shadow-lg transition-all"
           @click="completeAllVisits"
@@ -50,15 +59,6 @@
           </svg>
           <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
           {{ completingAll ? t('patientPayments.completing') : t('patientPayments.yakunlash') }}
-        </button>
-        <button
-          v-if="canManagePayments && lastCompletionSummary"
-          type="button"
-          class="inline-flex items-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100 transition-colors"
-          @click="printLastCompletion"
-        >
-          <PrinterIcon class="w-5 h-5" />
-          Pechat
         </button>
       </div>
 
@@ -83,6 +83,15 @@
           </button>
         </div>
         <button
+          v-if="lastCompletionSummary"
+          type="button"
+          class="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 active:bg-sky-100 active:scale-[0.99] transition-all"
+          @click="printLastCompletion"
+        >
+          <PrinterIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
+          <span>Pechat</span>
+        </button>
+        <button
           v-if="hasIncompleteVisits"
           class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-[0.99] transition-all disabled:opacity-60"
           @click="completeAllVisits"
@@ -93,15 +102,6 @@
           </svg>
           <div v-else class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
           <span>{{ completingAll ? t('patientPayments.completing') : t('patientPayments.yakunlash') }}</span>
-        </button>
-        <button
-          v-if="lastCompletionSummary"
-          type="button"
-          class="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 active:bg-sky-100 active:scale-[0.99] transition-all"
-          @click="printLastCompletion"
-        >
-          <PrinterIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
-          <span>Pechat</span>
         </button>
       </div>
     </div>
@@ -249,6 +249,10 @@
                   </label>
                   <input v-model="form.amount" type="number" :min="isDiscountMode ? 0 : 0" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" :placeholder="isDiscountMode ? (t('patientPayments.discountAmountPlaceholder') || 'Masalan: 50000') : t('patientPayments.amountPlaceholder')" />
                 </div>
+                <div v-if="isDiscountMode">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Chegirma (%)</label>
+                  <input v-model="form.discount_percent" type="number" min="0" max="100" step="0.01" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="Masalan: 10" />
+                </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.note') }}</label>
                   <input v-model="form.note" type="text" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" :placeholder="t('patientPayments.notePlaceholder')" />
@@ -286,18 +290,17 @@ import { TrashIcon, TagIcon, BanknotesIcon, PrinterIcon } from '@heroicons/vue/2
 import { useAuthStore } from '@/stores/auth'
 import { useClinicStore } from '@/stores/clinic'
 import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId, getPaymentsByVisitId } from '@/api/paymentsApi'
-import { getVisitServicesByPatientId, getVisitServicesByVisitId, deleteVisitServiceById } from '@/api/visitServicesApi'
+import { getVisitServicesByPatientId, deleteVisitServiceById } from '@/api/visitServicesApi'
 import { getVisitById, updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
-import { listInventoryConsumptionsByVisitId, listInventoryItems } from '@/api/inventoryApi'
+import { listInventoryItems } from '@/api/inventoryApi'
 import { updatePatient } from '@/api/patientsApi'
 import { completeAllPatientVisits } from '@/lib/completePatientVisits'
-import { openPatientCompletionPrint } from '@/lib/patientCompletionPrint'
+import { openPatientCompletionPreview } from '@/lib/patientCompletionPrint'
 import { useToast } from '@/composables/useToast'
 import { sendPatientCompletionSummary } from '@/api/telegramApi'
 
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()
-const isAdmin = computed(() => authStore.userRole === 'admin')
 const canManagePayments = computed(() => ['admin', 'doctor', 'solo'].includes(authStore.userRole || ''))
 
 const props = defineProps({
@@ -338,6 +341,7 @@ const form = ref({
   id: null,
   visit_id: '',
   amount: '',
+  discount_percent: '',
   payment_type: 'payment',
   method: 'cash',
   note: '',
@@ -371,45 +375,6 @@ const loadInventoryItems = async () => {
   } catch (error) {
     console.error('Failed to load inventory items for billing:', error)
     inventoryItems.value = []
-  }
-}
-
-const getItemPrice = (itemId) => {
-  const match = inventoryItems.value.find(item => Number(item.id) === Number(itemId))
-  return match ? (Number(match.cost_price) || 0) : 0
-}
-
-// Bitta tashrif uchun xizmatlar yig'indisi (faqat tooth_id bor yozuvlar, har tish uchun oxirgi yozuv)
-const getVisitServicesTotal = (visitId) => {
-  const byVisit = services.value.filter(s => Number(s.visit_id) === Number(visitId))
-  if (!byVisit.length) return 0
-
-  const seen = new Set()
-  let sum = 0
-  const sorted = [...byVisit].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
-  for (const e of sorted) {
-    const tid = e.tooth_id
-    if (tid == null) continue
-    const key = `t${tid}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    sum += parsePrice(e.price)
-  }
-  return sum
-}
-
-// Bitta tashrif uchun material sarfi yig'indisi (inventory_consumptions + inventory_items.cost_price)
-const getVisitConsumptionsTotal = async (visitId) => {
-  try {
-    const consumptions = await listInventoryConsumptionsByVisitId(visitId)
-    return consumptions.reduce((sum, entry) => {
-      const qty = Number(entry.quantity) || 0
-      const price = getItemPrice(entry.item_id)
-      return sum + qty * price
-    }, 0)
-  } catch (error) {
-    console.error('Failed to load consumptions for visit:', error)
-    return 0
   }
 }
 
@@ -461,11 +426,58 @@ const getTypeLabel = (type) => {
 }
 
 const DISCOUNT_NOTE_PREFIX = '[DISCOUNT]'
+const DISCOUNT_PERCENT_PREFIX = '[DISCOUNT_PERCENT:'
 
 const isDiscountEntry = (entry) => {
   if (entry.payment_type === 'refund' && entry.note && String(entry.note).includes(DISCOUNT_NOTE_PREFIX)) return true
   if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0) return true // eski yozuvlar
   return false
+}
+
+const getDiscountTotal = (entries = []) => entries
+  .filter(isDiscountEntry)
+  .reduce((sum, entry) => sum + Math.abs(Number(entry.amount) || 0), 0)
+
+const getPaidNetWithoutDiscounts = (entries = []) => entries
+  .reduce((sum, entry) => {
+    const amount = Number(entry.amount) || 0
+    if (isDiscountEntry(entry)) return sum
+    if (entry.payment_type === 'refund') return sum - amount
+    return sum + amount
+  }, 0)
+
+const normalizeNoteForPrint = (note) => {
+  if (!note) return '-'
+  return String(note)
+    .replace(/^\s*\[DISCOUNT\]\s*/i, '')
+    .replace(/^\s*\[DISCOUNT_PERCENT:[^\]]+\]\s*/i, '')
+    .replace(/^\s*\[CATEGORY:[^\]]+\]\s*/i, '')
+    .trim() || '-'
+}
+
+const getPaymentKindLabel = (entry) => {
+  if (!entry) return '-'
+  if (isDiscountEntry(entry)) return 'Chegirma'
+  if (entry.payment_type === 'payment') return 'To\'lov'
+  if (entry.payment_type === 'refund') return 'Refund'
+  if (entry.payment_type === 'adjustment') return Number(entry.amount) < 0 ? 'Xarajat' : 'Qo\'shimcha'
+  return entry.payment_type || '-'
+}
+
+const buildPrintPaymentDetails = (summary) => {
+  const visitIds = new Set([
+    ...(summary?.services || []).map(item => Number(item.visitId)).filter(Number.isFinite),
+    ...(summary?.discounts || []).map(item => Number(item.visitId)).filter(Number.isFinite)
+  ])
+
+  const scoped = payments.value.filter(entry => visitIds.size === 0 || visitIds.has(Number(entry.visit_id)))
+
+  return scoped.map(entry => ({
+    method: entry.method || '-',
+    kind: getPaymentKindLabel(entry),
+    amount: Math.abs(Number(entry.amount) || 0),
+    note: normalizeNoteForPrint(entry.note)
+  }))
 }
 
 const getTypeDisplayLabel = (entry) => {
@@ -556,10 +568,6 @@ const completeAllVisits = async () => {
         if (!tg.ok) {
           console.warn('Telegram completion summary was not sent:', tg.error)
         }
-
-        if (window.confirm('Yakuniy hisobotni pechat qilishni xohlaysizmi?')) {
-          printLastCompletion()
-        }
       }
 
       await loadAll() // Ma'lumotlarni yangilash
@@ -581,19 +589,36 @@ const printLastCompletion = () => {
   }
 
   const summary = lastCompletionSummary.value
-  const printResult = openPatientCompletionPrint({
+  const servicesSum = (summary.services || []).reduce((sum, item) => sum + (Number(item.price) || 0), 0)
+
+  const printResult = openPatientCompletionPreview({
     clinicName: clinicStore.displayName || 'SHIFOCRM',
+    clinicLogo: clinicStore.logoUrl || '',
     patientName: props.patientName || `Bemor #${props.patientId}`,
     patientMedId: props.patientMedId || '-',
     doctorName: summary.doctorName,
+    responsibleName: authStore.user?.full_name || authStore.user?.name || 'Mas\'ul xodim',
     visitDate: summary.visitDate,
-    services: summary.services,
-    discounts: summary.discounts,
+    services: (summary.services || []).map(item => ({
+      ...item,
+      quantity: 1,
+      unitPrice: Number(item.price) || 0,
+      totalPrice: Number(item.price) || 0,
+      performedBy: summary.doctorName || ''
+    })),
+    discounts: (summary.discounts || []).map(item => ({
+      ...item,
+      percent: parseDiscountPercentFromNote(item.note),
+      note: normalizeNoteForPrint(item.note)
+    })),
+    paymentDetails: buildPrintPaymentDetails(summary),
     totalBeforeDiscount: summary.totalBeforeDiscount,
     totalDiscount: summary.totalDiscount,
     totalAfterDiscount: summary.totalAfterDiscount,
     paid: summary.paid,
-    remaining: summary.remaining
+    remaining: summary.remaining,
+    extraCharges: Math.max(0, (Number(summary.totalBeforeDiscount) || 0) - servicesSum),
+    template: 'full'
   })
 
   if (!printResult.ok) {
@@ -611,6 +636,7 @@ const openCreateModal = () => {
     id: null,
     visit_id: '',
     amount: '',
+    discount_percent: '',
     payment_type: 'payment',
     method: 'cash',
     note: '',
@@ -627,6 +653,7 @@ const openDiscountModal = () => {
     id: null,
     visit_id: '',
     amount: '',
+    discount_percent: '',
     payment_type: 'discount',
     method: 'cash',
     note: '',
@@ -638,7 +665,16 @@ const openDiscountModal = () => {
 
 const stripDiscountNotePrefix = (note) => {
   if (!note) return ''
-  return String(note).replace(/^\s*\[DISCOUNT\]\s*/i, '').trim()
+  return String(note)
+    .replace(/^\s*\[DISCOUNT\]\s*/i, '')
+    .replace(/^\s*\[DISCOUNT_PERCENT:[^\]]+\]\s*/i, '')
+    .trim()
+}
+
+const parseDiscountPercentFromNote = (note) => {
+  if (!note) return ''
+  const match = String(note).match(/\[DISCOUNT_PERCENT:([\d.]+)\]/i)
+  return match?.[1] || ''
 }
 
 const openEditModal = (payment) => {
@@ -650,6 +686,7 @@ const openEditModal = (payment) => {
     id: payment.id,
     visit_id: payment.visit_id ? String(payment.visit_id) : '',
     amount: isDiscount ? Math.abs(amt) : (payment.amount ?? ''),
+    discount_percent: isDiscount ? parseDiscountPercentFromNote(payment.note) : '',
     payment_type: isDiscount ? 'discount' : (payment.payment_type || 'payment'),
     method: payment.method || 'cash',
     note: isDiscount ? stripDiscountNotePrefix(payment.note) : (payment.note || ''),
@@ -680,6 +717,24 @@ const savePayment = async () => {
   let note = form.value.note || null
   // DB da amount faqat musbat (payments_amount_check); chegirani refund sifatida musbat summa bilan saqlaymiz
   if (paymentType === 'discount') {
+    const percent = Number(form.value.discount_percent)
+    const hasPercent = Number.isFinite(percent) && percent > 0
+    if (hasPercent) {
+      const visit = visitPreview.value || await getVisitById(visitId)
+      const visitPrice = Number(visit?.price) || 0
+      if (visitPrice <= 0) {
+        toast.error('Foizli chegirma uchun tashrif narxi bo\'lishi kerak')
+        return
+      }
+      amount = Math.round((visitPrice * percent) / 100)
+      if (amount <= 0) {
+        toast.error('Chegirma summasi 0 dan katta bo\'lishi kerak')
+        return
+      }
+      note = note
+        ? `${DISCOUNT_PERCENT_PREFIX}${percent}] ${note}`
+        : `${DISCOUNT_PERCENT_PREFIX}${percent}]`
+    }
     paymentType = 'refund'
     amount = Math.abs(amount)
     note = note ? `${DISCOUNT_NOTE_PREFIX} ${note}` : DISCOUNT_NOTE_PREFIX
@@ -703,7 +758,7 @@ const savePayment = async () => {
       toast.success(t('patientPayments.toastCreated'))
     }
     await loadPayments()
-    await syncVisitStatusIfFullyPaid(visitId)
+    await syncVisitPaymentState(visitId)
     await loadVisits() // Visitlar refresh qilish — bemor statusini hisoblash uchun kerak
     closeModal()
   } catch (error) {
@@ -713,15 +768,29 @@ const savePayment = async () => {
 }
 
 // To'lov to'liq bo'lsa visitni "To'liq yakunlangan" qilish va bemor statusini yangilash
-const syncVisitStatusIfFullyPaid = async (visitId) => {
+const syncVisitPaymentState = async (visitId) => {
   try {
     const visit = await getVisitById(visitId)
-    if (!visit || visit.status !== 'completed_debt') return
-    const price = Number(visit.price)
-    const paid = Number(visit.paid_amount) || 0
-    if (price > 0 && paid >= price) {
-      // Visitni completed_paid qilish
-      await updateVisit(visitId, { status: 'completed_paid', debt_amount: null })
+    if (!visit) return
+    const price = Number(visit.price) || 0
+    const entries = await getPaymentsByVisitId(visitId)
+    const discountTotal = getDiscountTotal(entries)
+    const paidNet = getPaidNetWithoutDiscounts(entries)
+    const effectiveDue = Math.max(0, price - discountTotal)
+    const debtAmount = Math.max(0, effectiveDue - paidNet)
+
+    const updateData = {
+      paid_amount: paidNet > 0 ? paidNet : null,
+      debt_amount: debtAmount > 0 ? debtAmount : null
+    }
+
+    if (visit.status === 'completed_debt' || visit.status === 'completed_paid') {
+      updateData.status = debtAmount > 0 ? 'completed_debt' : 'completed_paid'
+    }
+
+    await updateVisit(visitId, updateData)
+
+    if (debtAmount <= 0) {
 
       // Bemor statusini yangilash — agar barcha tashriflar to'liq to'langan bo'lsa "completed"ga o'tkazish
       try {
@@ -745,7 +814,7 @@ const syncVisitStatusIfFullyPaid = async (visitId) => {
       }
     }
   } catch (e) {
-    console.warn('syncVisitStatusIfFullyPaid:', e)
+    console.warn('syncVisitPaymentState:', e)
   }
 }
 
@@ -756,6 +825,10 @@ const confirmDelete = async (payment) => {
     await deletePayment(payment.id)
     toast.success(t('patientPayments.toastDeleted'))
     await loadPayments()
+    if (Number.isFinite(Number(payment.visit_id))) {
+      await syncVisitPaymentState(Number(payment.visit_id))
+      await loadVisits()
+    }
   } catch (error) {
     console.error('Failed to delete payment:', error)
     toast.error(t('patientPayments.errorDelete'))

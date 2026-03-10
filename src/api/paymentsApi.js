@@ -93,7 +93,7 @@ export const createAdditionalPayment = async ({
     // category ni note maydoniga saqlaymiz: [CATEGORY:rent] Izoh matni
     const categoryPrefix = `[CATEGORY:${category || 'other'}]`
     const formattedNote = note ? `${categoryPrefix} ${note}` : categoryPrefix
-    
+
     // Qo'shimcha to'lovlar uchun visit_id va patient_id null bo'lishi mumkin
     // Database migration qilingandan keyin (visit_id va patient_id nullable bo'lgandan keyin)
     // payment_type ni 'adjustment' qilib ishlatamiz, chunki 'expense' check constraint'da yo'q
@@ -101,7 +101,7 @@ export const createAdditionalPayment = async ({
       visit_id: null, // Migration qilingandan keyin null bo'lishi mumkin
       patient_id: null, // Migration qilingandan keyin null bo'lishi mumkin
       doctor_id: null,
-      amount: Number(amount),
+      amount: -Math.abs(Number(amount)),
       payment_type: 'adjustment', // Qo'shimcha xarajatlar uchun (expense o'rniga)
       method: method || null,
       note: formattedNote,

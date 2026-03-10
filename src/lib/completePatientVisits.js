@@ -18,6 +18,18 @@ const isDiscountPayment = (entry) => {
   return false
 }
 
+const getDiscountTotal = (payments = []) => payments
+  .filter(isDiscountPayment)
+  .reduce((sum, entry) => sum + Math.abs(Number(entry.amount) || 0), 0)
+
+const getPaidNetWithoutDiscounts = (payments = []) => payments
+  .reduce((sum, entry) => {
+    const amount = Number(entry.amount) || 0
+    if (isDiscountPayment(entry)) return sum
+    if (entry.payment_type === 'refund') return sum - amount
+    return sum + amount
+  }, 0)
+
 const parsePrice = (v) => {
   if (v == null) return 0
   const n = typeof v === 'string' ? parseFloat(String(v).replace(/\s|,/g, '')) : Number(v)
@@ -141,10 +153,11 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
       totalBeforeDiscount += targetPrice
 
       let netPaid = 0
+      let visitDiscountTotal = 0
       try {
         const existingPayments = await getPaymentsByVisitId(visitId)
         const visitDiscounts = existingPayments.filter(isDiscountPayment)
-        const visitDiscountTotal = visitDiscounts.reduce((sum, entry) => sum + Math.abs(Number(entry.amount) || 0), 0)
+        visitDiscountTotal = getDiscountTotal(existingPayments)
         totalDiscount += visitDiscountTotal
 
         for (const discountEntry of visitDiscounts) {
@@ -155,39 +168,40 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
           })
         }
 
-        netPaid = existingPayments.reduce((sum, entry) => {
-          const amount = Number(entry.amount) || 0
-          return sum + (entry.payment_type === 'refund' ? -amount : amount)
-        }, 0)
+        netPaid = getPaidNetWithoutDiscounts(existingPayments)
       } catch (error) {
         console.warn('Failed to load payments for visit', visitId, error)
       }
 
-      if (targetPrice > 0 && netPaid < targetPrice) {
+      const effectiveDue = Math.max(0, targetPrice - visitDiscountTotal)
+
+      if (effectiveDue > 0 && netPaid < effectiveDue) {
         try {
+          const missingAmount = effectiveDue - netPaid
           await createPayment({
             visit_id: visitId,
             patient_id: Number(patientId),
             doctor_id: doctorId || visit.doctor_id || null,
-            amount: targetPrice - netPaid,
+            amount: missingAmount,
             payment_type: 'payment',
             method: 'cash',
             note: 'Yakunlash orqali avtomatik to\'lov'
           })
-          netPaid = targetPrice
+          netPaid += missingAmount
         } catch (error) {
           console.error('Failed to create auto payment for visit', visitId, error)
         }
       }
 
       totalPaid += netPaid
-      totalRemaining += Math.max(0, targetPrice - netPaid)
+      const remainingForVisit = Math.max(0, effectiveDue - netPaid)
+      totalRemaining += remainingForVisit
 
       await updateVisit(visitId, {
-        status: 'completed_paid',
+        status: remainingForVisit > 0 ? 'completed_debt' : 'completed_paid',
         price: targetPrice || null,
-        paid_amount: netPaid || targetPrice || null,
-        debt_amount: null
+        paid_amount: netPaid || null,
+        debt_amount: remainingForVisit > 0 ? remainingForVisit : null
       })
 
       completedCount++
