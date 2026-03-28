@@ -970,26 +970,8 @@ onMounted(async () => {
     router.replace({ query: {} })
   }
 
-  let doctorId = null
-  if (!isAdmin.value) {
-    if (authStore.user?.id) {
-      doctorId = authStore.user.id
-    } else if (authStore.userEmail) {
-      const doctor = doctorsStore.items.find(item => item.email === authStore.userEmail)
-      doctorId = doctor?.id || null
-    }
-  }
-
-  if (isAdmin.value) {
-    await patientsStore.fetchPatients()
-    await loadPatientVisits()
-  } else if (doctorId) {
-    await patientsStore.fetchPatientsByDoctor(doctorId)
-    await loadPatientVisits(doctorId)
-  } else {
-    await patientsStore.fetchPatients()
-    await loadPatientVisits()
-  }
+  await patientsStore.fetchPatients()
+  await loadPatientVisits()
 
   // Tolovlar bo'limida bemor statusi o'zgarsa jadvalda refresh bo'lishi uchun
   window.addEventListener('patient-status-updated', async () => {

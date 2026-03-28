@@ -184,7 +184,7 @@ const soloMenuItems = [
 // Doctor menu items
 const doctorMenuItems = [
   { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
-  { labelKey: 'nav.myPatients', to: '/my-patients', icon: UsersIcon },
+  { labelKey: 'nav.myPatients', to: '/patients', icon: UsersIcon },
   { labelKey: 'nav.myAppointments', to: '/my-appointments', icon: CalendarDaysIcon },
   { labelKey: 'nav.myLeads', to: '/my-leads', icon: InboxIcon },
   { labelKey: 'nav.treatmentPlans', to: '/treatment-plans', icon: DocumentTextIcon },

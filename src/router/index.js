@@ -19,7 +19,7 @@ const router = createRouter({
       path: '/patients',
       name: 'patients',
       component: () => import('@/views/PatientsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin' },
+      meta: { requiresAuth: true },
     },
     {
       path: '/patients/:id',
@@ -29,9 +29,7 @@ const router = createRouter({
     },
     {
       path: '/my-patients',
-      name: 'my-patients',
-      component: () => import('@/views/PatientsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'doctor' },
+      redirect: '/patients',
     },
     {
       path: '/doctors',

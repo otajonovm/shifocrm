@@ -29,9 +29,15 @@ export const getDoctorById = async (id) => {
   try {
     const numId = Number(id)
     if (!Number.isFinite(numId)) return null
+    // Try clinic-filtered first, then fallback to unfiltered if clinic context missing
     const cid = await getCurrentClinicId()
-    const rows = await supabaseGetWithClinicFallback(TABLE, `id=eq.${numId}`, cid)
-    return rows && rows[0] ? rows[0] : null
+    if (cid) {
+      const rows = await supabaseGetWithClinicFallback(TABLE, `id=eq.${numId}`, cid)
+      if (rows && rows[0]) return rows[0]
+    }
+    // Fallback: direct query without clinic filter (for doctor's own profile)
+    const allRows = await supabaseGet(TABLE, `id=eq.${numId}`)
+    return allRows && allRows[0] ? allRows[0] : null
   } catch (error) {
     console.error('❌ Failed to fetch doctor:', error)
     throw error
@@ -75,6 +81,7 @@ export const createDoctor = async ({
   password,
   is_active = true,
   specialization = null,
+  patients_scope = 'own',
   clinic_id: rawClinicId = null
 }) => {
   try {
@@ -95,6 +102,8 @@ export const createDoctor = async ({
     const now = new Date().toISOString()
     const id = await generateId()
 
+    const normalizedPatientsScope = patients_scope === 'all' ? 'all' : 'own'
+
     const newDoctor = {
       id,
       full_name,
@@ -102,6 +111,7 @@ export const createDoctor = async ({
       email,
       password,
       specialization,
+      patients_scope: normalizedPatientsScope,
       is_active,
       clinic_id: clinicId,
       created_at: now,

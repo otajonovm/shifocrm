@@ -77,7 +77,7 @@
     </div>
 
     <!-- Schedule grid - Day view (Dentist+ style) -->
-    <div v-if="viewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden flex flex-col">
+    <div v-if="viewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-220px)] sm:h-[calc(100vh-250px)] min-h-[500px]">
       <!-- Toolbar -->
       <div class="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-slate-50 to-blue-50/60 flex items-center justify-between flex-wrap gap-3">
         <!-- Doctor Filter with Multi-select -->
@@ -153,45 +153,50 @@
       </div>
 
       <!-- Schedule Canvas -->
-      <div class="flex flex-1 overflow-hidden">
-        <!-- Left: Time column (sticky) -->
-        <div class="bg-gradient-to-b from-slate-50 to-slate-100 border-r border-gray-200 flex-shrink-0 overflow-y-auto sticky left-0 z-40" :class="timeColumnWidth">
-          <div v-for="hour in hours" :key="hour.time" class="text-right pr-1 sm:pr-2 md:pr-3 py-0 text-xs font-semibold text-slate-600 border-b border-slate-200/70" :style="{ height: slotHeightPx + 'px' }">
-            <div class="pt-1">{{ hour.time }}</div>
-          </div>
-        </div>
+      <div class="flex-1 overflow-auto relative bg-white">
+        <div class="flex min-w-max">
+          <!-- Left: Time column (sticky) -->
+          <div class="bg-slate-50 border-r border-gray-200 flex-shrink-0 sticky left-0 z-40" :class="timeColumnWidth">
+            <!-- Empty space for top-left intersection to align with doctor headers -->
+            <div class="sticky top-0 z-50 bg-slate-50 border-b border-gray-200 h-[60px] sm:h-[68px]"></div>
 
-        <!-- Right: Doctor columns (horizontal scroll) -->
-        <div class="flex flex-1 overflow-x-auto overflow-y-auto bg-white">
-          <div
-            v-for="doctor in displayedDoctors"
-            :key="doctor.id"
-            class="border-r border-gray-200 relative flex-shrink-0"
-            :style="{ width: doctorColumnWidth }"
-          >
-            <!-- Doctor header (sticky top) -->
-            <div class="sticky top-0 z-30 bg-gradient-to-b from-primary-50 to-white border-b border-gray-200 px-2 sm:px-3 py-2 sm:py-3 shadow-sm">
-              <div class="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2">{{ doctor.full_name }}</div>
-              <div class="text-xs text-gray-500 line-clamp-1">{{ doctor.specialization || 'Shifokor' }}</div>
+            <div v-for="hour in hours" :key="hour.time" class="text-right pr-1 sm:pr-2 md:pr-3 py-0 text-xs font-semibold text-slate-600 border-b border-slate-200/70 bg-slate-50" :style="{ height: slotHeightPx + 'px' }">
+              <div class="pt-1">{{ hour.time }}</div>
             </div>
+          </div>
 
-            <!-- Time slots area -->
-            <div class="relative">
-              <!-- Background grid (clickable) -->
-              <div
-                v-for="hour in hours"
-                :key="`bg-${doctor.id}-${hour.time}`"
-                class="border-b border-slate-100 bg-gradient-to-b from-blue-50/70 via-white to-white hover:from-blue-100 hover:to-blue-50 cursor-pointer transition-colors active:bg-blue-200"
-                :style="{ height: slotHeightPx + 'px' }"
-                @click="handleSlotClick(doctor.id, hour.time)"
-              />
+          <!-- Right: Doctor columns -->
+          <div class="flex flex-1">
+            <div
+              v-for="(doctor, docIdx) in displayedDoctors"
+              :key="doctor.id"
+              class="border-r border-gray-200 relative flex-shrink-0"
+              :style="{ width: doctorColumnWidth }"
+            >
+              <!-- Doctor header (sticky top) -->
+              <div class="sticky top-0 z-30 bg-gradient-to-b from-primary-50 to-white border-b border-gray-200 px-2 sm:px-3 py-2 sm:py-3 shadow-sm h-[60px] sm:h-[68px] flex flex-col justify-center">
+                <div class="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-1" :title="doctor.full_name">{{ doctor.full_name }}</div>
+                <div class="text-xs text-gray-500 line-clamp-1">{{ doctor.specialization || 'Shifokor' }}</div>
+              </div>
 
-              <!-- Current time indicator -->
-              <CurrentTimeIndicator
-                :start-hour="9"
-                :end-hour="18"
-                class="absolute left-0 right-0 z-20 pointer-events-none"
-              />
+              <!-- Time slots area -->
+              <div class="relative">
+                <!-- Background grid (clickable) -->
+                <div
+                  v-for="hour in hours"
+                  :key="`bg-${doctor.id}-${hour.time}`"
+                  class="border-b border-slate-100 bg-gradient-to-b from-blue-50/70 via-white to-white hover:from-blue-100 hover:to-blue-50 cursor-pointer transition-colors active:bg-blue-200"
+                  :style="{ height: slotHeightPx + 'px' }"
+                  @click="handleSlotClick(doctor.id, hour.time)"
+                />
+
+                <!-- Current time indicator: Only show text on the first doctor, or just use a horizontal line spanning everything -->
+                <CurrentTimeIndicator
+                  :start-hour="9"
+                  :end-hour="18"
+                  :show-text="docIdx === 0"
+                  class="absolute left-0 right-0 z-20 pointer-events-none"
+                />
 
               <!-- Appointments (draggable) -->
               <div class="absolute inset-0 pointer-events-none">
@@ -215,6 +220,7 @@
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

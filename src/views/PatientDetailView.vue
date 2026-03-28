@@ -394,10 +394,6 @@ const canComplete = computed(() => {
 })
 
 const goBack = () => {
-  if (isDoctor.value && !isSolo.value) {
-    router.push('/my-patients')
-    return
-  }
   router.push('/patients')
 }
 
@@ -709,8 +705,28 @@ onMounted(async () => {
                       String(p.id) === String(patientId)
         console.log(`  ID ${p.id} (${typeof p.id}) === ${patientId} (${typeof patientId}): ${match}`)
       })
+
+      const isDoctorOwnScope = authStore.userRole === 'doctor' && authStore.user?.patients_scope !== 'all'
+      if (isDoctorOwnScope) {
+        toast.warning('Bu bemorni ko\'rishga ruxsat yo\'q')
+        router.replace('/patients')
+        return
+      }
     } else {
       console.log('? Patient loaded successfully:', patient.value.full_name)
+
+      // Access control: Check if doctor can view this patient
+      if (isDoctor.value && authStore.user) {
+        const patientScope = authStore.user.patients_scope || 'own'
+        const isOwnPatient = patient.value.doctor_id === authStore.user.id
+
+        if (patientScope === 'own' && !isOwnPatient) {
+          console.warn('? Doctor access denied: patient not in scope')
+          toast.warning(t('patientDetail.accessDenied') || 'Bu bemorni ko\'rishga ruxsat yo\'q')
+          router.replace('/patients')
+          return
+        }
+      }
     }
 
     // Patient yuklangandan keyin visit va qarzdorlik ma'lumotlarini yuklash

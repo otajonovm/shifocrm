@@ -10,6 +10,39 @@ import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 
 const TABLE = 'patients'
 
+const getSessionPatientScopeContext = () => {
+  const userRole = localStorage.getItem('userRole') || null
+  const rawUser = localStorage.getItem('user')
+
+  let user = null
+  try {
+    user = rawUser ? JSON.parse(rawUser) : null
+  } catch {
+    user = null
+  }
+
+  const doctorId = user?.id != null && Number.isFinite(Number(user.id))
+    ? Number(user.id)
+    : null
+
+  const patientsScope = user?.patients_scope === 'all' ? 'all' : 'own'
+
+  return { userRole, doctorId, patientsScope }
+}
+
+const buildScopeQuery = () => {
+  const { userRole, doctorId, patientsScope } = getSessionPatientScopeContext()
+
+  if (userRole !== 'doctor') return null
+  if (patientsScope === 'all') return null
+
+  if (!Number.isFinite(doctorId)) {
+    return 'doctor_id=eq.-1'
+  }
+
+  return `doctor_id=eq.${doctorId}`
+}
+
 const normalizeNullableDateField = (value) => {
   if (value === null || value === undefined) return null
   if (typeof value !== 'string') return value
@@ -42,7 +75,9 @@ const normalizePatientPayload = (payload) => {
 export const listPatients = async () => {
   try {
     const cid = await getCurrentClinicId()
-    return await supabaseGetWithClinicFallback(TABLE, 'order=created_at.desc', cid)
+    const scopeQuery = buildScopeQuery()
+    const q = scopeQuery ? `${scopeQuery}&order=created_at.desc` : 'order=created_at.desc'
+    return await supabaseGetWithClinicFallback(TABLE, q, cid)
   } catch (error) {
     console.error('❌ Failed to fetch patients:', error)
     throw error
@@ -54,7 +89,9 @@ export const getPatientById = async (id) => {
     const numId = Number(id)
     if (!Number.isFinite(numId)) return null
     const cid = await getCurrentClinicId()
-    const rows = await supabaseGetWithClinicFallback(TABLE, `id=eq.${numId}`, cid)
+    const scopeQuery = buildScopeQuery()
+    const q = scopeQuery ? `id=eq.${numId}&${scopeQuery}` : `id=eq.${numId}`
+    const rows = await supabaseGetWithClinicFallback(TABLE, q, cid)
     return rows && rows[0] ? rows[0] : null
   } catch (error) {
     console.error('❌ Failed to fetch patient:', error)
@@ -73,10 +110,15 @@ export const getPatientsByDoctorId = async (doctorId) => {
   }
 }
 
+const listPatientsUnscoped = async () => {
+  const cid = await getCurrentClinicId()
+  return await supabaseGetWithClinicFallback(TABLE, 'order=created_at.desc', cid)
+}
+
 // 5 xonali unique ID generatsiya qilish (10000-99999)
 const generateId = async () => {
   try {
-    const patients = await listPatients()
+    const patients = await listPatientsUnscoped()
     const existingIds = patients.map(p => Number(p.id))
 
     let newId

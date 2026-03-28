@@ -88,6 +88,7 @@ export const useAuthStore = defineStore('auth', () => {
               phone: doctor.phone,
               specialization: doctor.specialization,
               is_active: doctor.is_active,
+              patients_scope: doctor.patients_scope || 'all',
               clinic_id: clinicAdmin.clinic_id
             }
           }
@@ -153,6 +154,7 @@ export const useAuthStore = defineStore('auth', () => {
         phone: doctor.phone,
         specialization: doctor.specialization,
         is_active: doctor.is_active,
+        patients_scope: doctor.patients_scope || 'own',
         clinic_id: cid,
       }
 
