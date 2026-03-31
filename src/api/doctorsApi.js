@@ -104,6 +104,10 @@ export const createDoctor = async ({
 
     const normalizedPatientsScope = patients_scope === 'all' ? 'all' : 'own'
 
+    // Avtomatik formadagi ismdan slug yaratib berish
+    const baseSlug = full_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'doctor'
+    const publicSlug = `${baseSlug}-${id}`
+
     const newDoctor = {
       id,
       full_name,
@@ -113,6 +117,8 @@ export const createDoctor = async ({
       specialization,
       patients_scope: normalizedPatientsScope,
       is_active,
+      is_public: false, // by default for normal doctors, they can turn it on
+      public_slug: publicSlug,
       clinic_id: clinicId,
       created_at: now,
       updated_at: now

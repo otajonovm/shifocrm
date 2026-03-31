@@ -296,6 +296,11 @@ export async function createSoloDoctor(data) {
   }
 
   const now = new Date().toISOString()
+
+  // Avtomatik ravishda public_slug shakllantirish
+  const baseSlug = fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'doctor'
+  const publicSlug = `${baseSlug}-${doctorId}`
+
   const doctorPayload = {
     id: doctorId,
     full_name: fullName,
@@ -304,6 +309,8 @@ export async function createSoloDoctor(data) {
     password,
     specialization: (data.specialization || '').trim() || null,
     is_active: true,
+    is_public: true,
+    public_slug: publicSlug,
     clinic_id: clinicId,
     created_at: now,
     updated_at: now

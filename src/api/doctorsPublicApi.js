@@ -203,6 +203,16 @@ export const getDoctorAvailableSlots = async ({
         stepMinutes: Math.max(5, Number(slotMinutes) || 30)
       }).map((slot) => ({ start: slot.start, end: slot.end }))
 
+      if (slots.length && dateText === '2025-03-31') {
+        console.log(`[DEBUG ${dateText}] dayKey=${dayKey}`, {
+          enabled: daySchedule.enabled,
+          working: workingIntervals,
+          breaks: breakIntervals,
+          slotCount: slots.length,
+          firstSlot: slots[0]
+        })
+      }
+
       if (slots.length) {
         result.push({
           date: dateText,
