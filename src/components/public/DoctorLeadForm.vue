@@ -25,7 +25,7 @@
           required
           minlength="2"
           maxlength="100"
-          class="w-full h-12 px-4 border border-slate-300 bg-slate-50 rounded-3xl focus:ring-2 focus:ring-[#2563eb] focus:border-transparent transition"
+          class="w-full h-12 px-4 border border-slate-300 bg-slate-50 rounded-3xl outline-none focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent transition"
           :disabled="submitting"
           @input="validateName"
         />
@@ -45,7 +45,7 @@
           inputmode="numeric"
           :placeholder="tx.phonePlaceholder"
           required
-          class="w-full h-12 px-4 border border-slate-300 bg-slate-50 rounded-3xl focus:ring-2 focus:ring-[#2563eb] focus:border-transparent transition"
+          class="w-full h-12 px-4 border border-slate-300 bg-slate-50 rounded-3xl outline-none focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent transition"
           :disabled="submitting"
           @input="onPhoneInput"
         />
@@ -180,7 +180,7 @@ const tx = computed(() => (isUzbek.value ? texts.uz : texts.ru))
 
 const form = ref({
   patient_name: '',
-  phone: ''
+  phone: '+998'
 })
 
 const errors = ref({
@@ -309,7 +309,7 @@ const submitForm = async () => {
 
     form.value = {
       patient_name: '',
-      phone: ''
+      phone: '+998'
     }
     errors.value = {
       patient_name: '',

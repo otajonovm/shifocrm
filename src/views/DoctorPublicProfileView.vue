@@ -31,13 +31,6 @@
             <div v-else class="w-20 h-20 rounded-full border-4 border-white shadow-lg bg-gradient-to-br from-sky-100 to-blue-200 flex items-center justify-center text-3xl text-sky-700">
               👨‍⚕️
             </div>
-            <button
-              type="button"
-              @click="shareProfile"
-              class="ml-auto inline-flex items-center gap-2 rounded-xl border border-sky-100 bg-white/90 px-3 py-2 text-sm font-medium text-sky-700 hover:bg-white"
-            >
-              {{ t('publicDoctorProfile.share') }}
-            </button>
           </div>
 
           <div class="mt-4 flex items-center justify-end">
@@ -372,28 +365,6 @@ const handleLeadSubmitted = async ({ preferred_date, preferred_time } = {}) => {
   if (preferred_date && preferred_time && !hasSlotInAvailability(preferred_date, preferred_time)) {
     selectedDate.value = ''
     selectedTime.value = ''
-  }
-}
-
-const shareProfile = async () => {
-  const url = window.location.href
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: doctor.value.full_name,
-        text: t('publicDoctorProfile.shareText', { url }),
-        url
-      })
-    } catch {
-      console.log('Share cancelled')
-    }
-  } else {
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success(t('publicDoctorProfile.shareCopied'))
-    } catch {
-      toast.error(t('publicDoctorProfile.shareCopyFailed'))
-    }
   }
 }
 
