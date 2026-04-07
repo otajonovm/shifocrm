@@ -82,8 +82,8 @@
             </button>
           </div>
 
-          <div class="rounded-2xl border border-sky-200 bg-white p-4">
-            <div class="flex items-start justify-between gap-3 mb-3">
+          <div class="rounded-2xl border border-sky-200 bg-white p-4 sm:p-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
               <div>
                 <p class="text-sm font-semibold text-gray-900">{{ t('doctorProfile.qrTitle') }}</p>
                 <p class="text-xs text-gray-500">{{ t('doctorProfile.qrSubtitle') }}</p>
@@ -92,19 +92,23 @@
                 type="button"
                 @click="downloadQrPng"
                 :disabled="!canDownloadQr"
-                class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                class="w-full sm:w-auto rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {{ t('doctorProfile.downloadQr') }}
               </button>
             </div>
 
-            <div class="relative inline-block rounded-xl border border-gray-200 overflow-hidden bg-white">
-              <canvas ref="qrCanvasRef" class="block h-52 w-52 sm:h-60 sm:w-60" />
-              <div
-                v-if="!profile.is_public"
-                class="absolute inset-0 flex items-center justify-center bg-black/40 px-4"
-              >
-                <span class="text-center text-sm font-semibold text-white">{{ t('doctorProfile.qrClosedWatermark') }}</span>
+            <div class="flex justify-center">
+              <div class="relative w-full max-w-[280px] sm:max-w-[320px] rounded-2xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
+                <div class="relative w-full aspect-square overflow-hidden rounded-xl bg-white">
+                  <canvas ref="qrCanvasRef" class="block h-full w-full" />
+                  <div
+                    v-if="!profile.is_public"
+                    class="absolute inset-0 flex items-center justify-center bg-black/40 px-4"
+                  >
+                    <span class="text-center text-sm font-semibold text-white">{{ t('doctorProfile.qrClosedWatermark') }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -174,6 +178,14 @@ const profile = ref({
   specialization: '',
   is_active: true,
   work_schedule: null,
+  is_public: false,
+  public_slug: '',
+  public_bio: '',
+  public_avatar_url: '',
+  public_phone: '',
+  public_telegram: '',
+  public_whatsapp: '',
+  public_location_url: '',
 })
 
 const existingDoctor = ref(null)
@@ -212,9 +224,18 @@ const whatsAppShareUrl = computed(() => {
 
 const renderQr = async () => {
   if (!qrCanvasRef.value) return
+  const canvas = qrCanvasRef.value
+  const container = canvas.parentElement
+  const displaySize = Math.max(200, Math.floor(container?.getBoundingClientRect().width || 240))
+  const dpr = window.devicePixelRatio || 1
+  const pixelSize = Math.floor(displaySize * dpr)
+  canvas.width = pixelSize
+  canvas.height = pixelSize
+  canvas.style.width = `${displaySize}px`
+  canvas.style.height = `${displaySize}px`
   const text = hasSlug.value ? publicProfileUrl.value : 'https://example.com'
-  await QRCode.toCanvas(qrCanvasRef.value, text, {
-    width: 480,
+  await QRCode.toCanvas(canvas, text, {
+    width: pixelSize,
     margin: 1,
     color: {
       dark: '#111827',
@@ -320,6 +341,12 @@ const loadProfile = async () => {
       work_schedule: doctor.work_schedule || null,
       is_public: doctor.is_public ?? false,
       public_slug: doctor.public_slug || '',
+      public_bio: doctor.public_bio || '',
+      public_avatar_url: doctor.public_avatar_url || '',
+      public_phone: doctor.public_phone || '',
+      public_telegram: doctor.public_telegram || '',
+      public_whatsapp: doctor.public_whatsapp || '',
+      public_location_url: doctor.public_location_url || '',
     }
   } catch (err) {
     updateError.value = err.message || 'Failed to load profile'
@@ -351,7 +378,13 @@ const handleUpdateProfile = async (profileData) => {
       is_active: profileData.is_active,
       work_schedule: profileData.work_schedule,
       is_public: profileData.is_public,
-      public_slug: safeSlug
+      public_slug: safeSlug,
+      public_bio: profileData.public_bio,
+      public_avatar_url: profileData.public_avatar_url,
+      public_phone: profileData.public_phone,
+      public_telegram: profileData.public_telegram,
+      public_whatsapp: profileData.public_whatsapp,
+      public_location_url: profileData.public_location_url,
     })
     existingDoctor.value = updated
     profile.value = {

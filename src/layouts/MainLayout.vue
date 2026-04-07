@@ -28,7 +28,7 @@
           </div>
         </div>
 
-        <!-- Right: ShifoAI, User Menu -->
+        <!-- Right: ShifoAI -->
         <div class="flex items-center gap-3">
           <!-- ShifoAI -->
           <div class="relative">
@@ -45,64 +45,6 @@
             </button>
           </div>
 
-          <!-- User Menu -->
-          <div class="relative">
-            <button
-              @click="userMenuOpen = !userMenuOpen"
-              class="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <UserCircleIcon class="w-6 h-6 text-gray-500" />
-              <ChevronDownIcon class="w-4 h-4 text-gray-500 hidden sm:block" />
-            </button>
-
-            <!-- Dropdown -->
-            <Transition
-              enter-active-class="transition ease-out duration-100"
-              enter-from-class="transform opacity-0 scale-95"
-              enter-to-class="transform opacity-100 scale-100"
-              leave-active-class="transition ease-in duration-75"
-              leave-from-class="transform opacity-100 scale-100"
-              leave-to-class="transform opacity-0 scale-95"
-            >
-              <div
-                v-if="userMenuOpen"
-                class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50"
-              >
-                <router-link
-                  :to="authStore.userRole === 'admin' ? '/settings' : '/doctor/profile'"
-                  class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  @click="userMenuOpen = false"
-                >
-                  <UserCircleIcon class="w-5 h-5 text-gray-400" />
-                  {{ t('common.profile') }}
-                </router-link>
-                <router-link
-                  to="/settings"
-                  class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  @click="userMenuOpen = false"
-                >
-                  <Cog6ToothIcon class="w-5 h-5 text-gray-400" />
-                  {{ t('common.settings') }}
-                </router-link>
-                <router-link
-                  to="/help"
-                  class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  @click="userMenuOpen = false"
-                >
-                  <QuestionMarkCircleIcon class="w-5 h-5 text-gray-400" />
-                  {{ t('common.help') }}
-                </router-link>
-                <hr class="my-1 border-gray-100" />
-                <button
-                  @click="handleLogout"
-                  class="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                >
-                  <ArrowRightOnRectangleIcon class="w-5 h-5" />
-                  {{ t('common.logout') }}
-                </button>
-              </div>
-            </Transition>
-          </div>
         </div>
       </header>
 
@@ -115,12 +57,6 @@
     <!-- ShifoAI Panel -->
     <ShifoAIPanel :open="shifoAIOpen" @close="shifoAIOpen = false" />
 
-    <!-- Click outside to close menus -->
-    <div
-      v-if="userMenuOpen"
-      class="fixed inset-0 z-40"
-      @click="userMenuOpen = false"
-    />
   </div>
 </template>
 
@@ -133,11 +69,6 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import ShifoAIPanel from '@/components/shared/ShifoAIPanel.vue'
 import {
   Bars3Icon,
-  ChevronDownIcon,
-  UserCircleIcon,
-  Cog6ToothIcon,
-  QuestionMarkCircleIcon,
-  ArrowRightOnRectangleIcon,
   SparklesIcon,
 } from '@heroicons/vue/24/outline'
 
@@ -147,7 +78,6 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 const sidebarOpen = ref(false)
-const userMenuOpen = ref(false)
 const shifoAIOpen = ref(false)
 
 const pageTitle = computed(() => {

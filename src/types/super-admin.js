@@ -9,6 +9,10 @@
  * @property {string} name
  * @property {string} slug
  * @property {string|null} [logo_url]
+ * @property {string|null} [description]
+ * @property {string|null} [address]
+ * @property {string|null} [location_url]
+ * @property {object|null} [work_schedule]
  * @property {number} [max_doctors=4]
  * @property {boolean} [is_active=true]
  * @property {string} [created_at]
@@ -30,6 +34,10 @@
  * @property {string} name
  * @property {string} slug
  * @property {string|null} [logo_url]
+ * @property {string|null} [description]
+ * @property {string|null} [address]
+ * @property {string|null} [location_url]
+ * @property {object|null} [work_schedule]
  * @property {number} [max_doctors=4]
  * @property {boolean} [is_active=true]
  */

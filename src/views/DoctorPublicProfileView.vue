@@ -1,9 +1,9 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+  <div class="min-h-screen bg-gradient-to-b from-[#EAF6FF] via-[#F4FAFF] to-white" style="font-family: Inter, Poppins, 'Segoe UI', system-ui, sans-serif;">
     <!-- Error State -->
     <div v-if="error" class="max-w-2xl mx-auto px-4 py-12">
       <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-        <h1 class="text-2xl font-bold text-red-900 mb-2">Doktor topilmadi</h1>
+        <h1 class="text-2xl font-bold text-red-900 mb-2">{{ t('publicDoctorProfile.notFoundTitle') }}</h1>
         <p class="text-red-700">{{ error }}</p>
       </div>
     </div>
@@ -12,144 +12,209 @@
     <div v-else-if="loading" class="max-w-2xl mx-auto px-4 py-12">
       <div class="text-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-        <p class="mt-4 text-gray-600">Doktor ma'lumotlari yuklanmoqda...</p>
+        <p class="mt-4 text-gray-600">{{ t('publicDoctorProfile.loading') }}</p>
       </div>
     </div>
 
     <!-- Doctor Profile -->
-    <div v-else-if="doctor" class="max-w-2xl mx-auto px-4 py-8">
-      <!-- Doctor Card -->
-      <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
-        <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-32"></div>
-
-        <div class="px-6 pb-6">
-          <!-- Avatar and Name -->
-          <div class="flex flex-col sm:flex-row sm:items-end gap-4 -mt-16 mb-6">
+    <div v-else-if="doctor" class="max-w-6xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+      <section class="rounded-[24px] bg-white/65 border border-white/80 shadow-[0_12px_35px_rgba(29,78,216,0.12)] overflow-hidden backdrop-blur-xl">
+        <div class="h-24 bg-gradient-to-r from-sky-300 via-sky-400 to-blue-500"></div>
+        <div class="px-5 pb-5 -mt-10">
+          <div class="flex items-end gap-3">
             <img
               v-if="doctor.public_avatar_url"
               :src="doctor.public_avatar_url"
               :alt="doctor.full_name"
-              class="w-24 h-24 rounded-full border-4 border-white shadow-md object-cover"
+              class="w-20 h-20 rounded-full border-4 border-white shadow-lg object-cover bg-white"
             />
-            <div v-else class="w-24 h-24 rounded-full border-4 border-white shadow-md bg-gray-200 flex items-center justify-center text-3xl text-gray-400">
+            <div v-else class="w-20 h-20 rounded-full border-4 border-white shadow-lg bg-gradient-to-br from-sky-100 to-blue-200 flex items-center justify-center text-3xl text-sky-700">
               👨‍⚕️
             </div>
-            <div class="flex-1">
-              <h1 class="text-3xl font-bold text-gray-900">{{ doctor.full_name }}</h1>
-              <p class="text-indigo-600 font-semibold">{{ doctor.specialization || 'Shifokor' }}</p>
-              <p v-if="clinic" class="text-gray-600 text-sm">{{ clinic.name }}</p>
+            <button
+              type="button"
+              @click="shareProfile"
+              class="ml-auto inline-flex items-center gap-2 rounded-xl border border-sky-100 bg-white/90 px-3 py-2 text-sm font-medium text-sky-700 hover:bg-white"
+            >
+              {{ t('publicDoctorProfile.share') }}
+            </button>
+          </div>
+
+          <div class="mt-4 flex items-center justify-end">
+            <div class="inline-flex rounded-xl border border-sky-100 bg-white/90 p-1 shadow-sm">
+              <button
+                type="button"
+                @click="setPublicLanguage('uz')"
+                :class="publicLanguage === 'uz' ? 'bg-sky-600 text-white' : 'text-slate-600 hover:bg-sky-50'"
+                class="rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+              >
+                UZ
+              </button>
+              <button
+                type="button"
+                @click="setPublicLanguage('ru')"
+                :class="publicLanguage === 'ru' ? 'bg-sky-600 text-white' : 'text-slate-600 hover:bg-sky-50'"
+                class="rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+              >
+                RU
+              </button>
             </div>
           </div>
 
-          <!-- Bio -->
-          <p v-if="doctor.public_bio" class="text-gray-700 mb-6 leading-relaxed">
+          <h1 class="mt-4 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">{{ doctor.full_name }}</h1>
+          <p class="mt-1 text-sky-700 font-semibold">{{ doctor.specialization || t('publicDoctorProfile.specializationFallback') }}</p>
+          <p v-if="clinic" class="mt-1 text-sm text-slate-500">{{ clinic.name }}</p>
+
+          <p v-if="doctor.public_bio" class="mt-4 text-sm leading-6 text-gray-700">
             {{ doctor.public_bio }}
           </p>
 
-          <!-- Action Buttons -->
-          <div class="grid grid-cols-2 gap-3 mb-8">
-            <!-- Call Button -->
+          <div class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2">
             <a
               :href="`tel:${doctor.public_phone || doctor.public_whatsapp}`"
-              class="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition"
+              class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-sky-600 hover:to-blue-700"
             >
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773c.058.3.102.605.102.924v1.902c0 .876.669 1.755 1.577 2.113C7.839 10.93 9.287 11 11 11c1.713 0 3.161-.07 4.684-.512.908-.358 1.577-1.237 1.577-2.113V8.038c0-.32.044-.625.102-.924l-1.548-.773a1 1 0 01-.54-1.06l.74-4.435A1 1 0 0116.847 2H19a1 1 0 011 1v14a1 1 0 01-1 1H3a1 1 0 01-1-1V3z" />
-              </svg>
-              Qo'ng'iroq
+              {{ t('publicDoctorProfile.call') }}
             </a>
-
-            <!-- Telegram Button -->
+            <a
+              v-if="doctor.public_location_url"
+              :href="doctor.public_location_url"
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center justify-center rounded-xl bg-white text-blue-700 border border-blue-200 px-4 py-2.5 text-sm font-semibold hover:bg-blue-50"
+            >
+              {{ t('publicDoctorProfile.showOnMap') }}
+            </a>
             <a
               v-if="doctor.public_telegram"
               :href="`https://t.me/${doctor.public_telegram.replace('@', '')}`"
               target="_blank"
-              class="flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-4 rounded-lg transition"
+              class="inline-flex items-center justify-center rounded-xl bg-white text-sky-700 border border-sky-200 px-4 py-2.5 text-sm font-semibold hover:bg-sky-50"
             >
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295-.042 0-.084 0-.127-.01l.214-3.053 5.56-5.023c.242-.213-.054-.328-.373-.115l-6.869 4.332-2.96-.924c-.644-.203-.658-.644.135-.954l11.566-4.458c.538-.197 1.006.128.832 1.584z" />
-              </svg>
               Telegram
             </a>
-
-            <!-- WhatsApp Button -->
             <a
               v-if="doctor.public_whatsapp"
               :href="`https://wa.me/${doctor.public_whatsapp.replace(/[^0-9]/g, '')}`"
               target="_blank"
-              class="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg transition"
+              class="inline-flex items-center justify-center rounded-xl bg-white text-emerald-700 border border-emerald-200 px-4 py-2.5 text-sm font-semibold hover:bg-emerald-50"
             >
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.272-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.076 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421-7.403h-.004c-1.96 0-3.87.735-5.285 2.066-.722.671-1.301 1.494-1.726 2.438-.424.944-.648 1.95-.648 3.01 0 1.06.224 2.066.648 3.01.425.944 1.004 1.767 1.726 2.438 1.415 1.331 3.325 2.066 5.285 2.066 1.96 0 3.87-.735 5.285-2.066.722-.671 1.301-1.494 1.726-2.438.424-.944.648-1.95.648-3.01 0-1.06-.224-2.066-.648-3.01-.425-.944-1.004-1.767-1.726-2.438-1.415-1.331-3.325-2.066-5.285-2.066" />
-              </svg>
               WhatsApp
             </a>
+          </div>
+        </div>
+      </section>
 
-            <!-- Share Button -->
+      <section class="rounded-[24px] border border-white/80 bg-white/70 p-4 sm:p-5 md:p-7 shadow-[0_10px_30px_rgba(14,116,144,0.12)] backdrop-blur-xl">
+        <div class="mb-4">
+          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">{{ t('publicDoctorProfile.bookingTitle') }}</h2>
+          <p class="mt-1 text-sm text-slate-500">{{ t('publicDoctorProfile.selectSlotHint') }}</p>
+        </div>
+
+        <div class="mb-5">
+          <div class="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <button
-              @click="shareProfile"
-              class="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg transition"
+              v-for="day in availableSlots"
+              :key="day.date"
+              type="button"
+              @click="setActiveDate(day.date)"
+              :class="activeDate === day.date
+                ? 'bg-sky-600 text-white border-sky-600 shadow-md'
+                : 'bg-white text-slate-700 border-sky-100 hover:bg-sky-50'"
+              class="shrink-0 rounded-2xl border px-3 py-2 min-w-[86px] text-center transition"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C9.769 15.169 11.676 16.5 14 16.5c1.502 0 2.927-.585 3.978-1.594m-6.14-9.270A9.956 9.956 0 0112 3c4.478 0 8.268 2.943 9.542 7m-9.542 0a48.255 48.255 0 00-4.404-9.745m0 0a48.392 48.392 0 014.595 9.75" />
-              </svg>
-              Ulashish
+              <div class="text-xs font-semibold opacity-90">{{ formatDateChip(day.date).day }}</div>
+              <div class="text-lg font-extrabold leading-none mt-0.5">{{ formatDateChip(day.date).date }}</div>
             </button>
           </div>
         </div>
-      </div>
 
-      <!-- Available slots -->
-      <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <h2 class="text-xl font-bold text-gray-900 mb-4">Bo'sh vaqtlar</h2>
-        <div v-if="availableSlots.length === 0" class="text-sm text-gray-500">
-          Hozircha bo'sh vaqtlar topilmadi. Formani to'ldiring, operator siz bilan bog'lanadi.
-        </div>
-        <div v-else class="space-y-4">
+        <div v-if="availableSlots.length > 0" class="space-y-4">
           <div
-            v-for="day in availableSlots"
-            :key="day.date"
-            class="border border-gray-200 rounded-lg p-3"
+            v-for="group in slotGroups"
+            :key="group.key"
+            class="rounded-2xl border border-sky-100 bg-white/80 p-3.5"
           >
-            <div class="text-sm font-semibold text-gray-800 mb-2">{{ day.label }}</div>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex items-center justify-between mb-2.5">
+              <h3 class="text-sm font-bold text-slate-800">{{ group.title }}</h3>
+              <span class="text-xs text-slate-500">{{ group.slots.length }} slots</span>
+            </div>
+
+            <div v-if="group.slots.length" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
               <button
-                v-for="slot in day.slots"
-                :key="`${day.date}-${slot.start}`"
+                v-for="slot in group.slots"
+                :key="`${activeDate}-${group.key}-${slot.start}`"
                 type="button"
-                @click="pickSlot(day.date, slot.start)"
-                class="px-3 py-1.5 text-xs rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                @click="pickSlot(activeDate, slot.start)"
+                :class="selectedDate === activeDate && selectedTime === slot.start
+                  ? 'bg-sky-700 text-white border-sky-700 shadow'
+                  : 'bg-[#F5FBFF] text-sky-800 border-sky-200 hover:bg-sky-100'"
+                class="rounded-xl border px-2 py-2 text-sm font-bold leading-none transition"
               >
-                {{ slot.start }} - {{ slot.end }}
+                {{ slot.start }}
               </button>
+            </div>
+            <p v-else class="text-xs text-slate-400">{{ t('publicDoctorProfile.slotsEmpty') }}</p>
+          </div>
+        </div>
+
+        <div v-else class="rounded-2xl border border-dashed border-sky-200 bg-white/80 p-4 text-sm text-slate-500">
+          {{ t('publicDoctorProfile.slotsEmpty') }}
+        </div>
+
+        <div class="mt-5">
+          <p class="text-sm text-slate-500 mb-2">{{ t('publicDoctorProfile.serviceLabel') }}</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div
+              v-for="(service, index) in visualServices"
+              :key="`${service.id || index}`"
+              @click="selectService(service.id)"
+              :class="String(selectedServiceId) === String(service.id)
+                ? 'border-blue-400 bg-blue-50/80'
+                : 'border-sky-100 bg-white/85'"
+              class="rounded-2xl border p-3.5 shadow-[0_8px_22px_rgba(56,189,248,0.10)] cursor-pointer transition"
+            >
+              <div class="flex items-center gap-3">
+                <div class="h-11 w-11 rounded-xl bg-gradient-to-br from-sky-100 to-blue-200 border border-white shadow-inner flex items-center justify-center">
+                  <img
+                    :src="service.icon"
+                    alt="Dental icon"
+                    class="h-7 w-7 object-contain drop-shadow"
+                  />
+                </div>
+                <div>
+                  <div class="text-sm font-semibold text-slate-900">{{ service.name }}</div>
+                  <div class="text-xs text-slate-500">{{ t('publicDoctorProfile.priceFrom') }} {{ formatServicePrice(service.price) }}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div v-if="!hasSelectedSlot" class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-indigo-900 mb-8">
-        Bo'sh vaqtni tanlang — shundan keyin qisqa forma chiqadi.
-      </div>
-
-      <!-- Lead Form -->
-      <DoctorLeadForm
-        v-if="hasSelectedSlot"
-        :doctor-id="doctor.id"
-        :clinic-id="doctor.clinic_id"
-        :services="services"
-        :available-slots="availableSlots"
-        :initial-date="selectedDate"
-        :initial-time="selectedTime"
-      />
+        <div class="mt-6 pt-5 border-t border-slate-200/80">
+          <DoctorLeadForm
+            embedded
+            :doctor-id="doctor.id"
+            :clinic-id="doctor.clinic_id"
+            :initial-date="selectedDate"
+            :initial-time="selectedTime"
+            :selected-service-name="selectedService?.name || ''"
+            :default-language="publicLanguage"
+            @submitted="handleLeadSubmitted"
+          />
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'vue-toastification'
 import DoctorLeadForm from '@/components/public/DoctorLeadForm.vue'
+import { setLocale } from '@/i18n'
 import {
   getDoctorByPublicSlug,
   getDoctorServices,
@@ -158,17 +223,157 @@ import {
 } from '@/api/doctorsPublicApi'
 
 const route = useRoute()
+const { t, locale } = useI18n()
 const toast = useToast()
 
 const doctor = ref(null)
 const clinic = ref(null)
 const services = ref([])
 const availableSlots = ref([])
+const activeDate = ref('')
 const selectedDate = ref('')
 const selectedTime = ref('')
+const selectedServiceId = ref(null)
+const publicLanguage = ref('uz')
 const loading = ref(true)
 const error = ref(null)
-const hasSelectedSlot = computed(() => Boolean(selectedDate.value && selectedTime.value))
+const activeDay = computed(() => (
+  availableSlots.value.find(item => item.date === activeDate.value)
+  || availableSlots.value[0]
+  || null
+))
+const activeDaySlots = computed(() => activeDay.value?.slots || [])
+
+const slotGroups = computed(() => {
+  const grouped = {
+    morning: [],
+    afternoon: [],
+    evening: [],
+  }
+
+  activeDaySlots.value.forEach((slot) => {
+    const [hourRaw] = String(slot.start || '').split(':')
+    const hour = Number(hourRaw)
+    if (!Number.isFinite(hour)) return
+    if (hour < 12) grouped.morning.push(slot)
+    else if (hour < 17) grouped.afternoon.push(slot)
+    else grouped.evening.push(slot)
+  })
+
+  return [
+    {
+      key: 'morning',
+      title: String(locale.value).startsWith('ru') ? 'Утро' : 'Ertalab',
+      slots: grouped.morning
+    },
+    {
+      key: 'afternoon',
+      title: String(locale.value).startsWith('ru') ? 'День' : 'Kunduzi',
+      slots: grouped.afternoon
+    },
+    {
+      key: 'evening',
+      title: String(locale.value).startsWith('ru') ? 'Вечер' : 'Kechqurun',
+      slots: grouped.evening
+    },
+  ]
+})
+
+const serviceIcons = ['/teeth/11.svg', '/teeth/21.svg', '/teeth/31.svg']
+
+const visualServices = computed(() => {
+  const source = services.value.length > 0
+    ? services.value.slice(0, 3)
+    : [{ id: 'fallback', name: t('publicDoctorProfile.noService'), price: 0 }]
+
+  return source.map((service, index) => ({
+    ...service,
+    icon: serviceIcons[index % serviceIcons.length]
+  }))
+})
+
+const selectedService = computed(() => {
+  const byId = visualServices.value.find((item) => String(item.id) === String(selectedServiceId.value))
+  return byId || visualServices.value[0] || null
+})
+
+watch(publicLanguage, (lang) => {
+  const safeLang = String(lang).toLowerCase().startsWith('ru') ? 'ru' : 'uz'
+  if (locale.value !== safeLang) {
+    setLocale(safeLang)
+  }
+})
+
+const setPublicLanguage = (lang) => {
+  publicLanguage.value = String(lang).toLowerCase().startsWith('ru') ? 'ru' : 'uz'
+}
+
+const formatDateChip = (dateText) => {
+  const date = new Date(`${String(dateText)}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return { day: 'Day', date: '--' }
+
+  const isRu = String(locale.value).startsWith('ru')
+  const uzDays = ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan']
+  const ruDays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+
+  return {
+    day: isRu ? ruDays[date.getDay()] : uzDays[date.getDay()],
+    date: date.toLocaleDateString(isRu ? 'ru-RU' : 'uz-UZ', { day: '2-digit' })
+  }
+}
+
+const formatServicePrice = (price) => {
+  const amount = Number(price || 0)
+  if (!Number.isFinite(amount) || amount <= 0) return '—'
+  return `${amount.toLocaleString('ru-RU')} ${t('common.currencySuffix')}`
+}
+
+const setActiveDate = (date) => {
+  activeDate.value = String(date || '')
+}
+
+const selectService = (serviceId) => {
+  selectedServiceId.value = serviceId
+}
+
+const pickSlot = (date, time) => {
+  selectedDate.value = String(date || '')
+  selectedTime.value = String(time || '')
+  activeDate.value = String(date || '')
+  toast.success(t('publicDoctorProfile.slotSelected', { date, time }))
+}
+
+const loadAvailableSlots = async () => {
+  if (!doctor.value?.id) {
+    availableSlots.value = []
+    return
+  }
+
+  availableSlots.value = await getDoctorAvailableSlots({
+    doctorId: doctor.value.id,
+    workSchedule: doctor.value.work_schedule,
+    daysAhead: 14,
+    slotMinutes: 30
+  })
+
+  if (availableSlots.value.length && !availableSlots.value.some(item => item.date === activeDate.value)) {
+    activeDate.value = availableSlots.value[0].date
+  }
+}
+
+const hasSlotInAvailability = (date, time) => {
+  const day = availableSlots.value.find(item => item.date === date)
+  if (!day) return false
+  return (day.slots || []).some(slot => String(slot.start) === String(time))
+}
+
+const handleLeadSubmitted = async ({ preferred_date, preferred_time } = {}) => {
+  await loadAvailableSlots()
+  if (preferred_date && preferred_time && !hasSlotInAvailability(preferred_date, preferred_time)) {
+    selectedDate.value = ''
+    selectedTime.value = ''
+  }
+}
 
 const shareProfile = async () => {
   const url = window.location.href
@@ -176,7 +381,7 @@ const shareProfile = async () => {
     try {
       await navigator.share({
         title: doctor.value.full_name,
-        text: `Doktor profili: ${url}`,
+        text: t('publicDoctorProfile.shareText', { url }),
         url
       })
     } catch {
@@ -185,17 +390,11 @@ const shareProfile = async () => {
   } else {
     try {
       await navigator.clipboard.writeText(url)
-      toast.success('Profil havolasi nusxalandi!')
+      toast.success(t('publicDoctorProfile.shareCopied'))
     } catch {
-      toast.error('Havolani nusxalab bo\'lmadi')
+      toast.error(t('publicDoctorProfile.shareCopyFailed'))
     }
   }
-}
-
-const pickSlot = (date, time) => {
-  selectedDate.value = String(date || '')
-  selectedTime.value = String(time || '')
-  toast.success(`Tanlandi: ${date} ${time}`)
 }
 
 onMounted(async () => {
@@ -206,11 +405,13 @@ onMounted(async () => {
     // Fetch doctor
     const doctorData = await getDoctorByPublicSlug(slug)
     if (!doctorData) {
-      error.value = 'Doktor profili topilmadi.'
+      error.value = t('publicDoctorProfile.errorNotFound')
       return
     }
 
     doctor.value = doctorData
+    const initialLang = String(doctorData?.public_language || doctorData?.language || locale.value || 'uz').toLowerCase()
+    publicLanguage.value = initialLang.startsWith('ru') ? 'ru' : 'uz'
 
     // Fetch clinic info
     const clinicData = await getDoctorClinicInfo(doctorData.clinic_id)
@@ -218,17 +419,18 @@ onMounted(async () => {
 
     // Fetch services (optional)
     services.value = await getDoctorServices(doctorData.clinic_id)
+    if (services.value.length > 0) {
+      selectedServiceId.value = services.value[0].id
+    }
 
     // Build dynamic available slots
-    availableSlots.value = await getDoctorAvailableSlots({
-      doctorId: doctorData.id,
-      workSchedule: doctorData.work_schedule,
-      daysAhead: 14,
-      slotMinutes: 30
-    })
+    await loadAvailableSlots()
+    if (availableSlots.value.length) {
+      activeDate.value = availableSlots.value[0].date
+    }
   } catch (err) {
     console.error('Error loading doctor profile:', err)
-    error.value = 'Profilni yuklashda xatolik. Qayta urinib ko\'ring.'
+    error.value = t('publicDoctorProfile.errorLoad')
   } finally {
     loading.value = false
   }

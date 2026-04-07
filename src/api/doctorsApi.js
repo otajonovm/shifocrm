@@ -15,6 +15,12 @@ import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 
 const TABLE = 'doctors'
 
+const isMissingColumnError = (error, columnName) => {
+  const message = String(error?.message || '').toLowerCase()
+  const details = String(error?.details || '').toLowerCase()
+  return message.includes(columnName) || details.includes(columnName)
+}
+
 export const listDoctors = async () => {
   try {
     const cid = await getCurrentClinicId()
@@ -158,7 +164,19 @@ export const updateDoctor = async (id, payload) => {
     const numId = Number(id)
     if (!Number.isFinite(numId)) throw new Error('Invalid doctor id')
     const q = mergeClinicQuery(`id=eq.${numId}`, cid)
-    const result = await supabasePatchWhere(TABLE, q, updateData)
+
+    let result
+    try {
+      result = await supabasePatchWhere(TABLE, q, updateData)
+    } catch (error) {
+      if (!Object.prototype.hasOwnProperty.call(updateData, 'public_location_url') || !isMissingColumnError(error, 'public_location_url')) {
+        throw error
+      }
+      const fallbackData = { ...updateData }
+      delete fallbackData.public_location_url
+      result = await supabasePatchWhere(TABLE, q, fallbackData)
+    }
+
     console.log('✅ Doctor updated:', result[0])
     return result && result[0] ? result[0] : null
   } catch (error) {

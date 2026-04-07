@@ -108,6 +108,118 @@
             {{ t('doctorProfile.publicSlugHint') }}
           </p>
         </div>
+
+        <div>
+          <label for="public_bio" class="block text-sm font-medium text-gray-700 mb-2">
+            {{ t('doctorProfile.publicBioLabel') }}
+          </label>
+          <textarea
+            id="public_bio"
+            v-model="profile.public_bio"
+            rows="3"
+            class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+            :placeholder="t('doctorProfile.publicBioPlaceholder')"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="public_avatar_url" class="block text-sm font-medium text-gray-700 mb-2">
+              {{ t('doctorProfile.publicAvatarLabel') }}
+            </label>
+            <div class="space-y-2">
+              <div class="flex items-center gap-3">
+                <div class="w-14 h-14 rounded-xl overflow-hidden border border-gray-200 bg-white flex items-center justify-center">
+                  <img
+                    v-if="profile.public_avatar_url"
+                    :src="profile.public_avatar_url"
+                    alt="avatar"
+                    class="w-full h-full object-cover"
+                  />
+                  <span v-else class="text-xs text-gray-400">IMG</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <label class="inline-flex items-center px-3 py-2 rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 text-xs font-medium cursor-pointer">
+                    {{ t('doctorProfile.publicAvatarUpload') }}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      class="hidden"
+                      @change="handleAvatarUpload"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-medium"
+                    @click="clearAvatar"
+                  >
+                    {{ t('doctorProfile.publicAvatarRemove') }}
+                  </button>
+                </div>
+              </div>
+              <input
+                id="public_avatar_url"
+                v-model="profile.public_avatar_url"
+                type="url"
+                class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                :placeholder="t('doctorProfile.publicAvatarPlaceholder')"
+              />
+              <p v-if="avatarUploadError" class="text-xs text-rose-600">{{ avatarUploadError }}</p>
+            </div>
+          </div>
+
+          <div>
+            <label for="public_phone" class="block text-sm font-medium text-gray-700 mb-2">
+              {{ t('doctorProfile.publicPhoneLabel') }}
+            </label>
+            <input
+              id="public_phone"
+              v-model="profile.public_phone"
+              type="tel"
+              class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              :placeholder="t('doctorProfile.publicPhonePlaceholder')"
+            />
+          </div>
+
+          <div>
+            <label for="public_telegram" class="block text-sm font-medium text-gray-700 mb-2">
+              {{ t('doctorProfile.publicTelegramLabel') }}
+            </label>
+            <input
+              id="public_telegram"
+              v-model="profile.public_telegram"
+              type="text"
+              class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              :placeholder="t('doctorProfile.publicTelegramPlaceholder')"
+            />
+          </div>
+
+          <div>
+            <label for="public_whatsapp" class="block text-sm font-medium text-gray-700 mb-2">
+              {{ t('doctorProfile.publicWhatsAppLabel') }}
+            </label>
+            <input
+              id="public_whatsapp"
+              v-model="profile.public_whatsapp"
+              type="tel"
+              class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              :placeholder="t('doctorProfile.publicWhatsAppPlaceholder')"
+            />
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="public_location_url" class="block text-sm font-medium text-gray-700 mb-2">
+              {{ t('doctorProfile.publicLocationLabel') }}
+            </label>
+            <input
+              id="public_location_url"
+              v-model="profile.public_location_url"
+              type="url"
+              class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              :placeholder="t('doctorProfile.publicLocationPlaceholder')"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -210,6 +322,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { resizeLogoFile } from '@/lib/logoResize'
 
 const domainPath = computed(() => {
   return window.location.origin
@@ -261,6 +374,7 @@ const normalizeProfile = (data) => ({
 
 const profile = ref(normalizeProfile(props.initialData))
 const { t } = useI18n()
+const avatarUploadError = ref('')
 
 watch(() => props.initialData, (newData) => {
   profile.value = normalizeProfile(newData)
@@ -275,4 +389,26 @@ const dayOptions = [
   { key: 'sat', label: t('doctorProfile.daySat') },
   { key: 'sun', label: t('doctorProfile.daySun') },
 ]
+
+const handleAvatarUpload = async (event) => {
+  avatarUploadError.value = ''
+  const file = event?.target?.files?.[0]
+  if (!file) return
+
+  try {
+    const dataUrl = await resizeLogoFile(file)
+    profile.value.public_avatar_url = dataUrl
+  } catch (error) {
+    avatarUploadError.value = error?.message || t('doctorProfile.publicAvatarUploadError')
+  } finally {
+    if (event?.target) {
+      event.target.value = ''
+    }
+  }
+}
+
+const clearAvatar = () => {
+  profile.value.public_avatar_url = ''
+  avatarUploadError.value = ''
+}
 </script>

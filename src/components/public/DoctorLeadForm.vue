@@ -1,168 +1,75 @@
 <template>
-  <div class="bg-white rounded-lg shadow-lg p-6">
-    <h2 class="text-xl font-bold text-gray-900 mb-2">Qabulga yozilish</h2>
-    <p class="text-gray-600 mb-6">Ma'lumotlarni kiriting, keyin avtomatik Telegram botga o'tasiz.</p>
-
-    <div class="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-sm text-indigo-900">
-      Tanlangan vaqt: <span class="font-semibold">{{ form.preferred_date }} {{ form.preferred_time }}</span>
+  <div :class="containerClass">
+    <div class="mb-4">
+      <h2 :class="embedded ? 'text-2xl font-extrabold tracking-tight text-slate-900' : 'text-3xl font-extrabold tracking-tight text-slate-900'">{{ tx.title }}</h2>
+      <p class="text-sm text-slate-500 mt-1">{{ tx.subtitle }}</p>
     </div>
 
-    <form @submit.prevent="submitForm" class="space-y-4">
-      <!-- Patient Name -->
+    <div class="mb-5 rounded-3xl border border-blue-100 bg-slate-50 p-4">
+      <p class="text-xs uppercase tracking-wide text-slate-500">{{ tx.summary }}</p>
+      <p class="mt-1 text-sm font-semibold text-slate-800">{{ tx.service }}: <span class="text-blue-700">{{ selectedServiceLabel }}</span></p>
+      <p class="mt-1 text-sm font-semibold text-slate-800">{{ tx.dateTime }}: <span class="text-blue-700">{{ selectedDateTimeLabel }}</span></p>
+      <p v-if="errors.slot" class="mt-2 text-xs text-rose-600">{{ errors.slot }}</p>
+    </div>
+
+    <form @submit.prevent="submitForm" class="space-y-5">
       <div>
-        <label for="patient_name" class="block text-sm font-medium text-gray-700 mb-1">
-          Ism familiya <span class="text-red-500">*</span>
+        <label for="patient_name" class="block text-sm font-medium text-slate-700 mb-1.5">
+          {{ tx.fullName }} <span class="text-rose-500">*</span>
         </label>
         <input
           id="patient_name"
           v-model="form.patient_name"
           type="text"
-          placeholder="Masalan: Aliyev Aziz"
+          :placeholder="tx.fullNamePlaceholder"
           required
           minlength="2"
           maxlength="100"
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          class="w-full h-12 px-4 border border-slate-300 bg-slate-50 rounded-3xl focus:ring-2 focus:ring-[#2563eb] focus:border-transparent transition"
           :disabled="submitting"
-          @blur="validateName"
+          @input="validateName"
         />
-        <p v-if="errors.patient_name" class="text-red-500 text-sm mt-1">
+        <p v-if="errors.patient_name" class="text-rose-600 text-sm mt-1.5">
           {{ errors.patient_name }}
         </p>
       </div>
 
-      <!-- Phone Number -->
       <div>
-        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">
-          Telefon raqam <span class="text-red-500">*</span>
+        <label for="phone" class="block text-sm font-medium text-slate-700 mb-1.5">
+          {{ tx.phone }} <span class="text-rose-500">*</span>
         </label>
         <input
           id="phone"
           v-model="form.phone"
           type="tel"
-          placeholder="+998 XX XXX XX XX"
+          inputmode="numeric"
+          :placeholder="tx.phonePlaceholder"
           required
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          class="w-full h-12 px-4 border border-slate-300 bg-slate-50 rounded-3xl focus:ring-2 focus:ring-[#2563eb] focus:border-transparent transition"
           :disabled="submitting"
-          @blur="validatePhone"
+          @input="onPhoneInput"
         />
-        <p v-if="errors.phone" class="text-red-500 text-sm mt-1">
+        <p v-if="errors.phone" class="text-rose-600 text-sm mt-1.5">
           {{ errors.phone }}
         </p>
       </div>
 
-      <!-- Preferred visit date/time -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label for="preferred_date" class="block text-sm font-medium text-gray-700 mb-1">
-            Qachon kelasiz? (Sana) <span class="text-red-500">*</span>
-          </label>
-          <input
-            id="preferred_date"
-            v-model="form.preferred_date"
-            type="date"
-            required
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            :disabled="submitting"
-          />
-          <p v-if="errors.preferred_date" class="text-red-500 text-sm mt-1">
-            {{ errors.preferred_date }}
-          </p>
-        </div>
-        <div>
-          <label for="preferred_time" class="block text-sm font-medium text-gray-700 mb-1">
-            Qachon kelasiz? (Vaqt) <span class="text-red-500">*</span>
-          </label>
-          <input
-            id="preferred_time"
-            v-model="form.preferred_time"
-            type="time"
-            required
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            :disabled="submitting"
-          />
-          <p v-if="errors.preferred_time" class="text-red-500 text-sm mt-1">
-            {{ errors.preferred_time }}
-          </p>
-        </div>
-      </div>
-
-      <!-- Quick slot chooser -->
-      <div v-if="availableSlots.length > 0" class="rounded-lg border border-indigo-100 bg-indigo-50/40 p-3">
-        <p class="text-sm font-medium text-indigo-900 mb-2">Tez tanlash (bo'sh vaqtlar)</p>
-        <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
-          <div v-for="day in availableSlots" :key="day.date">
-            <p class="text-xs text-indigo-800 mb-1">{{ day.label }}</p>
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="slot in day.slots"
-                :key="`${day.date}-${slot.start}`"
-                type="button"
-                @click="selectQuickSlot(day.date, slot.start)"
-                class="px-2.5 py-1 text-xs rounded-full border border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-100"
-              >
-                {{ slot.start }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Service Selection -->
-      <div v-if="services.length > 0">
-        <label for="selected_service" class="block text-sm font-medium text-gray-700 mb-1">
-          Xizmat (ixtiyoriy)
-        </label>
-        <select
-          id="selected_service"
-          v-model="form.selected_service"
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          :disabled="submitting"
-        >
-          <option value="">Xizmatni tanlang...</option>
-          <option v-for="service in services" :key="service.id" :value="service.name">
-            {{ service.name }}
-            <span v-if="service.price">({{ formatPrice(service.price) }})</span>
-          </option>
-        </select>
-      </div>
-
-      <!-- Additional Info -->
-      <div>
-        <label for="note" class="block text-sm font-medium text-gray-700 mb-1">
-          Qo'shimcha izoh (ixtiyoriy)
-        </label>
-        <textarea
-          id="note"
-          v-model="form.note"
-          placeholder="Qisqacha izoh qoldirishingiz mumkin"
-          maxlength="500"
-          rows="4"
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-          :disabled="submitting"
-        ></textarea>
-        <p class="text-gray-500 text-xs mt-1">
-          {{ form.note.length }}/500 belgi
-        </p>
-      </div>
-
-      <!-- Submit Button -->
       <button
         type="submit"
-        :disabled="submitting"
-        class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2"
+        :disabled="submitting || !isFormValid"
+        class="w-full rounded-3xl bg-[#2563eb] text-white text-base sm:text-lg font-bold py-4 px-4 transition active:scale-[0.99] disabled:bg-slate-300 disabled:cursor-not-allowed shadow-[0_10px_24px_rgba(37,99,235,0.32)]"
       >
-        <span v-if="submitting" class="animate-spin">
-          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+        <span class="inline-flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M9.04 15.62 8.9 19c.5 0 .72-.22.98-.48l2.36-2.26 4.9 3.59c.9.5 1.53.24 1.77-.83L22.12 4.8h.01c.3-1.38-.5-1.92-1.38-1.6L2.9 10.1c-1.35.52-1.33 1.28-.23 1.62l4.56 1.42L17.8 6.56c.5-.32.96-.14.58.18" />
           </svg>
+          {{ submitting ? tx.submitting : tx.submit }}
         </span>
-        {{ submitting ? 'Yuborilmoqda...' : 'Davom etish (Telegram bot)' }}
       </button>
     </form>
 
-    <!-- Success Message -->
-    <div v-if="successMessage" class="mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
-      <p class="text-green-900 text-center">
+    <div v-if="successMessage" class="mt-4 bg-emerald-50 border border-emerald-200 rounded-3xl p-4">
+      <p class="text-emerald-900 text-center text-sm">
         ✓ {{ successMessage }}
       </p>
     </div>
@@ -170,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import { createLead } from '@/api/leadsApi'
 
@@ -185,14 +92,6 @@ const props = defineProps({
     type: Number,
     required: true
   },
-  services: {
-    type: Array,
-    default: () => []
-  },
-  availableSlots: {
-    type: Array,
-    default: () => []
-  },
   initialDate: {
     type: String,
     default: ''
@@ -200,135 +99,240 @@ const props = defineProps({
   initialTime: {
     type: String,
     default: ''
+  },
+  selectedServiceName: {
+    type: String,
+    default: ''
+  },
+  defaultLanguage: {
+    type: String,
+    default: 'uz'
+  },
+  embedded: {
+    type: Boolean,
+    default: false
   }
 })
 
+const emit = defineEmits(['submitted'])
+
 const toast = useToast()
+const embedded = computed(() => Boolean(props.embedded))
+const containerClass = computed(() => (
+  embedded.value
+    ? 'p-0'
+    : 'bg-white/90 rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8 backdrop-blur-sm'
+))
+
+const texts = {
+  uz: {
+    title: 'Qabulga yozilish',
+    subtitle: 'Ma’lumotlarni kiriting, keyin Telegram botga o‘tasiz.',
+    summary: 'Appointment Summary',
+    service: 'Xizmat',
+    dateTime: 'Sana / Vaqt',
+    fullName: 'Ism familiya',
+    fullNamePlaceholder: 'Aliyev Aziz',
+    phone: 'Telefon raqam',
+    phonePlaceholder: '+998 XX XXX XX XX',
+    submit: 'Davom etish (Telegram bot)',
+    submitting: 'Yuborilmoqda...',
+    errorNameRequired: 'Ism kiritilishi shart',
+    errorNameLength: 'Ism kamida 2 belgidan iborat bo‘lsin',
+    errorPhoneRequired: 'Telefon raqam kiritilishi shart',
+    errorPhoneInvalid: 'Telefon raqam to‘liq bo‘lishi kerak',
+    errorSlotRequired: 'Iltimos avval sana va vaqtni tanlang',
+    success: 'So‘rov qabul qilindi. Telegram botga yo‘naltirilmoqda...',
+    successToast: 'So‘rov yuborildi. Botga o‘tilmoqda...',
+    slotBusy: 'Tanlangan vaqt allaqachon band. Boshqa vaqt tanlang.',
+    failed: 'So‘rovni saqlashda xatolik. Qayta urinib ko‘ring.',
+    serviceFallback: 'Tanlanmagan',
+    dateFallback: 'Tanlanmagan'
+  },
+  ru: {
+    title: 'Запись на приём',
+    subtitle: 'Заполните данные, затем перейдёте в Telegram-бот.',
+    summary: 'Appointment Summary',
+    service: 'Услуга',
+    dateTime: 'Дата / Время',
+    fullName: 'Имя и фамилия',
+    fullNamePlaceholder: 'Алиев Азиз',
+    phone: 'Номер телефона',
+    phonePlaceholder: '+998 XX XXX XX XX',
+    submit: 'Продолжить (Telegram бот)',
+    submitting: 'Отправка...',
+    errorNameRequired: 'Введите имя и фамилию',
+    errorNameLength: 'Имя должно быть не менее 2 символов',
+    errorPhoneRequired: 'Введите номер телефона',
+    errorPhoneInvalid: 'Телефон введён не полностью',
+    errorSlotRequired: 'Сначала выберите дату и время',
+    success: 'Заявка принята. Переход в Telegram-бот...',
+    successToast: 'Заявка отправлена. Переходим в бот...',
+    slotBusy: 'Выбранное время уже занято. Выберите другое время.',
+    failed: 'Ошибка сохранения заявки. Попробуйте снова.',
+    serviceFallback: 'Не выбрано',
+    dateFallback: 'Не выбрано'
+  }
+}
+
+const isUzbek = ref(!String(props.defaultLanguage || 'uz').toLowerCase().startsWith('ru'))
+const tx = computed(() => (isUzbek.value ? texts.uz : texts.ru))
 
 const form = ref({
   patient_name: '',
-  phone: '',
-  preferred_date: props.initialDate || '',
-  preferred_time: props.initialTime || '',
-  selected_service: '',
-  note: ''
+  phone: ''
 })
 
 const errors = ref({
   patient_name: '',
   phone: '',
-  preferred_date: '',
-  preferred_time: ''
+  slot: ''
 })
 
 const submitting = ref(false)
 const successMessage = ref('')
 
 watch(() => props.initialDate, (value) => {
-  if (value) form.value.preferred_date = value
+  if (value) errors.value.slot = ''
 })
 
 watch(() => props.initialTime, (value) => {
-  if (value) form.value.preferred_time = value
+  if (value) errors.value.slot = ''
+})
+
+watch(() => props.defaultLanguage, (value) => {
+  isUzbek.value = !String(value || 'uz').toLowerCase().startsWith('ru')
 })
 
 const validateName = () => {
   errors.value.patient_name = ''
   const name = form.value.patient_name.trim()
   if (!name) {
-    errors.value.patient_name = 'Ism talab qilinadi'
+    errors.value.patient_name = tx.value.errorNameRequired
   } else if (name.length < 2) {
-    errors.value.patient_name = 'Ism kamida 2 belgidan iborat bo\'lsin'
+    errors.value.patient_name = tx.value.errorNameLength
   }
+}
+
+const normalizePhoneDigits = (value) => String(value || '').replace(/\D+/g, '')
+
+const formatPhoneUz = (value) => {
+  let digits = normalizePhoneDigits(value)
+  if (!digits.startsWith('998')) {
+    digits = `998${digits}`
+  }
+  digits = digits.slice(0, 12)
+  const local = digits.slice(3)
+
+  let formatted = '+998'
+  if (local.length > 0) formatted += ` ${local.slice(0, 2)}`
+  if (local.length > 2) formatted += ` ${local.slice(2, 5)}`
+  if (local.length > 5) formatted += ` ${local.slice(5, 7)}`
+  if (local.length > 7) formatted += ` ${local.slice(7, 9)}`
+  return formatted.trim()
 }
 
 const validatePhone = () => {
   errors.value.phone = ''
-  const phone = form.value.phone.trim()
-  if (!phone) {
-    errors.value.phone = 'Telefon talab qilinadi'
-  } else if (!/[0-9]/.test(phone)) {
-    errors.value.phone = 'Telefon raqamda son bo\'lishi kerak'
+  const digits = normalizePhoneDigits(form.value.phone)
+  if (!digits || digits.length <= 3) {
+    errors.value.phone = tx.value.errorPhoneRequired
+  } else if (digits.length !== 12) {
+    errors.value.phone = tx.value.errorPhoneInvalid
   }
 }
 
-const validatePreferredDateTime = () => {
-  errors.value.preferred_date = ''
-  errors.value.preferred_time = ''
-  if (!form.value.preferred_date) {
-    errors.value.preferred_date = 'Sana talab qilinadi'
-  }
-  if (!form.value.preferred_time) {
-    errors.value.preferred_time = 'Vaqt talab qilinadi'
-  }
+const onPhoneInput = (event) => {
+  const next = formatPhoneUz(event?.target?.value ?? form.value.phone)
+  form.value.phone = next
+  validatePhone()
 }
 
-const selectQuickSlot = (date, time) => {
-  form.value.preferred_date = String(date || '')
-  form.value.preferred_time = String(time || '')
-  errors.value.preferred_date = ''
-  errors.value.preferred_time = ''
-}
+const hasSelectedSlot = computed(() => Boolean(String(props.initialDate || '').trim() && String(props.initialTime || '').trim()))
+const isPhoneComplete = computed(() => normalizePhoneDigits(form.value.phone).length === 12)
+const isFormValid = computed(() => {
+  return form.value.patient_name.trim().length >= 2 && isPhoneComplete.value && hasSelectedSlot.value
+})
 
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'UZS'
-  }).format(price)
-}
+const selectedServiceLabel = computed(() => {
+  return String(props.selectedServiceName || '').trim() || tx.value.serviceFallback
+})
+
+const selectedDateTimeLabel = computed(() => {
+  const dateText = String(props.initialDate || '').trim()
+  const timeText = String(props.initialTime || '').trim()
+  if (!dateText || !timeText) return tx.value.dateFallback
+
+  const parsed = new Date(`${dateText}T00:00:00`)
+  const locale = isUzbek.value ? 'uz-UZ' : 'ru-RU'
+  const formattedDate = Number.isNaN(parsed.getTime())
+    ? dateText
+    : parsed.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+  return `${formattedDate}, ${timeText.slice(0, 5)}`
+})
 
 const submitForm = async () => {
-  // Validate
   validateName()
   validatePhone()
-  validatePreferredDateTime()
+  errors.value.slot = ''
+  if (!hasSelectedSlot.value) {
+    errors.value.slot = tx.value.errorSlotRequired
+  }
 
-  if (errors.value.patient_name || errors.value.phone || errors.value.preferred_date || errors.value.preferred_time) {
+  if (!isFormValid.value || errors.value.patient_name || errors.value.phone || errors.value.slot) {
     return
   }
 
   submitting.value = true
+  let shouldRedirectTelegram = false
   try {
-    await createLead({
+    const createdLead = await createLead({
       doctor_id: props.doctorId,
       clinic_id: props.clinicId,
       patient_name: form.value.patient_name.trim(),
       phone: form.value.phone.trim(),
-      preferred_date: form.value.preferred_date,
-      preferred_time: form.value.preferred_time,
-      selected_service: form.value.selected_service || null,
-      note: form.value.note.trim() || null
+      preferred_date: String(props.initialDate || '').trim(),
+      preferred_time: String(props.initialTime || '').trim(),
+      selected_service: selectedServiceLabel.value
     })
 
-    successMessage.value = 'So\'rov qabul qilindi. Telegram botga yo\'naltirilmoqda...'
-    toast.success('So\'rov yuborildi. Botga o\'tilmoqda...')
+    emit('submitted', {
+      lead: createdLead,
+      preferred_date: String(props.initialDate || '').trim(),
+      preferred_time: String(props.initialTime || '').trim()
+    })
 
-    // Reset form
+    successMessage.value = tx.value.success
+    toast.success(tx.value.successToast)
+    shouldRedirectTelegram = true
+
     form.value = {
       patient_name: '',
-      phone: '',
-      preferred_date: '',
-      preferred_time: '',
-      selected_service: '',
-      note: ''
+      phone: ''
     }
     errors.value = {
       patient_name: '',
       phone: '',
-      preferred_date: '',
-      preferred_time: ''
+      slot: ''
     }
 
-    // Hide success message after 5 seconds
     setTimeout(() => {
       successMessage.value = ''
     }, 5000)
   } catch (error) {
     console.error('Error submitting form:', error)
-    toast.error('So\'rovni saqlashda xatolik. Telegram botga o\'tasiz...')
+    if (error?.code === 'SLOT_ALREADY_BOOKED') {
+      toast.error(error.message || tx.value.slotBusy)
+      successMessage.value = ''
+    } else {
+      toast.error(tx.value.failed)
+    }
   } finally {
-    window.location.href = TELEGRAM_BOT_URL
     submitting.value = false
+    if (shouldRedirectTelegram) {
+      window.location.href = TELEGRAM_BOT_URL
+    }
   }
 }
 </script>

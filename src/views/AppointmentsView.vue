@@ -742,7 +742,28 @@ const toast = useToast()
 const { t } = useI18n()
 
 const isAdmin = computed(() => authStore.userRole === 'admin')
-const doctorId = computed(() => authStore.user?.id || null)
+const doctorId = computed(() => {
+  if (isAdmin.value) return null
+
+  const rawUserId = Number(authStore.user?.id)
+  const userEmail = String(authStore.userEmail || authStore.user?.email || '').trim().toLowerCase()
+
+  if (doctorsStore.items.length > 0) {
+    if (Number.isFinite(rawUserId)) {
+      const byId = doctorsStore.items.find(item => Number(item.id) === rawUserId)
+      if (byId) return Number(byId.id)
+    }
+
+    if (userEmail) {
+      const byEmail = doctorsStore.items.find(item => String(item.email || '').trim().toLowerCase() === userEmail)
+      if (byEmail) return Number(byEmail.id)
+    }
+
+    return null
+  }
+
+  return Number.isFinite(rawUserId) ? rawUserId : null
+})
 
 const loading = ref(false)
 const visits = ref([])
@@ -1639,14 +1660,14 @@ onMounted(async () => {
   document.addEventListener('click', onDocumentClick)
   window.addEventListener('resize', onMenuViewportChange)
   window.addEventListener('scroll', onMenuViewportChange, true)
+
+  await doctorsStore.fetchAll()
+
   const patientLoad = isAdmin.value
     ? patientsStore.fetchPatients()
     : (doctorId.value ? patientsStore.fetchPatientsByDoctor(doctorId.value) : patientsStore.fetchPatients())
 
-  await Promise.all([
-    doctorsStore.fetchAll(),
-    patientLoad
-  ])
+  await Promise.all([patientLoad])
   await loadVisits()
 })
 

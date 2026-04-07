@@ -46,7 +46,7 @@
                 </td>
                 <td class="px-4 py-3">
                   <span :class="statusBadgeClass(lead.status)" class="inline-flex px-2 py-1 rounded-full text-xs font-semibold">
-                    {{ lead.status || 'new' }}
+                    {{ getLeadStatusLabel(lead.status) }}
                   </span>
                 </td>
                 <td class="px-4 py-3 text-right">
@@ -55,10 +55,13 @@
                     :value="lead.status || 'new'"
                     @change="onChangeStatus(lead, $event.target.value)"
                   >
-                    <option value="new">new</option>
-                    <option value="contacted">contacted</option>
-                    <option value="booked">booked</option>
-                    <option value="rejected">rejected</option>
+                    <option
+                      v-for="statusOption in leadStatusOptions"
+                      :key="statusOption.value"
+                      :value="statusOption.value"
+                    >
+                      {{ statusOption.label }}
+                    </option>
                   </select>
                 </td>
               </tr>
@@ -75,13 +78,20 @@ import { onMounted, ref } from 'vue'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
-import { listLeadsByClinic, listLeadsByDoctor, updateLeadStatus } from '@/api/leadsApi'
+import { listLeadsByClinic, listLeadsByDoctor, updateLeadStatus, convertLeadToBooked, convertLeadToQabulda } from '@/api/leadsApi'
 
 const authStore = useAuthStore()
 const toast = useToast()
 
 const leads = ref([])
 const loading = ref(false)
+const leadStatusOptions = [
+  { value: 'new', label: 'Yangi' },
+  { value: 'contacted', label: "Bog'langan" },
+  { value: 'booked', label: 'Band qilingan' },
+  { value: 'qabulda', label: 'Qabulda' },
+  { value: 'rejected', label: 'Rad etilgan' },
+]
 
 const formatVisitDateTime = (date, time) => {
   if (!date && !time) return '-'
@@ -91,10 +101,20 @@ const formatVisitDateTime = (date, time) => {
 
 const statusBadgeClass = (status) => {
   const key = String(status || 'new').toLowerCase()
+  if (key === 'qabulda') return 'bg-cyan-100 text-cyan-700'
   if (key === 'booked') return 'bg-emerald-100 text-emerald-700'
   if (key === 'contacted') return 'bg-blue-100 text-blue-700'
   if (key === 'rejected') return 'bg-rose-100 text-rose-700'
+  if (key === 'expired') return 'bg-slate-100 text-slate-600'
   return 'bg-amber-100 text-amber-700'
+}
+
+const getLeadStatusLabel = (status) => {
+  const key = String(status || 'new').toLowerCase()
+  const found = leadStatusOptions.find(item => item.value === key)
+  if (found) return found.label
+  if (key === 'expired') return 'Muddati tugagan'
+  return key || 'Yangi'
 }
 
 const loadLeads = async () => {
@@ -119,15 +139,31 @@ const onChangeStatus = async (lead, status) => {
   const leadId = Number(lead?.id)
   if (!Number.isFinite(leadId)) return
   try {
-    const updated = await updateLeadStatus(leadId, status)
+    let updated = null
+    if (status === 'booked') {
+      const result = await convertLeadToBooked(lead)
+      updated = result?.lead || null
+    } else if (status === 'qabulda') {
+      const result = await convertLeadToQabulda(lead)
+      updated = result?.lead || null
+    } else {
+      updated = await updateLeadStatus(leadId, status)
+    }
+
     const index = leads.value.findIndex(item => Number(item.id) === leadId)
     if (index >= 0) {
       leads.value[index] = { ...leads.value[index], ...(updated || {}), status }
     }
-    toast.success('Status yangilandi')
+    if (status === 'booked') {
+      toast.success('Band qilindi va qabul yaratildi')
+    } else if (status === 'qabulda') {
+      toast.success('Bemor qabulda holatiga o‘tkazildi')
+    } else {
+      toast.success('Status yangilandi')
+    }
   } catch (error) {
     console.error('Failed to update lead status:', error)
-    toast.error('Statusni yangilab bo\'lmadi')
+    toast.error(error?.message || 'Statusni yangilab bo\'lmadi')
   }
 }
 

@@ -45,6 +45,10 @@ export async function createClinic(data) {
     name: data.name,
     slug: (data.slug || '').trim().toLowerCase().replace(/\s+/g, '-') || 'default',
     logo_url: data.logo_url || null,
+    description: data.description != null ? String(data.description).trim() || null : null,
+    address: data.address != null ? String(data.address).trim() || null : null,
+    location_url: data.location_url != null ? String(data.location_url).trim() || null : null,
+    work_schedule: data.work_schedule ?? null,
     max_doctors: Math.max(1, Number(data.max_doctors) || 4),
     is_active: data.is_active !== false
   }
@@ -75,6 +79,10 @@ export async function updateClinic(id, data) {
   if (data.name != null) payload.name = data.name
   if (data.slug != null) payload.slug = String(data.slug).trim().toLowerCase().replace(/\s+/g, '-')
   if (data.logo_url !== undefined) payload.logo_url = data.logo_url || null
+  if (data.description !== undefined) payload.description = data.description ? String(data.description).trim() : null
+  if (data.address !== undefined) payload.address = data.address ? String(data.address).trim() : null
+  if (data.location_url !== undefined) payload.location_url = data.location_url ? String(data.location_url).trim() : null
+  if (data.work_schedule !== undefined) payload.work_schedule = data.work_schedule || null
   if (data.max_doctors != null) payload.max_doctors = Math.max(1, Number(data.max_doctors) || 4)
   if (typeof data.is_active === 'boolean') payload.is_active = data.is_active
   try {

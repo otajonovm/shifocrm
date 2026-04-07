@@ -138,6 +138,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/c/:slug',
+      name: 'clinic-public-profile',
+      component: () => import('@/views/ClinicPublicProfileView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/',
       redirect: '/dashboard',
     },
@@ -175,6 +181,12 @@ router.beforeEach(async (to, from, next) => {
   // Solo doktor /doctors ga kirmasa — o'zi bitta, profilga yo'naltirish
   if (to.name === 'doctors' && authStore.userRole === 'solo') {
     next({ name: 'doctor-profile' })
+    return
+  }
+
+  // Klinika adminlari uchun doktorlar bo'limi Sozlamalarga ko'chirilgan
+  if (to.name === 'doctors' && authStore.userRole === 'admin') {
+    next({ name: 'settings' })
     return
   }
 

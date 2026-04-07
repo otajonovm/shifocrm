@@ -7,6 +7,8 @@ import { supabaseGet } from './supabaseConfig'
 import { findAvailableSlots } from '@/lib/smartCalendar/schedulingEngine'
 
 const ACTIVE_VISIT_STATUSES = ['pending', 'arrived', 'in_progress', 'scheduled', 'confirmed']
+const ACTIVE_LEAD_HOLD_STATUSES = ['new', 'contacted']
+const BOOKED_LEAD_STATUS = 'booked'
 
 const DAY_KEY_BY_INDEX = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
@@ -20,12 +22,19 @@ const normalizeSchedule = (schedule) => {
   }
 }
 
+const toLocalDateString = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const buildDateRange = (daysAhead = 14) => {
   const start = new Date()
   const end = new Date(start)
   end.setDate(end.getDate() + Math.max(1, Number(daysAhead) || 14))
-  const startDate = start.toISOString().slice(0, 10)
-  const endDate = end.toISOString().slice(0, 10)
+  const startDate = toLocalDateString(start)
+  const endDate = toLocalDateString(end)
   return { startDate, endDate }
 }
 
@@ -38,6 +47,37 @@ const mapVisitsByDate = (rows = []) => {
     map.get(date).push(visit)
   })
   return map
+}
+
+const mapLeadsByDate = (rows = []) => {
+  const map = new Map()
+  rows.forEach((lead) => {
+    const date = String(lead.preferred_date || '').slice(0, 10)
+    if (!date) return
+    if (!map.has(date)) map.set(date, [])
+    map.get(date).push(lead)
+  })
+  return map
+}
+
+const normalizeTimeText = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  const [hours, minutes] = raw.split(':')
+  if (!hours || !minutes) return raw
+  const hourNum = Number(hours)
+  const minuteNum = Number(minutes)
+  if (!Number.isFinite(hourNum) || !Number.isFinite(minuteNum)) return raw
+  return `${String(hourNum).padStart(2, '0')}:${String(minuteNum).padStart(2, '0')}`
+}
+
+const addMinutesToTime = (timeText, minutesToAdd) => {
+  const [hours, minutes] = String(timeText || '').split(':').map(Number)
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return ''
+  const total = (hours * 60) + minutes + Math.max(1, Number(minutesToAdd) || 30)
+  const endHour = Math.floor(total / 60)
+  const endMinute = total % 60
+  return `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`
 }
 
 const buildWorkingIntervalsForDay = (daySchedule) => {
@@ -75,6 +115,30 @@ const toVisitInterval = (visit) => {
 
 const isActiveVisit = (visit) => ACTIVE_VISIT_STATUSES.includes(String(visit?.status || '').toLowerCase())
 
+const isLeadBlockingSlot = (lead, nowMs) => {
+  const status = String(lead?.status || '').toLowerCase()
+  if (status === BOOKED_LEAD_STATUS) return true
+  if (!ACTIVE_LEAD_HOLD_STATUSES.includes(status)) return false
+
+  const expiresAt = lead?.hold_expires_at ? new Date(lead.hold_expires_at).getTime() : NaN
+  if (!Number.isFinite(expiresAt)) return false
+  return expiresAt > nowMs
+}
+
+const toLeadInterval = (lead, slotMinutes = 30) => {
+  const start = normalizeTimeText(lead?.preferred_time)
+  if (!start) return null
+  const end = addMinutesToTime(start, slotMinutes)
+  if (!end) return null
+  return { start, end }
+}
+
+const isMissingColumnError = (error, columnName) => {
+  const message = String(error?.message || '').toLowerCase()
+  const details = String(error?.details || '').toLowerCase()
+  return message.includes(columnName) || details.includes(columnName)
+}
+
 const formatDateLabel = (dateText) => {
   const date = new Date(`${dateText}T00:00:00`)
   return date.toLocaleDateString('uz-UZ', {
@@ -94,11 +158,30 @@ export const getDoctorByPublicSlug = async (slug) => {
     const cleanSlug = String(slug || '').trim().toLowerCase()
     if (!cleanSlug) throw new Error('Slug required')
 
-    const rows = await supabaseGet(
-      'doctors',
-      `public_slug=eq.${encodeURIComponent(cleanSlug)}&is_public=eq.true&select=id,full_name,public_bio,public_avatar_url,specialization,clinic_id,public_phone,public_telegram,public_whatsapp,work_schedule`
-    )
-    return rows && rows[0] ? rows[0] : null
+    const queryWithLocation = `public_slug=eq.${encodeURIComponent(cleanSlug)}&is_public=eq.true&select=id,full_name,phone,public_bio,public_avatar_url,public_location_url,specialization,clinic_id,public_phone,public_telegram,public_whatsapp,work_schedule`
+    const queryWithoutLocation = `public_slug=eq.${encodeURIComponent(cleanSlug)}&is_public=eq.true&select=id,full_name,phone,public_bio,public_avatar_url,specialization,clinic_id,public_phone,public_telegram,public_whatsapp,work_schedule`
+
+    let rows
+    try {
+      rows = await supabaseGet('doctors', queryWithLocation)
+    } catch (error) {
+      if (!isMissingColumnError(error, 'public_location_url')) {
+        throw error
+      }
+      rows = await supabaseGet('doctors', queryWithoutLocation)
+    }
+
+    if (!rows || !rows[0]) return null
+
+    const doctor = rows[0]
+    const fallbackPhone = doctor.public_phone || doctor.phone || ''
+
+    return {
+      ...doctor,
+      public_location_url: doctor.public_location_url || null,
+      public_phone: fallbackPhone,
+      public_whatsapp: doctor.public_whatsapp || fallbackPhone,
+    }
   } catch (error) {
     console.error('❌ Failed to fetch doctor profile:', error)
     throw error
@@ -174,13 +257,21 @@ export const getDoctorAvailableSlots = async ({
       `doctor_id=eq.${numDoctorId}&date=gte.${startDate}&date=lte.${endDate}&select=id,date,start_time,end_time,duration_minutes,status&order=date.asc,start_time.asc`
     )
 
+    const leadRows = await supabaseGet(
+      'leads',
+      `doctor_id=eq.${numDoctorId}&preferred_date=gte.${startDate}&preferred_date=lte.${endDate}&select=id,preferred_date,preferred_time,status,hold_expires_at&order=preferred_date.asc,preferred_time.asc`
+    )
+
     const visitsByDate = mapVisitsByDate(rows || [])
+    const leadsByDate = mapLeadsByDate(leadRows || [])
     const result = []
     const start = new Date(`${startDate}T00:00:00`)
     const end = new Date(`${endDate}T00:00:00`)
+    const nowMs = Date.now()
+    const targetSlotMinutes = Math.max(10, Number(slotMinutes) || 30)
 
     for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
-      const dateText = cursor.toISOString().slice(0, 10)
+      const dateText = toLocalDateString(cursor)
       const dayKey = DAY_KEY_BY_INDEX[cursor.getDay()]
       const daySchedule = schedule.days?.[dayKey]
       if (!daySchedule?.enabled) continue
@@ -189,29 +280,26 @@ export const getDoctorAvailableSlots = async ({
       if (!workingIntervals.length) continue
 
       const breakIntervals = buildBreakIntervalsForDay(daySchedule)
-      const existing = (visitsByDate.get(dateText) || [])
+      const existingVisits = (visitsByDate.get(dateText) || [])
         .filter(isActiveVisit)
         .map(toVisitInterval)
         .filter(Boolean)
+
+      const existingLeadHolds = (leadsByDate.get(dateText) || [])
+        .filter((lead) => isLeadBlockingSlot(lead, nowMs))
+        .map((lead) => toLeadInterval(lead, targetSlotMinutes))
+        .filter(Boolean)
+
+      const existing = [...existingVisits, ...existingLeadHolds]
 
       const slots = findAvailableSlots({
         workingIntervals,
         breakIntervals,
         existingAppointments: existing,
         blockedIntervals: [],
-        durationMinutes: Math.max(10, Number(slotMinutes) || 30),
-        stepMinutes: Math.max(5, Number(slotMinutes) || 30)
+        durationMinutes: targetSlotMinutes,
+        stepMinutes: Math.max(5, targetSlotMinutes)
       }).map((slot) => ({ start: slot.start, end: slot.end }))
-
-      if (slots.length && dateText === '2025-03-31') {
-        console.log(`[DEBUG ${dateText}] dayKey=${dayKey}`, {
-          enabled: daySchedule.enabled,
-          working: workingIntervals,
-          breaks: breakIntervals,
-          slotCount: slots.length,
-          firstSlot: slots[0]
-        })
-      }
 
       if (slots.length) {
         result.push({

@@ -210,6 +210,7 @@ export const createVisit = async ({
   start_time = null,
   end_time = null,
   duration_minutes = null,
+  lead_id = null,
   room = null,
   channel = null,
   updated_by = null
@@ -238,6 +239,7 @@ export const createVisit = async ({
       start_time: start_time || null,
       end_time: end_time || null,
       duration_minutes: duration_minutes != null ? Number(duration_minutes) : null,
+      lead_id: lead_id != null ? Number(lead_id) : null,
       room: room || null,
       channel: channel || null,
       updated_by: updated_by || null,
