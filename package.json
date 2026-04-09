@@ -21,7 +21,7 @@
     "@fullcalendar/daygrid": "^6.1.10",
     "@fullcalendar/interaction": "^6.1.10",
     "@fullcalendar/luxon3": "^6.1.10",
-    "@fullcalendar/react": "^6.1.10",
+    "@fullcalendar/react": "^6.1.20",
     "@fullcalendar/resource-timegrid": "^6.1.10",
     "@fullcalendar/timegrid": "^6.1.10",
     "@fullcalendar/vue3": "^6.1.10",
