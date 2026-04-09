@@ -75,16 +75,12 @@ CREATE INDEX IF NOT EXISTS idx_leads_status ON public.leads(status);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON public.leads(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_leads_preferred_date ON public.leads(preferred_date);
 
--- Doctors table indexes for public profile queries
 CREATE INDEX IF NOT EXISTS idx_doctors_is_public ON public.doctors(is_public) WHERE is_public = TRUE;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_doctors_public_slug ON public.doctors(public_slug);
 CREATE INDEX IF NOT EXISTS idx_doctors_clinic_id ON public.doctors(clinic_id);
 
--- ============================================================================
--- 4. CREATE TRIGGER FOR AUTO-UPDATING TIMESTAMPS
--- ============================================================================
 
--- Function to update leads.updated_at
+
 CREATE OR REPLACE FUNCTION public.update_leads_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -93,14 +89,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger for leads table
 DROP TRIGGER IF EXISTS leads_updated_at_trigger ON public.leads;
 CREATE TRIGGER leads_updated_at_trigger
 BEFORE UPDATE ON public.leads
 FOR EACH ROW
 EXECUTE FUNCTION public.update_leads_updated_at();
 
--- Function to update doctors.profile_updated_at
 CREATE OR REPLACE FUNCTION public.update_doctors_profile_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -109,7 +103,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger for doctors profile updates
 DROP TRIGGER IF EXISTS doctors_profile_updated_at_trigger ON public.doctors;
 CREATE TRIGGER doctors_profile_updated_at_trigger
 BEFORE UPDATE ON public.doctors
@@ -124,29 +117,22 @@ WHEN (
 )
 EXECUTE FUNCTION public.update_doctors_profile_updated_at();
 
--- ============================================================================
--- 5. ENABLE ROW LEVEL SECURITY
--- ============================================================================
+
 
 ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 
--- ============================================================================
--- 6. CREATE RLS POLICIES FOR LEADS TABLE
--- ============================================================================
 
--- Policy: Public can read leads (for confirmation)
+
 DROP POLICY IF EXISTS leads_public_select ON public.leads;
 CREATE POLICY leads_public_select
 ON public.leads FOR SELECT
 USING (TRUE);
 
--- Policy: Public can insert leads (anonymous submissions)
 DROP POLICY IF EXISTS leads_public_insert ON public.leads;
 CREATE POLICY leads_public_insert
 ON public.leads FOR INSERT
 WITH CHECK (TRUE);
 
--- Policy: Clinic staff can view leads for their clinic
 DROP POLICY IF EXISTS leads_public_update ON public.leads;
 CREATE POLICY leads_public_update
 ON public.leads FOR UPDATE
@@ -158,11 +144,8 @@ CREATE POLICY leads_public_delete
 ON public.leads FOR DELETE
 USING (TRUE);
 
--- ============================================================================
--- 7. UPDATE DOCTORS TABLE RLS FOR PUBLIC PROFILES
--- ============================================================================
 
--- Policy: Public can read doctors with is_public = TRUE
+
 DROP POLICY IF EXISTS doctors_public_select ON public.doctors;
 CREATE POLICY doctors_public_select
 ON public.doctors FOR SELECT
@@ -170,11 +153,8 @@ USING (
   is_public = TRUE OR auth.role() = 'authenticated'
 );
 
--- ============================================================================
--- 8. BACKFILL PUBLIC_SLUG FOR EXISTING DOCTORS
--- ============================================================================
 
--- Generate unique public_slug for doctors where is_public = TRUE and public_slug IS NULL
+
 UPDATE public.doctors
 SET public_slug = LOWER(CONCAT(
   REGEXP_REPLACE(COALESCE(full_name, 'doctor'), '[^a-z0-9]+', '-', 'g'),
@@ -182,9 +162,7 @@ SET public_slug = LOWER(CONCAT(
 ))
 WHERE (public_slug IS NULL OR TRIM(public_slug) = '');
 
--- ============================================================================
--- 9. CREATE HELPER FUNCTION FOR SLUG GENERATION
--- ============================================================================
+
 
 CREATE OR REPLACE FUNCTION public.generate_public_slug(
   full_name TEXT,
@@ -209,14 +187,3 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ============================================================================
--- MIGRATION COMPLETE
--- ============================================================================
--- This migration:
--- 1. Added public profile fields aligned with frontend/API
--- 2. Created/updated leads table with app-compatible columns
--- 3. Added indexes for public slug and lead queries
--- 4. Added triggers for updated_at
--- 5. Enabled RLS policies for MVP
--- 6. Backfilled public_slug values for existing doctors
--- ============================================================================

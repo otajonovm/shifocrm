@@ -1,7 +1,4 @@
-/**
- * @tanstack/vue-query hooks for appointments
- * Handles data fetching, caching, and mutations
- */
+
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { ref } from 'vue'
@@ -13,7 +10,6 @@ import {
 } from './visitsApi.js'
 
 /**
- * Fetch appointments for date range
  * @param {string} startUtc - UTC ISO string
  * @param {string} endUtc - UTC ISO string
  * @returns Query object with data, isLoading, error
@@ -31,7 +27,7 @@ export const useAppointmentsQuery = (startUtc, endUtc) => {
 }
 
 /**
- * Fetch appointments for specific doctor
+ * 
  * @param {string} doctorId
  * @param {string} startUtc
  * @param {string} endUtc
@@ -72,8 +68,7 @@ export const useCreateAppointmentMutation = () => {
       }
     },
     onSuccess: () => {
-      // Invalidate all appointments queries to refetch
-      queryClient.invalidateQueries({ queryKey: ['appointments'] })
+        queryClient.invalidateQueries({ queryKey: ['appointments'] })
     },
     retry: 1,
   })
