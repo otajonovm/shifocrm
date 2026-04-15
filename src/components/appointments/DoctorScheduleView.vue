@@ -37,10 +37,10 @@
       <!-- View mode toggle -->
       <div class="flex gap-2 bg-gray-100 p-1 rounded-lg">
         <button
-          @click="viewMode = 'day'"
+          @click="selectedViewMode = 'day'"
           :class="[
             'px-3 py-2 text-sm font-medium rounded transition-colors',
-            viewMode === 'day'
+            selectedViewMode === 'day'
               ? 'bg-white text-primary-600 shadow-sm'
               : 'text-gray-600 hover:text-gray-900'
           ]"
@@ -48,10 +48,10 @@
           {{ t('appointments.viewDay') }}
         </button>
         <button
-          @click="viewMode = 'week'"
+          @click="selectedViewMode = 'week'"
           :class="[
             'px-3 py-2 text-sm font-medium rounded transition-colors',
-            viewMode === 'week'
+            selectedViewMode === 'week'
               ? 'bg-white text-primary-600 shadow-sm'
               : 'text-gray-600 hover:text-gray-900'
           ]"
@@ -59,10 +59,10 @@
           {{ t('appointments.viewWeek') }}
         </button>
         <button
-          @click="viewMode = 'month'"
+          @click="selectedViewMode = 'month'"
           :class="[
             'px-3 py-2 text-sm font-medium rounded transition-colors',
-            viewMode === 'month'
+            selectedViewMode === 'month'
               ? 'bg-white text-primary-600 shadow-sm'
               : 'text-gray-600 hover:text-gray-900'
           ]"
@@ -77,7 +77,7 @@
     </div>
 
     <!-- Schedule grid - Day view (Dentist+ style) -->
-    <div v-if="viewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-220px)] sm:h-[calc(100vh-250px)] min-h-[500px]">
+    <div v-if="selectedViewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-220px)] sm:h-[calc(100vh-250px)] min-h-[500px]">
       <!-- Toolbar -->
       <div class="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-slate-50 to-blue-50/60 flex items-center justify-between flex-wrap gap-3">
         <!-- Doctor Filter with Multi-select -->
@@ -136,10 +136,13 @@
 
         <div class="flex items-center flex-wrap gap-2 text-xs">
           <span class="inline-flex items-center rounded-full bg-primary-50 px-2.5 py-1 font-semibold text-primary-700">
-            {{ dayAppointments.length }} ta qabul
+            {{ t('appointments.kpiTotal') }}: {{ totalAppointmentsCount }}
           </span>
           <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
-            {{ freeSlotsCount }} ta bo'sh slot
+            {{ t('appointments.kpiOccupancy') }}: {{ occupancyPercent }}%
+          </span>
+          <span class="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-1 font-semibold text-rose-700">
+            {{ t('appointments.kpiNoShow') }}: {{ noShowPercent }}%
           </span>
         </div>
 
@@ -154,7 +157,7 @@
 
       <!-- Schedule Canvas -->
       <div class="flex-1 overflow-auto relative bg-white">
-        <div class="flex min-w-max">
+        <div :class="dayGridContainerClass">
           <!-- Left: Time column (sticky) -->
           <div class="bg-slate-50 border-r border-gray-200 flex-shrink-0 sticky left-0 z-40" :class="timeColumnWidth">
             <!-- Empty space for top-left intersection to align with doctor headers -->
@@ -170,8 +173,9 @@
             <div
               v-for="(doctor, docIdx) in displayedDoctors"
               :key="doctor.id"
-              class="border-r border-gray-200 relative flex-shrink-0"
-              :style="{ width: doctorColumnWidth }"
+              class="border-r border-gray-200 relative"
+              :class="isSparseDayLayout ? 'flex-none min-w-0' : 'flex-shrink-0'"
+              :style="getDoctorColumnStyle(doctor)"
             >
               <!-- Doctor header (sticky top) -->
               <div class="sticky top-0 z-30 bg-gradient-to-b from-primary-50 to-white border-b border-gray-200 px-2 sm:px-3 py-2 sm:py-3 shadow-sm h-[60px] sm:h-[68px] flex flex-col justify-center">
@@ -226,7 +230,7 @@
     </div>
 
     <!-- Schedule grid - Week view -->
-    <div v-else-if="viewMode === 'week'" class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+    <div v-else-if="selectedViewMode === 'week'" class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
@@ -259,7 +263,7 @@
                 v-for="day in weekDays"
                 :key="`${doctor.id}-${day.dateStr}`"
                 class="px-2 py-3 border-l border-gray-200 text-center min-w-[120px] bg-gradient-to-br from-blue-50 to-transparent hover:from-blue-100 cursor-pointer transition-colors"
-                @click="currentDate = day.dateStr; viewMode = 'day'"
+                @click="currentDate = day.dateStr; selectedViewMode = 'day'"
               >
                 <div class="text-2xl font-bold text-primary-600">
                   {{ getAppointmentsForDoctorAndDate(doctor.id, day.dateStr).length }}
@@ -273,7 +277,7 @@
     </div>
 
     <!-- Schedule grid - Month view -->
-    <div v-else-if="viewMode === 'month'" class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+    <div v-else-if="selectedViewMode === 'month'" class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
@@ -364,10 +368,14 @@ const props = defineProps({
   selectedDate: {
     type: String,
     required: true
+  },
+  viewMode: {
+    type: String,
+    default: 'day'
   }
 })
 
-const emit = defineEmits(['update:selectedDate', 'update-status', 'open-payment', 'open-patient-detail'])
+const emit = defineEmits(['update:selectedDate', 'update:view-mode', 'update-status', 'open-payment', 'open-patient-detail'])
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -379,8 +387,7 @@ const appointments = ref([])
 const patientModalOpen = ref(false)
 const selectedPatientAppointment = ref(null)
 const slotHeightPx = 60 // 30 minut = 60px
-const viewMode = ref('day') // 'day', 'week', 'month'
-const currentDate = ref(props.selectedDate)
+const currentDate = ref(props.selectedDate || new Date().toISOString().split('T')[0])
 const selectedDoctorIds = ref([]) // Multi-select doctor IDs
 const showDoctorDropdown = ref(false)
 const doctorDropdownRef = ref(null) // Ref for dropdown element
@@ -392,6 +399,17 @@ const dragStartTime = ref('')
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
 const dayNames = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Yak']
+
+const selectedViewMode = computed({
+  get: () => {
+    const mode = String(props.viewMode || 'day')
+    return ['day', 'week', 'month'].includes(mode) ? mode : 'day'
+  },
+  set: (mode) => {
+    if (!['day', 'week', 'month'].includes(String(mode))) return
+    emit('update:view-mode', mode)
+  }
+})
 
 // Close dropdown on outside click
 const handleClickOutside = (event) => {
@@ -464,9 +482,111 @@ const dayAppointments = computed(() => {
   return appointments.value.filter(appt => appt.date === currentDate.value)
 })
 
+const doctorLoadMap = computed(() => {
+  const map = new Map()
+  for (const doctor of displayedDoctors.value) {
+    map.set(Number(doctor.id), 0)
+  }
+
+  for (const appointment of dayAppointments.value) {
+    const id = Number(appointment.doctor_id)
+    map.set(id, (map.get(id) || 0) + 1)
+  }
+
+  return map
+})
+
+const leadingDoctorIdForTwoColumn = computed(() => {
+  if (displayedDoctors.value.length !== 2) return null
+  const firstId = Number(displayedDoctors.value[0]?.id)
+  const secondId = Number(displayedDoctors.value[1]?.id)
+  const firstLoad = doctorLoadMap.value.get(firstId) || 0
+  const secondLoad = doctorLoadMap.value.get(secondId) || 0
+  return secondLoad > firstLoad ? secondId : firstId
+})
+
+const isSparseDayLayout = computed(() => {
+  return selectedViewMode.value === 'day' && displayedDoctors.value.length <= 2
+})
+
+const dayGridContainerClass = computed(() => {
+  return isSparseDayLayout.value ? 'flex w-full min-w-0' : 'flex min-w-max'
+})
+
+const getDoctorColumnStyle = (doctor) => {
+  if (!isSparseDayLayout.value) {
+    return { width: doctorColumnWidth.value }
+  }
+
+  if (displayedDoctors.value.length <= 1) {
+    return { width: '100%' }
+  }
+
+  const currentDoctorId = Number(doctor?.id)
+  const isLeadingDoctor = currentDoctorId === Number(leadingDoctorIdForTwoColumn.value)
+  return { width: isLeadingDoctor ? '60%' : '40%' }
+}
+
 const freeSlotsCount = computed(() => {
   const totalSlots = displayedDoctors.value.length * hours.value.length
   return Math.max(0, totalSlots - dayAppointments.value.length)
+})
+
+const selectedPeriodDays = computed(() => {
+  if (selectedViewMode.value === 'day') return 1
+  if (selectedViewMode.value === 'week') return 7
+
+  const date = new Date(`${currentDate.value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return 30
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+})
+
+const getAppointmentDurationMinutes = (appointment) => {
+  const duration = Number(appointment?.duration_minutes)
+  if (Number.isFinite(duration) && duration > 0) return duration
+
+  const start = String(appointment?.start_time || '')
+  const end = String(appointment?.end_time || '')
+  if (start && end) {
+    const [startHour, startMinute] = start.split(':').map(Number)
+    const [endHour, endMinute] = end.split(':').map(Number)
+    const startTotal = (startHour * 60) + startMinute
+    const endTotal = (endHour * 60) + endMinute
+    const diff = endTotal - startTotal
+    if (Number.isFinite(diff) && diff > 0) return diff
+  }
+
+  return 30
+}
+
+const totalAppointmentsCount = computed(() => appointments.value.length)
+
+const noShowCount = computed(() => {
+  return appointments.value.filter(item => item.status === 'no_show').length
+})
+
+const noShowPercent = computed(() => {
+  const total = totalAppointmentsCount.value
+  if (!total) return 0
+  return Math.round((noShowCount.value / total) * 1000) / 10
+})
+
+const occupiedSlotUnits = computed(() => {
+  return appointments.value.reduce((sum, item) => {
+    const duration = getAppointmentDurationMinutes(item)
+    const slotUnits = Math.max(duration / 30, 1)
+    return sum + slotUnits
+  }, 0)
+})
+
+const availableSlotUnits = computed(() => {
+  return displayedDoctors.value.length * hours.value.length * selectedPeriodDays.value
+})
+
+const occupancyPercent = computed(() => {
+  if (!availableSlotUnits.value) return 0
+  const ratio = (occupiedSlotUnits.value / availableSlotUnits.value) * 100
+  return Math.min(100, Math.round(ratio * 10) / 10)
 })
 
 // Get appointments for specific doctor
@@ -528,16 +648,16 @@ const monthCalendar = computed(() => {
 
 // View mode label
 const viewModeLabel = computed(() => {
-  if (viewMode.value === 'day') return t('appointments.viewDay')
-  if (viewMode.value === 'week') return t('appointments.viewWeek')
+  if (selectedViewMode.value === 'day') return t('appointments.viewDay')
+  if (selectedViewMode.value === 'week') return t('appointments.viewWeek')
   return t('appointments.viewMonth')
 })
 
 // Period label
 const periodLabel = computed(() => {
-  if (viewMode.value === 'day') {
+  if (selectedViewMode.value === 'day') {
     return formatDateLabel(currentDate.value)
-  } else if (viewMode.value === 'week') {
+  } else if (selectedViewMode.value === 'week') {
     const start = getWeekStart(currentDate.value)
     const end = new Date(start)
     end.setDate(end.getDate() + 6)
@@ -557,9 +677,9 @@ const selectedDateLocal = computed({
 const shiftPeriod = (days) => {
   const date = new Date(currentDate.value)
 
-  if (viewMode.value === 'day') {
+  if (selectedViewMode.value === 'day') {
     date.setDate(date.getDate() + days)
-  } else if (viewMode.value === 'week') {
+  } else if (selectedViewMode.value === 'week') {
     date.setDate(date.getDate() + days * 7)
   } else {
     date.setMonth(date.getMonth() + days)
@@ -608,10 +728,10 @@ const loadAppointments = async () => {
   try {
     let startDate, endDate
 
-    if (viewMode.value === 'day') {
+    if (selectedViewMode.value === 'day') {
       startDate = currentDate.value
       endDate = currentDate.value
-    } else if (viewMode.value === 'week') {
+    } else if (selectedViewMode.value === 'week') {
       const weekStart = getWeekStart(currentDate.value)
       startDate = weekStart
       const weekEnd = new Date(weekStart + 'T00:00:00')
@@ -833,7 +953,19 @@ const getAppointmentStyle = (appt) => {
 }
 
 // Watch current date va view mode
-watch([() => currentDate.value, () => viewMode.value], loadAppointments)
+watch([() => currentDate.value, () => selectedViewMode.value], loadAppointments)
+
+watch(() => props.selectedDate, (value) => {
+  if (value && value !== currentDate.value) {
+    currentDate.value = value
+  }
+})
+
+watch(currentDate, (value) => {
+  if (value && value !== props.selectedDate) {
+    emit('update:selectedDate', value)
+  }
+})
 
 // Window resize handler for responsive design
 const handleWindowResize = () => {

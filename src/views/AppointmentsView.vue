@@ -35,7 +35,7 @@
               class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
               :class="displayMode === 'schedule' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
             >
-              {{ t('appointments.viewSchedule') || 'Stollar' }}
+              {{ t('appointments.viewSchedule') }}
             </button>
           </div>
         </div>
@@ -342,7 +342,9 @@
       <div v-else-if="displayMode === 'schedule'">
         <DoctorScheduleView
           :selected-date="selectedDate"
+          :view-mode="viewMode"
           @update:selected-date="selectedDate = $event"
+          @update:view-mode="viewMode = $event"
           @update-status="handleStatusUpdate"
           @open-payment="handleSchedulePaymentAction"
           @open-patient-detail="goToPatientDetail"
@@ -742,6 +744,54 @@ const toast = useToast()
 const { t } = useI18n()
 
 const isAdmin = computed(() => authStore.userRole === 'admin')
+
+const STORAGE_KEYS = {
+  displayMode: 'shifocrm.appointments.displayMode',
+  viewMode: 'shifocrm.appointments.viewMode',
+  period: 'shifocrm.appointments.period'
+}
+
+const readStorage = (key) => {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+const writeStorage = (key, value) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(key, String(value))
+  } catch {
+    console.warn(`Failed to save storage key: ${key}`)
+  }
+}
+
+const resolveDisplayModeFallback = () => {
+  return authStore.userRole === 'admin' ? 'schedule' : 'list'
+}
+
+const getInitialPeriod = () => {
+  const raw = String(readStorage(STORAGE_KEYS.period) || '').trim()
+  const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+  return isValidDate ? raw : new Date().toISOString().split('T')[0]
+}
+
+const getInitialViewMode = () => {
+  const raw = String(readStorage(STORAGE_KEYS.viewMode) || '').trim()
+  return ['day', 'week', 'month'].includes(raw) ? raw : 'day'
+}
+
+const getInitialDisplayMode = () => {
+  const raw = String(readStorage(STORAGE_KEYS.displayMode) || '').trim()
+  if (raw === 'list' || raw === 'schedule') {
+    return raw
+  }
+  return resolveDisplayModeFallback()
+}
+
 const doctorId = computed(() => {
   if (isAdmin.value) return null
 
@@ -769,9 +819,9 @@ const loading = ref(false)
 const visits = ref([])
 
 // Kunlik/Haftalik/Oylik filtrlash
-const viewMode = ref('day')
-const selectedDate = ref(new Date().toISOString().split('T')[0])
-const displayMode = ref('schedule') // 'list' or 'schedule' - Klinika uchun default 'schedule'
+const viewMode = ref(getInitialViewMode())
+const selectedDate = ref(getInitialPeriod())
+const displayMode = ref(getInitialDisplayMode()) // 'list' or 'schedule'
 
 const searchQuery = ref('')
 const selectedDoctor = ref('')
@@ -1678,4 +1728,16 @@ onUnmounted(() => {
 })
 
 watch([viewMode, selectedDate], loadVisits)
+
+watch(displayMode, (value) => {
+  writeStorage(STORAGE_KEYS.displayMode, value)
+})
+
+watch(viewMode, (value) => {
+  writeStorage(STORAGE_KEYS.viewMode, value)
+})
+
+watch(selectedDate, (value) => {
+  writeStorage(STORAGE_KEYS.period, value)
+})
 </script>
