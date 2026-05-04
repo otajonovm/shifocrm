@@ -29,6 +29,7 @@
     "@heroicons/vue": "^2.2.0",
     "@supabase/supabase-js": "^2.90.1",
     "@tanstack/vue-query": "^5.28.0",
+    "@vercel/speed-insights": "^2.0.0",
     "apexcharts": "^5.3.6",
     "luxon": "^3.4.4",
     "pinia": "^3.0.4",
