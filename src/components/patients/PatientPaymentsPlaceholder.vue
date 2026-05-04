@@ -136,7 +136,7 @@
         <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
           <div>
             <p class="text-xs text-slate-500">{{ t('patientPayments.amount') }}</p>
-            <p class="font-semibold text-slate-900">{{ formatCurrency(entry.amount) }}</p>
+            <p class="font-semibold text-slate-900">{{ getFormattedAmount(entry) }}</p>
           </div>
           <div>
             <p class="text-xs text-slate-500">{{ t('patientPayments.method') }}</p>
@@ -190,7 +190,7 @@
               </span>
             </td>
             <td class="px-4 py-3 text-slate-700">
-              {{ formatCurrency(entry.amount) }}
+              {{ getFormattedAmount(entry) }}
             </td>
             <td class="px-4 py-3 text-slate-700">{{ entry.method || '-' }}</td>
             <td class="px-4 py-3 text-slate-700">
@@ -553,6 +553,14 @@ const formatCurrency = (amount) => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(amount).replace('UZS', t('common.currencySuffix'))
+}
+
+const getFormattedAmount = (entry) => {
+  let amt = Number(entry.amount) || 0
+  if (isDiscountEntry(entry) || entry.payment_type === 'refund' || (entry.payment_type === 'adjustment' && amt < 0)) {
+    amt = -Math.abs(amt)
+  }
+  return formatCurrency(amt)
 }
 
 const getTypeLabel = (type) => {
