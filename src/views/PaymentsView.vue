@@ -133,11 +133,23 @@
                 <td class="px-6 py-4 text-gray-700">{{ getDisplayNote(payment) }}</td>
                 <td class="px-6 py-4 text-gray-700">
                   <div class="flex items-center gap-2">
-                    <button class="text-primary-600 hover:text-primary-700 text-sm" @click="openEditModal(payment)">
-                      {{ t('payments.edit') }}
+                    <button
+                      type="button"
+                      class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary-600 hover:bg-primary-50 hover:text-primary-700 transition-colors"
+                      :title="t('payments.edit')"
+                      :aria-label="t('payments.edit')"
+                      @click="openEditModal(payment)"
+                    >
+                      <PencilSquareIcon class="h-4 w-4" />
                     </button>
-                    <button class="text-rose-600 hover:text-rose-700 text-sm" @click="confirmDelete(payment)">
-                      {{ t('payments.delete') }}
+                    <button
+                      type="button"
+                      class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors"
+                      :title="t('payments.delete')"
+                      :aria-label="t('payments.delete')"
+                      @click="confirmDelete(payment)"
+                    >
+                      <TrashIcon class="h-4 w-4" />
                     </button>
                   </div>
                 </td>
@@ -178,16 +190,22 @@
               </div>
               <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
                 <button
+                  type="button"
                   @click="openEditModal(payment)"
-                  class="flex-1 mobile-action-btn text-blue-700 bg-blue-50 hover:bg-blue-100"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100"
+                  :title="t('payments.edit')"
+                  :aria-label="t('payments.edit')"
                 >
-                  {{ t('payments.edit') }}
+                  <PencilSquareIcon class="h-4 w-4" />
                 </button>
                 <button
+                  type="button"
                   @click="confirmDelete(payment)"
-                  class="flex-1 mobile-action-btn text-red-700 bg-red-50 hover:bg-red-100"
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-700 bg-red-50 hover:bg-red-100"
+                  :title="t('payments.delete')"
+                  :aria-label="t('payments.delete')"
                 >
-                  {{ t('payments.delete') }}
+                  <TrashIcon class="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -401,7 +419,7 @@ import MobileFilterSheet from '@/components/shared/MobileFilterSheet.vue'
 import MobileFAB from '@/components/shared/MobileFAB.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { PlusIcon, AdjustmentsHorizontalIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, AdjustmentsHorizontalIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { listPayments, createPayment, updatePayment, deletePayment, createAdditionalPayment, getPaymentsByVisitId, parseCategoryFromNote, removeCategoryFromNote } from '@/api/paymentsApi'
 import { listDoctors } from '@/api/doctorsApi'
 import { listPatients } from '@/api/patientsApi'

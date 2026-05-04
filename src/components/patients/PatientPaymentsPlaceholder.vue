@@ -338,11 +338,11 @@
             </div>
             <div class="px-6 py-4 space-y-4">
               <div class="grid gap-4 md:grid-cols-2">
-                <div>
+                <div v-if="!isDiscountMode">
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.visitId') }}</label>
                   <input v-model="form.visit_id" type="number" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" :placeholder="t('patientPayments.visitIdPlaceholder')" />
                 </div>
-                <div>
+                <div v-if="!isDiscountMode">
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.paidAt') }}</label>
                   <input v-model="form.paid_at" type="datetime-local" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
                 </div>
@@ -355,7 +355,7 @@
                     <option value="discount">{{ t('patientPayments.typeDiscount') }}</option>
                   </select>
                 </div>
-                <div>
+                <div v-if="!isDiscountMode">
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.method') }}</label>
                   <select v-model="form.method" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
                     <option value="cash">{{ t('patientPayments.methodCash') }}</option>
@@ -385,7 +385,7 @@
                     Avtomatik: {{ formatCurrency(discountPreview.amount) }} (bazaviy summa: {{ formatCurrency(discountPreview.base) }})
                   </p>
                 </div>
-                <div>
+                <div v-if="!isDiscountMode">
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.note') }}</label>
                   <input v-model="form.note" type="text" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" :placeholder="t('patientPayments.notePlaceholder')" />
                 </div>
@@ -845,9 +845,19 @@ const openCreateModal = () => {
 const openDiscountModal = () => {
   isEditing.value = false
   isDiscountMode.value = true
+
+  let autoVisitId = ''
+  if (visits.value && visits.value.length > 0) {
+    const activeVisit = [...visits.value].sort((a, b) => b.id - a.id)[0]
+    autoVisitId = activeVisit.id
+  } else if (services.value && services.value.length > 0) {
+    const activeService = [...services.value].sort((a, b) => b.visit_id - a.visit_id)[0]
+    autoVisitId = activeService.visit_id
+  }
+
   form.value = {
     id: null,
-    visit_id: '',
+    visit_id: autoVisitId,
     amount: '',
     discount_percent: '',
     payment_type: 'discount',
