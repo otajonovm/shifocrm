@@ -2,18 +2,16 @@
   <div class="space-y-6">
     <!-- Summary cards + Actions: mobil — kartalar 2x2, tugmalar pastda; desktop — bir qatorda -->
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div class="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4 flex-1 min-w-0">
+      <div class="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-3 flex-1 min-w-0">
         <div class="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
           <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('patientPayments.totalPayments') }}</p>
           <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold text-primary-600" :title="formatCurrency(totalPayments)">{{ formatCurrency(totalPayments) }}</p>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('patientPayments.refunds') }}</p>
-          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold text-rose-600">{{ formatCurrency(totalRefunds) }}</p>
-        </div>
-        <div class="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('patientPayments.netIncome') }}</p>
-          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold text-emerald-600">{{ formatCurrency(netIncome) }}</p>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('patientPayments.lastPayment') }}</p>
+          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold text-violet-600">
+            {{ latestPaymentEntry ? getFormattedAmount(latestPaymentEntry) : formatCurrency(0) }}
+          </p>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
           <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('patientPayments.totalServices') }}</p>
@@ -484,20 +482,7 @@ const totalPayments = computed(() =>
   payments.value.reduce((sum, entry) => sum + (entry.payment_type === 'payment' ? Number(entry.amount) || 0 : 0), 0)
 )
 
-const totalRefunds = computed(() =>
-  payments.value.reduce((sum, entry) => {
-    if (entry.payment_type !== 'refund') return sum
-    if (isDiscountEntry(entry)) return sum
-    return sum + (Number(entry.amount) || 0)
-  }, 0)
-)
-
-const netIncome = computed(() =>
-  payments.value.reduce((sum, entry) => {
-    const amount = Number(entry.amount) || 0
-    return sum + (entry.payment_type === 'refund' ? -amount : amount)
-  }, 0)
-)
+const latestPaymentEntry = computed(() => payments.value[0] || null)
 
 const parsePrice = (v) => {
   if (v == null) return 0
