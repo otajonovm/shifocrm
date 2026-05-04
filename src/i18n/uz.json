@@ -1163,7 +1163,7 @@
     "publicPhoneLabel": "Ommaviy telefon",
     "publicPhonePlaceholder": "+998 ...",
     "publicTelegramLabel": "Telegram username",
-    "publicTelegramPlaceholder": "@username",
+    "publicTelegramPlaceholder": "{'@'}username",
     "publicWhatsAppLabel": "WhatsApp raqami",
     "publicWhatsAppPlaceholder": "+998 ...",
     "publicLocationLabel": "Lokatsiya havolasi (Google Maps / 2GIS)",

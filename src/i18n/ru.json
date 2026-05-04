@@ -1163,7 +1163,7 @@
     "publicPhoneLabel": "Публичный телефон",
     "publicPhonePlaceholder": "+998 ...",
     "publicTelegramLabel": "Telegram username",
-    "publicTelegramPlaceholder": "@username",
+    "publicTelegramPlaceholder": "{'@'}username",
     "publicWhatsAppLabel": "Номер WhatsApp",
     "publicWhatsAppPlaceholder": "+998 ...",
     "publicLocationLabel": "Ссылка на локацию (Google Maps / 2GIS)",
