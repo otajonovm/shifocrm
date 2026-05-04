@@ -1,5 +1,6 @@
 <template>
-  <form @submit.prevent="$emit('submit', profile)" class="space-y-6">
+  <!-- Vercel Deployment Test: 2026-05-04 -->
+  <form @submit.prevent="$emit('submit', profile)" class="space-y-6" data-vercel-update-test="true">
     <div class="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
       <div>
