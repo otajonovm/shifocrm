@@ -1,5 +1,5 @@
 <template>
-  <!-- Vercel Deployment Test: 2026-05-04 -->
+  <!-- Vercel Deployment Trigger: 2026-05-04 Update -->
   <form @submit.prevent="$emit('submit', profile)" class="space-y-6" data-vercel-update-test="true">
     <div class="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -313,7 +313,7 @@
     <button
       type="submit"
       :disabled="isSubmitting"
-      class="w-full sm:w-auto px-6 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      class="w-full sm:w-auto px-6 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-[...]"
     >
       {{ isSubmitting ? t('doctorProfile.saving') : t('doctorProfile.saveChanges') }}
     </button>
