@@ -155,6 +155,7 @@ const { t } = useI18n()
 const adminMenuItems = [
   { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
   { labelKey: 'nav.patients', to: '/patients', icon: UsersIcon },
+  { labelKey: 'nav.doctors', to: '/doctors', icon: UserCircleIcon },
   { labelKey: 'nav.appointments', to: '/appointments', icon: CalendarDaysIcon },
   { labelKey: 'nav.leads', to: '/leads', icon: InboxIcon },
   { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
