@@ -1,0 +1,124 @@
+{
+  "pricingTiers": [
+    {
+      "id": "patients",
+      "feature": "pricing.features.patients",
+      "description": "pricing.descriptions.patients",
+      "clinic": {
+        "monthly": 0,
+        "yearly": 0,
+        "description": "pricing.clinic.unlimited"
+      },
+      "solo": {
+        "monthly": 50000,
+        "yearly": 500000,
+        "description": "pricing.solo.limit100"
+      }
+    },
+    {
+      "id": "appointments",
+      "feature": "pricing.features.appointments",
+      "description": "pricing.descriptions.appointments",
+      "clinic": {
+        "monthly": 0,
+        "yearly": 0,
+        "description": "pricing.clinic.unlimited"
+      },
+      "solo": {
+        "monthly": 30000,
+        "yearly": 300000,
+        "description": "pricing.solo.limit500"
+      }
+    },
+    {
+      "id": "reports",
+      "feature": "pricing.features.reports",
+      "description": "pricing.descriptions.reports",
+      "clinic": {
+        "monthly": 0,
+        "yearly": 0,
+        "description": "pricing.clinic.unlimited"
+      },
+      "solo": {
+        "monthly": 40000,
+        "yearly": 400000,
+        "description": "pricing.solo.limit1000"
+      }
+    },
+    {
+      "id": "inventory",
+      "feature": "pricing.features.inventory",
+      "description": "pricing.descriptions.inventory",
+      "clinic": {
+        "monthly": 50000,
+        "yearly": 500000,
+        "description": "pricing.clinic.items500"
+      },
+      "solo": {
+        "monthly": 20000,
+        "yearly": 200000,
+        "description": "pricing.solo.items100"
+      }
+    },
+    {
+      "id": "treatments",
+      "feature": "pricing.features.treatments",
+      "description": "pricing.descriptions.treatments",
+      "clinic": {
+        "monthly": 60000,
+        "yearly": 600000,
+        "description": "pricing.clinic.unlimited"
+      },
+      "solo": {
+        "monthly": 35000,
+        "yearly": 350000,
+        "description": "pricing.solo.limit500"
+      }
+    },
+    {
+      "id": "storage",
+      "feature": "pricing.features.storage",
+      "description": "pricing.descriptions.storage",
+      "clinic": {
+        "monthly": 100000,
+        "yearly": 1000000,
+        "description": "pricing.clinic.gb100"
+      },
+      "solo": {
+        "monthly": 20000,
+        "yearly": 200000,
+        "description": "pricing.solo.gb10"
+      }
+    },
+    {
+      "id": "api",
+      "feature": "pricing.features.api",
+      "description": "pricing.descriptions.api",
+      "clinic": {
+        "monthly": 0,
+        "yearly": 0,
+        "description": "pricing.clinic.unlimited"
+      },
+      "solo": {
+        "monthly": 0,
+        "yearly": 0,
+        "description": "pricing.solo.free"
+      }
+    },
+    {
+      "id": "support",
+      "feature": "pricing.features.support",
+      "description": "pricing.descriptions.support",
+      "clinic": {
+        "monthly": 80000,
+        "yearly": 800000,
+        "description": "pricing.clinic.priority24"
+      },
+      "solo": {
+        "monthly": 0,
+        "yearly": 0,
+        "description": "pricing.solo.email"
+      }
+    }
+  ]
+}

@@ -271,7 +271,8 @@ const periodLabel = computed(() => {
     return `${formatDate(start.toISOString().split('T')[0])} - ${formatDate(end.toISOString().split('T')[0])}`
   } else {
     const date = new Date(currentDate.value + 'T00:00:00')
-    return date.toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long' })
+    const locale = authStore.user?.language === 'ru' ? 'ru-RU' : 'uz-UZ'
+    return date.toLocaleDateString(locale, { year: 'numeric', month: 'long' })
   }
 })
 
@@ -289,9 +290,14 @@ const weekDays = computed(() => {
     const d = new Date(weekStart)
     d.setDate(d.getDate() + i)
     const dateStr = d.toISOString().split('T')[0]
+    const localeKey = authStore.user?.language === 'ru' ? 'ru' : 'uz'
+    const labels = {
+      uz: ['Yak', 'Dsh', 'Ssh', 'Chsh', 'Psh', 'Jum', 'Shn'],
+      ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+    }
     days.push({
       dateStr,
-      dayName: d.toLocaleDateString('uz-UZ', { weekday: 'short' }),
+      dayName: labels[localeKey][d.getDay()],
       dayNum: d.getDate()
     })
   }

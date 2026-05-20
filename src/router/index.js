@@ -184,6 +184,12 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  // Klinika adminlari uchun doktorlar bo'limi Sozlamalarga ko'chirilgan
+  if (to.name === 'doctors' && authStore.userRole === 'admin') {
+    next({ name: 'settings' })
+    return
+  }
+
   // Check role requirement
   if (to.meta.requiresRole) {
     // Allow super admin pages even during impersonation

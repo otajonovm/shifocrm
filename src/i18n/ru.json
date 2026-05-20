@@ -5,6 +5,7 @@
   },
   "common": {
     "search": "Поиск...",
+    "today": "Сегодня",
     "settings": "Настройки",
     "help": "Помощь",
     "profile": "Профиль",
@@ -1163,7 +1164,7 @@
     "publicPhoneLabel": "Публичный телефон",
     "publicPhonePlaceholder": "+998 ...",
     "publicTelegramLabel": "Telegram username",
-    "publicTelegramPlaceholder": "{'@'}username",
+    "publicTelegramPlaceholder": "@username",
     "publicWhatsAppLabel": "Номер WhatsApp",
     "publicWhatsAppPlaceholder": "+998 ...",
     "publicLocationLabel": "Ссылка на локацию (Google Maps / 2GIS)",
@@ -1246,5 +1247,53 @@
     "archivedDesc": "Архив для статистики (только админ)",
     "unknown": "Неизвестно",
     "unknownDesc": "Статус неизвестен"
+  },
+  "pricing": {
+    "title": "Тарифы",
+    "subtitle": "Планы ценообразования для клиник и частных врачей",
+    "monthly": "Месячно",
+    "yearly": "Годовой",
+    "features": {
+      "patients": "Управление пациентами",
+      "appointments": "Приёмы",
+      "reports": "Отчёты",
+      "inventory": "Управление запасами",
+      "treatments": "Планы лечения",
+      "storage": "Хранилище данных",
+      "api": "Доступ API",
+      "support": "Техническая поддержка"
+    },
+    "descriptions": {
+      "patients": "Управление данными и историей пациентов",
+      "appointments": "Планирование и управление приёмами",
+      "reports": "Аналитика и статистика",
+      "inventory": "Отслеживание материалов и расходов",
+      "treatments": "Планирование протоколов лечения",
+      "storage": "Сохранение документов и файлов",
+      "api": "Интеграция с внешними системами",
+      "support": "Решение проблем и консультации"
+    },
+    "clinic": {
+      "unlimited": "Неограниченно",
+      "items500": "До 500 элементов",
+      "gb100": "100 ГБ",
+      "priority24": "Приоритет 24/7"
+    },
+    "solo": {
+      "free": "Бесплатно",
+      "limit100": "До 100 пациентов",
+      "limit500": "До 500 записей",
+      "limit1000": "До 1000 записей",
+      "items100": "До 100 элементов",
+      "gb10": "10 ГБ"
+    },
+    "selectPlan": "Выбрать план",
+    "currentPlan": "Текущий план",
+    "upgradePlan": "Обновить",
+    "downgrade": "Понизить",
+    "managePricing": "Управление тарифами",
+    "clinic_name": "Клиника",
+    "solo_name": "Частный врач",
+    "comparison": "Сравнение"
   }
 }

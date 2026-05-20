@@ -174,6 +174,33 @@
         </div>
       </div>
 
+      <!-- Doctors in clinic profile -->
+      <div v-if="isClinicAdmin" class="bg-white rounded-2xl shadow-card border border-gray-100 p-8 space-y-5">
+        <h2 class="text-lg font-semibold text-gray-900">{{ t('settings.doctorSectionTitle') }}</h2>
+
+        <DoctorForm
+          :initial-data="doctorForm"
+          :is-submitting="creatingDoctor"
+          :button-text="t('settings.addDoctorFromProfile')"
+          @submit="handleCreateDoctor"
+        >
+          <template #error>
+            <p v-if="doctorError" class="text-sm text-rose-600">{{ doctorError }}</p>
+          </template>
+        </DoctorForm>
+
+        <div class="border-t border-gray-100 pt-4">
+          <p class="text-sm font-medium text-gray-700 mb-2">{{ t('settings.currentDoctors') }}</p>
+          <div v-if="doctorsStore.items.length === 0" class="text-sm text-gray-500">{{ t('settings.noDoctorsYet') }}</div>
+          <ul v-else class="space-y-1 text-sm text-gray-700">
+            <li v-for="doctor in doctorsStore.items" :key="doctor.id" class="flex items-center justify-between border border-gray-100 rounded-lg px-3 py-2">
+              <span>{{ doctor.full_name }}</span>
+              <span class="text-gray-500">{{ doctor.specialization || '—' }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
       <!-- Language -->
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-8 space-y-6">
         <div class="flex items-center gap-3">
@@ -203,6 +230,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { useClinicStore } from '@/stores/clinic'
+import { useDoctorsStore } from '@/stores/doctors'
 import { useAuthStore } from '@/stores/auth'
 import { resizeLogoFile } from '@/lib/logoResize'
 import { Cog6ToothIcon, PhotoIcon, ArrowUpTrayIcon, TrashIcon } from '@heroicons/vue/24/outline'
@@ -210,10 +238,12 @@ import { setLocale } from '@/i18n'
 import { useToast } from '@/composables/useToast'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { getClinic, updateClinic } from '@/services/adminService'
+import DoctorForm from '@/components/admin/DoctorForm.vue'
 
 const { locale, t } = useI18n()
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()
+const doctorsStore = useDoctorsStore()
 const toast = useToast()
 
 const isClinicAdmin = computed(() => authStore.userRole === 'admin')
@@ -221,6 +251,8 @@ const isClinicAdmin = computed(() => authStore.userRole === 'admin')
 const currentLocale = ref(locale.value)
 const logoError = ref('')
 const savingProfile = ref(false)
+const creatingDoctor = ref(false)
+const doctorError = ref('')
 const currentClinicId = ref(null)
 
 const buildDefaultSchedule = () => ({
@@ -255,6 +287,15 @@ const profile = ref({
   location_url: '',
   description: '',
   work_schedule: buildDefaultSchedule(),
+})
+
+const doctorForm = ref({
+  full_name: '',
+  phone: '',
+  email: '',
+  password: '',
+  specialization: '',
+  is_active: true,
 })
 
 const dayOptions = [
@@ -347,6 +388,37 @@ const saveClinicProfile = async () => {
   }
 }
 
+const handleCreateDoctor = async (formData) => {
+  doctorError.value = ''
+  creatingDoctor.value = true
+  try {
+    const payload = {
+      full_name: formData.full_name,
+      phone: formData.phone,
+      email: formData.email,
+      password: formData.password,
+      specialization: formData.specialization,
+      is_active: formData.is_active,
+      ...(currentClinicId.value != null ? { clinic_id: Number(currentClinicId.value) } : {})
+    }
+    await doctorsStore.create(payload)
+    doctorForm.value = {
+      full_name: '',
+      phone: '',
+      email: '',
+      password: '',
+      specialization: '',
+      is_active: true,
+    }
+    toast.success(t('doctors.toastCreated'))
+  } catch (error) {
+    doctorError.value = doctorsStore.error || error?.message || t('doctors.errorCreate')
+    toast.error(doctorError.value)
+  } finally {
+    creatingDoctor.value = false
+  }
+}
+
 async function onLogoSelect(e) {
   logoError.value = ''
   const file = e.target?.files?.[0]
@@ -380,7 +452,10 @@ async function copyWebsiteUrl() {
 
 onMounted(async () => {
   if (isClinicAdmin.value) {
-    await loadClinicProfile()
+    await Promise.all([
+      loadClinicProfile(),
+      doctorsStore.fetchAll(),
+    ])
   }
 })
 </script>
