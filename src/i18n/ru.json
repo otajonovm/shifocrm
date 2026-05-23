@@ -30,8 +30,9 @@
   "nav": {
     "dashboard": "Панель",
     "patients": "Пациенты",
-    "doctors": "Врачи",
-    "appointments": "Приёмы",
+    "doctors": "Сотрудники",
+    "staff": "Сотрудники",
+    "appointments": "Календарь",
     "leads": "Лиды",
     "myLeads": "Мои лиды",
     "payments": "Платежи",
@@ -40,7 +41,7 @@
     "reports": "Отчёты",
     "settings": "Настройки",
     "myPatients": "Мои пациенты",
-    "myAppointments": "Мои приёмы",
+    "myAppointments": "Мой календарь",
     "treatmentPlans": "Планы лечения",
     "doctorProfile": "Мой профиль"
   },
@@ -59,11 +60,11 @@
       "subtitle": "Список и управление пациентами"
     },
     "doctors": {
-      "title": "Врачи",
-      "subtitle": "Список врачей"
+      "title": "Сотрудники",
+      "subtitle": "Список сотрудников клиники"
     },
     "appointments": {
-      "title": "Приёмы",
+      "title": "Календарь",
       "subtitle": "Расписание приёмов"
     },
     "payments": {
@@ -296,7 +297,7 @@
     "planDone": "Выполнено"
   },
   "appointments": {
-    "title": "Приёмы",
+    "title": "Календарь",
     "subtitle": "Расписание и управление приёмами",
     "appointmentsCalendar": "Расписание приемов",
     "export": "Экспорт",
@@ -922,23 +923,23 @@
     "discountNamePlaceholder": "Например: 10% на терапию"
   },
   "doctors": {
-    "addTitle": "Добавить врача",
-    "addButton": "Добавить врача",
-    "maxDoctorsWarning": "Достигнут максимум 4 врача. Удалите одного перед добавлением нового.",
+    "addTitle": "Добавить сотрудника",
+    "addButton": "Добавить сотрудника",
+    "maxDoctorsWarning": "Достигнут максимум 4 сотрудника. Удалите одного перед добавлением нового.",
     "maxDoctorsWarningDynamic": "Лимит исчерпан (макс.: {max}). Обратитесь к администратору.",
     "exportDb": "Экспорт в db.json",
-    "maxDoctorsToast": "Можно добавить максимум 4 врача",
-    "toastCreated": "Врач успешно добавлен!",
-    "errorCreate": "Ошибка при добавлении врача",
-    "confirmDelete": "Вы действительно хотите удалить этого врача?",
-    "toastDeleted": "Врач успешно удалён!",
-    "errorDelete": "Ошибка при удалении врача",
+    "maxDoctorsToast": "Можно добавить максимум 4 сотрудника",
+    "toastCreated": "Сотрудник успешно добавлен!",
+    "errorCreate": "Ошибка при добавлении сотрудника",
+    "confirmDelete": "Вы действительно хотите удалить этого сотрудника?",
+    "toastDeleted": "Сотрудник успешно удалён!",
+    "errorDelete": "Ошибка при удалении сотрудника",
     "toastExport": "Данные успешно скачаны!",
     "errorExport": "Ошибка при скачивании",
-    "tableTitle": "Врачи ({count}/4)",
+    "tableTitle": "Сотрудники ({count}/4)",
     "refresh": "Обновить",
-    "loading": "Загрузка врачей...",
-    "noDoctors": "Врачи не найдены. Добавьте первого врача выше.",
+    "loading": "Загрузка сотрудников...",
+    "noDoctors": "Сотрудники не найдены. Добавьте первого сотрудника выше.",
     "name": "Имя",
     "phone": "Телефон",
     "email": "Email",
@@ -1088,10 +1089,10 @@
     "profileSaved": "Профиль клиники сохранён",
     "profileLoadError": "Не удалось загрузить профиль клиники",
     "profileSaveError": "Не удалось сохранить профиль клиники",
-    "doctorSectionTitle": "Врачи клиники",
-    "addDoctorFromProfile": "Добавить врача",
-    "currentDoctors": "Текущие врачи",
-    "noDoctorsYet": "Пока врачей нет",
+    "staffSectionTitle": "Сотрудники клиники",
+    "addStaffFromProfile": "Добавить сотрудника",
+    "currentStaff": "Текущие сотрудники",
+    "noStaffYet": "Пока сотрудников нет",
     "websiteSectionTitle": "Сайт клиники",
     "websiteSectionHint": "Откройте публичную страницу клиники: информация и список врачей будут доступны пациентам.",
     "websiteSlugLabel": "Ссылка страницы (slug)",

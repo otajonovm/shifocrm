@@ -30,8 +30,9 @@
   "nav": {
     "dashboard": "Dashboard",
     "patients": "Bemorlar",
-    "doctors": "Doktorlar",
-    "appointments": "Uchrashuvlar",
+    "doctors": "Xodimlar",
+    "staff": "Xodimlar",
+    "appointments": "Kalendar",
     "payments": "To'lovlar",
     "services": "Xizmatlar",
     "inventory": "Ombor",
@@ -40,7 +41,7 @@
     "myLeads": "Mening Leadlarim",
     "settings": "Sozlamalar",
     "myPatients": "Mening Bemorlarim",
-    "myAppointments": "Mening Uchrashuvlarim",
+    "myAppointments": "Mening Kalendarim",
     "treatmentPlans": "Davolash Rejalari",
     "doctorProfile": "Mening Profilim"
   },
@@ -59,11 +60,11 @@
       "subtitle": "Bemorlar ro'yxati va boshqaruvi"
     },
     "doctors": {
-      "title": "Doktorlar",
-      "subtitle": "Shifokorlar ro'yxati"
+      "title": "Xodimlar",
+      "subtitle": "Klinika xodimlari ro'yxati"
     },
     "appointments": {
-      "title": "Uchrashuvlar",
+      "title": "Kalendar",
       "subtitle": "Qabullar jadvali"
     },
     "payments": {
@@ -325,7 +326,7 @@
     "planDone": "Bajarildi"
   },
   "appointments": {
-    "title": "Uchrashuvlar",
+    "title": "Kalendar",
     "subtitle": "Qabullar jadvali va boshqaruvi",
     "appointmentsCalendar": "Qabullar jadvali",
     "export": "Export",
@@ -951,23 +952,23 @@
     "migrationOdontogramHint": "Odontogramma rangini saqlash uchun Supabase SQL Editor da SUPABASE_SERVICES_ODONTOGRAM.sql faylini ishga tushiring."
   },
   "doctors": {
-    "addTitle": "Yangi doktor qo'shish",
-    "addButton": "Doktor qo'shish",
-    "maxDoctorsWarning": "Maksimal 4 ta doktor. Yangi qo'shishdan oldin doktordan birini o'chiring.",
+    "addTitle": "Yangi xodim qo'shish",
+    "addButton": "Xodim qo'shish",
+    "maxDoctorsWarning": "Maksimal 4 ta xodim. Yangi qo'shishdan oldin xodimlardan birini o'chiring.",
     "maxDoctorsWarningDynamic": "Limit to'ldi (Maks: {max}). Iltimos, administratorga bog'laning.",
     "exportDb": "db.json ga eksport",
-    "maxDoctorsToast": "Maximum 4 ta doktor qo'shish mumkin",
-    "toastCreated": "Doktor muvaffaqiyatli qo'shildi!",
-    "errorCreate": "Doktor qo'shishda xatolik yuz berdi",
-    "confirmDelete": "Haqiqatan ham bu doktorni o'chirmoqchimisiz?",
-    "toastDeleted": "Doktor muvaffaqiyatli o'chirildi!",
-    "errorDelete": "Doktorni o'chirishda xatolik yuz berdi",
+    "maxDoctorsToast": "Maximum 4 ta xodim qo'shish mumkin",
+    "toastCreated": "Xodim muvaffaqiyatli qo'shildi!",
+    "errorCreate": "Xodim qo'shishda xatolik yuz berdi",
+    "confirmDelete": "Haqiqatan ham bu xodimni o'chirmoqchimisiz?",
+    "toastDeleted": "Xodim muvaffaqiyatli o'chirildi!",
+    "errorDelete": "Xodimni o'chirishda xatolik yuz berdi",
     "toastExport": "Ma'lumotlar muvaffaqiyatli yuklab olindi!",
     "errorExport": "Yuklab olishda xatolik yuz berdi",
-    "tableTitle": "Doktorlar ({count}/4)",
+    "tableTitle": "Xodimlar ({count}/4)",
     "refresh": "Yangilash",
-    "loading": "Doktorlar yuklanmoqda...",
-    "noDoctors": "Doktor topilmadi. Yuqoridan birinchi doktorni qo'shing.",
+    "loading": "Xodimlar yuklanmoqda...",
+    "noDoctors": "Xodim topilmadi. Yuqoridan birinchi xodimni qo'shing.",
     "name": "Ism",
     "phone": "Telefon",
     "email": "Email",
@@ -1117,10 +1118,10 @@
     "profileSaved": "Klinika profili saqlandi",
     "profileLoadError": "Klinika profilini yuklab bo'lmadi",
     "profileSaveError": "Klinika profilini saqlab bo'lmadi",
-    "doctorSectionTitle": "Klinika shifokorlari",
-    "addDoctorFromProfile": "Shifokor qo'shish",
-    "currentDoctors": "Joriy shifokorlar",
-    "noDoctorsYet": "Hozircha shifokorlar yo'q",
+    "staffSectionTitle": "Klinika xodimlari",
+    "addStaffFromProfile": "Xodim qo'shish",
+    "currentStaff": "Joriy xodimlar",
+    "noStaffYet": "Hozircha xodimlar yo'q",
     "websiteSectionTitle": "Klinika veb-sayti",
     "websiteSectionHint": "Klinikangiz uchun ommaviy sahifa oching: ma'lumotlar va shifokorlar ro'yxati ko'rinadi.",
     "websiteSlugLabel": "Sahifa havolasi (slug)",

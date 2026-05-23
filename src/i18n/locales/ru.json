@@ -125,8 +125,8 @@
   },
   "appointments": {
     "title": "Встречи",
-    "myAppointments": "Мои Встречи",
-    "appointmentsCalendar": "Расписание приемов",
+    "myAppointments": "Мой календарь",
+    "appointmentsCalendar": "Календарь приемов",
     "addAppointment": "Новая Встреча"
   },
   "payments": {

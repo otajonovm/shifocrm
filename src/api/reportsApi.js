@@ -15,14 +15,14 @@ const getLocalDayRange = (date) => {
   return { startISO: start.toISOString(), endISO: end.toISOString() }
 }
 
-export async function getSoloSummary(doctorId, clinicId = null) {
+export async function getSoloSummary(doctorId) {
   const today = getTodayISO()
   const now = new Date()
   // Visits today
   let visits = []
   try {
     visits = await getVisitsByDate(today)
-  } catch (err) {
+  } catch {
     visits = []
   }
 
@@ -45,7 +45,7 @@ export async function getSoloSummary(doctorId, clinicId = null) {
     const dayPay = await getPaymentsByDateRange(startISO, endISO)
     // Sum amounts (best-effort)
     dailyRevenue = (dayPay || []).reduce((s, e) => s + (Number(e.amount) || 0), 0)
-  } catch (err) {
+  } catch {
     dailyRevenue = 0
   }
 
@@ -78,7 +78,7 @@ export async function getSoloSummary(doctorId, clinicId = null) {
       .map(([id, amount]) => ({ id, amount }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 3)
-  } catch (err) {
+  } catch {
     topDebtors = []
   }
 

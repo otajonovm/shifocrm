@@ -1,106 +1,20 @@
 <template>
   <MainLayout>
     <div class="space-y-6 animate-fade-in">
-      <div class="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div class="flex items-center justify-between gap-4 px-4 py-3 sm:px-6 overflow-x-auto">
-          <div class="relative w-full min-w-[260px] max-w-md flex-shrink-0">
-            <div class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-              <MagnifyingGlassIcon class="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Bemor ismi, telefon, MED ID..."
-              class="w-full rounded-2xl border border-gray-200 bg-gray-50/80 pl-10 pr-4 py-3 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-primary-500 focus:bg-white focus:ring-2 focus:ring-primary-100"
-            />
-          </div>
-
-          <div class="flex items-center gap-3 flex-shrink-0">
-            <div class="flex items-center gap-1 rounded-2xl border border-gray-200 bg-gray-50 p-1">
-              <button
-                type="button"
-                @click="shiftDate(-1)"
-                class="inline-flex h-10 min-w-10 items-center justify-center rounded-xl px-3 text-sm font-semibold text-gray-700 hover:bg-white hover:text-gray-900"
-                :title="t('appointments.previous')"
-              >
-                <ChevronLeftIcon class="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                @click="setToday"
-                class="inline-flex h-10 items-center justify-center rounded-xl border border-primary-100 bg-white px-3 text-sm font-semibold text-primary-700 hover:border-primary-200 hover:bg-primary-50"
-              >
-                {{ t('appointments.today') }}
-              </button>
-              <button
-                type="button"
-                @click="shiftDate(1)"
-                class="inline-flex h-10 min-w-10 items-center justify-center rounded-xl px-3 text-sm font-semibold text-gray-700 hover:bg-white hover:text-gray-900"
-                :title="t('appointments.next')"
-              >
-                <ChevronRightIcon class="h-4 w-4" />
-              </button>
-            </div>
-
-            <div class="flex items-center gap-1 rounded-2xl border border-gray-200 bg-gray-50 p-1">
-              <button
-                type="button"
-                @click="viewMode = 'day'"
-                class="h-10 rounded-xl px-3 text-sm font-semibold transition-colors"
-                :class="viewMode === 'day' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
-              >
-                {{ t('appointments.viewDay') }}
-              </button>
-              <button
-                type="button"
-                @click="viewMode = 'week'"
-                class="h-10 rounded-xl px-3 text-sm font-semibold transition-colors"
-                :class="viewMode === 'week' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
-              >
-                {{ t('appointments.viewWeek') }}
-              </button>
-              <button
-                type="button"
-                @click="viewMode = 'month'"
-                class="h-10 rounded-xl px-3 text-sm font-semibold transition-colors"
-                :class="viewMode === 'month' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
-              >
-                {{ t('appointments.viewMonth') }}
-              </button>
-            </div>
-
-            <div class="flex items-center gap-1 rounded-2xl border border-gray-200 bg-gray-50 p-1">
-              <button
-                type="button"
-                @click="displayMode = 'list'"
-                class="h-10 rounded-xl px-3 text-sm font-semibold transition-colors"
-                :class="displayMode === 'list' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
-              >
-                {{ t('appointments.viewList') || 'Ro\'yxat' }}
-              </button>
-              <button
-                type="button"
-                @click="displayMode = 'schedule'"
-                class="h-10 rounded-xl px-3 text-sm font-semibold transition-colors"
-                :class="displayMode === 'schedule' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
-              >
-                {{ t('appointments.viewSchedule') }}
-              </button>
-            </div>
-          </div>
-
-          <div class="flex items-center flex-shrink-0">
-            <button
-              type="button"
-              @click="openCreateModal"
-              class="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
-            >
-              <PlusIcon class="h-4 w-4" />
-              {{ t('appointments.newAppointment') }}
-            </button>
-          </div>
-        </div>
-      </div>
+      <!-- New Header Component (Filters) -->
+      <AppointmentsHeader
+        :selectedDate="selectedDate"
+        :searchQuery="searchQuery"
+        :viewMode="viewMode"
+        :layout="displayMode"
+        :selectedDoctorId="selectedDoctor"
+        :doctors="isAdmin ? doctors : []"
+        @date-change="selectedDate = $event"
+        @search-change="searchQuery = $event"
+        @view-change="viewMode = $event"
+        @layout-change="displayMode = $event"
+        @doctor-change="selectedDoctor = $event"
+      />
 
       <!-- Bulk Actions (List view only) -->
       <div v-if="displayMode === 'list' && selectedIds.length > 0" class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-wrap items-center gap-3">
@@ -339,7 +253,7 @@
                   <button
                     type="button"
                     class="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700 hover:bg-primary-100 transition-colors"
-                    @click="showQuickPatientForm ? resetQuickPatientForm() : initQuickPatientForm()"
+                    @click="showQuickPatientForm = !showQuickPatientForm"
                   >
                     <PlusIcon class="h-3.5 w-3.5" />
                     {{ showQuickPatientForm ? 'Yopish' : 'Bemor qo\'shish' }}
@@ -677,10 +591,10 @@ import {
 } from '@/api/telegramApi'
 import { getVisitStatusLabel, getVisitStatusColors } from '@/constants/visitStatus'
 import MainLayout from '@/layouts/MainLayout.vue'
+import AppointmentsHeader from '@/components/appointments/AppointmentsHeader.vue'
 import DoctorScheduleView from '@/components/appointments/DoctorScheduleView.vue'
 import {
   PlusIcon,
-  MagnifyingGlassIcon,
   XMarkIcon,
   EllipsisVerticalIcon,
   CheckCircleIcon,
@@ -689,8 +603,6 @@ import {
   CheckIcon,
   CalendarDaysIcon,
   Cog6ToothIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
 } from '@heroicons/vue/24/outline'
 
 const authStore = useAuthStore()
@@ -782,7 +694,6 @@ const displayMode = ref(getInitialDisplayMode()) // 'list' or 'schedule'
 
 const searchQuery = ref('')
 const selectedDoctor = ref('')
-const selectedStatus = ref('')
 
 const selectedIds = ref([])
 const bulkDoctorId = ref('')
@@ -955,19 +866,14 @@ const dateRange = computed(() => {
   return { start: toISODate(start), end: toISODate(end) }
 })
 
+
+
 const filteredVisits = computed(() => {
   let result = visits.value
 
   if (selectedDoctor.value) {
     const doctorIdNum = Number(selectedDoctor.value)
     result = result.filter(v => Number(v.doctor_id) === doctorIdNum)
-  }
-  if (selectedStatus.value) {
-    if (selectedStatus.value === 'completed') {
-      result = result.filter(v => v.status === 'completed_paid' || v.status === 'completed_debt')
-    } else {
-      result = result.filter(v => v.status === selectedStatus.value)
-    }
   }
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
@@ -1019,14 +925,6 @@ const openCreateModal = () => {
     createForm.value.date = selectedDate.value || new Date().toISOString().split('T')[0]
   }
   showCreateModal.value = true
-}
-
-const initQuickPatientForm = () => {
-  // Open quick add form. No search prefill available in this view.
-  quickPatientError.value = ''
-  quickPatientForm.value.full_name = ''
-  quickPatientForm.value.phone = ''
-  showQuickPatientForm.value = true
 }
 
 const resetQuickPatientForm = () => {
@@ -1501,28 +1399,6 @@ const clearSelected = () => {
 
 const selectedVisits = () => visits.value.filter(v => selectedIds.value.includes(Number(v.id)))
 
-// Bugungi sanaga o'tish
-const setToday = () => {
-  selectedDate.value = new Date().toISOString().split('T')[0]
-}
-
-// Sana navigatsiyasi (kunlik/haftalik/oylik bo'yicha)
-const shiftDate = (direction) => {
-  const base = new Date(selectedDate.value)
-  if (Number.isNaN(base.getTime())) return
-
-  let delta = 1
-  if (viewMode.value === 'week') delta = 7
-  if (viewMode.value === 'month') {
-    const newDate = new Date(base.getFullYear(), base.getMonth() + direction, base.getDate())
-    selectedDate.value = toISODate(newDate)
-    return
-  }
-
-  const newDate = addDays(base, delta * direction)
-  selectedDate.value = toISODate(newDate)
-}
-
 // Helper funksiyalar
 const addDays = (date, days) => {
   const next = new Date(date)
@@ -1676,7 +1552,9 @@ onUnmounted(() => {
   window.removeEventListener('scroll', onMenuViewportChange, true)
 })
 
-watch([viewMode, selectedDate], loadVisits)
+watch([viewMode, selectedDate], () => {
+  loadVisits()
+}, { deep: false })
 
 watch(displayMode, (value) => {
   writeStorage(STORAGE_KEYS.displayMode, value)
@@ -1690,3 +1568,4 @@ watch(selectedDate, (value) => {
   writeStorage(STORAGE_KEYS.period, value)
 })
 </script>
+

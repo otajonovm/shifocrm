@@ -174,14 +174,14 @@
         </div>
       </div>
 
-      <!-- Doctors in clinic profile -->
+      <!-- Staff in clinic profile -->
       <div v-if="isClinicAdmin" class="bg-white rounded-2xl shadow-card border border-gray-100 p-8 space-y-5">
-        <h2 class="text-lg font-semibold text-gray-900">{{ t('settings.doctorSectionTitle') }}</h2>
+        <h2 class="text-lg font-semibold text-gray-900">{{ t('settings.staffSectionTitle') }}</h2>
 
         <DoctorForm
           :initial-data="doctorForm"
           :is-submitting="creatingDoctor"
-          :button-text="t('settings.addDoctorFromProfile')"
+          :button-text="t('settings.addStaffFromProfile')"
           @submit="handleCreateDoctor"
         >
           <template #error>
@@ -190,8 +190,8 @@
         </DoctorForm>
 
         <div class="border-t border-gray-100 pt-4">
-          <p class="text-sm font-medium text-gray-700 mb-2">{{ t('settings.currentDoctors') }}</p>
-          <div v-if="doctorsStore.items.length === 0" class="text-sm text-gray-500">{{ t('settings.noDoctorsYet') }}</div>
+          <p class="text-sm font-medium text-gray-700 mb-2">{{ t('settings.currentStaff') }}</p>
+          <div v-if="doctorsStore.items.length === 0" class="text-sm text-gray-500">{{ t('settings.noStaffYet') }}</div>
           <ul v-else class="space-y-1 text-sm text-gray-700">
             <li v-for="doctor in doctorsStore.items" :key="doctor.id" class="flex items-center justify-between border border-gray-100 rounded-lg px-3 py-2">
               <span>{{ doctor.full_name }}</span>

@@ -47,6 +47,26 @@
           Pechat
         </button>
         <button
+          v-if="payments.length > 0"
+          type="button"
+          class="inline-flex items-center gap-2 rounded-lg bg-gray-600 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 shadow-md transition-colors"
+          @click="handlePrintA4"
+          title="A4 formatida to'lov hisoboti"
+        >
+          <PrinterIcon class="w-5 h-5" />
+          A4 chop etish
+        </button>
+        <button
+          v-if="payments.length > 0"
+          type="button"
+          class="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 shadow-md transition-colors"
+          @click="handlePrintReceipt"
+          title="80mm termik chek"
+        >
+          <PrinterIcon class="w-5 h-5" />
+          Chek chop etish
+        </button>
+        <button
           v-if="canManagePayments && hasIncompleteVisits"
           class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 shadow-md hover:shadow-lg transition-all"
           @click="completeAllVisits"
@@ -88,6 +108,26 @@
         >
           <PrinterIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
           <span>Pechat</span>
+        </button>
+        <button
+          v-if="payments.length > 0"
+          type="button"
+          class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gray-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-gray-700 active:scale-[0.99] transition-all"
+          @click="handlePrintA4"
+          title="A4 formatida to'lov hisoboti"
+        >
+          <PrinterIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
+          <span>A4 chop etish</span>
+        </button>
+        <button
+          v-if="payments.length > 0"
+          type="button"
+          class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-amber-600 active:scale-[0.99] transition-all"
+          @click="handlePrintReceipt"
+          title="80mm termik chek"
+        >
+          <PrinterIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
+          <span>Chek chop etish</span>
         </button>
         <button
           v-if="hasIncompleteVisits"
@@ -410,6 +450,173 @@
         </div>
       </div>
     </Transition>
+
+    <!-- A4 Report Template (hidden, shown only during A4 print) -->
+    <div id="print-a4-report" class="hidden">
+      <div class="a4-print-container">
+        <!-- Header with clinic info -->
+        <div class="a4-header">
+          <div v-if="clinicStore.logoUrl" class="a4-logo">
+            <img :src="clinicStore.logoUrl" :alt="clinicStore.displayName" />
+          </div>
+          <div class="a4-clinic-info">
+            <h1 class="a4-clinic-name">{{ clinicStore.displayName || 'SHIFOCRM' }}</h1>
+            <p class="a4-clinic-address">{{ clinicStore.address || '' }}</p>
+            <p class="a4-clinic-phone">{{ clinicStore.phone || '' }}</p>
+          </div>
+        </div>
+
+        <!-- Patient info -->
+        <div class="a4-patient-section">
+          <h2 class="a4-section-title">Bemor Ma'lumotlari</h2>
+          <div class="a4-patient-details">
+            <div class="a4-patient-row">
+              <span class="a4-label">F.I.Sh:</span>
+              <span class="a4-value">{{ patientName }}</span>
+            </div>
+            <div class="a4-patient-row">
+              <span class="a4-label">Bemor ID:</span>
+              <span class="a4-value">{{ patientMedId || '-' }}</span>
+            </div>
+            <div class="a4-patient-row">
+              <span class="a4-label">Chop etilgan sana:</span>
+              <span class="a4-value">{{ formatDatetime(new Date()) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transaction history table -->
+        <div class="a4-transactions-section">
+          <h2 class="a4-section-title">To'lov Tarixi</h2>
+          <table class="a4-transactions-table">
+            <thead>
+              <tr>
+                <th>Sana</th>
+                <th>Tashrif ID</th>
+                <th>Turi</th>
+                <th>Summa</th>
+                <th>Usuli</th>
+                <th>Izoh</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="payments.length === 0">
+                <td colspan="6" class="a4-empty">To'lovlar mavjud emas</td>
+              </tr>
+              <tr v-for="entry in payments" :key="entry.id">
+                <td>{{ formatDate(entry.paid_at) }}</td>
+                <td>#{{ entry.visit_id }}</td>
+                <td>{{ getTypeDisplayLabel(entry) }}</td>
+                <td class="a4-amount">{{ getFormattedAmount(entry) }}</td>
+                <td>{{ entry.method || '-' }}</td>
+                <td>{{ getDisplayNote(entry) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Summary section -->
+        <div class="a4-summary-section">
+          <div class="a4-summary-row">
+            <span class="a4-summary-label">Jami xizmatlar:</span>
+            <span class="a4-summary-value">{{ formatCurrency(totalServices) }}</span>
+          </div>
+          <div class="a4-summary-row">
+            <span class="a4-summary-label">Jami to'langan:</span>
+            <span class="a4-summary-value">{{ formatCurrency(totalPayments) }}</span>
+          </div>
+          <div class="a4-summary-row a4-summary-row-debt">
+            <span class="a4-summary-label">Qoldiq qarzdorlik:</span>
+            <span class="a4-summary-value">{{ formatCurrency(remainingDebt) }}</span>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="a4-footer">
+          <p class="a4-footer-text">Hujjat avtomatik ravishda tuzilgan: {{ clinicStore.displayName || 'SHIFOCRM' }} tizimida</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 80mm Receipt Template (hidden, shown only during receipt print) -->
+    <div id="print-receipt" class="hidden">
+      <div class="receipt-print-container">
+        <!-- Header -->
+        <div class="receipt-header">
+          <div v-if="clinicStore.logoUrl" class="receipt-logo">
+            <img :src="clinicStore.logoUrl" :alt="clinicStore.displayName" />
+          </div>
+          <h1 class="receipt-title">{{ clinicStore.displayName || 'SHIFOCRM' }}</h1>
+          <p v-if="clinicStore.address" class="receipt-meta">{{ clinicStore.address }}</p>
+          <p v-if="clinicStore.phone" class="receipt-meta">Tel: {{ clinicStore.phone }}</p>
+        </div>
+
+        <!-- Separator -->
+        <div class="receipt-separator"></div>
+
+        <!-- Patient info -->
+        <div class="receipt-section">
+          <div class="receipt-row">
+            <span class="receipt-label">Bemor:</span>
+            <span class="receipt-value">{{ patientName }}</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">ID:</span>
+            <span class="receipt-value">{{ patientMedId || '-' }}</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Sana:</span>
+            <span class="receipt-value">{{ formatDate(new Date()) }}</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Vaqt:</span>
+            <span class="receipt-value">{{ formatTime(new Date()) }}</span>
+          </div>
+        </div>
+
+        <!-- Separator -->
+        <div class="receipt-separator"></div>
+
+        <!-- Payment details -->
+        <div class="receipt-section">
+          <div v-if="payments.length > 0">
+            <div class="receipt-items-header">
+              <span class="receipt-items-col-1">Turi</span>
+              <span class="receipt-items-col-2">Summa</span>
+            </div>
+            <div v-for="entry in payments.slice(0, 5)" :key="entry.id" class="receipt-item">
+              <span class="receipt-items-col-1 receipt-item-type">{{ getTypeDisplayLabel(entry) }}</span>
+              <span class="receipt-items-col-2 receipt-item-amount">{{ getFormattedAmount(entry) }}</span>
+            </div>
+            <p v-if="payments.length > 5" class="receipt-more-text">+{{ payments.length - 5 }} ko'proq...</p>
+          </div>
+        </div>
+
+        <!-- Separator -->
+        <div class="receipt-separator"></div>
+
+        <!-- Totals -->
+        <div class="receipt-totals">
+          <div class="receipt-total-row">
+            <span class="receipt-total-label">Jami summa:</span>
+            <span class="receipt-total-value">{{ formatCurrency(totalPayments) }}</span>
+          </div>
+          <div class="receipt-total-row">
+            <span class="receipt-total-label">Qarzdorlik:</span>
+            <span class="receipt-total-value">{{ formatCurrency(remainingDebt) }}</span>
+          </div>
+        </div>
+
+        <!-- Separator -->
+        <div class="receipt-separator"></div>
+
+        <!-- Footer -->
+        <div class="receipt-footer">
+          <p class="receipt-footer-text">Rahmat!</p>
+          <p class="receipt-footer-text">{{ formatDatetime(new Date()) }}</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -692,6 +899,20 @@ const formatDate = (value) => {
   return date.toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+const formatDatetime = (value) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+const formatTime = (value) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })
+}
+
 const loadPayments = async () => {
   loading.value = true
   try {
@@ -813,6 +1034,69 @@ const printLastCompletion = () => {
   if (!printResult.ok) {
     toast.error('Pechat oynasi bloklandi. Brauzerda pop-upga ruxsat bering.')
   }
+}
+
+// Dual print methods for A4 report and receipt
+const handlePrintA4 = () => {
+  const a4Template = document.getElementById('print-a4-report')
+  const receiptTemplate = document.getElementById('print-receipt')
+
+  if (!a4Template) {
+    toast.error('A4 shabloni topilmadi')
+    return
+  }
+
+  // Mark templates with data attributes
+  a4Template.setAttribute('data-print-mode', 'a4')
+  if (receiptTemplate) receiptTemplate.setAttribute('data-print-mode', 'hidden')
+
+  // Show A4 template
+  a4Template.classList.remove('hidden')
+  if (receiptTemplate) receiptTemplate.classList.add('hidden')
+
+  // Trigger print
+  setTimeout(() => {
+    window.print()
+  }, 100)
+
+  // Restore visibility after print dialog closes
+  setTimeout(() => {
+    a4Template.classList.add('hidden')
+    if (receiptTemplate) receiptTemplate.classList.remove('hidden')
+    a4Template.removeAttribute('data-print-mode')
+    if (receiptTemplate) receiptTemplate.removeAttribute('data-print-mode')
+  }, 1000)
+}
+
+const handlePrintReceipt = () => {
+  const a4Template = document.getElementById('print-a4-report')
+  const receiptTemplate = document.getElementById('print-receipt')
+
+  if (!receiptTemplate) {
+    toast.error('Chek shabloni topilmadi')
+    return
+  }
+
+  // Mark templates with data attributes
+  if (a4Template) a4Template.setAttribute('data-print-mode', 'hidden')
+  receiptTemplate.setAttribute('data-print-mode', 'receipt')
+
+  // Show receipt template
+  if (a4Template) a4Template.classList.add('hidden')
+  receiptTemplate.classList.remove('hidden')
+
+  // Trigger print
+  setTimeout(() => {
+    window.print()
+  }, 100)
+
+  // Restore visibility after print dialog closes
+  setTimeout(() => {
+    if (a4Template) a4Template.classList.remove('hidden')
+    receiptTemplate.classList.add('hidden')
+    if (a4Template) a4Template.removeAttribute('data-print-mode')
+    receiptTemplate.removeAttribute('data-print-mode')
+  }, 1000)
 }
 
 onMounted(loadAll)
@@ -1102,3 +1386,466 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+/* Print templates - hidden by default */
+#print-a4-report,
+#print-receipt {
+  display: none;
+}
+
+/* A4 Report Print CSS */
+.a4-print-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 210mm;
+  width: 100%;
+  color: #333;
+  line-height: 1.4;
+  box-sizing: border-box;
+  /* emulate printable margins so content doesn't collide with browser header/footer
+     (we set the real @page margin to 0 so browsers don't reserve space for their
+     own header/footer; the user still should disable "Headers and footers" in
+     the print dialog to completely remove the browser-added header/footer). */
+  padding: 15mm;
+}
+
+
+.a4-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.a4-logo {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.a4-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.a4-clinic-info {
+  flex: 1;
+}
+
+.a4-clinic-name {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0;
+  color: #1f2937;
+}
+
+.a4-clinic-address {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 4px 0 0 0;
+}
+
+.a4-clinic-phone {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 2px 0 0 0;
+}
+
+.a4-patient-section,
+.a4-transactions-section,
+.a4-summary-section {
+  margin-bottom: 25px;
+}
+
+.a4-section-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin: 0 0 15px 0;
+  color: #1f2937;
+  border-bottom: 1px solid #d1d5db;
+  padding-bottom: 8px;
+}
+
+.a4-patient-details {
+  background: #f9fafb;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.a4-patient-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.a4-label {
+  font-weight: 600;
+  color: #6b7280;
+  width: 150px;
+}
+
+.a4-value {
+  flex: 1;
+  color: #1f2937;
+  text-align: right;
+}
+
+.a4-transactions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.a4-transactions-table thead {
+  background: #f3f4f6;
+}
+
+.a4-transactions-table th {
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid #d1d5db;
+  color: #4b5563;
+}
+
+.a4-transactions-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.a4-transactions-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.a4-amount {
+  text-align: right;
+  font-weight: 500;
+}
+
+.a4-empty {
+  text-align: center;
+  color: #9ca3af;
+  padding: 15px !important;
+}
+
+.a4-summary-section {
+  margin-top: 30px;
+  padding: 20px;
+  background: #eff6ff;
+  border: 2px solid #0284c7;
+  border-radius: 8px;
+}
+
+.a4-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.a4-summary-row-debt {
+  border-top: 2px solid #0284c7;
+  padding-top: 12px;
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #0c4a6e;
+}
+
+.a4-summary-label {
+  font-weight: 600;
+}
+
+.a4-summary-value {
+  text-align: right;
+  font-weight: 700;
+}
+
+.a4-footer {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.a4-footer-text {
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* 80mm Receipt Print CSS */
+.receipt-print-container {
+  font-family: 'Courier New', monospace;
+  width: 80mm;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 8mm;
+  background: white;
+  color: #000;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.receipt-header {
+  text-align: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #000;
+}
+
+.receipt-logo {
+  width: 40mm;
+  height: 30mm;
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.receipt-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.receipt-title {
+  font-weight: bold;
+  font-size: 14px;
+  margin: 6px 0;
+  text-transform: uppercase;
+}
+
+.receipt-meta {
+  font-size: 10px;
+  margin: 2px 0;
+  color: #333;
+}
+
+.receipt-separator {
+  border-top: 1px dashed #000;
+  margin: 8px 0;
+}
+
+.receipt-section {
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-bottom: 3px;
+  gap: 8px;
+}
+
+.receipt-label {
+  font-weight: bold;
+  min-width: 45%;
+}
+
+.receipt-value {
+  text-align: right;
+  flex: 1;
+  word-break: break-word;
+}
+
+.receipt-items-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  font-size: 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #000;
+  padding-bottom: 2px;
+}
+
+.receipt-items-col-1 {
+  flex: 1;
+}
+
+.receipt-items-col-2 {
+  text-align: right;
+  min-width: 25mm;
+}
+
+.receipt-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  margin-bottom: 2px;
+  gap: 4px;
+}
+
+.receipt-item-type {
+  flex: 1;
+  word-break: break-word;
+}
+
+.receipt-item-amount {
+  text-align: right;
+  min-width: 25mm;
+  font-weight: 500;
+}
+
+.receipt-more-text {
+  font-size: 9px;
+  text-align: center;
+  margin: 2px 0;
+  color: #666;
+}
+
+.receipt-totals {
+  padding: 6px 0;
+  border-top: 2px double #000;
+  border-bottom: 2px double #000;
+  margin: 6px 0;
+}
+
+.receipt-total-row {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  font-size: 12px;
+  margin-bottom: 3px;
+  gap: 8px;
+}
+
+.receipt-total-label {
+  flex: 1;
+}
+
+.receipt-total-value {
+  text-align: right;
+  min-width: 25mm;
+}
+
+.receipt-footer {
+  text-align: center;
+  padding-top: 6px;
+  margin-top: 8px;
+}
+
+.receipt-footer-text {
+  font-size: 11px;
+  font-weight: bold;
+  margin: 3px 0;
+}
+
+/* Print media query - only show relevant template */
+@media print {
+  * {
+    margin: 0;
+    padding: 0;
+    background: white !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  /* Hide everything except print templates */
+  body > * {
+    display: none !important;
+  }
+
+  #print-a4-report,
+  #print-receipt {
+    display: block !important;
+  }
+
+  /* Hide non-printing template during print */
+  #print-a4-report[data-print-mode='hidden'],
+  #print-receipt[data-print-mode='hidden'] {
+    display: none !important;
+  }
+
+  /* A4 print mode
+     Set page margin to 0 so browser header/footer don't occupy page margins.
+     Visual margins are provided by .a4-print-container padding above. Note:
+     to fully remove browser header/footer (date/url/page num) disable
+     "Headers and footers" in the print dialog (browser UI). */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  #print-a4-report {
+    page-break-after: avoid;
+  }
+
+  #print-a4-report * {
+    page-break-inside: avoid;
+  }
+
+  /* 80mm receipt print mode */
+  #print-receipt {
+    width: 80mm;
+  }
+
+  /* Ensure tables print properly */
+  table {
+    page-break-inside: avoid;
+    width: 100%;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  /* Hide buttons and other UI elements during print */
+  button,
+  input,
+  select,
+  textarea,
+  .hidden,
+  .md\\:hidden,
+  .md\\:flex,
+  .md\\:block,
+  [class*='modal'],
+  [class*='transition'] {
+    display: none !important;
+  }
+
+  /* Ensure text is black for printing */
+  a {
+    color: #000 !important;
+    text-decoration: underline;
+  }
+
+  img {
+    max-width: 100%;
+  }
+}
+
+/* Screen print mode override - show templates temporarily */
+body.print-mode #print-a4-report,
+body.print-mode #print-receipt {
+  display: block !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: white;
+  z-index: 9999;
+  overflow: auto;
+  padding: 20px;
+}
+
+body.print-mode-a4 > *:not(#print-a4-report) {
+  display: none !important;
+}
+
+body.print-mode-receipt > *:not(#print-receipt) {
+  display: none !important;
+}
+</style>

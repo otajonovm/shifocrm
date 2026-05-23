@@ -1,6 +1,6 @@
 <template>
   <MainLayout>
-    <!-- Add Doctor Form -->
+    <!-- Add Staff Form -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-8">
       <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('doctors.addTitle') }}</h2>
 
@@ -22,7 +22,7 @@
       </DoctorForm>
     </div>
 
-    <!-- Doctors List -->
+    <!-- Staff List -->
     <DoctorsTable
       :doctors="doctorsStore.items"
       :is-loading="doctorsStore.isLoading"

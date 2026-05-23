@@ -1,7 +1,7 @@
 <template>
   <div class="doctor-schedule-container space-y-4">
     <!-- Schedule grid - Day view (Dentist+ style) -->
-    <div v-if="selectedViewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-160px)] sm:h-[calc(100vh-190px)] min-h-[500px]">
+    <div v-if="selectedViewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-220px)] sm:h-[calc(100vh-250px)] min-h-[500px]">
       <!-- Toolbar -->
       <div class="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-slate-50 to-blue-50/60 flex items-center justify-between flex-wrap gap-3">
         <!-- Doctor Filter with Multi-select -->
@@ -451,11 +451,6 @@ const getDoctorColumnStyle = (doctor) => {
   return { width: isLeadingDoctor ? '60%' : '40%' }
 }
 
-const freeSlotsCount = computed(() => {
-  const totalSlots = displayedDoctors.value.length * hours.value.length
-  return Math.max(0, totalSlots - dayAppointments.value.length)
-})
-
 const selectedPeriodDays = computed(() => {
   if (selectedViewMode.value === 'day') return 1
   if (selectedViewMode.value === 'week') return 7
@@ -570,63 +565,12 @@ const monthCalendar = computed(() => {
   return calendar
 })
 
-// View mode label
-const viewModeLabel = computed(() => {
-  if (selectedViewMode.value === 'day') return t('appointments.viewDay')
-  if (selectedViewMode.value === 'week') return t('appointments.viewWeek')
-  return t('appointments.viewMonth')
-})
-
-// Period label
-const periodLabel = computed(() => {
-  if (selectedViewMode.value === 'day') {
-    return formatDateLabel(currentDate.value)
-  } else if (selectedViewMode.value === 'week') {
-    const start = getWeekStart(currentDate.value)
-    const end = new Date(start)
-    end.setDate(end.getDate() + 6)
-    return `${start.split('T')[0]} - ${end.toISOString().split('T')[0]}`
-  } else {
-    const date = new Date(currentDate.value + 'T00:00:00')
-    return date.toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long' })
-  }
-})
-
-// Tanlangan sanani o'zgartirish
-const selectedDateLocal = computed({
-  get: () => props.selectedDate,
-  set: (val) => emit('update:selectedDate', val)
-})
-
-const shiftPeriod = (days) => {
-  const date = new Date(currentDate.value)
-
-  if (selectedViewMode.value === 'day') {
-    date.setDate(date.getDate() + days)
-  } else if (selectedViewMode.value === 'week') {
-    date.setDate(date.getDate() + days * 7)
-  } else {
-    date.setMonth(date.getMonth() + days)
-  }
-
-  currentDate.value = date.toISOString().split('T')[0]
-}
-
-const setToday = () => {
-  currentDate.value = new Date().toISOString().split('T')[0]
-}
-
 const getWeekStart = (dateStr) => {
   const date = new Date(dateStr + 'T00:00:00')
   const day = date.getDay() || 7
   const diff = date.getDate() - day + 1
   const weekStart = new Date(date.setDate(diff))
   return weekStart.toISOString().split('T')[0]
-}
-
-const formatDateLabel = (dateStr) => {
-  const date = new Date(dateStr + 'T00:00:00')
-  return date.toLocaleDateString('uz-UZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 const getStatusBadgeClass = (status) => {
