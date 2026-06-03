@@ -5,35 +5,34 @@
     :title="`${appointment.patient_name} - ${localStartTime} to ${localEndTime}`"
     @click="handleBlockClick"
   >
+    <div class="absolute top-1 right-1 flex items-center gap-1">
+      <span
+        class="h-2.5 w-2.5 rounded-full shadow-sm ring-1 ring-white"
+        :class="statusDotClass"
+        :title="getStatusLabel(appointment.status)"
+      />
+    </div>
+
     <!-- Bemor ismi (click -> patient detail) -->
     <button
       type="button"
-      class="font-semibold text-gray-900 line-clamp-2 sm:line-clamp-1 text-xs sm:text-sm text-left hover:text-primary-700 hover:underline"
+      class="font-semibold text-gray-900 line-clamp-2 sm:line-clamp-1 text-sm sm:text-[15px] text-left hover:text-primary-700 hover:underline leading-tight"
       @click.stop="handleOpenPatientDetail"
     >
       {{ appointment.patient_name || 'N/A' }}
     </button>
 
     <!-- Vaqt (responsive) -->
-    <div class="text-gray-600 mt-0.5 flex items-center gap-0.5 sm:gap-1 text-xs">
-      <svg class="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+    <div class="text-gray-600 mt-0.5 flex items-center gap-1 text-[11px] sm:text-xs">
+      <svg class="w-3 h-3 flex-shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
       </svg>
       <span class="line-clamp-1">{{ localStartTime }} - {{ localEndTime }}</span>
     </div>
 
-    <!-- Status badge (responsive) -->
-    <div class="flex items-center gap-1 mt-1">
-      <span class="inline-block px-1.5 sm:px-2 py-0.5 rounded text-xs font-medium line-clamp-1" :class="statusBadgeClass">
-        {{ getStatusLabel(appointment.status) }}
-      </span>
-    </div>
-
-    <!-- To'lov badge (mobile: hidden if small) -->
-    <div v-if="paymentStatus" class="hidden sm:flex items-center gap-1 mt-1">
-      <span class="inline-block px-1.5 sm:px-2 py-0.5 rounded text-xs font-medium" :class="paymentBadgeClass">
-        {{ paymentStatus }}
-      </span>
+    <!-- Compact hint -->
+    <div v-if="compactHint" class="mt-1 text-[11px] text-gray-500 line-clamp-1">
+      {{ compactHint }}
     </div>
 
     <!-- Quick actions (show on hover, hidden on small mobile) -->
@@ -84,7 +83,7 @@ const props = defineProps({
   },
   slotHeightPx: {
     type: Number,
-    default: 60 // 30 minut = 60px
+    default: 60 // 1 soat = 60px
   },
   positionedByParent: {
     type: Boolean,
@@ -134,11 +133,11 @@ const getDuration = () => {
 // Duration (minutlar) -> height (px) o'tkazish
 const appointmentHeight = computed(() => {
   const duration = getDuration()
-  return (duration / 30) * props.slotHeightPx
+  return Math.max(props.slotHeightPx, (duration / 60) * props.slotHeightPx)
 })
 
 const blockClasses = computed(() => {
-  const base = 'appointment-block rounded-lg border border-l-4 p-1 sm:p-2 text-xs cursor-pointer transition-all hover:shadow-md group'
+  const base = 'appointment-block rounded-xl border border-l-4 p-2 sm:p-2.5 text-xs cursor-pointer transition-all duration-150 hover:shadow-lg group'
   if (props.positionedByParent) {
     return `${base} relative w-full h-full`
   }
@@ -149,7 +148,7 @@ const blockClasses = computed(() => {
 const blockStyle = computed(() => {
   const startMinutes = timeStringToMinutes(localStartTime.value)
   const dayStartMinutes = 9 * 60
-  const topOffset = ((startMinutes - dayStartMinutes) / 30) * props.slotHeightPx
+  const topOffset = ((startMinutes - dayStartMinutes) / 60) * props.slotHeightPx
   return {
     top: `${topOffset}px`,
     height: `${appointmentHeight.value}px`
@@ -166,42 +165,38 @@ const resolvedBlockStyle = computed(() => {
 // Status orqali rang
 const appointmentClasses = computed(() => {
   const status = props.appointment.status
-  const base = 'bg-white'
+  const serviceName = String(props.appointment.service_name || '').toLowerCase()
 
-  if (status === 'pending') return `${base} border-blue-400 bg-blue-50`
-  if (status === 'arrived') return `${base} border-amber-400 bg-amber-50`
-  if (status === 'in_progress') return `${base} border-purple-400 bg-purple-50`
-  if (status === 'completed_paid' || status === 'completed_debt') return `${base} border-emerald-400 bg-emerald-50`
-  if (status === 'cancelled') return `${base} border-gray-400 bg-gray-50`
-  if (status === 'no_show') return `${base} border-rose-400 bg-rose-50`
+  if (serviceName.includes('implant')) return 'bg-rose-50 border-rose-400'
+  if (serviceName.includes('ortho') || serviceName.includes('breket')) return 'bg-emerald-50 border-emerald-400'
+  if (serviceName.includes('ko\'rik') || serviceName.includes('consult') || serviceName.includes('tekshir')) return 'bg-sky-50 border-sky-400'
 
-  return base
+  if (status === 'pending') return 'bg-blue-50 border-blue-400'
+  if (status === 'arrived') return 'bg-amber-50 border-amber-400'
+  if (status === 'in_progress') return 'bg-violet-50 border-violet-400'
+  if (status === 'completed_paid' || status === 'completed_debt') return 'bg-emerald-50 border-emerald-400'
+  if (status === 'cancelled') return 'bg-gray-50 border-gray-400'
+  if (status === 'no_show') return 'bg-rose-50 border-rose-400'
+
+  return 'bg-white border-slate-300'
 })
 
-const statusBadgeClass = computed(() => {
+const statusDotClass = computed(() => {
   const status = props.appointment.status
-  if (status === 'pending') return 'bg-blue-100 text-blue-700'
-  if (status === 'arrived') return 'bg-amber-100 text-amber-700'
-  if (status === 'in_progress') return 'bg-purple-100 text-purple-700'
-  if (status === 'completed_paid' || status === 'completed_debt') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'cancelled') return 'bg-gray-100 text-gray-700'
-  if (status === 'no_show') return 'bg-rose-100 text-rose-700'
-  return 'bg-gray-100 text-gray-700'
+  if (status === 'pending') return 'bg-blue-500'
+  if (status === 'arrived') return 'bg-amber-500'
+  if (status === 'in_progress') return 'bg-violet-500'
+  if (status === 'completed_paid') return 'bg-emerald-500'
+  if (status === 'completed_debt') return 'bg-orange-500'
+  if (status === 'cancelled') return 'bg-gray-400'
+  if (status === 'no_show') return 'bg-rose-500'
+  return 'bg-slate-400'
 })
 
-const paymentStatus = computed(() => {
-  const status = props.appointment.status
-  if (!status?.includes('completed')) return null
-  if (status === 'completed_paid') return translateOrFallback('appointments.paid', 'To\'langan')
-  if (status === 'completed_debt') return translateOrFallback('appointments.debt', 'Qarz')
-  return null
-})
-
-const paymentBadgeClass = computed(() => {
-  const status = props.appointment.status
-  if (status === 'completed_paid') return 'bg-green-100 text-green-700'
-  if (status === 'completed_debt') return 'bg-orange-100 text-orange-700'
-  return 'bg-gray-100 text-gray-700'
+const compactHint = computed(() => {
+  if (props.appointment.status === 'completed_paid') return translateOrFallback('appointments.paid', 'To\'langan')
+  if (props.appointment.status === 'completed_debt') return translateOrFallback('appointments.debt', 'Qarz')
+  return props.appointment.service_name || props.appointment.specialization || ''
 })
 
 const canStartAppointment = computed(() => {

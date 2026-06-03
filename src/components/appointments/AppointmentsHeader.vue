@@ -1,6 +1,6 @@
 <template>
   <!-- Sticky Header Container -->
-  <div class="sticky top-0 z-50 bg-white border-b border-slate-200">
+  <div class="sticky top-0 z-30 bg-white border-b border-slate-200">
     <div class="px-4 py-4 sm:px-6">
       <!-- DESKTOP: Single Row Layout -->
       <div class="hidden lg:flex items-center justify-between gap-4 flex-wrap">

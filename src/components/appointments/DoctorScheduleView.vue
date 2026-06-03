@@ -1,11 +1,11 @@
 <template>
-  <div class="doctor-schedule-container space-y-4">
+  <div class="doctor-schedule-container w-full space-y-4">
     <!-- Schedule grid - Day view (Dentist+ style) -->
-    <div v-if="selectedViewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-220px)] sm:h-[calc(100vh-250px)] min-h-[500px]">
+    <div v-if="selectedViewMode === 'day'" class="bg-white overflow-hidden flex flex-col w-full max-w-none h-[calc(100vh-220px)] sm:h-[calc(100vh-250px)] min-h-[500px]">
       <!-- Toolbar -->
-      <div class="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-slate-50 to-blue-50/60 flex items-center justify-between flex-wrap gap-3">
+      <div class="px-4 sm:px-6 lg:px-8 py-4 bg-gradient-to-r from-slate-50 to-blue-50/60 flex items-center justify-between flex-wrap gap-3">
         <!-- Doctor Filter with Multi-select -->
-        <div class="flex items-center gap-2">
+        <div v-if="isAdmin" class="flex items-center gap-2">
           <label class="text-sm font-medium text-gray-700">Shifokorlar:</label>
           <div class="relative" ref="doctorDropdownRef">
             <button
@@ -60,13 +60,10 @@
 
         <div class="flex items-center flex-wrap gap-2 text-xs">
           <span class="inline-flex items-center rounded-full bg-primary-50 px-2.5 py-1 font-semibold text-primary-700">
-            {{ t('appointments.kpiTotal') }}: {{ totalAppointmentsCount }}
+            {{ t('appointments.kpiTotal') }}: {{ bookedAppointmentsCount }}
           </span>
           <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
-            {{ t('appointments.kpiOccupancy') }}: {{ occupancyPercent }}%
-          </span>
-          <span class="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-1 font-semibold text-rose-700">
-            {{ t('appointments.kpiNoShow') }}: {{ noShowPercent }}%
+            {{ t('appointments.kpiOccupancy') }}: {{ emptySlotsCount }}
           </span>
         </div>
 
@@ -81,14 +78,21 @@
 
       <!-- Schedule Canvas -->
       <div class="flex-1 overflow-auto relative bg-white">
-        <div :class="dayGridContainerClass">
+        <div :class="['day-grid', dayGridContainerClass]">
           <!-- Left: Time column (sticky) -->
-          <div class="bg-slate-50 border-r border-gray-200 flex-shrink-0 sticky left-0 z-40" :class="timeColumnWidth">
-            <!-- Empty space for top-left intersection to align with doctor headers -->
-            <div class="sticky top-0 z-50 bg-slate-50 border-b border-gray-200 h-[60px] sm:h-[68px]"></div>
+          <div class="bg-slate-50 time-column flex-shrink-0 sticky left-0 z-40 pl-2 sm:pl-3" :class="timeColumnWidth">
+            <!-- Empty space for top-left intersection to align with doctor headers (compact) -->
+            <div class="sticky top-0 z-50 bg-slate-50 h-[48px] sm:h-[56px]"></div>
 
-            <div v-for="hour in hours" :key="hour.time" class="text-right pr-1 sm:pr-2 md:pr-3 py-0 text-xs font-semibold text-slate-600 border-b border-slate-200/70 bg-slate-50" :style="{ height: slotHeightPx + 'px' }">
-              <div class="pt-1">{{ hour.time }}</div>
+            <div
+              v-for="hour in hours"
+              :key="hour.key"
+              class="relative text-right pr-1 sm:pr-1 md:pr-2 py-0 text-[11px] font-semibold text-slate-500 bg-slate-50 select-none"
+              :style="{ height: slotHeightPx + 'px' }"
+            >
+              <div v-if="hour.isLabel" class="absolute -top-2 right-1 sm:right-2 px-1.5 py-0.5 rounded-full bg-slate-50/95 backdrop-blur text-slate-600">
+                {{ hour.display }}
+              </div>
             </div>
           </div>
 
@@ -97,12 +101,12 @@
             <div
               v-for="(doctor, docIdx) in displayedDoctors"
               :key="doctor.id"
-              class="border-r border-gray-200 relative"
+              class="relative"
               :class="isSparseDayLayout ? 'flex-none min-w-0' : 'flex-shrink-0'"
               :style="getDoctorColumnStyle(doctor)"
             >
               <!-- Doctor header (sticky top) -->
-              <div class="sticky top-0 z-30 bg-gradient-to-b from-primary-50 to-white border-b border-gray-200 px-2 sm:px-3 py-2 sm:py-3 shadow-sm h-[60px] sm:h-[68px] flex flex-col justify-center">
+              <div class="sticky top-0 z-30 bg-gradient-to-b from-primary-50 to-white px-2 sm:px-3 py-2 sm:py-2 shadow-sm h-[48px] sm:h-[56px] flex flex-col justify-center">
                 <div class="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-1" :title="doctor.full_name">{{ doctor.full_name }}</div>
                 <div class="text-xs text-gray-500 line-clamp-1">{{ doctor.specialization || 'Shifokor' }}</div>
               </div>
@@ -113,15 +117,16 @@
                 <div
                   v-for="hour in hours"
                   :key="`bg-${doctor.id}-${hour.time}`"
-                  class="border-b border-slate-100 bg-gradient-to-b from-blue-50/70 via-white to-white hover:from-blue-100 hover:to-blue-50 cursor-pointer transition-colors active:bg-blue-200"
+                  class="bg-gradient-to-b from-blue-50/70 via-white to-white hover:from-blue-100 hover:via-blue-50 hover:to-white cursor-pointer transition-colors duration-150 active:bg-blue-200/90"
                   :style="{ height: slotHeightPx + 'px' }"
+                  :title="`${doctor.full_name} — ${hour.time} da qabul ochish`"
                   @click="handleSlotClick(doctor.id, hour.time)"
                 />
 
                 <!-- Current time indicator: Only show text on the first doctor, or just use a horizontal line spanning everything -->
                 <CurrentTimeIndicator
-                  :start-hour="9"
-                  :end-hour="18"
+                  :start-hour="0"
+                  :end-hour="24"
                   :show-text="docIdx === 0"
                   class="absolute left-0 right-0 z-20 pointer-events-none"
                 />
@@ -131,7 +136,8 @@
                 <div
                   v-for="appt in getAppointmentsForDoctor(doctor.id)"
                   :key="appt.id"
-                  class="absolute left-2 right-2 pointer-events-auto cursor-move"
+                  class="absolute left-2 right-2 pointer-events-auto cursor-grab active:cursor-grabbing"
+                  :class="draggingAppointment && draggingAppointment.id === appt.id ? 'z-40 opacity-85 scale-[0.985]' : 'z-10'"
                   :style="getAppointmentStyle(appt)"
                   @mousedown="startDrag($event, appt)"
                 >
@@ -154,7 +160,7 @@
     </div>
 
     <!-- Schedule grid - Week view -->
-    <div v-else-if="selectedViewMode === 'week'" class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+    <div v-else-if="selectedViewMode === 'week'" class="bg-white overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
@@ -201,7 +207,7 @@
     </div>
 
     <!-- Schedule grid - Month view -->
-    <div v-else-if="selectedViewMode === 'month'" class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+    <div v-else-if="selectedViewMode === 'month'" class="bg-white overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
@@ -303,6 +309,7 @@ const emit = defineEmits(['update:selectedDate', 'update:view-mode', 'update-sta
 
 const { t } = useI18n()
 const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.userRole === 'admin')
 const doctorsStore = useDoctorsStore()
 const patientsStore = usePatientsStore()
 
@@ -310,19 +317,27 @@ const loading = ref(false)
 const appointments = ref([])
 const patientModalOpen = ref(false)
 const selectedPatientAppointment = ref(null)
-const slotHeightPx = 60 // 30 minut = 60px
+// Hourly slots
+const slotHeightPx = 60 // 1 soat = 60px
 const currentDate = ref(props.selectedDate || new Date().toISOString().split('T')[0])
 const selectedDoctorIds = ref([]) // Multi-select doctor IDs
 const showDoctorDropdown = ref(false)
 const doctorDropdownRef = ref(null) // Ref for dropdown element
+const dragPendingAppointment = ref(null)
 const draggingAppointment = ref(null)
 const dragStartY = ref(0)
 const dragStartTime = ref('')
+const dragMoved = ref(false)
+const suppressNextModalOpen = ref(false)
+const DRAG_START_THRESHOLD_PX = 8
 
 // Responsive breakpoints (mobile, tablet, desktop)
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
 const dayNames = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Yak']
+const DAY_START_HOUR = 0
+const DAY_END_HOUR = 24
+const SLOT_MINUTES = 60
 
 const selectedViewMode = computed({
   get: () => {
@@ -350,12 +365,16 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
-// Time array for day view grid (09:00 - 18:00, 30 min slots)
+// Time array for day view grid (24 hours, 1 hour slots)
 const hours = computed(() => {
   const result = []
-  for (let h = 9; h < 18; h++) {
-    result.push({ time: `${String(h).padStart(2, '0')}:00` })
-    result.push({ time: `${String(h).padStart(2, '0')}:30` })
+  for (let h = DAY_START_HOUR; h < DAY_END_HOUR; h++) {
+    result.push({
+      key: `${h}-0`,
+      time: `${String(h).padStart(2, '0')}:00`,
+      display: String(h),
+      isLabel: true
+    })
   }
   return result
 })
@@ -363,9 +382,9 @@ const hours = computed(() => {
 // Doktor uchun faqat o'z appointmentlari, admin uchun barchasi
 // Responsive column widths
 const timeColumnWidth = computed(() => {
-  // Mobile: 3.5rem (56px), Tablet: 5rem (80px), Desktop: 5rem (80px)
-  if (windowWidth.value < 640) return 'w-14' // 56px
-  return 'w-20' // 80px
+  // Compact widths: Mobile: 3rem (48px), Desktop: 4rem (64px)
+  if (windowWidth.value < 640) return 'w-12' // 48px
+  return 'w-16' // 64px
 })
 
 const doctorColumnWidth = computed(() => {
@@ -478,34 +497,25 @@ const getAppointmentDurationMinutes = (appointment) => {
   return 30
 }
 
-const totalAppointmentsCount = computed(() => appointments.value.length)
+const displayedDoctorIdSet = computed(() => new Set(displayedDoctors.value.map(doctor => Number(doctor.id))))
 
-const noShowCount = computed(() => {
-  return appointments.value.filter(item => item.status === 'no_show').length
+const displayedDayAppointments = computed(() => {
+  if (selectedViewMode.value !== 'day') return []
+  const idSet = displayedDoctorIdSet.value
+  return dayAppointments.value.filter(appt => idSet.has(Number(appt.doctor_id)))
 })
 
-const noShowPercent = computed(() => {
-  const total = totalAppointmentsCount.value
+const bookedAppointmentsCount = computed(() => displayedDayAppointments.value.length)
+
+const totalSlotsCount = computed(() => {
+  if (selectedViewMode.value !== 'day') return 0
+  return displayedDoctors.value.length * hours.value.length
+})
+
+const emptySlotsCount = computed(() => {
+  const total = totalSlotsCount.value
   if (!total) return 0
-  return Math.round((noShowCount.value / total) * 1000) / 10
-})
-
-const occupiedSlotUnits = computed(() => {
-  return appointments.value.reduce((sum, item) => {
-    const duration = getAppointmentDurationMinutes(item)
-    const slotUnits = Math.max(duration / 30, 1)
-    return sum + slotUnits
-  }, 0)
-})
-
-const availableSlotUnits = computed(() => {
-  return displayedDoctors.value.length * hours.value.length * selectedPeriodDays.value
-})
-
-const occupancyPercent = computed(() => {
-  if (!availableSlotUnits.value) return 0
-  const ratio = (occupiedSlotUnits.value / availableSlotUnits.value) * 100
-  return Math.min(100, Math.round(ratio * 10) / 10)
+  return Math.max(total - bookedAppointmentsCount.value, 0)
 })
 
 // Get appointments for specific doctor
@@ -682,6 +692,7 @@ const handleStatusUpdate = async (newStatus) => {
 
 // Bemor modal'ini ochish
 const handleOpenPatientModal = (appointment) => {
+  if (suppressNextModalOpen.value) return
   selectedPatientAppointment.value = appointment
   patientModalOpen.value = true
 }
@@ -724,9 +735,11 @@ const openNewAppointmentModal = (doctorId, startTime) => {
 // Drag & drop implementation
 const startDrag = (event, appt) => {
   event.stopPropagation() // Prevent slot click
-  draggingAppointment.value = appt
+  dragPendingAppointment.value = appt
   dragStartY.value = event.clientY
   dragStartTime.value = appt.start_time
+  dragMoved.value = false
+  suppressNextModalOpen.value = false
 
   document.addEventListener('mousemove', handleDragMove)
   document.addEventListener('mouseup', handleDragEnd)
@@ -734,26 +747,44 @@ const startDrag = (event, appt) => {
 }
 
 const handleDragMove = (event) => {
-  if (!draggingAppointment.value) return
+  if (!dragPendingAppointment.value) return
 
   const deltaY = event.clientY - dragStartY.value
-  const deltaSlots = Math.round(deltaY / slotHeightPx)
+  if (!draggingAppointment.value && Math.abs(deltaY) < DRAG_START_THRESHOLD_PX) {
+    return
+  }
+
+  if (!draggingAppointment.value) {
+    draggingAppointment.value = dragPendingAppointment.value
+    dragStartY.value = event.clientY
+    dragStartTime.value = dragPendingAppointment.value.start_time
+  }
+
+  const deltaYForMove = event.clientY - dragStartY.value
+  const deltaSlots = Math.round(deltaYForMove / slotHeightPx)
 
   if (deltaSlots !== 0) {
+    dragMoved.value = true
     const [h, m] = dragStartTime.value.split(':').map(Number)
-    const newMinutes = h * 60 + m + (deltaSlots * 30)
+    const newMinutes = h * 60 + m + (deltaSlots * SLOT_MINUTES)
     const newH = Math.floor(newMinutes / 60)
     const newM = newMinutes % 60
+    const dayStartMinutes = DAY_START_HOUR * 60
+    const dayEndMinutes = DAY_END_HOUR * 60
+    const durationMinutes = draggingAppointment.value.end_time
+      ? (() => {
+          const [endH, endM] = draggingAppointment.value.end_time.split(':').map(Number)
+          return (endH * 60 + endM) - (h * 60 + m)
+        })()
+      : 30
 
-    if (newH >= 9 && newH < 18) {
+    if (newMinutes >= dayStartMinutes && newMinutes + durationMinutes <= dayEndMinutes) {
       const newTime = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`
       draggingAppointment.value.start_time = newTime
 
       // Update end_time if exists
       if (draggingAppointment.value.end_time) {
-        const [endH, endM] = draggingAppointment.value.end_time.split(':').map(Number)
-        const duration = (endH * 60 + endM) - (h * 60 + m)
-        const newEndMinutes = newMinutes + duration
+        const newEndMinutes = newMinutes + durationMinutes
         const newEndH = Math.floor(newEndMinutes / 60)
         const newEndM = newEndMinutes % 60
         draggingAppointment.value.end_time = `${String(newEndH).padStart(2, '0')}:${String(newEndM).padStart(2, '0')}`
@@ -766,26 +797,38 @@ const handleDragMove = (event) => {
 }
 
 const handleDragEnd = async () => {
-  if (!draggingAppointment.value) return
+  if (!dragPendingAppointment.value) return
 
   try {
-    // Update appointment via API
-    await visitsApi.updateVisit(draggingAppointment.value.id, {
-      start_time: draggingAppointment.value.start_time,
-      end_time: draggingAppointment.value.end_time
-    })
+    if (draggingAppointment.value) {
+      // Update appointment via API
+      await visitsApi.updateVisit(draggingAppointment.value.id, {
+        start_time: draggingAppointment.value.start_time,
+        end_time: draggingAppointment.value.end_time
+      })
 
-    // Reload appointments
-    await loadAppointments()
+      // Reload appointments
+      await loadAppointments()
+    }
   } catch (error) {
     console.error('Failed to update appointment:', error)
     // Reload to revert visual changes
     await loadAppointments()
   } finally {
+    suppressNextModalOpen.value = dragMoved.value
+    dragPendingAppointment.value = null
     draggingAppointment.value = null
     document.removeEventListener('mousemove', handleDragMove)
     document.removeEventListener('mouseup', handleDragEnd)
     document.body.style.cursor = ''
+
+    if (dragMoved.value) {
+      setTimeout(() => {
+        suppressNextModalOpen.value = false
+      }, 0)
+    }
+
+    dragMoved.value = false
   }
 }
 
@@ -799,18 +842,18 @@ const getAppointmentStyle = (appt) => {
   if (!appt.start_time) return {}
 
   const [startH, startM] = appt.start_time.split(':').map(Number)
-  const startMinutesFromDay = (startH - 9) * 60 + startM
-  const topPx = (startMinutesFromDay / 30) * slotHeightPx
+  const startMinutesFromDay = (startH - DAY_START_HOUR) * 60 + startM
+  const topPx = (startMinutesFromDay / SLOT_MINUTES) * slotHeightPx
 
-  // Default duration 30 minutes agar end_time bo'lmasa
+  // Default duration 1 hour agar end_time bo'lmasa
   let heightPx = slotHeightPx
   if (appt.end_time) {
     const [endH, endM] = appt.end_time.split(':').map(Number)
-    const endMinutesFromDay = (endH - 9) * 60 + endM
+    const endMinutesFromDay = (endH - DAY_START_HOUR) * 60 + endM
     const durationMinutes = endMinutesFromDay - startMinutesFromDay
-    heightPx = (durationMinutes / 30) * slotHeightPx
+    heightPx = Math.max(slotHeightPx, (durationMinutes / SLOT_MINUTES) * slotHeightPx)
   } else if (appt.duration_minutes) {
-    heightPx = (appt.duration_minutes / 30) * slotHeightPx
+    heightPx = Math.max(slotHeightPx, (appt.duration_minutes / SLOT_MINUTES) * slotHeightPx)
   }
 
   return {
@@ -859,4 +902,37 @@ onUnmounted(() => {
 .doctor-schedule-container {
   width: 100%;
 }
+
+/* Google Calendar-like tweaks */
+.day-grid {
+  background: #ffffff;
+}
+
+.day-grid .time-column {
+  background: #fbfdff; /* very subtle tint */
+}
+
+.day-grid .time-column .text-xs {
+  color: #64748b; /* slightly muted */
+  font-weight: 600;
+}
+
+/* Make appointment blocks flatter and with subtle shadow */
+.appointment-block {
+  border-width: 0 !important;
+  border-left-width: 6px !important;
+  border-radius: 6px !important;
+  padding: 6px !important;
+}
+
+/* Smaller text for time labels to fit compact layout */
+.day-grid .text-xs {
+  font-size: 12px;
+}
+
+/* Make current time indicator more prominent (thin red line with small dot) */
+.day-grid .flex-1.h-0.5.bg-red-500 {
+  height: 2px !important;
+}
+
 </style>

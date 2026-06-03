@@ -1,33 +1,12 @@
 <template>
   <div class="space-y-4">
-    <!-- Header with Filter — mobile: stack vertically, full-width filter -->
+    <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h3 class="text-lg font-semibold text-gray-900">{{ t('patientVisits.title') }}</h3>
         <p class="text-sm text-gray-500 mt-1">
-          {{ t('patientVisits.total') }}: {{ filteredVisits.length }} / {{ visits.length }}
+          {{ t('patientVisits.total') }}: {{ visits.length }}
         </p>
-      </div>
-      
-      <!-- Status Filter — full width on mobile, touch-friendly -->
-      <div class="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-        <label class="text-sm text-gray-600">{{ t('patientVisits.filterLabel') }}</label>
-        <select
-          v-model="statusFilter"
-          class="w-full sm:w-auto px-4 py-3 sm:py-1.5 text-sm border border-gray-300 rounded-xl sm:rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 touch-manipulation min-h-[44px]"
-        >
-          <option value="all">{{ t('patientVisits.filterAll') }}</option>
-          <option value="active">{{ t('patientVisits.filterActive') }}</option>
-          <option value="debt">{{ t('patientVisits.filterDebt') }}</option>
-          <option value="completed">{{ t('patientVisits.filterCompleted') }}</option>
-          <option value="pending">{{ t('patientVisits.statusPending') }}</option>
-          <option value="arrived">{{ t('patientVisits.statusArrived') }}</option>
-          <option value="in_progress">{{ t('patientVisits.statusInProgress') }}</option>
-          <option value="completed_debt">{{ t('patientVisits.statusDebt') }}</option>
-          <option value="completed_paid">{{ t('patientVisits.statusCompleted') }}</option>
-          <option value="cancelled">{{ t('patientVisits.statusCancelled') }}</option>
-          <option value="no_show">{{ t('patientVisits.statusNoShow') }}</option>
-        </select>
       </div>
     </div>
 
@@ -37,10 +16,10 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="filteredVisits.length === 0" class="bg-gray-50 rounded-xl p-8 text-center">
+    <div v-else-if="visits.length === 0" class="bg-gray-50 rounded-xl p-8 text-center">
       <CalendarDaysIcon class="w-12 h-12 text-gray-300 mx-auto" />
       <p class="mt-4 text-gray-500">
-        {{ statusFilter === 'all' ? t('patientVisits.noVisits') : t('patientVisits.noFiltered') }}
+        {{ t('patientVisits.noVisits') }}
       </p>
     </div>
 
@@ -49,7 +28,7 @@
       <!-- Mobile Card List (md:hidden) -->
       <div class="md:hidden space-y-3">
         <div
-          v-for="visit in filteredVisits"
+          v-for="visit in visits"
           :key="visit.id"
           class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm active:bg-gray-50 transition-colors"
         >
@@ -128,7 +107,7 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
               <tr
-                v-for="visit in filteredVisits"
+                v-for="visit in visits"
                 :key="visit.id"
                 class="hover:bg-gray-50 transition-colors"
               >
@@ -285,7 +264,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
 import { CalendarDaysIcon, XMarkIcon, PlayIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -294,24 +272,11 @@ import {
   getVisitStatusLabel,
   getAllowedNextStatuses,
   canChangeStatus,
-  getActiveVisitStatuses,
-  getDebtStatuses,
-  getCompletedStatuses,
   VISIT_STATUSES
 } from '@/constants/visitStatus'
 import * as visitsApi from '@/api/visitsApi'
 
 const { t } = useI18n()
-
-const formatCurrency = (amount) => {
-  if (!amount && amount !== 0) return `0 ${t('common.currencySuffix')}`
-  return new Intl.NumberFormat('uz-UZ', {
-    style: 'currency',
-    currency: 'UZS',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount).replace('UZS', t('common.currencySuffix'))
-}
 
 const props = defineProps({
   patientId: {
@@ -328,11 +293,9 @@ const emit = defineEmits(['visit-updated'])
 
 const toast = useToast()
 const authStore = useAuthStore()
-const router = useRouter()
 
 const loading = ref(false)
 const visits = ref([])
-const statusFilter = ref('all')
 const showStatusModal = ref(false)
 const selectedVisit = ref(null)
 const newStatus = ref('')
@@ -340,25 +303,6 @@ const debtAmount = ref(null)
 const statusError = ref('')
 const saving = ref(false)
 const updatingVisitId = ref(null)
-
-// Computed
-const filteredVisits = computed(() => {
-  if (statusFilter.value === 'all') return visits.value
-  
-  if (statusFilter.value === 'active') {
-    return visits.value.filter(v => getActiveVisitStatuses().includes(v.status))
-  }
-  
-  if (statusFilter.value === 'debt') {
-    return visits.value.filter(v => getDebtStatuses().includes(v.status))
-  }
-  
-  if (statusFilter.value === 'completed') {
-    return visits.value.filter(v => getCompletedStatuses().includes(v.status))
-  }
-  
-  return visits.value.filter(v => v.status === statusFilter.value)
-})
 
 // Doktor "Qarzdor" dan "To'liq to'langan" ga o'tkaza olmaydi — faqat admin to'lov qilgach
 const allowedStatuses = computed(() => {

@@ -210,7 +210,7 @@
       </div>
 
       <!-- Schedule view (Doctor calendar grid) -->
-      <div v-else-if="displayMode === 'schedule'">
+      <div v-else-if="displayMode === 'schedule'" class="-mx-4 sm:-mx-6 lg:-mx-8">
         <DoctorScheduleView
           :selected-date="selectedDate"
           :view-mode="viewMode"
@@ -232,36 +232,28 @@
         leave-to-class="opacity-0"
       >
         <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div class="w-full max-w-sm bg-white rounded-xl shadow-xl flex flex-col max-h-[90vh]">
+          <div class="w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col max-h-[90vh]">
             <!-- Header -->
-            <div class="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 class="text-base font-semibold text-gray-900">{{ t('appointments.createTitle') }}</h3>
+            <div class="flex items-start justify-between gap-4 p-5 border-b border-gray-100">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900">{{ t('appointments.createTitle') }}</h3>
+                <p class="mt-1 text-sm text-gray-500">Asosiy ma'lumotlarni kiriting</p>
+              </div>
               <button @click="closeCreateModal" class="text-gray-400 hover:text-gray-600">
                 <XMarkIcon class="w-5 h-5" />
               </button>
             </div>
 
-            <!-- Form - Minimal fields only -->
-            <div class="p-4 space-y-3 overflow-y-auto flex-1">
-              <!-- Patient - Required -->
+            <!-- Form - Essential fields only -->
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+              <!-- Patient -->
               <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                <label class="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
                   {{ t('appointments.patient') }} <span class="text-red-500">*</span>
                 </label>
-                <div class="mb-2 flex items-center justify-between gap-2">
-                  <span class="text-xs text-gray-500">Mavjud bemorni tanlang yoki yangisini qo'shing</span>
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700 hover:bg-primary-100 transition-colors"
-                    @click="showQuickPatientForm = !showQuickPatientForm"
-                  >
-                    <PlusIcon class="h-3.5 w-3.5" />
-                    {{ showQuickPatientForm ? 'Yopish' : 'Bemor qo\'shish' }}
-                  </button>
-                </div>
                 <select
                   v-model="createForm.patient_id"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
                   :class="{ 'border-red-300': createError && !createForm.patient_id }"
                 >
                   <option value="">{{ t('appointments.select') }}</option>
@@ -272,48 +264,72 @@
                 <p v-if="availablePatients.length === 0 && !isAdmin" class="mt-1 text-xs text-amber-600">
                   {{ t('appointments.noPatientsAvailable') }}
                 </p>
+              </div>
 
-                <div v-if="showQuickPatientForm" class="mt-3 rounded-xl border border-primary-100 bg-primary-50/50 p-3 space-y-2.5">
-                  <p class="text-xs font-semibold text-primary-700">Tezkor bemor qo'shish</p>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <!-- Quick add patient -->
+              <div class="rounded-xl border border-gray-100 bg-slate-50/70 p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-xs font-semibold text-gray-700 uppercase tracking-wider">Tezkor bemor qo'shish</div>
+                  <button
+                    type="button"
+                    class="text-xs font-semibold text-primary-600 hover:text-primary-700"
+                    @click="quickPatientOpen = !quickPatientOpen"
+                  >
+                    {{ quickPatientOpen ? 'Yopish' : 'Ochish' }}
+                  </button>
+                </div>
+
+                <div v-if="quickPatientOpen" class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="sm:col-span-2">
+                    <label class="block text-[11px] font-semibold text-gray-600 mb-1 uppercase tracking-wider">Ism <span class="text-red-500">*</span></label>
                     <input
-                      v-model="quickPatientForm.full_name"
+                      v-model="quickPatient.full_name"
                       type="text"
-                      placeholder="Bemor F.I.Sh"
-                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                    <input
-                      v-model="quickPatientForm.phone"
-                      type="tel"
-                      placeholder="Telefon raqami"
-                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Ism va familiya"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
                     />
                   </div>
-                  <div v-if="quickPatientError" class="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded px-2 py-1.5">
+                  <div>
+                    <label class="block text-[11px] font-semibold text-gray-600 mb-1 uppercase tracking-wider">Telefon <span class="text-red-500">*</span></label>
+                    <input
+                      v-model="quickPatient.phone"
+                      type="text"
+                      placeholder="+998..."
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                    />
+                  </div>
+                  <div v-if="quickPatientError" class="sm:col-span-2 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
                     {{ quickPatientError }}
                   </div>
-                  <div class="flex justify-end">
+
+                  <div class="sm:col-span-2 flex items-center justify-end gap-2">
                     <button
                       type="button"
-                      class="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60"
-                      :disabled="creatingPatient"
-                      @click="createPatientFromAppointmentModal"
+                      class="px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                      @click="resetQuickPatient()"
                     >
-                      <span v-if="creatingPatient">Qo'shilmoqda...</span>
-                      <span v-else>Saqlash va tanlash</span>
+                      Tozalash
+                    </button>
+                    <button
+                      type="button"
+                      class="px-4 py-2 text-xs font-semibold text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                      :disabled="quickPatientLoading"
+                      @click="createQuickPatient()"
+                    >
+                      {{ quickPatientLoading ? "Saqlanmoqda..." : "Bemorni qo'shish" }}
                     </button>
                   </div>
                 </div>
               </div>
 
-              <!-- Doctor - Auto for doctor, required for admin -->
+              <!-- Doctor -->
               <div v-if="isAdmin">
-                <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                <label class="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
                   {{ t('appointments.doctor') }} <span class="text-red-500">*</span>
                 </label>
                 <select
                   v-model="createForm.doctor_id"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
                   :class="{ 'border-red-300': createError && !createForm.doctor_id }"
                 >
                   <option value="">{{ t('appointments.select') }}</option>
@@ -323,94 +339,113 @@
                 </select>
               </div>
 
-              <!-- Date and Time - two columns -->
-              <div class="grid grid-cols-2 gap-3">
+              <!-- Date and Time -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                  <label class="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
                     {{ t('appointments.date') }} <span class="text-red-500">*</span>
                   </label>
                   <input
                     v-model="createForm.date"
                     type="date"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
                     :class="{ 'border-red-300': createError && !createForm.date }"
                     :min="new Date().toISOString().split('T')[0]"
                   />
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                  <label class="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
                     {{ t('appointments.startTime') }} <span class="text-red-500">*</span>
                   </label>
                   <input
                     v-model="createForm.start_time"
                     type="time"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
                     :class="{ 'border-red-300': createError && !createForm.start_time }"
                   />
                 </div>
               </div>
 
-              <!-- Duration -->
-              <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
-                  {{ t('appointments.duration') }} (min)
-                </label>
-                <input
-                  v-model.number="createForm.duration_minutes"
-                  type="number"
-                  min="10"
-                  step="5"
-                  value="30"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-
-              <!-- Service + Price (two columns) -->
-              <div class="grid grid-cols-2 gap-3">
+              <!-- Additional fields -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
-                    {{ t('appointments.service') }}
+                  <label class="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+                    Davomiylik (min) <span class="text-red-500">*</span>
                   </label>
                   <input
-                    v-model="createForm.service_name"
-                    type="text"
-                    :placeholder="t('appointments.servicePlaceholder')"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    v-model.number="createForm.duration_minutes"
+                    type="number"
+                    min="10"
+                    step="5"
+                    class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                    :class="{ 'border-red-300': createError && !createForm.duration_minutes }"
                   />
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
-                    {{ t('appointments.price') }}
-                  </label>
+                  <label class="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">Xizmat</label>
+                  <input
+                    v-model="createForm.service_name"
+                    type="text"
+                    placeholder="Masalan: Konsultatsiya"
+                    class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">Narx</label>
                   <input
                     v-model.number="createForm.price"
                     type="number"
                     min="0"
                     step="1000"
-                    placeholder="0"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">Xona</label>
+                  <input
+                    v-model="createForm.room"
+                    type="text"
+                    placeholder="Masalan: 2-xona"
+                    class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">Kanal</label>
+                  <input
+                    v-model="createForm.channel"
+                    type="text"
+                    placeholder="Telefon, Telegram..."
+                    class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                  />
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">Izoh</label>
+                  <textarea
+                    v-model="createForm.notes"
+                    rows="2"
+                    class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
                   />
                 </div>
               </div>
 
               <!-- Error message -->
-              <div v-if="createError" class="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded px-2.5 py-1.5">
+              <div v-if="createError" class="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
                 {{ createError }}
               </div>
             </div>
 
             <!-- Footer -->
-            <div class="flex items-center justify-end gap-2 p-4 border-t border-gray-100 bg-gray-50">
+            <div class="flex items-center justify-end gap-2 p-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
               <button
                 @click="closeCreateModal"
-                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 {{ t('appointments.cancel') }}
               </button>
               <button
                 @click="createAppointment"
                 :disabled="loading"
-                class="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                class="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span v-if="loading" class="inline-flex items-center gap-1.5">
                   <svg class="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -594,7 +629,6 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import AppointmentsHeader from '@/components/appointments/AppointmentsHeader.vue'
 import DoctorScheduleView from '@/components/appointments/DoctorScheduleView.vue'
 import {
-  PlusIcon,
   XMarkIcon,
   EllipsisVerticalIcon,
   CheckCircleIcon,
@@ -700,10 +734,10 @@ const bulkDoctorId = ref('')
 
 const showCreateModal = ref(false)
 const createError = ref('')
-const showQuickPatientForm = ref(false)
-const creatingPatient = ref(false)
+const quickPatientOpen = ref(false)
+const quickPatientLoading = ref(false)
 const quickPatientError = ref('')
-const quickPatientForm = ref({
+const quickPatient = ref({
   full_name: '',
   phone: ''
 })
@@ -827,13 +861,6 @@ const availablePatients = computed(() => {
   })
 })
 
-// Joriy doktor nomi
-const currentDoctorName = computed(() => {
-  if (isAdmin.value) return ''
-  const doctor = doctors.value.find(d => Number(d.id) === Number(doctorId.value))
-  return doctor?.full_name || ''
-})
-
 // Modal: barcha statuslar (qo'lda o'zgartirish uchun)
 const statusOptions = computed(() => [
   { value: 'pending', label: t('appointments.statusPending') },
@@ -912,8 +939,6 @@ const loadVisits = async () => {
 
 const openCreateModal = () => {
   createError.value = ''
-  quickPatientError.value = ''
-  showQuickPatientForm.value = false
   // Doktor uchun avtomatik to'ldirish
   if (!isAdmin.value && doctorId.value) {
     createForm.value.doctor_id = String(doctorId.value)
@@ -927,69 +952,11 @@ const openCreateModal = () => {
   showCreateModal.value = true
 }
 
-const resetQuickPatientForm = () => {
-  quickPatientError.value = ''
-  quickPatientForm.value = {
-    full_name: '',
-    phone: ''
-  }
-}
-
-const createPatientFromAppointmentModal = async () => {
-  quickPatientError.value = ''
-  const fullName = String(quickPatientForm.value.full_name || '').trim()
-  const phone = String(quickPatientForm.value.phone || '').trim()
-
-  if (!fullName) {
-    quickPatientError.value = 'Bemor ismini kiriting'
-    return
-  }
-  if (!phone) {
-    quickPatientError.value = 'Telefon raqamini kiriting'
-    return
-  }
-
-  creatingPatient.value = true
-  try {
-    let assignedDoctorId = null
-    let assignedDoctorName = null
-
-    if (isAdmin.value) {
-      if (createForm.value.doctor_id) {
-        assignedDoctorId = Number(createForm.value.doctor_id)
-        const selectedDoctor = doctors.value.find(d => Number(d.id) === assignedDoctorId)
-        assignedDoctorName = selectedDoctor?.full_name || null
-      }
-    } else if (doctorId.value) {
-      assignedDoctorId = Number(doctorId.value)
-      assignedDoctorName = currentDoctorName.value || null
-    }
-
-    const patient = await patientsStore.addPatient({
-      full_name: fullName,
-      phone,
-      doctor_id: assignedDoctorId,
-      doctor_name: assignedDoctorName,
-      status: 'waiting',
-      createFirstVisit: false
-    })
-
-    createForm.value.patient_id = patient.id
-    showQuickPatientForm.value = false
-    resetQuickPatientForm()
-    toast.success('Bemor qo\'shildi va tanlandi')
-  } catch (error) {
-    console.error('Failed to create patient from appointment modal:', error)
-    quickPatientError.value = 'Bemor qo\'shishda xatolik yuz berdi'
-  } finally {
-    creatingPatient.value = false
-  }
-}
-
 const closeCreateModal = () => {
   showCreateModal.value = false
-  showQuickPatientForm.value = false
-  resetQuickPatientForm()
+  quickPatientOpen.value = false
+  quickPatientError.value = ''
+  quickPatientLoading.value = false
   // Formani tozalash
   createForm.value = {
     patient_id: '',
@@ -1002,6 +969,48 @@ const closeCreateModal = () => {
     notes: '',
     room: '',
     channel: ''
+  }
+  resetQuickPatient()
+}
+
+const resetQuickPatient = () => {
+  quickPatient.value = {
+    full_name: '',
+    phone: ''
+  }
+  quickPatientError.value = ''
+}
+
+const createQuickPatient = async () => {
+  quickPatientError.value = ''
+  const fullName = String(quickPatient.value.full_name || '').trim()
+  const phone = String(quickPatient.value.phone || '').trim()
+
+  if (!fullName || !phone) {
+    quickPatientError.value = 'Ism va telefon majburiy.'
+    return
+  }
+
+  quickPatientLoading.value = true
+  try {
+    const selectedDoctorId = createForm.value.doctor_id || (doctorId.value ? String(doctorId.value) : '')
+    const doctorEntry = doctors.value.find(d => String(d.id) === String(selectedDoctorId))
+    const created = await patientsStore.addPatient({
+      full_name: fullName,
+      phone,
+      doctor_id: selectedDoctorId || null,
+      doctor_name: doctorEntry?.full_name || null,
+      status: 'waiting',
+      createFirstVisit: false
+    })
+    createForm.value.patient_id = String(created.id)
+    quickPatientOpen.value = false
+    resetQuickPatient()
+  } catch (error) {
+    console.error('Failed to create quick patient:', error)
+    quickPatientError.value = 'Bemor qo\'shishda xatolik'
+  } finally {
+    quickPatientLoading.value = false
   }
 }
 
