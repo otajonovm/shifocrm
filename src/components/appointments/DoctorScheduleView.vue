@@ -81,20 +81,20 @@
       </div>
 
       <!-- Schedule Canvas -->
-      <div class="flex-1 overflow-auto relative bg-white">
+      <div class="flex-1 overflow-auto relative bg-white" ref="scheduleCanvasRef">
         <div :class="['day-grid', dayGridContainerClass]">
           <!-- Left: Time column (sticky) -->
-          <div class="bg-slate-50 time-column flex-shrink-0 sticky left-0 z-40 pl-2 sm:pl-3" :class="timeColumnWidth">
+          <div class="bg-slate-50 time-column flex-shrink-0 sticky left-0 z-40 pl-2 sm:pl-3 border-r border-slate-200" :class="timeColumnWidth">
             <!-- Empty space for top-left intersection to align with doctor headers (compact) -->
-            <div class="sticky top-0 z-50 bg-slate-50 h-[48px] sm:h-[56px]"></div>
+            <div class="sticky top-0 z-50 bg-slate-50 h-[48px] sm:h-[56px] border-b border-slate-200"></div>
 
             <div
               v-for="hour in hours"
               :key="hour.key"
-              class="relative text-right pr-1 sm:pr-1 md:pr-2 py-0 text-[11px] font-semibold text-slate-500 bg-slate-50 select-none"
+              class="relative text-right pr-2 py-0 text-[11px] font-semibold text-slate-500 bg-slate-50 select-none border-b border-slate-100"
               :style="{ height: slotHeightPx + 'px' }"
             >
-              <div v-if="hour.isLabel" class="absolute -top-2 right-1 sm:right-2 px-1.5 py-0.5 rounded-full bg-slate-50/95 backdrop-blur text-slate-600">
+              <div v-if="hour.isLabel" class="absolute -top-2.5 right-1 px-1.5 py-0.5 rounded-md bg-slate-100/90 text-slate-600 font-mono text-[10px]">
                 {{ hour.display }}
               </div>
             </div>
@@ -105,14 +105,19 @@
             <div
               v-for="(doctor, docIdx) in displayedDoctors"
               :key="doctor.id"
-              class="relative"
+              class="relative border-r border-slate-200"
               :class="isSparseDayLayout ? 'flex-none min-w-0' : 'flex-shrink-0'"
               :style="getDoctorColumnStyle(doctor)"
             >
               <!-- Doctor header (sticky top) -->
-              <div class="sticky top-0 z-30 bg-gradient-to-b from-primary-50 to-white px-2 sm:px-3 py-2 sm:py-2 shadow-sm h-[48px] sm:h-[56px] flex flex-col justify-center">
-                <div class="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-1" :title="doctor.full_name">{{ doctor.full_name }}</div>
-                <div class="text-xs text-gray-500 line-clamp-1">{{ doctor.specialization || 'Shifokor' }}</div>
+              <div class="sticky top-0 z-30 bg-white/95 backdrop-blur px-3 py-2 shadow-sm h-[48px] sm:h-[56px] flex items-center gap-2 border-b border-slate-200">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-cyan-500 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-sm">
+                  {{ doctor.full_name ? doctor.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'DR' }}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs sm:text-sm font-bold text-slate-800 truncate" :title="doctor.full_name">{{ doctor.full_name }}</div>
+                  <div class="text-[10px] text-slate-500 font-semibold truncate">{{ doctor.specialization || 'Shifokor' }}</div>
+                </div>
               </div>
 
               <!-- Time slots area -->
@@ -121,7 +126,7 @@
                 <div
                   v-for="hour in hours"
                   :key="`bg-${doctor.id}-${hour.time}`"
-                  class="bg-gradient-to-b from-blue-50/70 via-white to-white hover:from-blue-100 hover:via-blue-50 hover:to-white cursor-pointer transition-colors duration-150 active:bg-blue-200/90"
+                  class="bg-white border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors duration-150 active:bg-blue-50/50"
                   :style="{ height: slotHeightPx + 'px' }"
                   :title="`${doctor.full_name} — ${hour.time} da qabul ochish`"
                   @click="handleSlotClick(doctor.id, hour.time)"
@@ -322,6 +327,7 @@ const loading = ref(false)
 const appointments = ref([])
 const patientModalOpen = ref(false)
 const selectedPatientAppointment = ref(null)
+const scheduleCanvasRef = ref(null)
 // Hourly slots
 const slotHeightPx = 60 // 1 soat = 60px
 const currentDate = ref(props.selectedDate || new Date().toISOString().split('T')[0])
@@ -377,7 +383,7 @@ const hours = computed(() => {
     result.push({
       key: `${h}-0`,
       time: `${String(h).padStart(2, '0')}:00`,
-      display: String(h),
+      display: `${String(h).padStart(2, '0')}:00`,
       isLabel: true
     })
   }
@@ -869,6 +875,16 @@ onMounted(() => {
     patientsStore.fetchPatientsByDoctor(authStore.user.id)
   }
   window.addEventListener('resize', handleWindowResize)
+
+  // Scroll to current hour or 8 AM on mount
+  setTimeout(() => {
+    if (scheduleCanvasRef.value) {
+      const now = new Date()
+      const currentHour = now.getHours()
+      const targetHour = currentHour >= 8 && currentHour <= 20 ? currentHour - 1 : 8
+      scheduleCanvasRef.value.scrollTop = targetHour * slotHeightPx
+    }
+  }, 150)
 })
 
 onUnmounted(() => {
@@ -909,7 +925,7 @@ onUnmounted(() => {
 }
 
 /* Make current time indicator more prominent (thin red line with small dot) */
-.day-grid .flex-1.h-0.5.bg-red-500 {
+.day-grid .flex-1.h-0\.5.bg-red-500 {
   height: 2px !important;
 }
 
