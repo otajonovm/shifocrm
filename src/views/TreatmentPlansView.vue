@@ -230,31 +230,38 @@
                     {{ t('treatmentPlans.toVisit') }}
                   </button>
                   <button
+                    v-if="plan.status !== 'scheduled'"
+                    @click="setStatus(plan, 'scheduled')"
+                    class="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded"
+                  >
+                    {{ t('treatmentPlans.statusScheduled') }}
+                  </button>
+                  <button
+                    v-if="plan.status !== 'in_progress'"
+                    @click="setStatus(plan, 'in_progress')"
+                    class="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 rounded"
+                  >
+                    {{ t('treatmentPlans.statusInProgress') }}
+                  </button>
+                  <button
                     v-if="plan.status !== 'done'"
                     @click="setStatus(plan, 'done')"
                     class="px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 rounded"
                   >
-                    {{ t('treatmentPlans.markDone') }}
-                  </button>
-                  <button
-                    v-if="plan.status !== 'postponed'"
-                    @click="setStatus(plan, 'postponed')"
-                    class="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 rounded"
-                  >
-                    {{ t('treatmentPlans.postpone') }}
+                    {{ t('treatmentPlans.statusDone') }}
                   </button>
                   <button
                     v-if="plan.status !== 'cancelled'"
                     @click="setStatus(plan, 'cancelled')"
                     class="px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 rounded"
                   >
-                    {{ t('treatmentPlans.cancel') }}
+                    {{ t('treatmentPlans.statusCancelled') }}
                   </button>
                   <button
                     @click="sendReminder(plan)"
                     class="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded"
                   >
-                    {{ t('treatmentPlans.remind') }}
+                    {{ t('treatmentPlans.sendReminder') }}
                   </button>
                 </div>
               </td>
@@ -263,16 +270,17 @@
         </table>
       </div>
 
-      <!-- Mobile Card List -->
-      <div v-if="loading" class="md:hidden mobile-empty py-12">
-        <p class="text-sm text-gray-500">{{ t('treatmentPlans.loading') }}</p>
-      </div>
-      <div v-else-if="filteredPlans.length === 0" class="md:hidden mobile-empty py-12">
-        <p class="text-sm text-gray-500">{{ t('treatmentPlans.noPlans') }}</p>
-      </div>
-      <div v-else class="md:hidden space-y-3 pb-20">
+      <!-- Mobile Cards -->
+      <div class="md:hidden space-y-3">
+        <div v-if="loading" class="mobile-card text-sm text-slate-500">
+          {{ t('treatmentPlans.loading') }}
+        </div>
+        <div v-else-if="filteredPlans.length === 0" class="mobile-card text-sm text-slate-500">
+          {{ t('treatmentPlans.noPlans') }}
+        </div>
         <div
           v-for="plan in filteredPlans"
+          v-else
           :key="plan.id"
           class="mobile-list-item"
         >
@@ -286,7 +294,7 @@
                 {{ statusLabel(plan.status) }}
               </span>
             </div>
-            
+
             <div v-if="plan.notes" class="text-xs text-gray-500 bg-gray-50 rounded-lg p-2">
               {{ plan.notes }}
             </div>
@@ -393,9 +401,10 @@ const startDate = ref('')
 const endDate = ref('')
 
 const statusOptions = [
-  { value: 'planned', label: t('treatmentPlans.statusPlanned') },
+  { value: 'offered', label: t('treatmentPlans.statusOffered') },
+  { value: 'scheduled', label: t('treatmentPlans.statusScheduled') },
+  { value: 'in_progress', label: t('treatmentPlans.statusInProgress') },
   { value: 'done', label: t('treatmentPlans.statusDone') },
-  { value: 'postponed', label: t('treatmentPlans.statusPostponed') },
   { value: 'cancelled', label: t('treatmentPlans.statusCancelled') }
 ]
 
@@ -403,7 +412,7 @@ const form = ref({
   patient_id: '',
   title: '',
   planned_date: '',
-  status: 'planned',
+  status: 'offered',
   priority: 'medium',
   tooth_id: null,
   estimated_cost: null,
@@ -431,7 +440,7 @@ const resetForm = () => {
     patient_id: '',
     title: '',
     planned_date: '',
-    status: 'planned',
+    status: 'offered',
     priority: 'medium',
     tooth_id: null,
     estimated_cost: null,
@@ -558,9 +567,10 @@ const statusLabel = (status) => {
 
 const statusClass = (status) => {
   if (status === 'done') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'postponed') return 'bg-amber-100 text-amber-700'
+  if (status === 'in_progress') return 'bg-amber-100 text-amber-700'
   if (status === 'cancelled') return 'bg-rose-100 text-rose-700'
-  return 'bg-blue-100 text-blue-700'
+  if (status === 'scheduled') return 'bg-blue-100 text-blue-700'
+  return 'bg-slate-100 text-slate-700'
 }
 
 const priorityLabel = (priority) => {

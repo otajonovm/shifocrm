@@ -659,53 +659,6 @@ const syncTeethFromOdontogram = () => {
 
 // visit_services dan faqat odontogramda yo'q tishlarni qo'shamiz — mavjud tishlarni overwrite qilmaymiz
 // Bu funksiya faqat yangi tashrif yaratilganda chaqiriladi
-const syncTeethFromVisitServices = () => {
-  if (!currentOdontogram.value || !visitServices.value.length) return
-
-  if (!currentOdontogram.value.data.teeth) {
-    currentOdontogram.value.data.teeth = {}
-  }
-  const data = currentOdontogram.value.data.teeth
-  let hasChanges = false
-
-  for (const service of visitServices.value) {
-    const tid = service.tooth_id
-    if (tid == null) continue
-    const key = String(tid)
-
-    // Faqat odontogramda bu tish yo'q bo'lsa qo'shamiz (foydalanuvchi o'zgartirganini overwrite qilmaymiz)
-    if (data[tid] || data[key]) continue
-
-    let serviceId = null
-    if (service.service_name && servicesList.value.length > 0) {
-      const matched = servicesList.value.find(s =>
-        s.label.toLowerCase() === service.service_name.toLowerCase() ||
-        s.label === service.service_name
-      )
-      if (matched) {
-        serviceId = Number(matched.value) || null
-      }
-    }
-
-    const inferredStatus = inferStatusFromServiceName(service.service_name) || 'filling'
-    data[key] = {
-      state: inferredStatus,
-      service_id: serviceId,
-      note: ''
-    }
-    hasChanges = true
-  }
-
-  if (hasChanges) {
-    currentOdontogram.value.data.teeth = { ...data }
-    syncTeethFromOdontogram()
-    if (currentOdontogram.value.id) {
-      odontogramApi.updateOdontogramSnapshot(currentOdontogram.value.id, currentOdontogram.value.data)
-        .catch(err => console.warn('Failed to auto-save odontogram sync:', err))
-    }
-  }
-}
-
 const loadVisitServices = async () => {
   if (!currentVisit.value?.id) {
     visitServices.value = []

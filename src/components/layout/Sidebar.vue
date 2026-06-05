@@ -151,6 +151,9 @@ const authStore = useAuthStore()
 const clinicStore = useClinicStore()
 const { t } = useI18n()
 
+const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
+const isAdminLike = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
+
 // Admin menu items
 const adminMenuItems = [
   { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
@@ -192,12 +195,12 @@ const doctorMenuItems = [
 
 const menuItems = computed(() => {
   if (authStore.userRole === 'solo') return soloMenuItems
-  if (authStore.userRole === 'admin') return adminMenuItems
+  if (isAdminLike.value) return adminMenuItems
   return doctorMenuItems
 })
 
 const userName = computed(() => {
-  if (authStore.userRole === 'admin') return t('role.admin')
+  if (isAdminLike.value) return t('role.admin')
   if (authStore.userRole === 'solo') return authStore.user?.full_name || authStore.userEmail || t('role.solo')
   return authStore.userEmail || t('role.doctor')
 })
@@ -208,13 +211,13 @@ const userInitials = computed(() => {
 })
 
 const roleLabel = computed(() => {
-  if (authStore.userRole === 'admin') return t('role.admin')
+  if (isAdminLike.value) return t('role.admin')
   if (authStore.userRole === 'solo') return t('role.solo')
   return t('role.doctor')
 })
 
 const roleBadgeClass = computed(() => {
-  if (authStore.userRole === 'admin') return 'bg-orange-100 text-orange-700'
+  if (isAdminLike.value) return 'bg-orange-100 text-orange-700'
   if (authStore.userRole === 'solo') return 'bg-teal-100 text-teal-700'
   return 'bg-green-100 text-green-700'
 })

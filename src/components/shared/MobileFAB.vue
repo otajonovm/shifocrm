@@ -15,7 +15,7 @@
 <script setup>
 defineProps({
   icon: {
-    type: Object,
+    type: [Object, Function],
     required: true
   },
   label: {

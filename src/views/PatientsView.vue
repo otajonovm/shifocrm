@@ -11,25 +11,6 @@
             {{ isSolo ? t('patients.soloSubtitle') : (isAdmin ? t('patients.allPatientsSubtitle') : t('patients.myPatientsSubtitle')) }}
           </p>
         </div>
-        <div class="flex items-center gap-3">
-          <!-- Export: solo uchun yashirin -->
-          <button
-            v-if="isAdmin && !isSolo"
-            @click="exportPatients"
-            class="hidden items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:inline-flex"
-          >
-            <ArrowDownTrayIcon class="h-5 w-5" />
-            {{ t('patients.export') }}
-          </button>
-          <!-- Desktop Button -->
-          <button
-            @click="openAddModal"
-            class="hidden md:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-cyan-600 px-5 py-3 font-medium text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg touch-target-lg"
-          >
-            <PlusIcon class="h-5 w-5" />
-            {{ t('patients.newPatient') }}
-          </button>
-        </div>
       </div>
 
       <!-- Qidiruv va filter: solo uchun sodda -->
@@ -113,7 +94,7 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
               <tr
-                v-for="patient in filteredPatients"
+                v-for="patient in paginatedPatients"
                 :key="patient.id"
                 @click="goToPatientDetail(patient.id)"
                 class="hover:bg-gray-50 transition-colors cursor-pointer"
@@ -189,7 +170,7 @@
         <!-- Mobile: Optimized Card Layout -->
         <div class="md:hidden space-y-3 pb-20">
           <div
-            v-for="patient in filteredPatients"
+            v-for="patient in paginatedPatients"
             :key="patient.id"
             class="mobile-list-item"
             @click="goToPatientDetail(patient.id)"
@@ -265,10 +246,48 @@
         </div>
 
         <!-- Footer -->
-        <div class="flex items-center justify-between border-t border-gray-100 px-6 py-4">
-          <p class="text-sm text-gray-500">
-            {{ t('patients.total') }}: <span class="font-semibold text-gray-900">{{ filteredPatients.length }}</span> {{ t('patients.patientsCount') }}
-          </p>
+        <div class="flex flex-col gap-4 border-t border-gray-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-3">
+            <p class="text-sm text-gray-500">
+              {{ t('patients.total') }}: <span class="font-semibold text-gray-900">{{ filteredPatients.length }}</span> {{ t('patients.patientsCount') }}
+            </p>
+            <select
+              v-model.number="pageSize"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+            </select>
+          </div>
+
+          <div v-if="totalPages > 1" class="flex items-center justify-between gap-2 sm:justify-end">
+            <button
+              @click="goToPage(currentPage - 1)"
+              :disabled="currentPage === 1"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Oldingi
+            </button>
+            <div class="flex items-center gap-1">
+              <button
+                v-for="page in paginationPages"
+                :key="page"
+                @click="goToPage(page)"
+                class="min-w-10 rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
+                :class="page === currentPage ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'"
+              >
+                {{ page }}
+              </button>
+            </div>
+            <button
+              @click="goToPage(currentPage + 1)"
+              :disabled="currentPage === totalPages"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Keyingi
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -534,7 +553,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
@@ -550,7 +569,6 @@ import { TASHKENT_OPTIONS, TASHKENT_CITY_DISTRICTS, TASHKENT_REGION_DISTRICTS } 
 import {
   MagnifyingGlassIcon,
   PlusIcon,
-  ArrowDownTrayIcon,
   PencilIcon,
   TrashIcon,
   UsersIcon,
@@ -568,7 +586,8 @@ const patientsStore = usePatientsStore()
 const toast = useToast()
 const { t } = useI18n()
 
-const isAdmin = computed(() => authStore.userRole === 'admin' || authStore.userRole === 'solo')
+const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
+const isAdmin = computed(() => authStore.userRole === 'admin' || authStore.userRole === 'solo' || isClinicScopedSuperAdmin.value)
 const isSolo = computed(() => authStore.userRole === 'solo')
 
 // Doktor ID ni olish
@@ -585,7 +604,7 @@ const getCurrentDoctorId = () => {
 // Current doctor name (for odontogram and modal)
 const currentDoctorName = computed(() => {
   if (authStore.userRole === 'solo') return authStore.user?.full_name || ''
-  if (authStore.userRole === 'admin') return t('role.admin')
+  if (authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value) return t('role.admin')
   const doctorId = getCurrentDoctorId()
   if (!doctorId) return ''
   const doctor = doctorsStore.items.find(d => Number(d.id) === Number(doctorId))
@@ -596,6 +615,8 @@ const currentDoctorName = computed(() => {
 const searchQuery = ref('')
 const selectedDoctor = ref('')
 const selectedStatus = ref('')
+const pageSize = ref(10)
+const currentPage = ref(1)
 
 // Modals
 const showModal = ref(false)
@@ -671,6 +692,24 @@ const filteredPatients = computed(() => {
 
   return result
 })
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredPatients.value.length / pageSize.value))
+})
+
+const paginatedPatients = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredPatients.value.slice(start, start + pageSize.value)
+})
+
+const paginationPages = computed(() => {
+  return Array.from({ length: totalPages.value }, (_, index) => index + 1)
+})
+
+const goToPage = (page) => {
+  const nextPage = Math.min(Math.max(1, page), totalPages.value)
+  currentPage.value = nextPage
+}
 
 // Helpers
 const getInitials = (name) => {
@@ -777,6 +816,10 @@ const normalizeUzPhone = (value) => {
   localDigits = localDigits.slice(0, 9)
   return `${PHONE_PREFIX}${localDigits}`
 }
+
+watch([searchQuery, selectedDoctor, selectedStatus, pageSize], () => {
+  currentPage.value = 1
+})
 
 const formatUzPhone = (value) => {
   const normalized = normalizeUzPhone(value)
@@ -945,18 +988,6 @@ const deletePatientConfirmed = async () => {
   } catch (err) {
     console.error('Delete error:', err)
   }
-}
-
-const exportPatients = () => {
-  const data = patientsStore.items
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'patients.json'
-  a.click()
-  URL.revokeObjectURL(url)
-  toast.success(t('patients.toastLoaded'))
 }
 
 // Lifecycle

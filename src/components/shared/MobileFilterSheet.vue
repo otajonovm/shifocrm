@@ -32,7 +32,7 @@
 import { useI18n } from 'vue-i18n'
 import MobileBottomSheet from './MobileBottomSheet.vue'
 
-const props = defineProps({
+defineProps({
   modelValue: {
     type: Boolean,
     default: false

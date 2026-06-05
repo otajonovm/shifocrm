@@ -41,7 +41,6 @@
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{{ t('superAdmin.logo') }}</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{{ t('superAdmin.clinicId') }}</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{{ t('superAdmin.name') }}</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{{ t('superAdmin.adminLogin') }}</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{{ t('superAdmin.createdAt') }}</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{{ t('superAdmin.status') }}</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{{ t('superAdmin.doctorCount') }}</th>
@@ -60,10 +59,6 @@
                   <code class="text-xs font-mono text-gray-700 bg-gray-100 px-2 py-0.5 rounded">{{ c.id }}</code>
                 </td>
                 <td class="px-4 py-3 font-medium text-gray-900">{{ c.name }}</td>
-                <td class="px-4 py-3">
-                  <code v-if="c.adminLogin" class="text-xs font-mono text-gray-700 bg-gray-100 px-2 py-0.5 rounded">{{ c.adminLogin }}</code>
-                  <span v-else class="text-gray-400">—</span>
-                </td>
                 <td class="px-4 py-3 text-gray-600">{{ formatDate(c.created_at) }}</td>
                 <td class="px-4 py-3">
                   <span
@@ -105,7 +100,7 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import SuperAdminLayout from '@/layouts/SuperAdminLayout.vue'
-import { listClinics, getDoctorCountByClinic, getClinicAdminByClinic } from '@/services/adminService'
+import { listClinics, getDoctorCountByClinic } from '@/services/adminService'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useClinicStore } from '@/stores/clinic'
@@ -137,15 +132,12 @@ onMounted(async () => {
     const withCounts = await Promise.all(
       list.map(async (c) => {
         let n = 0
-        let adminLogin = null
         try {
           n = await getDoctorCountByClinic(c.id)
-        } catch {}
-        try {
-          const admin = await getClinicAdminByClinic(c.id)
-          adminLogin = admin?.login || null
-        } catch {}
-        return { ...c, doctorCount: n, adminLogin }
+        } catch {
+          n = 0
+        }
+        return { ...c, doctorCount: n }
       })
     )
     clinicsWithCounts.value = withCounts

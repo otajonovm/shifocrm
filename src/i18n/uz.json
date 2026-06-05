@@ -329,6 +329,7 @@
     "title": "Kalendar",
     "subtitle": "Qabullar jadvali va boshqaruvi",
     "appointmentsCalendar": "Qabullar jadvali",
+    "myAppointments": "Mening uchrashuvlarim",
     "export": "Export",
     "import": "Import",
     "newAppointment": "Yangi Uchrashuv",
@@ -601,6 +602,16 @@
     "newPlan": "Yangi reja",
     "planTitle": "Reja nomi",
     "planTitlePlaceholder": "Masalan: Plomba qo'yish",
+    "service": "Xizmat",
+    "defaultTitle": "Davolash rejasi",
+    "stages": "Bosqichlar",
+    "addStage": "Bosqich qo'shish",
+    "stageName": "Bosqich nomi",
+    "stageNamePlaceholder": "Masalan: Gigiena",
+    "services": "Xizmatlar",
+    "addService": "Xizmat qo'shish",
+    "selectService": "Xizmatni tanlang",
+    "remove": "Olib tashlash",
     "planDate": "Reja sanasi",
     "status": "Status",
     "priority": "Ustuvorlik",
@@ -627,10 +638,14 @@
     "markDone": "Bajarildi",
     "postpone": "Kechiktir",
     "remind": "Eslatma",
-    "statusPlanned": "Rejalashtirilgan",
+    "statusOffered": "Taklif etildi",
+    "statusScheduled": "Rejalashtirildi",
+    "statusInProgress": "Davolanmoqda",
     "statusDone": "Bajarildi",
-    "statusPostponed": "Kechiktirildi",
-    "statusCancelled": "Bekor",
+    "statusCancelled": "Bekor qilindi",
+    "totalEstimatedCost": "Jami taxminiy qiymat",
+    "errorStageRequired": "Bosqich nomi va sanasi majburiy.",
+    "errorServiceRequired": "Xizmat tanlanishi kerak.",
     "errorTitleDate": "Reja nomi va sanasi majburiy.",
     "toastSaved": "Reja saqlandi",
     "toastStatusUpdated": "Status yangilandi",
@@ -1145,6 +1160,34 @@
     "selectPatient": "Bemorni tanlang",
     "errorRequired": "Reja nomi, sana va bemor majburiy.",
     "errorSave": "Saqlashda xatolik"
+  },
+  "doctors": {
+    "title": "Xodimlar",
+    "doctorsList": "Klinika xodimlari ro'yxati"
+  },
+  "payments": {
+    "title": "To'lovlar",
+    "subtitle": "Moliyaviy hisobotlar",
+    "financialReports": "Moliyaviy hisobotlar"
+  },
+  "services": {
+    "title": "Xizmatlar",
+    "subtitle": "Xizmatlar narxlari",
+    "servicePrices": "Xizmatlar narxlari"
+  },
+  "reports": {
+    "title": "Hisobotlar",
+    "subtitle": "Statistika va tahlillar",
+    "statistics": "Statistika va tahlillar"
+  },
+  "settings": {
+    "title": "Sozlamalar",
+    "subtitle": "Tizim sozlamalari",
+    "systemSettings": "Tizim sozlamalari"
+  },
+  "profile": {
+    "title": "Mening Profilim",
+    "personalInfo": "Shaxsiy ma'lumotlar"
   },
   "doctorProfile": {
     "loading": "Profil yuklanmoqda...",

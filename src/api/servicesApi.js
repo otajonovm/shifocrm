@@ -3,7 +3,7 @@
  * Tenant isolation: barcha so'rovlar joriy klinika bo'yicha filtrlangan.
  */
 
-import { supabaseGet, supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
+import { supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { getVisitsByDateRange } from '@/api/visitsApi'
 import { getVisitServicesByVisitIds } from '@/api/visitServicesApi'

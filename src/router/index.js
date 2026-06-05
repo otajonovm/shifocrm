@@ -159,9 +159,13 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const impersonatorRole = localStorage.getItem('impersonatorRole')
-
+  const superAdminScope = authStore.superAdminScope || localStorage.getItem('superAdminScope')
   // Redirect authenticated users away from login page
   if (to.name === 'login' && authStore.isAuthenticated) {
+    if (authStore.userRole === 'super_admin' && superAdminScope === 'clinic') {
+      next({ name: 'dashboard' })
+      return
+    }
     const defaultRoute = authStore.userRole === 'super_admin'
       ? 'admin-clinics'
       : authStore.userRole === 'doctor'
@@ -179,7 +183,7 @@ router.beforeEach(async (to, from, next) => {
 
   // Super admin always uses /admin; redirect dashboard to clinics
   // (except when super admin is impersonating a clinic as admin)
-  if (to.name === 'dashboard' && authStore.userRole === 'super_admin' && impersonatorRole !== 'super_admin') {
+  if (to.name === 'dashboard' && authStore.userRole === 'super_admin' && impersonatorRole !== 'super_admin' && superAdminScope !== 'clinic') {
     next({ name: 'admin-clinics' })
     return
   }
@@ -203,8 +207,12 @@ router.beforeEach(async (to, from, next) => {
       next({ name: 'dashboard' })
       return
     }
+    if (to.meta.requiresRole === 'super_admin' && authStore.userRole === 'super_admin' && superAdminScope === 'clinic') {
+      next({ name: 'dashboard' })
+      return
+    }
     // Admin: admin yoki solo (yakka doktor) kirishi mumkin
-    if (to.meta.requiresRole === 'admin' && authStore.userRole !== 'admin' && authStore.userRole !== 'solo') {
+    if (to.meta.requiresRole === 'admin' && authStore.userRole !== 'admin' && authStore.userRole !== 'solo' && !(authStore.userRole === 'super_admin' && superAdminScope === 'clinic')) {
       const defaultRoute = authStore.userRole === 'super_admin' ? 'admin-clinics' : 'dashboard'
       next({ name: defaultRoute })
       return

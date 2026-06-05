@@ -437,7 +437,7 @@ const weekDays = computed(() => {
     date.setDate(date.getDate() + i)
 
     const dayNum = String(date.getDate()).padStart(2, '0')
-    const dayName = ['DSH', 'SSH', 'CHSH', 'PYH', 'JMH', 'SHH', 'YAK'][date.getDay()]
+    const dayName = ['YAK', 'DSH', 'SSH', 'CHSH', 'PYH', 'JMH', 'SHH'][date.getDay()]
     const isoDate = date.toISOString().split('T')[0]
 
     days.push({

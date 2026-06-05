@@ -209,7 +209,10 @@ const handleAdminLogin = async () => {
 
   if (success) {
     toast.success(t('login.toastSuccess'))
-    const defaultRedirect = authStore.userRole === 'super_admin' ? '/admin/clinics' : '/dashboard'
+    const isClinicScopedSuperAdmin = authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic'
+    const defaultRedirect = isClinicScopedSuperAdmin
+      ? '/dashboard'
+      : (authStore.userRole === 'super_admin' ? '/admin/clinics' : '/dashboard')
     const redirect = route.query.redirect || defaultRedirect
     router.push(redirect)
   } else {

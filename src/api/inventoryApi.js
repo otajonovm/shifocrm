@@ -3,7 +3,7 @@
  * Tenant isolation; clinic_id yo'q bo'lsa filtersiz fallback.
  */
 
-import { supabaseGet, supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
+import { supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
@@ -134,7 +134,7 @@ export const createInventoryConsumption = async (payload) => {
 
   const item = await getInventoryItemById(itemId)
   if (!item) throw new Error('Material topilmadi.')
-  const currentStock = Number(item.current_stock) ?? 0
+  const currentStock = Number(item.current_stock) || 0
   if (currentStock < quantity) {
     throw new Error(`Omborda yetarli qoldiq yo'q. Mavjud: ${currentStock}, so'ralgan: ${quantity}.`)
   }
@@ -166,7 +166,7 @@ export const deleteInventoryConsumption = async (id) => {
   const quantity = Number(consumption.quantity) || 0
   const item = await getInventoryItemById(itemId)
   if (item && Number.isFinite(quantity)) {
-    const currentStock = Number(item.current_stock) ?? 0
+    const currentStock = Number(item.current_stock) || 0
     await updateInventoryItem(itemId, { current_stock: currentStock + quantity })
   }
 

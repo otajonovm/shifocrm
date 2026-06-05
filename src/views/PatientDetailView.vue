@@ -366,6 +366,7 @@ const activeTab = ref('visits')
 const lastVisitStatus = ref(null)
 const totalDebt = ref(0)
 const visits = ref([])
+const selectedVisitId = ref(null)
 const showPatientStatusModal = ref(false)
 const newPatientStatus = ref('')
 const updatingPatientStatus = ref(false)
@@ -384,12 +385,14 @@ const tabs = [
   { id: 'documents', labelKey: 'patientDetail.tabDocuments', count: null },
 ]
 
-const isAdmin = computed(() => authStore.userRole === 'admin' || authStore.userRole === 'solo')
+const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
+const isAdmin = computed(() => authStore.userRole === 'admin' || authStore.userRole === 'solo' || isClinicScopedSuperAdmin.value)
 const isSolo = computed(() => authStore.userRole === 'solo')
 const isDoctor = computed(() => authStore.userRole === 'doctor')
 
 const canComplete = computed(() => {
   const role = authStore.userRole
+  if (role === 'super_admin') return isClinicScopedSuperAdmin.value
   return ['doctor', 'solo', 'admin'].includes(role)
 })
 

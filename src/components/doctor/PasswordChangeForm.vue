@@ -69,7 +69,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['submit'])
+defineEmits(['submit'])
 const { t } = useI18n()
 
 const passwordForm = ref({

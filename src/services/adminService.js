@@ -9,6 +9,7 @@ import { supabaseGet, supabasePost, supabasePatch } from '@/api/supabaseConfig'
 const CLINICS_TABLE = 'clinics'
 const DOCTORS_TABLE = 'doctors'
 const CLINIC_ADMINS_TABLE = 'clinic_admins'
+const CLINIC_OWNERS_TABLE = 'clinic_owners'
 
 /**
  * List all clinics.
@@ -260,6 +261,92 @@ export async function updateClinicAdmin(adminId, data) {
 }
 
 // -----------------------------------------------------------------------------
+// Klinika boshlig'i (clinic-scoped super admin)
+// -----------------------------------------------------------------------------
+
+/**
+ * Authenticate clinic owner by login + password. Returns owner + clinic_id if clinic is active.
+ * @param {string} login
+ * @param {string} password
+ * @returns {Promise<{ id: number, clinic_id: number, login: string }|null>}
+ */
+export async function authenticateClinicOwner(login, password) {
+  const l = (login || '').trim()
+  const p = (password || '').trim()
+  if (!l || !p) return null
+  try {
+    const rows = await supabaseGet(
+      CLINIC_OWNERS_TABLE,
+      `login=eq.${encodeURIComponent(l)}&password=eq.${encodeURIComponent(p)}`
+    )
+    const owner = Array.isArray(rows) && rows[0] ? rows[0] : null
+    if (!owner) return null
+    const clinic = await getClinic(owner.clinic_id)
+    if (!clinic || clinic.is_active === false) return null
+    return { id: owner.id, clinic_id: Number(owner.clinic_id), login: owner.login }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Get clinic owner by clinic id.
+ * @param {number} clinicId
+ * @returns {Promise<{ id: number, clinic_id: number, login: string }|null>}
+ */
+export async function getClinicOwnerByClinic(clinicId) {
+  const id = Number(clinicId)
+  if (!Number.isFinite(id)) return null
+  try {
+    const rows = await supabaseGet(CLINIC_OWNERS_TABLE, `clinic_id=eq.${id}&order=id.asc&limit=1`)
+    return Array.isArray(rows) && rows[0] ? rows[0] : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Create clinic owner (login + password).
+ * @param {number} clinicId
+ * @param {{ login: string, password: string }} data
+ * @returns {Promise<{ id: number, clinic_id: number, login: string }>}
+ */
+export async function createClinicOwner(clinicId, data) {
+  const id = Number(clinicId)
+  if (!Number.isFinite(id)) throw new Error('Invalid clinic id')
+  const login = (data.login || '').trim()
+  const password = (data.password || '').trim()
+  if (!login || !password) throw new Error('Login va parol majburiy')
+  const payload = {
+    clinic_id: id,
+    login,
+    password
+  }
+  const result = await supabasePost(CLINIC_OWNERS_TABLE, payload)
+  return result && result[0] ? result[0] : result
+}
+
+/**
+ * Update clinic owner (login and/or password).
+ * @param {number} ownerId
+ * @param {{ login?: string, password?: string }} data
+ * @returns {Promise<{ id: number, clinic_id: number, login: string }>}
+ */
+export async function updateClinicOwner(ownerId, data) {
+  const id = Number(ownerId)
+  if (!Number.isFinite(id)) throw new Error('Invalid owner id')
+  const payload = { updated_at: new Date().toISOString() }
+  if (data.login != null) payload.login = String(data.login).trim()
+  if (data.password != null && String(data.password).trim()) payload.password = String(data.password).trim()
+  if (Object.keys(payload).length <= 1) {
+    const rows = await supabaseGet(CLINIC_OWNERS_TABLE, `id=eq.${id}`)
+    return Array.isArray(rows) && rows[0] ? rows[0] : null
+  }
+  const result = await supabasePatch(CLINIC_OWNERS_TABLE, id, payload)
+  return result && result[0] ? result[0] : result
+}
+
+// -----------------------------------------------------------------------------
 // Yakka doktor (solo doctor) — Super Admin tomonidan yaratiladi
 // -----------------------------------------------------------------------------
 
@@ -326,8 +413,8 @@ export async function createSoloDoctor(data) {
   const doctorResult = await supabasePost(DOCTORS_TABLE, doctorPayload)
   const doctor = Array.isArray(doctorResult) ? doctorResult[0] : doctorResult
 
-  // Yakka doktor: clinic_admin yaratish — login+parol bilan Admin bo'limidan kirish
-  await createClinicAdmin(clinicId, { login, password })
+  // Yakka doktor: klinika boshlig'i (clinic-scoped super admin) yaratish
+  await createClinicOwner(clinicId, { login, password })
 
   return {
     clinic,

@@ -23,8 +23,8 @@
         v-if="isEdit && clinic"
         class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3"
       >
-        <h3 class="text-sm font-semibold text-emerald-900">{{ t('superAdmin.credentialsTitle') }}</h3>
-        <p class="text-xs text-emerald-700">{{ t('superAdmin.credentialsEditHint') }}</p>
+        <h3 class="text-sm font-semibold text-emerald-900">Klinika boshlig'i kirish ma'lumotlari</h3>
+        <p class="text-xs text-emerald-700">Klinika ID va Login — kirish uchun. Parolni faqat pastda o'zgartirish mumkin.</p>
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="flex items-center gap-2">
             <span class="text-sm text-gray-600">{{ t('superAdmin.clinicId') }}:</span>
@@ -37,12 +37,12 @@
               {{ t('superAdmin.copy') }}
             </button>
           </div>
-          <div v-if="clinicAdmin?.login" class="flex items-center gap-2">
-            <span class="text-sm text-gray-600">{{ t('superAdmin.adminLogin') }}:</span>
-            <code class="flex-1 px-2 py-1 bg-white rounded border border-emerald-200 text-sm font-mono">{{ clinicAdmin.login }}</code>
+          <div v-if="clinicOwner?.login" class="flex items-center gap-2">
+            <span class="text-sm text-gray-600">Boshliq login:</span>
+            <code class="flex-1 px-2 py-1 bg-white rounded border border-emerald-200 text-sm font-mono">{{ clinicOwner.login }}</code>
             <button
               type="button"
-              @click="copyToClipboard(clinicAdmin.login)"
+              @click="copyToClipboard(clinicOwner.login)"
               class="shrink-0 px-2 py-1 text-xs font-medium text-emerald-700 bg-white border border-emerald-200 rounded hover:bg-emerald-100"
             >
               {{ t('superAdmin.copy') }}
@@ -93,34 +93,37 @@
         </div>
 
         <div class="pt-4 border-t border-gray-200 space-y-4">
-          <h3 class="text-sm font-semibold text-gray-900">{{ t('superAdmin.clinicAdminSection') }}</h3>
-          <p class="text-sm text-gray-500">{{ t('superAdmin.clinicAdminHint') }}</p>
+          <h3 class="text-sm font-semibold text-gray-900">Klinika boshlig'i (Super Admin) login/paroli</h3>
+          <p class="text-sm text-gray-500">Ushbu login/parol bilan faqat shu klinika boshqariladi.</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t('superAdmin.adminLogin') }}{{ isEdit ? '' : ' *' }}
+                Login {{ isEdit ? '' : '*' }}
               </label>
               <input
-                v-model="form.admin_login"
+                v-model="form.owner_login"
                 type="text"
+                :required="!isEdit"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                :placeholder="t('superAdmin.adminLoginPlaceholder')"
+                placeholder="Masalan: boss-1"
               />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t('superAdmin.adminPassword') }}{{ isEdit ? ` (${t('superAdmin.adminPasswordOptional')})` : ' *' }}
+                Parol {{ isEdit ? "(o'zgartirmasangiz bo'sh qoldiring)" : '*' }}
               </label>
               <input
-                v-model="form.admin_password"
+                v-model="form.owner_password"
                 type="password"
+                :required="!isEdit"
                 autocomplete="new-password"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                :placeholder="isEdit ? t('superAdmin.adminPasswordPlaceholder') : ''"
+                :placeholder="isEdit ? 'Yangilash uchun kiriting' : ''"
               />
             </div>
           </div>
         </div>
+
 
         <div v-if="isEdit && clinic?.is_active !== false" class="pt-2">
           <button
@@ -157,8 +160,8 @@
         @click.self="closeCredentialsModal"
       >
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
-          <h3 class="text-lg font-bold text-gray-900">{{ t('superAdmin.credentialsCreateTitle') }}</h3>
-          <p class="text-sm text-gray-600">{{ t('superAdmin.credentialsCreateHint') }}</p>
+          <h3 class="text-lg font-bold text-gray-900">Klinika boshlig'i uchun kirish ma'lumotlari</h3>
+          <p class="text-sm text-gray-600">Ushbu login/parol bilan faqat shu klinika boshqariladi.</p>
           <div class="space-y-3">
             <div>
               <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('superAdmin.clinicId') }}</label>
@@ -170,7 +173,7 @@
               </div>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('superAdmin.adminLogin') }}</label>
+              <label class="block text-xs font-medium text-gray-500 mb-1">Login</label>
               <div class="flex gap-2">
                 <code class="flex-1 px-3 py-2 bg-gray-100 rounded-lg font-mono text-sm">{{ createdCredentials.login }}</code>
                 <button type="button" @click="copyToClipboard(createdCredentials.login)" class="px-3 py-2 text-sm font-medium text-primary-700 bg-primary-50 rounded-lg hover:bg-primary-100">
@@ -179,7 +182,7 @@
               </div>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('superAdmin.adminPassword') }}</label>
+              <label class="block text-xs font-medium text-gray-500 mb-1">Parol</label>
               <div class="flex gap-2">
                 <code class="flex-1 px-3 py-2 bg-amber-50 rounded-lg font-mono text-sm">{{ createdCredentials.password }}</code>
                 <button type="button" @click="copyToClipboard(createdCredentials.password)" class="px-3 py-2 text-sm font-medium text-amber-700 bg-amber-100 rounded-lg hover:bg-amber-200">
@@ -199,6 +202,7 @@
           </div>
         </div>
       </div>
+
     </div>
   </SuperAdminLayout>
 </template>
@@ -214,9 +218,9 @@ import {
   createClinic,
   updateClinic,
   suspendClinic,
-  getClinicAdminByClinic,
-  createClinicAdmin,
-  updateClinicAdmin,
+  getClinicOwnerByClinic,
+  createClinicOwner,
+  updateClinicOwner,
 } from '@/services/adminService'
 import { ArrowLeftIcon, NoSymbolIcon } from '@heroicons/vue/24/outline'
 
@@ -226,7 +230,7 @@ const { t } = useI18n()
 const toast = useToast()
 
 const clinic = ref(null)
-const clinicAdmin = ref(null)
+const clinicOwner = ref(null)
 const saving = ref(false)
 const showCredentialsModal = ref(false)
 const createdCredentials = ref({ clinicId: '', login: '', password: '' })
@@ -235,8 +239,8 @@ const form = ref({
   slug: '',
   max_doctors: 4,
   logo_url: '',
-  admin_login: '',
-  admin_password: '',
+  owner_login: '',
+  owner_password: '',
 })
 
 const isEdit = computed(() => !!route.params.id)
@@ -258,20 +262,20 @@ onMounted(async () => {
   const id = Number(route.params.id)
   if (!Number.isFinite(id)) return
   try {
-    const [clinicData, adminData] = await Promise.all([
+    const [clinicData, ownerData] = await Promise.all([
       getClinic(id),
-      getClinicAdminByClinic(id),
+      getClinicOwnerByClinic(id),
     ])
     clinic.value = clinicData
-    clinicAdmin.value = adminData
+    clinicOwner.value = ownerData
     if (clinic.value) {
       form.value = {
         name: clinic.value.name || '',
         slug: clinic.value.slug || '',
         max_doctors: clinic.value.max_doctors ?? 4,
         logo_url: clinic.value.logo_url || '',
-        admin_login: adminData?.login || '',
-        admin_password: '',
+        owner_login: ownerData?.login || '',
+        owner_password: '',
       }
     }
   } catch (e) {
@@ -283,9 +287,8 @@ async function handleSubmit() {
   saving.value = true
   try {
     let clinicId
-    const login = (form.value.admin_login || '').trim()
-    const password = (form.value.admin_password || '').trim()
-
+    const login = (form.value.owner_login || '').trim()
+    const password = (form.value.owner_password || '').trim()
     if (isEdit.value) {
       await updateClinic(route.params.id, {
         name: form.value.name,
@@ -294,15 +297,16 @@ async function handleSubmit() {
         logo_url: form.value.logo_url || null,
       })
       clinicId = Number(route.params.id)
-      if (clinicId && login) {
-        if (clinicAdmin.value?.id) {
-          const payload = { login }
-          if (password) payload.password = password
-          await updateClinicAdmin(clinicAdmin.value.id, payload)
-        } else {
-          if (!password) throw new Error(t('superAdmin.adminPasswordRequired'))
-          await createClinicAdmin(clinicId, { login, password })
-        }
+      if (!login) {
+        throw new Error("Boshliq login majburiy")
+      }
+      if (clinicOwner.value?.id) {
+        const payload = { login }
+        if (password) payload.password = password
+        await updateClinicOwner(clinicOwner.value.id, payload)
+      } else {
+        if (!password) throw new Error("Boshliq paroli majburiy")
+        await createClinicOwner(clinicId, { login, password })
       }
       toast.success(t('superAdmin.saved'))
       router.push({ name: 'admin-clinics' })
@@ -316,18 +320,14 @@ async function handleSubmit() {
       logo_url: form.value.logo_url || null,
     })
     clinicId = created?.id ? Number(created.id) : null
-    if (clinicId && login) {
-      if (!password) throw new Error(t('superAdmin.adminPasswordRequired'))
-      await createClinicAdmin(clinicId, { login, password })
+    if (!clinicId) throw new Error('Klinika yaratilmadi')
+    if (!login || !password) {
+      throw new Error("Boshliq login va paroli majburiy")
     }
+    await createClinicOwner(clinicId, { login, password })
     toast.success(t('superAdmin.saved'))
-
-    if (clinicId && login && password) {
-      createdCredentials.value = { clinicId, login, password }
-      showCredentialsModal.value = true
-    } else {
-      router.push({ name: 'admin-clinics' })
-    }
+    createdCredentials.value = { clinicId, login, password }
+    showCredentialsModal.value = true
   } catch (e) {
     toast.error(e?.message || 'Save failed')
   } finally {

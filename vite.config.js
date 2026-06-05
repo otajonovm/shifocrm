@@ -80,7 +80,7 @@ export default defineConfig(({ mode }) => {
           ]
         },
         devOptions: {
-          enabled: true,
+          enabled: false,
           type: 'module'
         }
       }),
@@ -106,7 +106,7 @@ export default defineConfig(({ mode }) => {
                     if (!existingDb.admin) {
                       existingDb.admin = { login: 'admin', password: 'admin123' }
                     }
-                  } catch (_e) {
+                  } catch {
                     console.log('Creating new db.json')
                   }
 
@@ -142,7 +142,7 @@ export default defineConfig(({ mode }) => {
                   try {
                     const existingContent = readFileSync(dbPath, 'utf-8')
                     existingDb = JSON.parse(existingContent)
-                  } catch (_e) {
+                  } catch {
                     console.log('Creating new db.json')
                   }
 

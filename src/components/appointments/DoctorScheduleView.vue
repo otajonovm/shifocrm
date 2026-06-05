@@ -70,9 +70,13 @@
         <!-- New Appointment Button -->
         <button
           @click="openNewAppointmentModal(null, null)"
-          class="px-4 py-2 bg-gradient-to-r from-primary-500 to-cyan-600 text-white text-sm font-semibold rounded-lg hover:from-primary-600 hover:to-cyan-700 transition-all"
+          class="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-primary-500 to-cyan-600 px-3 py-2 text-white transition-all hover:from-primary-600 hover:to-cyan-700 sm:px-4"
+          aria-label="Yangi uchrashuv"
         >
-          + Yangi uchrashuv
+          <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m-7-7h14" />
+          </svg>
+          <span class="hidden sm:inline text-sm font-semibold">Yangi uchrashuv</span>
         </button>
       </div>
 
@@ -309,7 +313,8 @@ const emit = defineEmits(['update:selectedDate', 'update:view-mode', 'update-sta
 
 const { t } = useI18n()
 const authStore = useAuthStore()
-const isAdmin = computed(() => authStore.userRole === 'admin')
+const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
+const isAdmin = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
 const doctorsStore = useDoctorsStore()
 const patientsStore = usePatientsStore()
 
@@ -396,7 +401,7 @@ const doctorColumnWidth = computed(() => {
 
 const visibleDoctors = computed(() => {
   const allDoctors = doctorsStore.items || []
-  if (authStore.userRole === 'admin') {
+  if (isAdmin.value) {
     return allDoctors
   }
   // Doktor uchun faqat o'zini ko'rsatish
@@ -468,33 +473,6 @@ const getDoctorColumnStyle = (doctor) => {
   const currentDoctorId = Number(doctor?.id)
   const isLeadingDoctor = currentDoctorId === Number(leadingDoctorIdForTwoColumn.value)
   return { width: isLeadingDoctor ? '60%' : '40%' }
-}
-
-const selectedPeriodDays = computed(() => {
-  if (selectedViewMode.value === 'day') return 1
-  if (selectedViewMode.value === 'week') return 7
-
-  const date = new Date(`${currentDate.value}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return 30
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
-})
-
-const getAppointmentDurationMinutes = (appointment) => {
-  const duration = Number(appointment?.duration_minutes)
-  if (Number.isFinite(duration) && duration > 0) return duration
-
-  const start = String(appointment?.start_time || '')
-  const end = String(appointment?.end_time || '')
-  if (start && end) {
-    const [startHour, startMinute] = start.split(':').map(Number)
-    const [endHour, endMinute] = end.split(':').map(Number)
-    const startTotal = (startHour * 60) + startMinute
-    const endTotal = (endHour * 60) + endMinute
-    const diff = endTotal - startTotal
-    if (Number.isFinite(diff) && diff > 0) return diff
-  }
-
-  return 30
 }
 
 const displayedDoctorIdSet = computed(() => new Set(displayedDoctors.value.map(doctor => Number(doctor.id))))
@@ -623,7 +601,7 @@ const loadAppointments = async () => {
     }
 
     let visits = []
-    if (authStore.userRole === 'admin') {
+    if (isAdmin.value) {
       visits = await visitsApi.getVisitsByDateRange(startDate, endDate)
     } else if (authStore.user?.id) {
       visits = await visitsApi.getVisitsByDoctorAndDateRange(
@@ -885,7 +863,7 @@ const handleWindowResize = () => {
 
 onMounted(() => {
   loadAppointments()
-  if (authStore.userRole === 'admin') {
+  if (isAdmin.value) {
     patientsStore.fetchPatients()
   } else if (authStore.user?.id) {
     patientsStore.fetchPatientsByDoctor(authStore.user.id)

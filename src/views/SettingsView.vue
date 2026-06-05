@@ -246,7 +246,8 @@ const clinicStore = useClinicStore()
 const doctorsStore = useDoctorsStore()
 const toast = useToast()
 
-const isClinicAdmin = computed(() => authStore.userRole === 'admin')
+const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
+const isClinicAdmin = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
 
 const currentLocale = ref(locale.value)
 const logoError = ref('')

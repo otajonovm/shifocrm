@@ -27,12 +27,6 @@ let extractedCount = 0;
 
 // Har bir tish uchun SVG kodini ajratib olish
 teethNumbers.forEach(toothNum => {
-  // Tish uchun regex pattern
-  const toothClassPattern = new RegExp(
-    `class="[^"]*tooth-${toothNum}[^"]*"`,
-    'i'
-  );
-  
   // Tish bo'limini topish
   const toothMatch = htmlContent.match(
     new RegExp(

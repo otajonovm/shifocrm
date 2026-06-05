@@ -3,7 +3,7 @@
  * Tenant isolation; clinic_id yo'q bo'lsa filtersiz fallback.
  */
 
-import { supabaseGet, supabasePost, supabaseDeleteWhere } from './supabaseConfig'
+import { supabasePost, supabaseDeleteWhere } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { mergeClinicQuery, supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 

@@ -300,6 +300,7 @@
     "title": "Календарь",
     "subtitle": "Расписание и управление приёмами",
     "appointmentsCalendar": "Расписание приемов",
+    "myAppointments": "Мои приёмы",
     "export": "Экспорт",
     "import": "Импорт",
     "newAppointment": "Новый приём",
@@ -573,6 +574,16 @@
     "newPlan": "Новый план",
     "planTitle": "Название плана",
     "planTitlePlaceholder": "Например: пломба",
+    "service": "Услуга",
+    "defaultTitle": "План лечения",
+    "stages": "Этапы",
+    "addStage": "Добавить этап",
+    "stageName": "Название этапа",
+    "stageNamePlaceholder": "Например: Гигиена",
+    "services": "Услуги",
+    "addService": "Добавить услугу",
+    "selectService": "Выберите услугу",
+    "remove": "Удалить",
     "planDate": "Дата плана",
     "status": "Статус",
     "priority": "Приоритет",
@@ -599,10 +610,14 @@
     "markDone": "Выполнено",
     "postpone": "Отложить",
     "remind": "Напомнить",
-    "statusPlanned": "Запланировано",
+    "statusOffered": "Предложено",
+    "statusScheduled": "Запланировано",
+    "statusInProgress": "В лечении",
     "statusDone": "Выполнено",
-    "statusPostponed": "Отложено",
     "statusCancelled": "Отменено",
+    "totalEstimatedCost": "Итого (оценка)",
+    "errorStageRequired": "Название этапа и дата обязательны.",
+    "errorServiceRequired": "Нужно выбрать услугу.",
     "errorTitleDate": "Название плана и дата обязательны.",
     "toastSaved": "План сохранён",
     "toastStatusUpdated": "Статус обновлён",
@@ -1116,6 +1131,34 @@
     "selectPatient": "Выберите пациента",
     "errorRequired": "Название, дата и пациент обязательны.",
     "errorSave": "Ошибка при сохранении"
+  },
+  "doctors": {
+    "title": "Сотрудники",
+    "doctorsList": "Список сотрудников клиники"
+  },
+  "payments": {
+    "title": "Платежи",
+    "subtitle": "Финансовые отчёты",
+    "financialReports": "Финансовые отчёты"
+  },
+  "services": {
+    "title": "Услуги",
+    "subtitle": "Цены на услуги",
+    "servicePrices": "Цены на услуги"
+  },
+  "reports": {
+    "title": "Отчёты",
+    "subtitle": "Статистика и аналитика",
+    "statistics": "Статистика и аналитика"
+  },
+  "settings": {
+    "title": "Настройки",
+    "subtitle": "Системные настройки",
+    "systemSettings": "Системные настройки"
+  },
+  "profile": {
+    "title": "Мой профиль",
+    "personalInfo": "Личные данные"
   },
   "doctorProfile": {
     "loading": "Профиль загружается...",

@@ -646,7 +646,8 @@ const patientsStore = usePatientsStore()
 const toast = useToast()
 const { t } = useI18n()
 
-const isAdmin = computed(() => authStore.userRole === 'admin')
+const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
+const isAdmin = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
 
 const STORAGE_KEYS = {
   displayMode: 'shifocrm.appointments.displayMode',
@@ -673,7 +674,7 @@ const writeStorage = (key, value) => {
 }
 
 const resolveDisplayModeFallback = () => {
-  return authStore.userRole === 'admin' ? 'schedule' : 'list'
+  return isAdmin.value ? 'schedule' : 'list'
 }
 
 const getInitialPeriod = () => {

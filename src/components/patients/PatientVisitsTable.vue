@@ -178,7 +178,7 @@
       >
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
           <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-          
+
           <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
             <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
               <div class="flex items-center justify-between mb-4">
@@ -315,7 +315,8 @@ const allowedStatuses = computed(() => {
 })
 
 // To'lovni faqat administrator kiritadi; doktor faqat narx va status belgilaydi
-const isAdmin = computed(() => authStore.userRole === 'admin')
+const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
+const isAdmin = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
 
 // Methods
 const formatDate = (dateStr) => {
@@ -347,7 +348,7 @@ const isActiveVisit = (status) => {
 // Visitni boshlash (pending/arrived → in_progress)
 const startVisit = async (visit) => {
   if (!confirm('Davolanishni boshlashni tasdiqlaysizmi?')) return
-  
+
   updatingVisitId.value = visit.id
   try {
     await visitsApi.updateVisit(visit.id, { status: 'in_progress' })
@@ -394,9 +395,9 @@ const closeStatusModal = () => {
 
 const saveStatusChange = async () => {
   if (!newStatus.value || !selectedVisit.value) return
-  
+
   statusError.value = ''
-  
+
   // Validation
   if (newStatus.value === VISIT_STATUSES.COMPLETED_DEBT) {
     if (!debtAmount.value || debtAmount.value <= 0) {
@@ -404,29 +405,29 @@ const saveStatusChange = async () => {
       return
     }
   }
-  
+
   // Check if status change is allowed
   const currentDebt = selectedVisit.value.debt_amount || null
   if (!canChangeStatus(selectedVisit.value.status, newStatus.value, currentDebt)) {
     statusError.value = t('patientVisits.errorDebtBeforeComplete')
     return
   }
-  
+
   saving.value = true
-  
+
   try {
     const updateData = {
       status: newStatus.value
     }
-    
+
     if (newStatus.value === VISIT_STATUSES.COMPLETED_DEBT) {
       updateData.debt_amount = Number(debtAmount.value)
     } else if (newStatus.value === VISIT_STATUSES.COMPLETED_PAID) {
       updateData.debt_amount = null
     }
-    
+
     await visitsApi.updateVisit(selectedVisit.value.id, updateData)
-    
+
     toast.success('Status muvaffaqiyatli o\'zgartirildi')
     await loadVisits()
     emit('visit-updated')

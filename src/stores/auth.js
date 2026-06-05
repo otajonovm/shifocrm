@@ -1,10 +1,11 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { authenticateDoctor } from '@/api/doctorsApi'
-import { authenticateClinicAdmin, getClinic, getDoctorByClinicId } from '@/services/adminService'
+import { authenticateClinicAdmin, authenticateClinicOwner, getClinic, getDoctorByClinicId } from '@/services/adminService'
 
 const USER_CLINIC_KEY = 'userClinicId'
 const IMPERSONATOR_ROLE_KEY = 'impersonatorRole'
+const SUPER_ADMIN_SCOPE_KEY = 'superAdminScope'
 
 /** Admin/SuperAdmin kirish ma'lumotlari: avval env, keyin db.json (ixtiyoriy) */
 async function getAdminCredentials() {
@@ -34,6 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
   const userClinicId = ref(localStorage.getItem(USER_CLINIC_KEY) ? Number(localStorage.getItem(USER_CLINIC_KEY)) : null)
   const impersonatorRole = ref(localStorage.getItem(IMPERSONATOR_ROLE_KEY) || null)
+  const superAdminScope = ref(localStorage.getItem(SUPER_ADMIN_SCOPE_KEY) || null)
   const error = ref(null)
 
   const login = async ({ login: loginVal, password }) => {
@@ -47,12 +49,14 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = null
         userClinicId.value = null
         impersonatorRole.value = null
+        superAdminScope.value = null
         localStorage.setItem('isAuthenticated', 'true')
         localStorage.setItem('userRole', 'admin')
         localStorage.removeItem('userEmail')
         localStorage.removeItem('user')
         localStorage.removeItem(USER_CLINIC_KEY)
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
+        localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
         return true
       }
       if (adminCredentials.superAdmin?.login === loginVal && adminCredentials.superAdmin?.password === password) {
@@ -62,12 +66,33 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = null
         userClinicId.value = null
         impersonatorRole.value = null
+        superAdminScope.value = 'global'
         localStorage.setItem('isAuthenticated', 'true')
         localStorage.setItem('userRole', 'super_admin')
         localStorage.removeItem('userEmail')
         localStorage.removeItem('user')
         localStorage.removeItem(USER_CLINIC_KEY)
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
+        localStorage.setItem(SUPER_ADMIN_SCOPE_KEY, 'global')
+        return true
+      }
+
+      const clinicOwner = await authenticateClinicOwner(loginVal, password)
+      if (clinicOwner) {
+        isAuthenticated.value = true
+        userRole.value = 'super_admin'
+        userEmail.value = null
+        user.value = { login: clinicOwner.login, clinic_id: clinicOwner.clinic_id }
+        userClinicId.value = Number(clinicOwner.clinic_id)
+        impersonatorRole.value = null
+        superAdminScope.value = 'clinic'
+        localStorage.setItem('isAuthenticated', 'true')
+        localStorage.setItem('userRole', 'super_admin')
+        localStorage.removeItem('userEmail')
+        localStorage.setItem('user', JSON.stringify({ login: clinicOwner.login, clinic_id: clinicOwner.clinic_id }))
+        localStorage.setItem(USER_CLINIC_KEY, String(clinicOwner.clinic_id))
+        localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
+        localStorage.setItem(SUPER_ADMIN_SCOPE_KEY, 'clinic')
         return true
       }
       const clinicAdmin = await authenticateClinicAdmin(loginVal, password)
@@ -100,6 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = userData
         userClinicId.value = clinicAdmin.clinic_id
         impersonatorRole.value = null
+        superAdminScope.value = null
         localStorage.setItem('isAuthenticated', 'true')
         localStorage.setItem('userRole', role)
         if (role === 'solo') {
@@ -110,6 +136,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('user', JSON.stringify(userData))
         localStorage.setItem(USER_CLINIC_KEY, String(clinicAdmin.clinic_id))
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
+        localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
         return true
       }
       error.value = 'Invalid credentials'
@@ -128,6 +155,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     userClinicId.value = null
     impersonatorRole.value = null
+    superAdminScope.value = null
     error.value = null
     localStorage.removeItem('isAuthenticated')
     localStorage.removeItem('userRole')
@@ -135,6 +163,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('user')
     localStorage.removeItem(USER_CLINIC_KEY)
     localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
+    localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
   }
 
   const loginDoctor = async ({ phone, password }) => {
@@ -166,7 +195,9 @@ export const useAuthStore = defineStore('auth', () => {
           if (clinic && Number(clinic.max_doctors) === 1) {
             role = 'solo'
           }
-        } catch (_) { /* clinic topilmasa oddiy doctor */ }
+        } catch {
+          // clinic topilmasa oddiy doctor
+        }
       }
 
       isAuthenticated.value = true
@@ -174,6 +205,7 @@ export const useAuthStore = defineStore('auth', () => {
       userEmail.value = doctor.email || doctor.phone
       user.value = safeDoctor
       impersonatorRole.value = null
+      superAdminScope.value = null
       if (cid != null) {
         userClinicId.value = cid
         localStorage.setItem(USER_CLINIC_KEY, String(cid))
@@ -186,6 +218,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('userEmail', doctor.email || doctor.phone)
       localStorage.setItem('user', JSON.stringify(safeDoctor))
       localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
+      localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
       return true
     } catch (err) {
       console.error('Doctor login failed:', err)
@@ -257,6 +290,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     userClinicId,
     impersonatorRole,
+    superAdminScope,
     isImpersonating,
     error,
     login,

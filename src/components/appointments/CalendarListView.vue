@@ -236,6 +236,8 @@ defineEmits(['update:selectedDate', 'open-payment'])
 
 const { t } = useI18n()
 const authStore = useAuthStore()
+const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
+const isAdmin = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
 
 const viewMode = ref('month') // 'day', 'week', 'month'
 const currentDate = ref(props.selectedDate)
@@ -417,7 +419,7 @@ const loadAppointments = async () => {
       endDate = lastDay.toISOString().split('T')[0]
     }
 
-    if (authStore.userRole === 'admin') {
+    if (isAdmin.value) {
       appointments.value = await visitsApi.getVisitsByDateRange(startDate, endDate)
     } else if (authStore.user?.id) {
       appointments.value = await visitsApi.getVisitsByDoctorAndDateRange(

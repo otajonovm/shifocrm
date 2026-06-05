@@ -175,7 +175,6 @@ import {
   EyeIcon,
 } from '@heroicons/vue/24/outline'
 
-const showNewPatientModal = ref(false)
 const showNewAppointmentModal = ref(false)
 const { t } = useI18n()
 

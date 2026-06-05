@@ -15,7 +15,8 @@ import DoctorDashboard from '@/views/DoctorDashboard.vue'
 import SoloDashboard from '@/views/SoloDashboard.vue'
 
 const authStore = useAuthStore()
-const isAdmin = computed(() => authStore.userRole === 'admin')
+const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
+const isAdmin = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
 const isDoctor = computed(() => authStore.userRole === 'doctor')
 const isSolo = computed(() => authStore.userRole === 'solo')
 </script>

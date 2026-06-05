@@ -443,7 +443,6 @@ const visitPreviewLoading = ref(false)
 
 const isSolo = computed(() => authStore.userRole === 'solo')
 const DISCOUNT_NOTE_PREFIX = '[DISCOUNT]'
-const DISCOUNT_PERCENT_PREFIX = '[DISCOUNT_PERCENT:'
 
 const filters = ref({
   startDate: '',
@@ -650,6 +649,7 @@ const loadPayments = async () => {
 const loadFiltersData = async () => {
   try {
     patients.value = await listPatients() || []
+    doctors.value = await listDoctors() || []
   } catch (error) {
     console.error('Failed to load filters data:', error)
   }
@@ -661,23 +661,6 @@ const resetFilters = () => {
     endDate: '',
     patientId: ''
   }
-}
-
-const openCreateModal = () => {
-  isEditing.value = false
-  form.value = {
-    id: null,
-    visit_id: '',
-    patient_id: '',
-    doctor_id: '',
-    amount: '',
-    payment_type: 'payment',
-    method: 'cash',
-    note: '',
-    paid_at: ''
-  }
-  visitPreview.value = null
-  showPaymentModal.value = true
 }
 
 const openEditModal = (payment) => {

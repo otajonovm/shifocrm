@@ -36,8 +36,10 @@ const authStore = useAuthStore()
 const doctorsStore = useDoctorsStore()
 const { t } = useI18n()
 
+const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
+
 const patient = computed(() => {
-  return patientsStore.items.find(p => p.id === Number(props.patientId)) || 
+  return patientsStore.items.find(p => p.id === Number(props.patientId)) ||
          patientsStore.currentPatient
 })
 
@@ -49,7 +51,7 @@ const doctorId = computed(() => {
 })
 
 const doctorName = computed(() => {
-  if (authStore.userRole === 'admin') return t('role.admin')
+  if (authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value) return t('role.admin')
   const doctor = doctorsStore.items.find(d => d.id === doctorId.value)
   return doctor?.full_name || ''
 })

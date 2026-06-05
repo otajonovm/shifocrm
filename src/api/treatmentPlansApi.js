@@ -3,9 +3,11 @@
  * Jadval: treatment_plans
  */
 
-import { supabaseGet, supabasePost, supabasePatch } from './supabaseConfig'
+import { supabaseGet, supabasePost, supabasePatch, supabaseDelete } from './supabaseConfig'
 
 const TABLE = 'treatment_plans'
+const STAGES_TABLE = 'treatment_plan_stages'
+const ITEMS_TABLE = 'treatment_plan_items'
 
 export const getPlansByPatientId = async (patientId) => {
   try {
@@ -36,7 +38,7 @@ export const createPlan = async ({
   visit_id = null,
   title,
   planned_date,
-  status = 'planned',
+  status = 'offered',
   priority = 'medium',
   tooth_id = null,
   estimated_cost = null,
@@ -81,4 +83,120 @@ export const updatePlan = async (planId, payload) => {
 
 export const updatePlanStatus = async (planId, status) => {
   return updatePlan(planId, { status })
+}
+
+export const listStagesByPlanId = async (planId) => {
+  try {
+    const numId = Number(planId)
+    return await supabaseGet(STAGES_TABLE, `plan_id=eq.${numId}&order=sort_order.asc`)
+  } catch (error) {
+    console.error('❌ Failed to fetch treatment plan stages:', error)
+    throw error
+  }
+}
+
+export const createStage = async ({
+  plan_id,
+  stage_name,
+  planned_date = null,
+  sort_order = 1,
+  notes = null
+}) => {
+  try {
+    const payload = {
+      plan_id: Number(plan_id),
+      stage_name,
+      planned_date,
+      sort_order: Number(sort_order) || 1,
+      notes: notes || null
+    }
+    const result = await supabasePost(STAGES_TABLE, payload)
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to create treatment plan stage:', error)
+    throw error
+  }
+}
+
+export const updateStage = async (stageId, payload) => {
+  try {
+    const numId = Number(stageId)
+    if (!Number.isFinite(numId)) throw new Error('Invalid stage ID')
+    const result = await supabasePatch(STAGES_TABLE, numId, payload)
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to update treatment plan stage:', error)
+    throw error
+  }
+}
+
+export const deleteStage = async (stageId) => {
+  try {
+    const numId = Number(stageId)
+    if (!Number.isFinite(numId)) throw new Error('Invalid stage ID')
+    await supabaseDelete(STAGES_TABLE, numId)
+    return true
+  } catch (error) {
+    console.error('❌ Failed to delete treatment plan stage:', error)
+    throw error
+  }
+}
+
+export const listItemsByStageId = async (stageId) => {
+  try {
+    const numId = Number(stageId)
+    return await supabaseGet(ITEMS_TABLE, `stage_id=eq.${numId}&order=id.asc`)
+  } catch (error) {
+    console.error('❌ Failed to fetch treatment plan items:', error)
+    throw error
+  }
+}
+
+export const createItem = async ({
+  stage_id,
+  service_id = null,
+  service_name,
+  tooth_id = null,
+  estimated_cost = null,
+  notes = null
+}) => {
+  try {
+    const payload = {
+      stage_id: Number(stage_id),
+      service_id: service_id !== null && service_id !== undefined ? Number(service_id) : null,
+      service_name,
+      tooth_id: tooth_id !== null && tooth_id !== undefined ? Number(tooth_id) : null,
+      estimated_cost: estimated_cost !== null && estimated_cost !== undefined ? Number(estimated_cost) : null,
+      notes: notes || null
+    }
+    const result = await supabasePost(ITEMS_TABLE, payload)
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to create treatment plan item:', error)
+    throw error
+  }
+}
+
+export const updateItem = async (itemId, payload) => {
+  try {
+    const numId = Number(itemId)
+    if (!Number.isFinite(numId)) throw new Error('Invalid item ID')
+    const result = await supabasePatch(ITEMS_TABLE, numId, payload)
+    return result[0]
+  } catch (error) {
+    console.error('❌ Failed to update treatment plan item:', error)
+    throw error
+  }
+}
+
+export const deleteItem = async (itemId) => {
+  try {
+    const numId = Number(itemId)
+    if (!Number.isFinite(numId)) throw new Error('Invalid item ID')
+    await supabaseDelete(ITEMS_TABLE, numId)
+    return true
+  } catch (error) {
+    console.error('❌ Failed to delete treatment plan item:', error)
+    throw error
+  }
 }

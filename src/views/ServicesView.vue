@@ -388,33 +388,6 @@ const formatCurrency = (amount) => {
   }).format(amount).replace('UZS', t('common.currencySuffix'))
 }
 
-const formatDate = (value) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })
-}
-
-const formatDiscount = (type, value) => {
-  if (type === 'percent') return `${value}%`
-  return formatCurrency(value)
-}
-
-const serviceName = (serviceId) => {
-  const match = services.value.find(item => Number(item.id) === Number(serviceId))
-  return match ? match.name : `#${serviceId}`
-}
-
-const formatScope = (rule) => {
-  if (rule.scope === 'service' && rule.service_id) return `${t('services.scopeService')}: ${serviceName(rule.service_id)}`
-  if (rule.scope === 'category' && rule.category) return `${t('services.scopeCategory')}: ${rule.category}`
-  if (rule.scope === 'package' && rule.package_id) {
-    const pkg = packages.value.find(item => Number(item.id) === Number(rule.package_id))
-    return `${t('services.scopePackage')}: ${pkg?.name || `#${rule.package_id}`}`
-  }
-  return t(`services.scopeLabel.${rule.scope}`)
-}
-
 const loadServices = async () => {
   loading.value.services = true
   try {

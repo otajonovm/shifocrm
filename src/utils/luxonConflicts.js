@@ -6,7 +6,7 @@
  */
 
 import { DateTime } from 'luxon'
-import { utcToTashkent, isWithinWorkingHours } from './luxonTimezone.js'
+import { utcToTashkent } from './luxonTimezone.js'
 
 /**
  * Check if two appointments overlap
@@ -106,7 +106,7 @@ export const validateWorkingHours = (
     }
 
     return { valid: true }
-  } catch (error) {
+  } catch {
     return {
       valid: false,
       message: 'Invalid time format'
@@ -268,9 +268,7 @@ export const getGapBetween = (appt1, appt2) => {
 export const suggestSlots = (
   appointments,
   doctor_id,
-  slotDuration = 30,
-  startHour = 8,
-  endHour = 20
+  slotDuration = 30
 ) => {
   const suggestions = []
 
