@@ -232,6 +232,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import { useClinicStore } from '@/stores/clinic'
 import { useDoctorsStore } from '@/stores/doctors'
 import { useAuthStore } from '@/stores/auth'
+import { isAdminLike } from '@/lib/roles'
 import { resizeLogoFile } from '@/lib/logoResize'
 import { Cog6ToothIcon, PhotoIcon, ArrowUpTrayIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { setLocale } from '@/i18n'
@@ -246,8 +247,7 @@ const clinicStore = useClinicStore()
 const doctorsStore = useDoctorsStore()
 const toast = useToast()
 
-const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
-const isClinicAdmin = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
+const isClinicAdmin = computed(() => isAdminLike(authStore))
 
 const currentLocale = ref(locale.value)
 const logoError = ref('')

@@ -1,5 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import {
+  canAccessAdminRoutes,
+  canManageStaff,
+  isClinicOwner,
+  isGlobalSuperAdmin,
+  isLegacyClinicScopedSuperAdmin,
+  ROLES,
+} from '@/lib/roles'
+import { checkDataPermission } from '@/lib/dataPermission'
+import { useDoctorPermissionsStore } from '@/stores/doctorPermissions'
+import { useEmployeePermissionsStore } from '@/stores/employeePermissions'
+import { useEmployeesStore } from '@/stores/employees'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -59,7 +71,7 @@ const router = createRouter({
       path: '/payments',
       name: 'payments',
       component: () => import('@/views/PaymentsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin' },
+      meta: { requiresAuth: true, requiresRole: 'admin', dataPermission: 'can_view_revenue' },
     },
     {
       path: '/services',
@@ -71,7 +83,13 @@ const router = createRouter({
       path: '/reports',
       name: 'reports',
       component: () => import('@/views/ReportsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin' },
+      meta: { requiresAuth: true, requiresRole: 'admin', dataPermission: 'can_view_revenue' },
+    },
+    {
+      path: '/audit',
+      name: 'audit',
+      component: () => import('@/views/AuditLogView.vue'),
+      meta: { requiresAuth: true, requiresOwner: true },
     },
     {
       path: '/leads',
@@ -159,18 +177,16 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const impersonatorRole = localStorage.getItem('impersonatorRole')
-  const superAdminScope = authStore.superAdminScope || localStorage.getItem('superAdminScope')
+
   // Redirect authenticated users away from login page
   if (to.name === 'login' && authStore.isAuthenticated) {
-    if (authStore.userRole === 'super_admin' && superAdminScope === 'clinic') {
+    if (isClinicOwner(authStore) || isLegacyClinicScopedSuperAdmin(authStore)) {
       next({ name: 'dashboard' })
       return
     }
-    const defaultRoute = authStore.userRole === 'super_admin'
+    const defaultRoute = isGlobalSuperAdmin(authStore)
       ? 'admin-clinics'
-      : authStore.userRole === 'doctor'
-        ? 'dashboard'
-        : 'dashboard'
+      : 'dashboard'
     next({ name: defaultRoute })
     return
   }
@@ -181,44 +197,88 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // Super admin always uses /admin; redirect dashboard to clinics
-  // (except when super admin is impersonating a clinic as admin)
-  if (to.name === 'dashboard' && authStore.userRole === 'super_admin' && impersonatorRole !== 'super_admin' && superAdminScope !== 'clinic') {
+  // Global super admin uses /admin; redirect dashboard to clinics (not when impersonating)
+  if (
+    to.name === 'dashboard'
+    && isGlobalSuperAdmin(authStore)
+    && impersonatorRole !== ROLES.SUPER_ADMIN
+  ) {
     next({ name: 'admin-clinics' })
     return
   }
 
-  // Solo doktor /doctors ga kirmasa — o'zi bitta, profilga yo'naltirish
-  if (to.name === 'doctors' && authStore.userRole === 'solo') {
+  // Solo doktor /doctors ga kirmasa — profilga yo'naltirish
+  if (to.name === 'doctors' && authStore.userRole === ROLES.SOLO) {
     next({ name: 'doctor-profile' })
     return
   }
 
-  // Klinika adminlari uchun doktorlar bo'limi Sozlamalarga ko'chirilgan
-  if (to.name === 'doctors' && authStore.userRole === 'admin') {
+  // Klinika administratori uchun /doctors → Sozlamalar (rahbar /staff ga kira oladi)
+  if (to.name === 'doctors' && authStore.userRole === ROLES.ADMIN) {
     next({ name: 'settings' })
+    return
+  }
+
+  // Shifokor admin bo'limlariga kirmasin
+  if (
+    (to.name === 'staff' || to.name === 'doctors')
+    && authStore.userRole === ROLES.DOCTOR
+  ) {
+    next({ name: 'dashboard' })
+    return
+  }
+
+  // Faqat rahbar (klinika rahbari / super admin) uchun sahifalar (masalan, audit)
+  if (to.meta.requiresOwner && !canManageStaff(authStore)) {
+    next({ name: 'dashboard' })
     return
   }
 
   // Check role requirement
   if (to.meta.requiresRole) {
-    // Allow super admin pages even during impersonation
-    if (to.meta.requiresRole === 'super_admin' && authStore.userRole !== 'super_admin' && impersonatorRole !== 'super_admin') {
-      next({ name: 'dashboard' })
-      return
+    // Super admin panel: faqat global super admin yoki impersonation paytida
+    if (to.meta.requiresRole === ROLES.SUPER_ADMIN) {
+      if (impersonatorRole !== ROLES.SUPER_ADMIN && !isGlobalSuperAdmin(authStore)) {
+        next({ name: 'dashboard' })
+        return
+      }
+      if (isClinicOwner(authStore)) {
+        next({ name: 'dashboard' })
+        return
+      }
     }
-    if (to.meta.requiresRole === 'super_admin' && authStore.userRole === 'super_admin' && superAdminScope === 'clinic') {
-      next({ name: 'dashboard' })
-      return
-    }
-    // Admin: admin yoki solo (yakka doktor) kirishi mumkin
-    if (to.meta.requiresRole === 'admin' && authStore.userRole !== 'admin' && authStore.userRole !== 'solo' && !(authStore.userRole === 'super_admin' && superAdminScope === 'clinic')) {
-      const defaultRoute = authStore.userRole === 'super_admin' ? 'admin-clinics' : 'dashboard'
+
+    // Admin route: admin, clinic_owner, solo, impersonation
+    if (to.meta.requiresRole === ROLES.ADMIN && !canAccessAdminRoutes(authStore)) {
+      const defaultRoute = isGlobalSuperAdmin(authStore) ? 'admin-clinics' : 'dashboard'
       next({ name: defaultRoute })
       return
     }
-    // Doctor: doctor yoki solo kirishi mumkin
-    if (to.meta.requiresRole === 'doctor' && authStore.userRole !== 'doctor' && authStore.userRole !== 'solo') {
+
+    // Doctor route: doctor yoki solo
+    if (
+      to.meta.requiresRole === ROLES.DOCTOR
+      && authStore.userRole !== ROLES.DOCTOR
+      && authStore.userRole !== ROLES.SOLO
+    ) {
+      next({ name: 'dashboard' })
+      return
+    }
+  }
+
+  // Ma'lumot huquqlari (P2 enforcement)
+  if (to.meta.dataPermission && authStore.isAuthenticated) {
+    const doctorPermsStore = useDoctorPermissionsStore()
+    const employeePermsStore = useEmployeePermissionsStore()
+    const employeesStore = useEmployeesStore()
+
+    const allowed = checkDataPermission(authStore, to.meta.dataPermission, {
+      doctorPermsStore,
+      employeePermsStore,
+      employeesStore,
+    })
+
+    if (!allowed) {
       next({ name: 'dashboard' })
       return
     }

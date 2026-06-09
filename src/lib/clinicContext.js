@@ -7,6 +7,8 @@
 
 import { getDefaultClinicId } from '@/services/adminService'
 
+import { ROLES } from '@/lib/roles'
+
 const USER_CLINIC_KEY = 'userClinicId'
 const USER_ROLE_KEY = 'userRole'
 const USER_KEY = 'user'
@@ -36,7 +38,13 @@ export async function getCurrentClinicId() {
   const cid = user?.clinic_id
   if (cid != null && Number.isFinite(Number(cid))) return Number(cid)
 
-  if (role === 'admin' || role === 'doctor' || role === 'solo' || (role === 'super_admin' && superAdminScope === 'clinic')) {
+  if (
+    role === ROLES.ADMIN
+    || role === ROLES.CLINIC_OWNER
+    || role === ROLES.DOCTOR
+    || role === ROLES.SOLO
+    || (role === ROLES.SUPER_ADMIN && superAdminScope === 'clinic')
+  ) {
     const defaultId = await getDefaultClinicId()
     return defaultId
   }

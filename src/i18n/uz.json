@@ -24,6 +24,9 @@
   },
   "role": {
     "admin": "Administrator",
+    "administrator": "Administrator",
+    "clinicOwner": "Klinika rahbari",
+    "superAdmin": "Super Admin",
     "doctor": "Shifokor",
     "solo": "Yakka doktor"
   },
@@ -32,6 +35,7 @@
     "patients": "Bemorlar",
     "doctors": "Xodimlar",
     "staff": "Xodimlar",
+    "audit": "Audit jurnali",
     "appointments": "Kalendar",
     "payments": "To'lovlar",
     "services": "Xizmatlar",
@@ -98,6 +102,10 @@
     "doctorProfile": {
       "title": "Mening Profilim",
       "subtitle": "Shaxsiy ma'lumotlar"
+    },
+    "myDashboard": {
+      "title": "Mening panelim",
+      "subtitle": "Bugungi jadval va statistika"
     }
   },
   "leads": {
@@ -116,8 +124,10 @@
   "login": {
     "title": "ShifoCRM",
     "subtitle": "Tibbiyot markazingiz uchun boshqaruv tizimi",
-    "roleAdmin": "Admin",
+    "roleAdmin": "Boshqaruv",
+    "roleAdminHint": "Klinika rahbari yoki administrator",
     "roleDoctor": "Shifokor",
+    "roleDoctorHint": "Telefon va parol bilan kirish",
     "roleSuperAdmin": "Super Admin",
     "adminLoginLabel": "Login",
     "adminLoginPlaceholder": "Loginingizni kiriting",
@@ -372,6 +382,7 @@
     "actions": "Amallar",
     "loading": "Yuklanmoqda...",
     "noAppointments": "Uchrashuvlar topilmadi.",
+    "noDoctors": "Faol shifokorlar topilmadi. Xodimlar bo'limidan shifokor qo'shing.",
     "arrived": "Keldi",
     "started": "Boshlandi",
     "complete": "Yakunlash",
@@ -804,6 +815,7 @@
   "payments": {
     "title": "To'lovlar",
     "subtitle": "Moliyaviy hisobotlar va to'lovlar",
+    "financialReports": "Moliyaviy hisobotlar",
     "totalPayments": "Jami to'lovlar",
     "refunds": "Qaytarimlar",
     "netIncome": "Sof daromad",
@@ -855,6 +867,7 @@
     "toastDeleted": "To'lov o'chirildi",
     "errorSave": "To'lovni saqlashda xatolik",
     "errorDelete": "To'lovni o'chirishda xatolik",
+    "noData": "Eksport uchun ma'lumot topilmadi.",
     "errorVisitRequired": "Tashrif ID kiriting",
     "errorPatientRequired": "Bemor tanlang",
     "errorAmountRequired": "To'lov miqdorini kiriting",
@@ -867,6 +880,7 @@
   "services": {
     "title": "Xizmatlar",
     "subtitle": "Xizmatlar ro'yxati va narxlari",
+    "servicePrices": "Xizmatlar narxlari",
     "newService": "Yangi Xizmat",
     "newPackage": "Yangi paket",
     "newDiscount": "Yangi chegirma",
@@ -967,6 +981,8 @@
     "migrationOdontogramHint": "Odontogramma rangini saqlash uchun Supabase SQL Editor da SUPABASE_SERVICES_ODONTOGRAM.sql faylini ishga tushiring."
   },
   "doctors": {
+    "title": "Xodimlar",
+    "doctorsList": "Klinika xodimlari ro'yxati",
     "addTitle": "Yangi xodim qo'shish",
     "addButton": "Xodim qo'shish",
     "maxDoctorsWarning": "Maksimal 4 ta xodim. Yangi qo'shishdan oldin xodimlardan birini o'chiring.",
@@ -1005,7 +1021,17 @@
   "reports": {
     "title": "Hisobotlar",
     "subtitle": "Statistika va tahlillar",
+    "statistics": "Statistika va tahlillar",
     "export": "Export",
+    "exportExcel": "Excel",
+    "exportPdf": "PDF",
+    "doctorRevenueTitle": "Shifokorlar kesimida tushum va KPI hisoboti",
+    "doctorRevenueSubtitle": "Har bir shifokor klinikaga olib kelgan tushum, ulush foizi va sof daromad taqsimoti",
+    "paymentsCount": "To'lovlar soni",
+    "grossRevenue": "Jami tushum",
+    "kpiPercent": "Ulush (%)",
+    "doctorShare": "Shifokor ulushi",
+    "clinicShare": "Klinika foydasi",
     "filtersTitle": "Filtrlar",
     "clearFilters": "Filtrlarni tozalash",
     "startDate": "Boshlanish sana",
@@ -1055,6 +1081,28 @@
       "transfer": "O'tkazma",
       "unknown": "Noma'lum"
     }
+  },
+  "audit": {
+    "title": "Tizim amallari audit jurnali",
+    "subtitle": "Kim, qachon va qanday amal bajargani — to'liq shaffoflik",
+    "refresh": "Yangilash",
+    "readOnlyNote": "Bu jurnal faqat o'qish uchun. Yozuvlarni o'chirib yoki o'zgartirib bo'lmaydi — rahbar uchun to'liq nazorat.",
+    "filterAction": "Amal turi",
+    "allActions": "Barcha amallar",
+    "catPayment": "To'lovlar",
+    "catService": "Xizmatlar",
+    "catEmployee": "Xodimlar",
+    "catVisit": "Tashriflar",
+    "search": "Qidiruv",
+    "searchPlaceholder": "Xodim ismi yoki amal bo'yicha qidirish...",
+    "recordsTitle": "Yozuvlar",
+    "colDate": "Sana / Vaqt",
+    "colActor": "Xodim",
+    "colAction": "Amal",
+    "colDetails": "Tafsilotlar",
+    "loading": "Yuklanmoqda...",
+    "noData": "Hozircha audit yozuvlari yo'q.",
+    "errorLoad": "Audit jurnalini yuklashda xatolik"
   },
   "inventory": {
     "title": "Ombor",
@@ -1109,6 +1157,7 @@
   "settings": {
     "title": "Sozlamalar",
     "subtitle": "Tizim sozlamalari",
+    "systemSettings": "Tizim sozlamalari",
     "languageTitle": "Til sozlamalari",
     "languageHint": "Tanlangan til butun tizimga qo'llanadi.",
     "logoTitle": "Klinika logotipi va nomi",
@@ -1160,30 +1209,6 @@
     "selectPatient": "Bemorni tanlang",
     "errorRequired": "Reja nomi, sana va bemor majburiy.",
     "errorSave": "Saqlashda xatolik"
-  },
-  "doctors": {
-    "title": "Xodimlar",
-    "doctorsList": "Klinika xodimlari ro'yxati"
-  },
-  "payments": {
-    "title": "To'lovlar",
-    "subtitle": "Moliyaviy hisobotlar",
-    "financialReports": "Moliyaviy hisobotlar"
-  },
-  "services": {
-    "title": "Xizmatlar",
-    "subtitle": "Xizmatlar narxlari",
-    "servicePrices": "Xizmatlar narxlari"
-  },
-  "reports": {
-    "title": "Hisobotlar",
-    "subtitle": "Statistika va tahlillar",
-    "statistics": "Statistika va tahlillar"
-  },
-  "settings": {
-    "title": "Sozlamalar",
-    "subtitle": "Tizim sozlamalari",
-    "systemSettings": "Tizim sozlamalari"
   },
   "profile": {
     "title": "Mening Profilim",
@@ -1237,7 +1262,7 @@
     "publicPhoneLabel": "Ommaviy telefon",
     "publicPhonePlaceholder": "+998 ...",
     "publicTelegramLabel": "Telegram username",
-    "publicTelegramPlaceholder": "@username",
+    "publicTelegramPlaceholder": "{'@'}username",
     "publicWhatsAppLabel": "WhatsApp raqami",
     "publicWhatsAppPlaceholder": "+998 ...",
     "publicLocationLabel": "Lokatsiya havolasi (Google Maps / 2GIS)",

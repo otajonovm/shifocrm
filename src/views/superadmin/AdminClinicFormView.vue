@@ -93,8 +93,8 @@
         </div>
 
         <div class="pt-4 border-t border-gray-200 space-y-4">
-          <h3 class="text-sm font-semibold text-gray-900">Klinika boshlig'i (Super Admin) login/paroli</h3>
-          <p class="text-sm text-gray-500">Ushbu login/parol bilan faqat shu klinika boshqariladi.</p>
+          <h3 class="text-sm font-semibold text-gray-900">Klinika rahbari login/paroli</h3>
+          <p class="text-sm text-gray-500">Kirish: Login sahifasida «Boshqaruv» tabi. Rol: Klinika rahbari.</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -160,8 +160,8 @@
         @click.self="closeCredentialsModal"
       >
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
-          <h3 class="text-lg font-bold text-gray-900">Klinika boshlig'i uchun kirish ma'lumotlari</h3>
-          <p class="text-sm text-gray-600">Ushbu login/parol bilan faqat shu klinika boshqariladi.</p>
+          <h3 class="text-lg font-bold text-gray-900">Klinika rahbari uchun kirish ma'lumotlari</h3>
+          <p class="text-sm text-gray-600">Login sahifasida «Boshqaruv» tabini tanlang. Tizimda rol: <strong>Klinika rahbari</strong>.</p>
           <div class="space-y-3">
             <div>
               <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('superAdmin.clinicId') }}</label>

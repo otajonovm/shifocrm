@@ -12,6 +12,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePatientsStore } from '@/stores/patients'
 import { useAuthStore } from '@/stores/auth'
+import { isAdminLike } from '@/lib/roles'
 import { useDoctorsStore } from '@/stores/doctors'
 import PatientOdontogram from './PatientOdontogram.vue'
 
@@ -36,7 +37,7 @@ const authStore = useAuthStore()
 const doctorsStore = useDoctorsStore()
 const { t } = useI18n()
 
-const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
+const isAdminLikeUser = computed(() => isAdminLike(authStore))
 
 const patient = computed(() => {
   return patientsStore.items.find(p => p.id === Number(props.patientId)) ||
@@ -51,7 +52,7 @@ const doctorId = computed(() => {
 })
 
 const doctorName = computed(() => {
-  if (authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value) return t('role.admin')
+  if (isAdminLikeUser.value) return t('role.administrator')
   const doctor = doctorsStore.items.find(d => d.id === doctorId.value)
   return doctor?.full_name || ''
 })

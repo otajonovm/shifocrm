@@ -135,7 +135,7 @@
         <div class="p-4 sm:p-6">
           <!-- Tashriflar Tab -->
           <div v-if="activeTab === 'visits'">
-            <PatientVisitsTable :patient-id="patient.id" />
+            <PatientVisitsTable :patient-id="patient.id" :can-edit="canManageMedicalRecords" />
           </div>
 
           <!-- Odontogramma Tab -->
@@ -343,7 +343,9 @@ import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
 import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
 import { usePatientsStore } from '@/stores/patients'
 import { useAuthStore } from '@/stores/auth'
+import { isAdminLike, isDoctor as hasDoctorRole, isSolo as hasSoloRole, ROLES } from '@/lib/roles'
 import { useToast } from '@/composables/useToast'
+import { useDataPermission } from '@/composables/useDataPermission'
 import { PATIENT_STATUSES, getPatientStatusLabel, normalizePatientStatus } from '@/constants/patientStatus'
 import { ArrowLeftIcon, ExclamationCircleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import * as visitsApi from '@/api/visitsApi'
@@ -359,6 +361,7 @@ const route = useRoute()
 const router = useRouter()
 const patientsStore = usePatientsStore()
 const authStore = useAuthStore()
+const { allowed: canManageMedicalRecords } = useDataPermission('can_manage_medical_records')
 
 const patient = ref(null)
 const loading = ref(true)
@@ -385,15 +388,14 @@ const tabs = [
   { id: 'documents', labelKey: 'patientDetail.tabDocuments', count: null },
 ]
 
-const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
-const isAdmin = computed(() => authStore.userRole === 'admin' || authStore.userRole === 'solo' || isClinicScopedSuperAdmin.value)
-const isSolo = computed(() => authStore.userRole === 'solo')
-const isDoctor = computed(() => authStore.userRole === 'doctor')
+const isAdmin = computed(() => isAdminLike(authStore) || hasSoloRole(authStore))
+const isSolo = computed(() => hasSoloRole(authStore))
+const isDoctor = computed(() => hasDoctorRole(authStore))
 
 const canComplete = computed(() => {
   const role = authStore.userRole
-  if (role === 'super_admin') return isClinicScopedSuperAdmin.value
-  return ['doctor', 'solo', 'admin'].includes(role)
+  if (role === ROLES.CLINIC_OWNER || role === ROLES.ADMIN) return true
+  return [ROLES.DOCTOR, ROLES.SOLO].includes(role)
 })
 
 const goBack = () => {

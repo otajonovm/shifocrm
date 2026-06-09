@@ -15,6 +15,8 @@
         </div>
         <h1 class="text-3xl font-bold text-gray-900">{{ clinicStore.displayName }}</h1>
         <p class="text-gray-500 mt-2">{{ t('login.subtitle') }}</p>
+        <p v-if="loginType === 'admin'" class="text-xs text-gray-400 mt-1">{{ t('login.roleAdminHint') }}</p>
+        <p v-else class="text-xs text-gray-400 mt-1">{{ t('login.roleDoctorHint') }}</p>
       </div>
 
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-8">
@@ -118,11 +120,14 @@
               </div>
               <input
                 id="doctor-phone"
-                v-model="doctorPhone"
+                :value="doctorPhone"
                 type="tel"
                 required
+                autocomplete="tel"
                 class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-colors"
-                :placeholder="t('doctors.phonePlaceholder')"
+                :placeholder="UZ_PHONE_PLACEHOLDER"
+                @input="onDoctorPhoneInput"
+                @focus="ensureDoctorPhonePrefix"
               />
             </div>
           </div>
@@ -184,6 +189,12 @@ import { useAuthStore } from '@/stores/auth'
 import { useClinicStore } from '@/stores/clinic'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from 'vue-i18n'
+import { isClinicOwner, isGlobalSuperAdmin, isSolo, ROLES } from '@/lib/roles'
+import {
+  UZ_PHONE_PLACEHOLDER,
+  formatPhoneUzDisplay,
+  formatPhoneForStorage,
+} from '@/lib/phoneUz'
 
 const router = useRouter()
 const route = useRoute()
@@ -209,10 +220,9 @@ const handleAdminLogin = async () => {
 
   if (success) {
     toast.success(t('login.toastSuccess'))
-    const isClinicScopedSuperAdmin = authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic'
-    const defaultRedirect = isClinicScopedSuperAdmin
+    const defaultRedirect = isClinicOwner(authStore) || authStore.userRole === ROLES.ADMIN
       ? '/dashboard'
-      : (authStore.userRole === 'super_admin' ? '/admin/clinics' : '/dashboard')
+      : (isGlobalSuperAdmin(authStore) ? '/admin/clinics' : '/dashboard')
     const redirect = route.query.redirect || defaultRedirect
     router.push(redirect)
   } else {
@@ -220,17 +230,31 @@ const handleAdminLogin = async () => {
   }
 }
 
+const onDoctorPhoneInput = (event) => {
+  const formatted = formatPhoneUzDisplay(event.target.value)
+  doctorPhone.value = formatted
+  event.target.value = formatted
+}
+
+const ensureDoctorPhonePrefix = () => {
+  if (!doctorPhone.value) {
+    doctorPhone.value = '+998'
+  }
+}
+
 const handleDoctorLogin = async () => {
   isLoading.value = true
+  const normalizedPhone = formatPhoneForStorage(doctorPhone.value) || doctorPhone.value.trim()
   const success = await authStore.loginDoctor({
-    phone: doctorPhone.value,
-    password: doctorPassword.value
+    phone: normalizedPhone,
+    password: doctorPassword.value,
   })
   isLoading.value = false
 
   if (success) {
     toast.success(t('auth.loginSuccess'))
-    const redirect = route.query.redirect || '/doctor/profile'
+    const defaultDoctorRedirect = isSolo(authStore) ? '/dashboard' : '/doctor/profile'
+    const redirect = route.query.redirect || defaultDoctorRedirect
     router.push(redirect)
   } else {
     toast.error(t('auth.phoneOrPasswordWrong'))

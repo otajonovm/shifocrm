@@ -64,6 +64,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { ROLES } from '@/lib/roles'
 import { useI18n } from 'vue-i18n'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import ShifoAIPanel from '@/components/shared/ShifoAIPanel.vue'
@@ -80,44 +81,78 @@ const { t } = useI18n()
 const sidebarOpen = ref(false)
 const shifoAIOpen = ref(false)
 
+const PAGE_ROUTE_KEYS = {
+  '/dashboard': 'dashboard',
+  '/patients': 'patients',
+  '/staff': 'doctors',
+  '/doctors': 'doctors',
+  '/appointments': 'appointments',
+  '/my-appointments': 'myAppointments',
+  '/leads': 'leads',
+  '/my-leads': 'leads',
+  '/payments': 'payments',
+  '/services': 'services',
+  '/inventory': 'inventory',
+  '/reports': 'reports',
+  '/settings': 'settings',
+  '/treatment-plans': 'treatmentPlans',
+  '/doctor/profile': 'doctorProfile',
+}
+
+const resolvePageKey = (path) => {
+  if (PAGE_ROUTE_KEYS[path]) return PAGE_ROUTE_KEYS[path]
+  if (path.startsWith('/patients/')) return 'patients'
+  return null
+}
+
 const pageTitle = computed(() => {
-  const titles = {
-    '/dashboard': t('dashboard.title'),
-    '/patients': authStore.userRole === 'solo' ? t('patients.soloTitle') : t('patients.allPatients'),
-    '/doctors': t('doctors.title'),
-    '/appointments': t('appointments.title'),
-    '/leads': t('nav.leads'),
-    '/my-leads': t('nav.myLeads'),
-    '/payments': t('payments.title'),
-    '/services': t('services.title'),
-    '/inventory': t('inventory.title'),
-    '/reports': t('reports.title'),
-    '/settings': t('settings.title'),
-    '/my-appointments': t('appointments.myAppointments'),
-    '/treatment-plans': t('dashboard.treatmentPlans'),
-    '/doctor/profile': t('profile.title'),
+  const path = route.path
+  const role = authStore.userRole
+
+  if (path === '/dashboard') {
+    if (role === ROLES.DOCTOR || role === ROLES.SOLO) {
+      return t('page.myDashboard.title')
+    }
+    return t('dashboard.title')
   }
-  return titles[route.path] || t('dashboard.title')
+
+  if (path === '/patients' && (role === ROLES.DOCTOR || role === ROLES.SOLO)) {
+    return t('page.myPatients.title')
+  }
+
+  const pageKey = resolvePageKey(path)
+  if (pageKey) {
+    const key = `page.${pageKey}.title`
+    const translated = t(key)
+    if (translated !== key) return translated
+  }
+
+  return t('dashboard.title')
 })
 
 const pageSubtitle = computed(() => {
-  const subtitles = {
-    '/dashboard': authStore.userRole === 'solo' ? t('soloDashboard.subtitle') : t('dashboard.overview'),
-    '/patients': authStore.userRole === 'solo' ? t('patients.soloSubtitle') : t('patients.patientList'),
-    '/doctors': t('doctors.doctorsList'),
-    '/appointments': t('appointments.appointmentsCalendar'),
-    '/leads': t('leads.subtitle'),
-    '/my-leads': t('leads.subtitle'),
-    '/payments': t('payments.financialReports'),
-    '/services': t('services.servicePrices'),
-    '/inventory': t('inventory.title'),
-    '/reports': t('reports.statistics'),
-    '/settings': t('settings.systemSettings'),
-    '/my-appointments': t('appointments.appointmentsCalendar'),
-    '/treatment-plans': t('dashboard.treatmentPlans'),
-    '/doctor/profile': t('profile.personalInfo'),
+  const path = route.path
+  const role = authStore.userRole
+
+  if (path === '/dashboard') {
+    if (role === ROLES.DOCTOR || role === ROLES.SOLO) {
+      return t('page.myDashboard.subtitle')
+    }
+    return role === ROLES.SOLO ? t('soloDashboard.subtitle') : t('dashboard.overview')
   }
-  return subtitles[route.path] || ''
+
+  if (path === '/patients' && (role === ROLES.DOCTOR || role === ROLES.SOLO)) {
+    return t('page.myPatients.subtitle')
+  }
+
+  const pageKey = resolvePageKey(path)
+  if (pageKey) {
+    const key = `page.${pageKey}.subtitle`
+    const translated = t(key)
+    if (translated !== key) return translated
+  }
+
+  return ''
 })
 
 const handleLogout = () => {

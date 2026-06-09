@@ -1,4 +1,6 @@
 <template>
+  <!-- display:contents — bitta root (vue-inspector) va layout buzilmasin -->
+  <div class="contents">
   <aside
     :class="[
       'fixed inset-y-0 left-0 z-50 flex flex-col bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out',
@@ -89,7 +91,7 @@
           {{ userInitials }}
         </div>
         <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium text-gray-900 truncate">{{ userName }}</p>
+          <p class="text-sm font-medium text-gray-900 truncate">{{ userName }}</p>
           <span
             class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
             :class="roleBadgeClass"
@@ -114,14 +116,26 @@
     class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
     @click="$emit('close')"
   />
+  </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useClinicStore } from '@/stores/clinic'
+import { useDoctorPermissionsStore } from '@/stores/doctorPermissions'
+import { getDoctorById } from '@/api/doctorsApi'
 import { useI18n } from 'vue-i18n'
+import {
+  getDisplayUserName,
+  getRoleBadgeClass,
+  getRoleLabel,
+  isAdminLike,
+  isSolo,
+  canManageStaff,
+  ROLES,
+} from '@/lib/roles'
 import {
   HomeIcon,
   UsersIcon,
@@ -134,6 +148,7 @@ import {
   Cog6ToothIcon,
   UserCircleIcon,
   DocumentTextIcon,
+  ShieldCheckIcon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/vue/24/outline'
 
@@ -149,10 +164,31 @@ defineEmits(['close', 'logout'])
 const route = useRoute()
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()
+const doctorPermsStore = useDoctorPermissionsStore()
 const { t } = useI18n()
 
-const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
-const isAdminLike = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
+onMounted(async () => {
+  if (authStore.userClinicId != null) {
+    await clinicStore.loadFromClinicId(authStore.userClinicId)
+  }
+
+  // Doktor kirganida ruxsatlarni localStorage/Supabase dan yuklash
+  if (
+    (authStore.userRole === ROLES.DOCTOR || authStore.userRole === ROLES.SOLO)
+    && authStore.user?.id
+  ) {
+    try {
+      // Supabase dan doktor ma'lumotlarini (module_permissions bilan) olish
+      const doctor = await getDoctorById(authStore.user.id)
+      doctorPermsStore.loadFromDoctor(doctor || authStore.user, authStore.userClinicId)
+    } catch {
+      // Fallback: auth.user dan yukla (localStorage ishlatiladi)
+      doctorPermsStore.loadFromDoctor(authStore.user, authStore.userClinicId)
+    }
+  }
+})
+
+const adminLike = computed(() => isAdminLike(authStore))
 
 // Admin menu items
 const adminMenuItems = [
@@ -183,44 +219,50 @@ const soloMenuItems = [
   { labelKey: 'nav.settings', to: '/settings', icon: Cog6ToothIcon },
 ]
 
-// Doctor menu items
-const doctorMenuItems = [
-  { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
-  { labelKey: 'nav.myPatients', to: '/patients', icon: UsersIcon },
-  { labelKey: 'nav.myAppointments', to: '/my-appointments', icon: CalendarDaysIcon },
-  { labelKey: 'nav.myLeads', to: '/my-leads', icon: InboxIcon },
-  { labelKey: 'nav.treatmentPlans', to: '/treatment-plans', icon: DocumentTextIcon },
-  { labelKey: 'nav.doctorProfile', to: '/doctor/profile', icon: UserCircleIcon },
+// Doctor menu items — barcha mumkin bo'lgan elementlar (ruxsat kaliti bilan)
+const allDoctorMenuItems = [
+  { labelKey: 'nav.dashboard',       to: '/dashboard',        icon: HomeIcon,                 permKey: 'can_view_dashboard' },
+  { labelKey: 'nav.myPatients',      to: '/patients',         icon: UsersIcon,                permKey: 'can_view_patients' },
+  { labelKey: 'nav.myAppointments',  to: '/my-appointments',  icon: CalendarDaysIcon,         permKey: 'can_view_appointments' },
+  { labelKey: 'nav.myLeads',         to: '/my-leads',         icon: InboxIcon,                permKey: 'can_view_leads' },
+  { labelKey: 'nav.treatmentPlans',  to: '/treatment-plans',  icon: DocumentTextIcon,         permKey: 'can_view_treatment_plans' },
+  { labelKey: 'nav.doctorProfile',   to: '/doctor/profile',   icon: UserCircleIcon,           permKey: 'can_edit_profile' },
 ]
 
-const menuItems = computed(() => {
-  if (authStore.userRole === 'solo') return soloMenuItems
-  if (isAdminLike.value) return adminMenuItems
-  return doctorMenuItems
+// Ruxsatlarga qarab filtrlangan doktor menyusi
+const doctorMenuItems = computed(() => {
+  const doctorId = authStore.user?.id
+  if (!doctorId) return allDoctorMenuItems
+  return allDoctorMenuItems.filter(item => {
+    return doctorPermsStore.hasPermission(doctorId, item.permKey)
+  })
 })
 
-const userName = computed(() => {
-  if (isAdminLike.value) return t('role.admin')
-  if (authStore.userRole === 'solo') return authStore.user?.full_name || authStore.userEmail || t('role.solo')
-  return authStore.userEmail || t('role.doctor')
+const menuItems = computed(() => {
+  if (isSolo(authStore)) return soloMenuItems
+  if (adminLike.value) {
+    // Audit jurnali faqat rahbar (klinika rahbari / super admin) uchun
+    if (canManageStaff(authStore)) {
+      return [
+        ...adminMenuItems,
+        { labelKey: 'nav.audit', to: '/audit', icon: ShieldCheckIcon },
+      ]
+    }
+    return adminMenuItems
+  }
+  return doctorMenuItems.value
 })
+
+const userName = computed(() => getDisplayUserName(authStore, t))
 
 const userInitials = computed(() => {
   const name = userName.value
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'
 })
 
-const roleLabel = computed(() => {
-  if (isAdminLike.value) return t('role.admin')
-  if (authStore.userRole === 'solo') return t('role.solo')
-  return t('role.doctor')
-})
+const roleLabel = computed(() => getRoleLabel(authStore, t))
 
-const roleBadgeClass = computed(() => {
-  if (isAdminLike.value) return 'bg-orange-100 text-orange-700'
-  if (authStore.userRole === 'solo') return 'bg-teal-100 text-teal-700'
-  return 'bg-green-100 text-green-700'
-})
+const roleBadgeClass = computed(() => getRoleBadgeClass(authStore))
 
 const isActiveRoute = (to) => {
   return route.path === to || route.path.startsWith(to + '/')

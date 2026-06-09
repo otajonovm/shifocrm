@@ -1,7 +1,7 @@
 <template>
   <div class="doctor-schedule-container w-full space-y-4">
     <!-- Schedule grid - Day view (Dentist+ style) -->
-    <div v-if="selectedViewMode === 'day'" class="bg-white overflow-hidden flex flex-col w-full max-w-none h-[calc(100vh-220px)] sm:h-[calc(100vh-250px)] min-h-[500px]">
+    <div v-if="selectedViewMode === 'day'" class="bg-white overflow-hidden flex flex-col w-full max-w-none min-h-[360px] h-[calc(100dvh-11rem)] sm:h-[calc(100dvh-14rem)] lg:h-[calc(100vh-250px)] lg:min-h-[500px]">
       <!-- Toolbar -->
       <div class="px-4 sm:px-6 lg:px-8 py-4 bg-gradient-to-r from-slate-50 to-blue-50/60 flex items-center justify-between flex-wrap gap-3">
         <!-- Doctor Filter with Multi-select -->
@@ -82,7 +82,7 @@
 
       <!-- Schedule Canvas -->
       <div class="flex-1 overflow-auto relative bg-white" ref="scheduleCanvasRef">
-        <div :class="['day-grid', dayGridContainerClass]">
+        <div class="day-grid flex w-full min-w-full">
           <!-- Left: Time column (sticky) -->
           <div class="bg-slate-50 time-column flex-shrink-0 sticky left-0 z-40 pl-2 sm:pl-3 border-r border-slate-200" :class="timeColumnWidth">
             <!-- Empty space for top-left intersection to align with doctor headers (compact) -->
@@ -100,14 +100,13 @@
             </div>
           </div>
 
-          <!-- Right: Doctor columns -->
-          <div class="flex flex-1">
+          <!-- Right: Doctor columns — soniga qarab teng kenglik -->
+          <div class="flex flex-1 min-w-0 w-full">
             <div
               v-for="(doctor, docIdx) in displayedDoctors"
               :key="doctor.id"
-              class="relative border-r border-slate-200"
-              :class="isSparseDayLayout ? 'flex-none min-w-0' : 'flex-shrink-0'"
-              :style="getDoctorColumnStyle(doctor)"
+              class="relative border-r border-slate-200 flex-1 basis-0 min-w-0"
+              :style="doctorColumnStyle"
             >
               <!-- Doctor header (sticky top) -->
               <div class="sticky top-0 z-30 bg-white/95 backdrop-blur px-3 py-2 shadow-sm h-[48px] sm:h-[56px] flex items-center gap-2 border-b border-slate-200">
@@ -295,6 +294,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { isAdminLike } from '@/lib/roles'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import * as visitsApi from '@/api/visitsApi'
@@ -318,8 +318,7 @@ const emit = defineEmits(['update:selectedDate', 'update:view-mode', 'update-sta
 
 const { t } = useI18n()
 const authStore = useAuthStore()
-const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
-const isAdmin = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
+const isAdmin = computed(() => isAdminLike(authStore))
 const doctorsStore = useDoctorsStore()
 const patientsStore = usePatientsStore()
 
@@ -398,12 +397,17 @@ const timeColumnWidth = computed(() => {
   return 'w-16' // 64px
 })
 
-const doctorColumnWidth = computed(() => {
-  // Mobile: 280px, Tablet: 320px, Desktop: 360px
-  if (windowWidth.value < 640) return '280px' // Mobile
-  if (windowWidth.value < 1024) return '320px' // Tablet
-  return '360px' // Desktop
+/** Ustun minimal kengligi — ko'p shifokor bo'lsa gorizontal scroll */
+const doctorColumnMinWidthPx = computed(() => {
+  if (windowWidth.value < 640) return 120
+  if (windowWidth.value < 1024) return 150
+  return 160
 })
+
+const doctorColumnStyle = computed(() => ({
+  flex: '1 1 0%',
+  minWidth: `${doctorColumnMinWidthPx.value}px`,
+}))
 
 const visibleDoctors = computed(() => {
   const allDoctors = doctorsStore.items || []
@@ -435,51 +439,6 @@ const patientByIdMap = computed(() => {
 const dayAppointments = computed(() => {
   return appointments.value.filter(appt => appt.date === currentDate.value)
 })
-
-const doctorLoadMap = computed(() => {
-  const map = new Map()
-  for (const doctor of displayedDoctors.value) {
-    map.set(Number(doctor.id), 0)
-  }
-
-  for (const appointment of dayAppointments.value) {
-    const id = Number(appointment.doctor_id)
-    map.set(id, (map.get(id) || 0) + 1)
-  }
-
-  return map
-})
-
-const leadingDoctorIdForTwoColumn = computed(() => {
-  if (displayedDoctors.value.length !== 2) return null
-  const firstId = Number(displayedDoctors.value[0]?.id)
-  const secondId = Number(displayedDoctors.value[1]?.id)
-  const firstLoad = doctorLoadMap.value.get(firstId) || 0
-  const secondLoad = doctorLoadMap.value.get(secondId) || 0
-  return secondLoad > firstLoad ? secondId : firstId
-})
-
-const isSparseDayLayout = computed(() => {
-  return selectedViewMode.value === 'day' && displayedDoctors.value.length <= 2
-})
-
-const dayGridContainerClass = computed(() => {
-  return isSparseDayLayout.value ? 'flex w-full min-w-0' : 'flex min-w-max'
-})
-
-const getDoctorColumnStyle = (doctor) => {
-  if (!isSparseDayLayout.value) {
-    return { width: doctorColumnWidth.value }
-  }
-
-  if (displayedDoctors.value.length <= 1) {
-    return { width: '100%' }
-  }
-
-  const currentDoctorId = Number(doctor?.id)
-  const isLeadingDoctor = currentDoctorId === Number(leadingDoctorIdForTwoColumn.value)
-  return { width: isLeadingDoctor ? '60%' : '40%' }
-}
 
 const displayedDoctorIdSet = computed(() => new Set(displayedDoctors.value.map(doctor => Number(doctor.id))))
 
@@ -900,6 +859,8 @@ onUnmounted(() => {
 /* Google Calendar-like tweaks */
 .day-grid {
   background: #ffffff;
+  width: 100%;
+  min-width: 100%;
 }
 
 .day-grid .time-column {

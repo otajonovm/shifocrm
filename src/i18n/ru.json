@@ -24,6 +24,9 @@
   },
   "role": {
     "admin": "Администратор",
+    "administrator": "Администратор",
+    "clinicOwner": "Руководитель клиники",
+    "superAdmin": "Super Admin",
     "doctor": "Врач",
     "solo": "Частный врач"
   },
@@ -32,6 +35,7 @@
     "patients": "Пациенты",
     "doctors": "Сотрудники",
     "staff": "Сотрудники",
+    "audit": "Журнал аудита",
     "appointments": "Календарь",
     "leads": "Лиды",
     "myLeads": "Мои лиды",
@@ -98,6 +102,10 @@
     "doctorProfile": {
       "title": "Мой профиль",
       "subtitle": "Личные данные"
+    },
+    "myDashboard": {
+      "title": "Моя панель",
+      "subtitle": "Расписание и статистика на сегодня"
     }
   },
   "leads": {
@@ -116,8 +124,10 @@
   "login": {
     "title": "ShifoCRM",
     "subtitle": "Система управления для вашего медицинского центра",
-    "roleAdmin": "Админ",
+    "roleAdmin": "Управление",
+    "roleAdminHint": "Руководитель клиники или администратор",
     "roleDoctor": "Врач",
+    "roleDoctorHint": "Вход по телефону и паролю",
     "roleSuperAdmin": "Super Admin",
     "adminLoginLabel": "Логин",
     "adminLoginPlaceholder": "Введите логин",
@@ -343,6 +353,7 @@
     "actions": "Действия",
     "loading": "Загрузка...",
     "noAppointments": "Приёмы не найдены.",
+    "noDoctors": "Активные врачи не найдены. Добавьте врача в разделе «Сотрудники».",
     "arrived": "Пришёл",
     "started": "Начал",
     "complete": "Завершить",
@@ -776,6 +787,7 @@
   "payments": {
     "title": "Платежи",
     "subtitle": "Финансовые отчёты и платежи",
+    "financialReports": "Финансовые отчёты",
     "totalPayments": "Всего платежей",
     "refunds": "Возвраты",
     "netIncome": "Чистый доход",
@@ -827,6 +839,7 @@
     "toastDeleted": "Платеж удалён",
     "errorSave": "Ошибка сохранения платежа",
     "errorDelete": "Ошибка удаления платежа",
+    "noData": "Нет данных для экспорта.",
     "errorVisitRequired": "Введите ID визита",
     "errorPatientRequired": "Выберите пациента",
     "errorAmountRequired": "Введите сумму платежа",
@@ -839,6 +852,7 @@
   "services": {
     "title": "Услуги",
     "subtitle": "Список услуг и цены",
+    "servicePrices": "Цены на услуги",
     "newService": "Новая услуга",
     "newPackage": "Новый пакет",
     "newDiscount": "Новая скидка",
@@ -935,9 +949,12 @@
     "packagesEmptyHint": "Объедините несколько услуг в пакет со скидкой. Например: \"Полная имплантация\" или \"Пародонтологический пакет\"",
     "discountMainSection": "Основные данные",
     "discountOptionalSection": "Дополнительные условия (необязательно)",
-    "discountNamePlaceholder": "Например: 10% на терапию"
+    "discountNamePlaceholder": "Например: 10% на терапию",
+    "migrationOdontogramHint": "Для сохранения цвета одонтограммы выполните SUPABASE_SERVICES_ODONTOGRAM.sql в Supabase SQL Editor."
   },
   "doctors": {
+    "title": "Сотрудники",
+    "doctorsList": "Список сотрудников клиники",
     "addTitle": "Добавить сотрудника",
     "addButton": "Добавить сотрудника",
     "maxDoctorsWarning": "Достигнут максимум 4 сотрудника. Удалите одного перед добавлением нового.",
@@ -976,7 +993,17 @@
   "reports": {
     "title": "Отчёты",
     "subtitle": "Статистика и аналитика",
+    "statistics": "Статистика и аналитика",
     "export": "Экспорт",
+    "exportExcel": "Excel",
+    "exportPdf": "PDF",
+    "doctorRevenueTitle": "Отчёт по врачам: доход и KPI",
+    "doctorRevenueSubtitle": "Доход каждого врача, процент доли и распределение чистой прибыли",
+    "paymentsCount": "Кол-во платежей",
+    "grossRevenue": "Общий доход",
+    "kpiPercent": "Доля (%)",
+    "doctorShare": "Доля врача",
+    "clinicShare": "Прибыль клиники",
     "filtersTitle": "Фильтры",
     "clearFilters": "Сбросить фильтры",
     "startDate": "Дата начала",
@@ -1026,6 +1053,28 @@
       "transfer": "Перевод",
       "unknown": "Неизвестно"
     }
+  },
+  "audit": {
+    "title": "Журнал аудита системы",
+    "subtitle": "Кто, когда и какое действие выполнил — полная прозрачность",
+    "refresh": "Обновить",
+    "readOnlyNote": "Этот журнал доступен только для чтения. Записи нельзя удалить или изменить — полный контроль для руководителя.",
+    "filterAction": "Тип действия",
+    "allActions": "Все действия",
+    "catPayment": "Платежи",
+    "catService": "Услуги",
+    "catEmployee": "Сотрудники",
+    "catVisit": "Визиты",
+    "search": "Поиск",
+    "searchPlaceholder": "Поиск по имени сотрудника или действию...",
+    "recordsTitle": "Записи",
+    "colDate": "Дата / Время",
+    "colActor": "Сотрудник",
+    "colAction": "Действие",
+    "colDetails": "Детали",
+    "loading": "Загрузка...",
+    "noData": "Пока нет записей аудита.",
+    "errorLoad": "Ошибка загрузки журнала аудита"
   },
   "inventory": {
     "title": "Склад",
@@ -1080,6 +1129,7 @@
   "settings": {
     "title": "Настройки",
     "subtitle": "Системные настройки",
+    "systemSettings": "Системные настройки",
     "languageTitle": "Языковые настройки",
     "languageHint": "Выбранный язык применяется ко всей системе.",
     "logoTitle": "Логотип и название клиники",
@@ -1131,30 +1181,6 @@
     "selectPatient": "Выберите пациента",
     "errorRequired": "Название, дата и пациент обязательны.",
     "errorSave": "Ошибка при сохранении"
-  },
-  "doctors": {
-    "title": "Сотрудники",
-    "doctorsList": "Список сотрудников клиники"
-  },
-  "payments": {
-    "title": "Платежи",
-    "subtitle": "Финансовые отчёты",
-    "financialReports": "Финансовые отчёты"
-  },
-  "services": {
-    "title": "Услуги",
-    "subtitle": "Цены на услуги",
-    "servicePrices": "Цены на услуги"
-  },
-  "reports": {
-    "title": "Отчёты",
-    "subtitle": "Статистика и аналитика",
-    "statistics": "Статистика и аналитика"
-  },
-  "settings": {
-    "title": "Настройки",
-    "subtitle": "Системные настройки",
-    "systemSettings": "Системные настройки"
   },
   "profile": {
     "title": "Мой профиль",
@@ -1208,7 +1234,7 @@
     "publicPhoneLabel": "Публичный телефон",
     "publicPhonePlaceholder": "+998 ...",
     "publicTelegramLabel": "Telegram username",
-    "publicTelegramPlaceholder": "@username",
+    "publicTelegramPlaceholder": "{'@'}username",
     "publicWhatsAppLabel": "Номер WhatsApp",
     "publicWhatsAppPlaceholder": "+998 ...",
     "publicLocationLabel": "Ссылка на локацию (Google Maps / 2GIS)",

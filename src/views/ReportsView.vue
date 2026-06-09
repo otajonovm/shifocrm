@@ -7,6 +7,22 @@
           <h1 class="text-xl sm:text-2xl font-bold text-gray-900">{{ t('reports.title') }}</h1>
           <p class="text-sm text-gray-500 mt-1">{{ t('reports.subtitle') }}</p>
         </div>
+        <div v-if="canExport" class="flex items-center gap-2">
+          <button
+            @click="exportDoctorRevenueExcel"
+            class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors touch-target"
+          >
+            <ArrowDownTrayIcon class="w-4 h-4" />
+            {{ t('reports.exportExcel') }}
+          </button>
+          <button
+            @click="exportDoctorRevenuePdf"
+            class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors touch-target"
+          >
+            <DocumentArrowDownIcon class="w-4 h-4" />
+            {{ t('reports.exportPdf') }}
+          </button>
+        </div>
       </div>
 
       <!-- Filters -->
@@ -74,6 +90,76 @@
         <div class="mobile-card">
           <p class="text-xs text-gray-500 mb-1">{{ t('reports.movementsOutTotal') }}</p>
           <p class="text-base sm:text-lg font-bold text-slate-700 truncate">{{ summary.totalMovementsOut }} {{ t('reports.units') }}</p>
+        </div>
+      </div>
+
+      <!-- Shifokorlar kesimida tushum va KPI (maosh) hisoboti -->
+      <div class="mobile-card">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-semibold text-gray-900">{{ t('reports.doctorRevenueTitle') }}</h2>
+            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">{{ t('reports.doctorRevenueSubtitle') }}</p>
+          </div>
+          <div v-if="canExport" class="flex items-center gap-2">
+            <button
+              @click="exportDoctorRevenueExcel"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+            >
+              <ArrowDownTrayIcon class="w-4 h-4" />
+              {{ t('reports.exportExcel') }}
+            </button>
+            <button
+              @click="exportDoctorRevenuePdf"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors"
+            >
+              <DocumentArrowDownIcon class="w-4 h-4" />
+              {{ t('reports.exportPdf') }}
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-100 text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">{{ t('reports.doctor') }}</th>
+                <th class="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">{{ t('reports.paymentsCount') }}</th>
+                <th class="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">{{ t('reports.grossRevenue') }}</th>
+                <th class="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">{{ t('reports.kpiPercent') }}</th>
+                <th class="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">{{ t('reports.doctorShare') }}</th>
+                <th class="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">{{ t('reports.clinicShare') }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+              <tr v-if="loading.payments">
+                <td class="px-4 sm:px-6 py-4 text-gray-500" colspan="6">{{ t('reports.loading') }}</td>
+              </tr>
+              <tr v-else-if="doctorRevenueRows.length === 0">
+                <td class="px-4 sm:px-6 py-4 text-gray-500" colspan="6">{{ t('reports.noData') }}</td>
+              </tr>
+              <tr
+                v-for="row in doctorRevenueRows"
+                :key="row.doctorId ?? 'none'"
+                class="hover:bg-gray-50 transition-colors"
+              >
+                <td class="px-4 sm:px-6 py-4 font-medium text-gray-900">{{ row.name }}</td>
+                <td class="px-4 sm:px-6 py-4 text-right text-gray-600">{{ row.visitsCount }}</td>
+                <td class="px-4 sm:px-6 py-4 text-right font-semibold text-gray-900">{{ formatCurrency(row.gross) }}</td>
+                <td class="px-4 sm:px-6 py-4 text-right text-gray-600">{{ row.salaryPercentage }}%</td>
+                <td class="px-4 sm:px-6 py-4 text-right font-semibold text-sky-700">{{ formatCurrency(row.doctorShare) }}</td>
+                <td class="px-4 sm:px-6 py-4 text-right font-semibold text-emerald-700">{{ formatCurrency(row.clinicShare) }}</td>
+              </tr>
+            </tbody>
+            <tfoot v-if="doctorRevenueRows.length > 0" class="bg-gray-50 border-t-2 border-gray-200">
+              <tr class="font-bold text-gray-900">
+                <td class="px-4 sm:px-6 py-3">{{ t('reports.total') }}</td>
+                <td class="px-4 sm:px-6 py-3 text-right">{{ doctorRevenueTotals.visitsCount }}</td>
+                <td class="px-4 sm:px-6 py-3 text-right">{{ formatCurrency(doctorRevenueTotals.gross) }}</td>
+                <td class="px-4 sm:px-6 py-3 text-right">—</td>
+                <td class="px-4 sm:px-6 py-3 text-right text-sky-700">{{ formatCurrency(doctorRevenueTotals.doctorShare) }}</td>
+                <td class="px-4 sm:px-6 py-3 text-right text-emerald-700">{{ formatCurrency(doctorRevenueTotals.clinicShare) }}</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
 
@@ -477,6 +563,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ApexChart from 'vue3-apexcharts'
+import { ArrowDownTrayIcon, DocumentArrowDownIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 import { listDoctors } from '@/api/doctorsApi'
 import { listPatients } from '@/api/patientsApi'
@@ -486,10 +573,18 @@ import * as visitsApi from '@/api/visitsApi'
 import { getTopServices } from '@/api/servicesApi'
 import { listExpenses, listInventoryMovements, listInventoryItems } from '@/api/inventoryApi'
 import { useAuthStore } from '@/stores/auth'
+import { useDataPermissionGuard, useDataPermission } from '@/composables/useDataPermission'
+import { exportToCsv, exportToPdf } from '@/lib/exportData'
 
 const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
+
+useDataPermissionGuard('can_view_revenue', {
+  message: "Hisobotlar bo'limiga kirish huquqingiz yo'q.",
+})
+
+const { allowed: canExport } = useDataPermission('can_export_data')
 
 const isSolo = computed(() => authStore.userRole === 'solo')
 
@@ -889,6 +984,137 @@ const inDateRange = (dateStr, startDate, endDate) => {
 const movementItemName = (itemId) => {
   const item = inventoryItems.value.find(i => Number(i.id) === Number(itemId))
   return item ? item.name : `#${itemId}`
+}
+
+// ===== Shifokorlar kesimida tushum va KPI (maosh) hisoboti =====
+const doctorRevenueRows = computed(() => {
+  const map = new Map()
+
+  const ensureRow = (doctorId) => {
+    const key = doctorId != null ? Number(doctorId) : 'none'
+    if (!map.has(key)) {
+      const doctor = doctorId != null
+        ? doctors.value.find((d) => Number(d.id) === Number(doctorId))
+        : null
+      const pct = doctor && doctor.salary_percentage != null
+        ? Number(doctor.salary_percentage)
+        : 0
+      map.set(key, {
+        doctorId: doctorId != null ? Number(doctorId) : null,
+        name: doctor
+          ? (doctor.full_name || doctor.name || `#${doctorId}`)
+          : 'Biriktirilmagan',
+        salaryPercentage: Number.isFinite(pct) ? pct : 0,
+        gross: 0,
+        visitsCount: 0,
+      })
+    }
+    return map.get(key)
+  }
+
+  for (const p of payments.value) {
+    // Faqat bemor to'lovlari hisobga olinadi (qo'shimcha xarajatlar — adjustment emas)
+    if (p.payment_type !== 'payment' && p.payment_type !== 'refund') continue
+    const row = ensureRow(p.doctor_id)
+    const amount = Number(p.amount) || 0
+    if (p.payment_type === 'refund') {
+      row.gross -= amount
+    } else {
+      row.gross += amount
+      row.visitsCount += 1
+    }
+  }
+
+  return Array.from(map.values())
+    .map((row) => {
+      const gross = Math.max(0, row.gross)
+      const doctorShare = Math.round((gross * row.salaryPercentage) / 100)
+      const clinicShare = gross - doctorShare
+      return { ...row, gross, doctorShare, clinicShare }
+    })
+    .filter((row) => row.gross !== 0 || row.visitsCount > 0)
+    .sort((a, b) => b.gross - a.gross)
+})
+
+const doctorRevenueTotals = computed(() =>
+  doctorRevenueRows.value.reduce(
+    (acc, row) => {
+      acc.gross += row.gross
+      acc.doctorShare += row.doctorShare
+      acc.clinicShare += row.clinicShare
+      acc.visitsCount += row.visitsCount
+      return acc
+    },
+    { gross: 0, doctorShare: 0, clinicShare: 0, visitsCount: 0 }
+  )
+)
+
+// ===== Eksport (Excel / PDF) — can_export_data huquqi bilan himoyalangan =====
+const ensureExportAllowed = () => {
+  if (!canExport.value) {
+    toast.error("Sizda ma'lumotlarni eksport qilish huquqi yo'q.")
+    return false
+  }
+  return true
+}
+
+const exportPeriodLabel = () => {
+  const { startDate, endDate } = filters.value
+  if (!startDate && !endDate) return ''
+  return `${formatDateShort(startDate)} — ${formatDateShort(endDate)}`
+}
+
+const doctorRevenueColumns = [
+  { key: 'name', label: 'Shifokor' },
+  { key: 'visitsCount', label: "To'lovlar soni", type: 'number' },
+  { key: 'gross', label: 'Jami tushum', type: 'number', value: (r) => formatCurrency(r.gross) },
+  { key: 'salaryPercentage', label: 'Ulush (%)', type: 'number', value: (r) => `${r.salaryPercentage}%` },
+  { key: 'doctorShare', label: 'Shifokor ulushi', type: 'number', value: (r) => formatCurrency(r.doctorShare) },
+  { key: 'clinicShare', label: 'Klinika foydasi', type: 'number', value: (r) => formatCurrency(r.clinicShare) },
+]
+
+const doctorRevenueSummary = () => {
+  const tt = doctorRevenueTotals.value
+  return [
+    { label: 'Jami tushum', value: formatCurrency(tt.gross) },
+    { label: 'Shifokorlar ulushi (jami)', value: formatCurrency(tt.doctorShare) },
+    { label: 'Klinika sof foydasi', value: formatCurrency(tt.clinicShare) },
+  ]
+}
+
+const exportDoctorRevenueExcel = () => {
+  if (!ensureExportAllowed()) return
+  try {
+    if (!doctorRevenueRows.value.length) {
+      toast.error(t('reports.noData'))
+      return
+    }
+    exportToCsv('shifokorlar_hisoboti', doctorRevenueColumns, doctorRevenueRows.value)
+    toast.success('Excel fayl yuklab olindi')
+  } catch (error) {
+    console.error('Doctor revenue Excel export failed:', error)
+    toast.error("Eksport qilishda xatolik yuz berdi")
+  }
+}
+
+const exportDoctorRevenuePdf = () => {
+  if (!ensureExportAllowed()) return
+  try {
+    if (!doctorRevenueRows.value.length) {
+      toast.error(t('reports.noData'))
+      return
+    }
+    exportToPdf({
+      title: 'Shifokorlar kesimida tushum va KPI hisoboti',
+      subtitle: exportPeriodLabel(),
+      columns: doctorRevenueColumns,
+      rows: doctorRevenueRows.value,
+      summary: doctorRevenueSummary(),
+    })
+  } catch (error) {
+    console.error('Doctor revenue PDF export failed:', error)
+    toast.error(error.message || 'Eksport qilishda xatolik yuz berdi')
+  }
 }
 
 const loadReports = async () => {

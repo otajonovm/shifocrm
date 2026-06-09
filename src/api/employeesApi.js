@@ -3,19 +3,23 @@ import {
   supabasePost,
   supabasePatch,
   supabasePatchWhere,
-  supabaseDelete
+  supabaseDelete,
+  supabaseDeleteWhere,
 } from './supabaseConfig'
-import { useToast } from '@/composables/useToast'
+import { getCurrentClinicId } from '@/lib/clinicContext'
+import { hydrateEmployee } from '@/lib/staffHelpers'
 
 const EMPLOYEES_TABLE = 'employees'
 const PERMISSIONS_TABLE = 'employee_permissions'
 const SCHEDULES_TABLE = 'doctor_schedules'
 const LOGS_TABLE = 'activity_logs'
 
-const notifyError = (label, error) => {
-  console.error(`❌ ${label}:`, error)
-  const toast = useToast()
-  toast.error(error?.message || 'Unexpected error')
+const NESTED_SELECT = encodeURIComponent('*,employee_permissions(*),doctor_schedules(*)')
+
+const stripPassword = (row) => {
+  if (!row || typeof row !== 'object') return row
+  const { password: _password, ...safe } = row
+  return safe
 }
 
 const stripUndefined = (payload) => {
@@ -26,15 +30,61 @@ const stripUndefined = (payload) => {
   return cleaned
 }
 
-export const getAllEmployees = async () => {
+async function rollbackEmployee(employeeId) {
+  if (!employeeId) return
   try {
-    const select = encodeURIComponent('*,employee_permissions(*),doctor_schedules(*)')
-    const query = `select=${select}&order=created_at.desc`
-    return await supabaseGet(EMPLOYEES_TABLE, query)
-  } catch (error) {
-    notifyError('Failed to fetch employees', error)
-    throw error
+    await supabaseDeleteWhere(SCHEDULES_TABLE, `doctor_id=eq.${employeeId}`)
+  } catch (e) {
+    console.warn('⚠️ Rollback schedules:', e?.message)
   }
+  try {
+    await supabaseDeleteWhere(PERMISSIONS_TABLE, `employee_id=eq.${employeeId}`)
+  } catch (e) {
+    console.warn('⚠️ Rollback permissions:', e?.message)
+  }
+  try {
+    await supabaseDelete(EMPLOYEES_TABLE, employeeId)
+  } catch (e) {
+    console.error('⚠️ Rollback employee failed:', e)
+    throw e
+  }
+}
+
+function buildEmployeesQuery(suffix = '') {
+  return `select=${NESTED_SELECT}${suffix ? `&${suffix}` : ''}`
+}
+
+export const getAllEmployees = async () => {
+  const cid = await getCurrentClinicId()
+  let query = buildEmployeesQuery('order=created_at.desc')
+  if (cid != null && Number.isFinite(Number(cid))) {
+    query += `&clinic_id=eq.${Number(cid)}`
+  }
+
+  let rows = await supabaseGet(EMPLOYEES_TABLE, query)
+
+  // clinic_id bo'sh migratsiya qilingan yozuvlar uchun fallback
+  if (
+    cid != null
+    && Number.isFinite(Number(cid))
+    && (!Array.isArray(rows) || rows.length === 0)
+  ) {
+    const fallbackQuery = buildEmployeesQuery('order=created_at.desc')
+    rows = await supabaseGet(EMPLOYEES_TABLE, fallbackQuery)
+    rows = (Array.isArray(rows) ? rows : []).filter(
+      (row) => row.clinic_id == null || Number(row.clinic_id) === Number(cid)
+    )
+  }
+
+  return (Array.isArray(rows) ? rows : []).map((row) => hydrateEmployee(stripPassword(row)))
+}
+
+export const getEmployeeById = async (employeeId) => {
+  if (!employeeId) return null
+  const query = buildEmployeesQuery(`id=eq.${employeeId}`)
+  const rows = await supabaseGet(EMPLOYEES_TABLE, query)
+  const row = rows?.[0]
+  return row ? hydrateEmployee(stripPassword(row)) : null
 }
 
 export const createEmployee = async (employeeData, permissionsData, scheduleData) => {
@@ -43,23 +93,20 @@ export const createEmployee = async (employeeData, permissionsData, scheduleData
   try {
     const now = new Date().toISOString()
     const payload = stripUndefined({ ...employeeData })
-
     if (payload.created_at === undefined) payload.created_at = now
     if (payload.updated_at === undefined) payload.updated_at = now
 
     const result = await supabasePost(EMPLOYEES_TABLE, payload)
     const created = result?.[0]
-
-    if (!created) throw new Error('Employee create returned no data')
+    if (!created) throw new Error('Xodim yaratishda javob olinmadi')
 
     createdEmployeeId = created.id
 
     if (permissionsData) {
       const permissionsPayload = stripUndefined({
         ...permissionsData,
-        updated_at: now
+        updated_at: now,
       })
-
       await supabasePatchWhere(
         PERMISSIONS_TABLE,
         `employee_id=eq.${createdEmployeeId}`,
@@ -78,82 +125,98 @@ export const createEmployee = async (employeeData, permissionsData, scheduleData
           ...normalized,
           doctor_id: createdEmployeeId,
           created_at: normalized.created_at ?? now,
-          updated_at: normalized.updated_at ?? now
+          updated_at: normalized.updated_at ?? now,
         }
       })
-
       await supabasePost(SCHEDULES_TABLE, schedulesPayload)
     }
 
-    return created
+    const full = await getEmployeeById(createdEmployeeId)
+    return full ?? hydrateEmployee(stripPassword(created))
   } catch (error) {
     if (createdEmployeeId) {
       try {
-        await supabaseDelete(EMPLOYEES_TABLE, createdEmployeeId)
+        await rollbackEmployee(createdEmployeeId)
       } catch (rollbackError) {
         console.error('⚠️ Rollback failed:', rollbackError)
+        throw new Error(
+          error?.message
+            ? `${error.message} (va qisman yaratilgan yozuvni tozalab bo'lmadi)`
+            : 'Xodim yaratishda xatolik va rollback muvaffaqiyatsiz'
+        )
       }
     }
-
-    notifyError('Failed to create employee', error)
     throw error
   }
 }
 
 export const updateEmployee = async (employeeId, updatedData) => {
-  try {
-    if (!employeeId) throw new Error('Employee id is required')
+  if (!employeeId) throw new Error('Xodim id majburiy')
 
-    const payload = stripUndefined({
-      ...updatedData,
-      updated_at: new Date().toISOString()
-    })
+  const payload = stripUndefined({
+    ...updatedData,
+    updated_at: new Date().toISOString(),
+  })
 
-    const result = await supabasePatch(EMPLOYEES_TABLE, employeeId, payload)
-    return result?.[0] || null
-  } catch (error) {
-    notifyError('Failed to update employee', error)
-    throw error
-  }
+  const result = await supabasePatch(EMPLOYEES_TABLE, employeeId, payload)
+  const row = result?.[0] || null
+  return row ? hydrateEmployee(stripPassword(row)) : null
+}
+
+export const replaceEmployeeSchedules = async (employeeId, scheduleData) => {
+  if (!employeeId) throw new Error('Xodim id majburiy')
+
+  await supabaseDeleteWhere(SCHEDULES_TABLE, `doctor_id=eq.${employeeId}`)
+
+  const schedules = Array.isArray(scheduleData) ? scheduleData : []
+  if (!schedules.length) return []
+
+  const now = new Date().toISOString()
+  const payload = schedules.map((entry) => ({
+    ...stripUndefined({ ...entry }),
+    doctor_id: employeeId,
+    created_at: now,
+    updated_at: now,
+  }))
+
+  return await supabasePost(SCHEDULES_TABLE, payload)
 }
 
 export const updateEmployeePermissions = async (employeeId, permissions) => {
-  try {
-    if (!employeeId) throw new Error('Employee id is required')
+  if (!employeeId) throw new Error('Xodim id majburiy')
 
-    const payload = stripUndefined({
-      ...permissions,
-      updated_at: new Date().toISOString()
-    })
+  const { module_permissions, ...scalarPerms } = permissions || {}
+  const payload = stripUndefined({
+    ...scalarPerms,
+    ...(module_permissions !== undefined ? { module_permissions } : {}),
+    updated_at: new Date().toISOString(),
+  })
 
-    const result = await supabasePatchWhere(
-      PERMISSIONS_TABLE,
-      `employee_id=eq.${employeeId}`,
-      payload
-    )
+  const result = await supabasePatchWhere(
+    PERMISSIONS_TABLE,
+    `employee_id=eq.${employeeId}`,
+    payload
+  )
 
-    return result?.[0] || null
-  } catch (error) {
-    notifyError('Failed to update employee permissions', error)
-    throw error
-  }
+  return result?.[0] || null
+}
+
+export const deleteEmployee = async (employeeId) => {
+  if (!employeeId) throw new Error('Xodim id majburiy')
+  await supabaseDelete(EMPLOYEES_TABLE, employeeId)
+  return { id: employeeId }
 }
 
 export const logEmployeeActivity = async (employeeId, action, details = {}) => {
-  try {
-    if (!action) throw new Error('Action is required')
+  if (!action) throw new Error('Action is required')
 
-    const payload = {
-      employee_id: employeeId || null,
-      action,
-      details: details || {},
-      created_at: new Date().toISOString()
-    }
-
-    const result = await supabasePost(LOGS_TABLE, payload)
-    return result?.[0] || null
-  } catch (error) {
-    notifyError('Failed to log employee activity', error)
-    throw error
+  const payload = {
+    employee_id: employeeId || null,
+    action,
+    details: details || {},
+    created_at: new Date().toISOString(),
   }
+
+  const result = await supabasePost(LOGS_TABLE, payload)
+  return result?.[0] || null
 }

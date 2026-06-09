@@ -222,6 +222,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { isAdminLike } from '@/lib/roles'
 import * as visitsApi from '@/api/visitsApi'
 import { getVisitStatusLabel, getVisitStatusColors } from '@/constants/visitStatus'
 
@@ -236,8 +237,7 @@ defineEmits(['update:selectedDate', 'open-payment'])
 
 const { t } = useI18n()
 const authStore = useAuthStore()
-const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
-const isAdmin = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
+const isAdmin = computed(() => isAdminLike(authStore))
 
 const viewMode = ref('month') // 'day', 'week', 'month'
 const currentDate = ref(props.selectedDate)

@@ -1,7 +1,18 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { authenticateDoctor } from '@/api/doctorsApi'
-import { authenticateClinicAdmin, authenticateClinicOwner, getClinic, getDoctorByClinicId } from '@/services/adminService'
+import {
+  authenticateClinicAdmin,
+  authenticateClinicOwner,
+  getClinic,
+  getDoctorByClinicId,
+} from '@/services/adminService'
+import {
+  migrateLegacyClinicOwnerSession,
+  ROLES,
+  isSoloClinic,
+  resolveDoctorLoginRole,
+} from '@/lib/roles'
 
 const USER_CLINIC_KEY = 'userClinicId'
 const IMPERSONATOR_ROLE_KEY = 'impersonatorRole'
@@ -29,6 +40,10 @@ async function getAdminCredentials() {
 }
 
 export const useAuthStore = defineStore('auth', () => {
+  if (migrateLegacyClinicOwnerSession()) {
+    // Eski sessiya yangi clinic_owner rolga o'tkazildi
+  }
+
   const isAuthenticated = ref(localStorage.getItem('isAuthenticated') === 'true')
   const userRole = ref(localStorage.getItem('userRole') || null)
   const userEmail = ref(localStorage.getItem('userEmail') || null)
@@ -79,61 +94,85 @@ export const useAuthStore = defineStore('auth', () => {
 
       const clinicOwner = await authenticateClinicOwner(loginVal, password)
       if (clinicOwner) {
-        isAuthenticated.value = true
-        userRole.value = 'super_admin'
-        userEmail.value = null
-        user.value = { login: clinicOwner.login, clinic_id: clinicOwner.clinic_id }
-        userClinicId.value = Number(clinicOwner.clinic_id)
-        impersonatorRole.value = null
-        superAdminScope.value = 'clinic'
-        localStorage.setItem('isAuthenticated', 'true')
-        localStorage.setItem('userRole', 'super_admin')
-        localStorage.removeItem('userEmail')
-        localStorage.setItem('user', JSON.stringify({ login: clinicOwner.login, clinic_id: clinicOwner.clinic_id }))
-        localStorage.setItem(USER_CLINIC_KEY, String(clinicOwner.clinic_id))
-        localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
-        localStorage.setItem(SUPER_ADMIN_SCOPE_KEY, 'clinic')
-        return true
-      }
-      const clinicAdmin = await authenticateClinicAdmin(loginVal, password)
-      if (clinicAdmin) {
-        const clinic = await getClinic(clinicAdmin.clinic_id)
-        const isSoloClinic = clinic && Number(clinic.max_doctors) === 1
-        let role = 'admin'
-        let userData = { login: clinicAdmin.login, clinic_id: clinicAdmin.clinic_id }
+        const clinicId = Number(clinicOwner.clinic_id)
+        let clinic = null
+        try {
+          clinic = await getClinic(clinicId)
+        } catch {
+          clinic = null
+        }
 
-        if (isSoloClinic) {
-          const doctor = await getDoctorByClinicId(clinicAdmin.clinic_id)
-          if (doctor) {
-            role = 'solo'
-            userData = {
-              id: doctor.id,
-              full_name: doctor.full_name,
-              email: doctor.email,
-              phone: doctor.phone,
-              specialization: doctor.specialization,
-              is_active: doctor.is_active,
-              patients_scope: doctor.patients_scope || 'all',
-              clinic_id: clinicAdmin.clinic_id
+        const soloClinic = isSoloClinic(clinic)
+        let sessionUser = {
+          login: clinicOwner.login,
+          clinic_id: clinicId,
+          owner_id: clinicOwner.id,
+          account_type: soloClinic ? 'solo' : 'clinic_owner',
+        }
+        let role = soloClinic ? ROLES.SOLO : ROLES.CLINIC_OWNER
+
+        if (soloClinic) {
+          try {
+            const doctor = await getDoctorByClinicId(clinicId)
+            if (doctor) {
+              sessionUser = {
+                id: doctor.id,
+                full_name: doctor.full_name,
+                email: doctor.email,
+                phone: doctor.phone,
+                specialization: doctor.specialization,
+                is_active: doctor.is_active,
+                patients_scope: doctor.patients_scope || 'own',
+                clinic_id: clinicId,
+                login: clinicOwner.login,
+                account_type: 'solo',
+              }
             }
+          } catch {
+            // owner sessiyasi davom etadi
           }
         }
 
         isAuthenticated.value = true
         userRole.value = role
-        userEmail.value = role === 'solo' ? (userData.email || userData.phone) : null
-        user.value = userData
-        userClinicId.value = clinicAdmin.clinic_id
+        userEmail.value = sessionUser.email || sessionUser.phone || sessionUser.login || null
+        user.value = sessionUser
+        userClinicId.value = clinicId
         impersonatorRole.value = null
         superAdminScope.value = null
         localStorage.setItem('isAuthenticated', 'true')
         localStorage.setItem('userRole', role)
-        if (role === 'solo') {
-          localStorage.setItem('userEmail', userData.email || userData.phone || '')
+        if (userEmail.value) {
+          localStorage.setItem('userEmail', userEmail.value)
         } else {
           localStorage.removeItem('userEmail')
         }
-        localStorage.setItem('user', JSON.stringify(userData))
+        localStorage.setItem('user', JSON.stringify(sessionUser))
+        localStorage.setItem(USER_CLINIC_KEY, String(clinicId))
+        localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
+        localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
+        return true
+      }
+      const clinicAdmin = await authenticateClinicAdmin(loginVal, password)
+      if (clinicAdmin) {
+        const adminUser = {
+          login: clinicAdmin.login,
+          clinic_id: clinicAdmin.clinic_id,
+          admin_id: clinicAdmin.id,
+          account_type: 'clinic_admin',
+        }
+
+        isAuthenticated.value = true
+        userRole.value = ROLES.ADMIN
+        userEmail.value = null
+        user.value = adminUser
+        userClinicId.value = clinicAdmin.clinic_id
+        impersonatorRole.value = null
+        superAdminScope.value = null
+        localStorage.setItem('isAuthenticated', 'true')
+        localStorage.setItem('userRole', ROLES.ADMIN)
+        localStorage.removeItem('userEmail')
+        localStorage.setItem('user', JSON.stringify(adminUser))
         localStorage.setItem(USER_CLINIC_KEY, String(clinicAdmin.clinic_id))
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
@@ -187,16 +226,13 @@ export const useAuthStore = defineStore('auth', () => {
         clinic_id: cid,
       }
 
-      // Yakka doktor: klinikada max 1 doktor bo'lsa → solo rol
-      let role = 'doctor'
+      let role = ROLES.DOCTOR
       if (cid != null) {
         try {
           const clinic = await getClinic(cid)
-          if (clinic && Number(clinic.max_doctors) === 1) {
-            role = 'solo'
-          }
+          role = resolveDoctorLoginRole(clinic)
         } catch {
-          // clinic topilmasa oddiy doctor
+          role = ROLES.DOCTOR
         }
       }
 

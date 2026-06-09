@@ -8,6 +8,22 @@
         </div>
         <div class="flex items-center gap-2">
           <button
+            v-if="canExport"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+            @click="exportPaymentsExcel"
+          >
+            <ArrowDownTrayIcon class="w-4 h-4" />
+            {{ t('reports.exportExcel') }}
+          </button>
+          <button
+            v-if="canExport"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100 transition-colors"
+            @click="exportPaymentsPdf"
+          >
+            <DocumentArrowDownIcon class="w-4 h-4" />
+            {{ t('reports.exportPdf') }}
+          </button>
+          <button
             v-if="isSolo"
             class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-primary-500 to-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:from-primary-600 hover:to-cyan-700 transition-all"
             @click="openAdditionalPaymentModal"
@@ -419,19 +435,29 @@ import MobileFilterSheet from '@/components/shared/MobileFilterSheet.vue'
 import MobileFAB from '@/components/shared/MobileFAB.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { PlusIcon, AdjustmentsHorizontalIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, AdjustmentsHorizontalIcon, PencilSquareIcon, TrashIcon, ArrowDownTrayIcon, DocumentArrowDownIcon } from '@heroicons/vue/24/outline'
 import { listPayments, createPayment, updatePayment, deletePayment, createAdditionalPayment, getPaymentsByVisitId, parseCategoryFromNote, removeCategoryFromNote } from '@/api/paymentsApi'
 import { listDoctors } from '@/api/doctorsApi'
 import { listPatients } from '@/api/patientsApi'
 import { getVisitById, updateVisit } from '@/api/visitsApi'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { useDataPermissionGuard, useDataPermission } from '@/composables/useDataPermission'
+import { exportToCsv, exportToPdf } from '@/lib/exportData'
+import { logActivity } from '@/lib/activityLog'
 
 const payments = ref([])
 const { t } = useI18n()
 const loading = ref(false)
 const toast = useToast()
 const authStore = useAuthStore()
+
+useDataPermissionGuard('can_view_revenue', {
+  message: "Moliyaviy bo'limga (to'lovlar) kirish huquqingiz yo'q.",
+})
+
+const { allowed: canExport } = useDataPermission('can_export_data')
+
 const doctors = ref([])
 const patients = ref([])
 const showPaymentModal = ref(false)
@@ -634,6 +660,65 @@ const getDoctorLabel = (doctorId) => {
   return name ? `${name} (#${doctorId})` : `#${doctorId}`
 }
 
+// ===== Eksport (Excel / PDF) — can_export_data huquqi bilan himoyalangan =====
+const ensureExportAllowed = () => {
+  if (!canExport.value) {
+    toast.error("Sizda ma'lumotlarni eksport qilish huquqi yo'q.")
+    return false
+  }
+  return true
+}
+
+const paymentExportColumns = [
+  { key: 'paid_at', label: 'Sana', value: (p) => formatDate(p.paid_at) },
+  { key: 'patient', label: 'Bemor', value: (p) => getPatientLabel(p.patient_id) },
+  { key: 'doctor', label: 'Shifokor', value: (p) => getDoctorLabel(p.doctor_id) },
+  { key: 'type', label: 'Turi', value: (p) => getTypeLabel(p) },
+  { key: 'method', label: "To'lov usuli", value: (p) => p.method || '-' },
+  { key: 'amount', label: 'Summa', type: 'number', value: (p) => formatCurrency(p.amount) },
+]
+
+const exportPaymentsExcel = () => {
+  if (!ensureExportAllowed()) return
+  try {
+    if (!filteredPayments.value.length) {
+      toast.error(t('payments.noData'))
+      return
+    }
+    exportToCsv('tolovlar', paymentExportColumns, filteredPayments.value)
+    toast.success('Excel fayl yuklab olindi')
+  } catch (error) {
+    console.error('Payments Excel export failed:', error)
+    toast.error('Eksport qilishda xatolik yuz berdi')
+  }
+}
+
+const exportPaymentsPdf = () => {
+  if (!ensureExportAllowed()) return
+  try {
+    if (!filteredPayments.value.length) {
+      toast.error(t('payments.noData'))
+      return
+    }
+    exportToPdf({
+      title: "To'lovlar ro'yxati",
+      subtitle: filters.value.startDate || filters.value.endDate
+        ? `${filters.value.startDate || '...'} — ${filters.value.endDate || '...'}`
+        : '',
+      columns: paymentExportColumns,
+      rows: filteredPayments.value,
+      summary: [
+        { label: "Jami to'lovlar", value: formatCurrency(totalPayments.value) },
+        { label: 'Qaytarimlar', value: formatCurrency(totalRefunds.value) },
+        { label: 'Sof daromad', value: formatCurrency(netIncome.value) },
+      ],
+    })
+  } catch (error) {
+    console.error('Payments PDF export failed:', error)
+    toast.error(error.message || 'Eksport qilishda xatolik yuz berdi')
+  }
+}
+
 const loadPayments = async () => {
   loading.value = true
   try {
@@ -768,9 +853,23 @@ const savePayment = async () => {
     if (isEditing.value && form.value.id) {
       await updatePayment(form.value.id, payload)
       toast.success(t('payments.toastUpdated'))
+      await logActivity({
+        action: 'payment.update',
+        entity: 'payment',
+        entityId: form.value.id,
+        summary: `To'lov tahrirlandi (ID: #${form.value.id}, ${formatCurrency(amount)})`,
+        meta: { amount, payment_type: payload.payment_type, patient_id: payload.patient_id },
+      })
     } else {
-      await createPayment(payload)
+      const created = await createPayment(payload)
       toast.success(t('payments.toastCreated'))
+      await logActivity({
+        action: 'payment.create',
+        entity: 'payment',
+        entityId: created?.id ?? null,
+        summary: `Yangi to'lov qo'shildi (${formatCurrency(amount)})`,
+        meta: { amount, payment_type: payload.payment_type, patient_id: payload.patient_id },
+      })
     }
     await loadPayments()
     await syncVisitStatusIfFullyPaid(visitId)
@@ -813,6 +912,17 @@ const confirmDelete = async (payment) => {
   try {
     await deletePayment(payment.id)
     toast.success(t('payments.toastDeleted'))
+    await logActivity({
+      action: 'payment.delete',
+      entity: 'payment',
+      entityId: payment.id,
+      summary: `To'lov o'chirildi (ID: #${payment.id}, ${formatCurrency(payment.amount)})`,
+      meta: {
+        amount: payment.amount,
+        payment_type: payment.payment_type,
+        patient_id: payment.patient_id,
+      },
+    })
     await loadPayments()
   } catch (error) {
     console.error('Failed to delete payment:', error)

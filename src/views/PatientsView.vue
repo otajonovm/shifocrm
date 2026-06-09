@@ -560,6 +560,7 @@ import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
 import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
 import MobileFAB from '@/components/shared/MobileFAB.vue'
 import { useAuthStore } from '@/stores/auth'
+import { isAdminLike, isSolo as hasSoloRole } from '@/lib/roles'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
@@ -586,9 +587,8 @@ const patientsStore = usePatientsStore()
 const toast = useToast()
 const { t } = useI18n()
 
-const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
-const isAdmin = computed(() => authStore.userRole === 'admin' || authStore.userRole === 'solo' || isClinicScopedSuperAdmin.value)
-const isSolo = computed(() => authStore.userRole === 'solo')
+const isAdmin = computed(() => isAdminLike(authStore) || hasSoloRole(authStore))
+const isSolo = computed(() => hasSoloRole(authStore))
 
 // Doktor ID ni olish
 const getCurrentDoctorId = () => {
@@ -604,7 +604,7 @@ const getCurrentDoctorId = () => {
 // Current doctor name (for odontogram and modal)
 const currentDoctorName = computed(() => {
   if (authStore.userRole === 'solo') return authStore.user?.full_name || ''
-  if (authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value) return t('role.admin')
+  if (isAdminLike(authStore)) return t('role.administrator')
   const doctorId = getCurrentDoctorId()
   if (!doctorId) return ''
   const doctor = doctorsStore.items.find(d => Number(d.id) === Number(doctorId))

@@ -62,6 +62,20 @@ export const useClinicStore = defineStore('clinic', () => {
     clinicName.value = getClinicName()
   }
 
+  async function loadFromClinicId(clinicId) {
+    const id = Number(clinicId)
+    if (!Number.isFinite(id)) return
+    try {
+      const { getClinic } = await import('@/services/adminService')
+      const clinic = await getClinic(id)
+      if (!clinic) return
+      if (clinic.name) setClinicName(clinic.name)
+      if (clinic.logo_url) setLogo(clinic.logo_url)
+    } catch {
+      // Klinika ma'lumotlari ixtiyoriy — default nom qoladi
+    }
+  }
+
   return {
     logoUrl,
     clinicName,
@@ -75,6 +89,7 @@ export const useClinicStore = defineStore('clinic', () => {
     getLogoUrl,
     getClinicName,
     initFromStorage,
+    loadFromClinicId,
     defaultLogo: DEFAULT_LOGO,
     defaultName: DEFAULT_NAME
   }

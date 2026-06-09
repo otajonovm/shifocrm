@@ -23,7 +23,7 @@
  * @typedef {Object} Profile
  * @property {number} id
  * @property {string} email
- * @property {'admin'|'doctor'|'super_admin'} role
+ * @property {'admin'|'doctor'|'super_admin'|'clinic_owner'} role
  * @property {number|null} [clinic_id]
  * @property {string} [created_at]
  * @property {string} [updated_at]

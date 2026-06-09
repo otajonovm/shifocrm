@@ -267,6 +267,7 @@ import { useI18n } from 'vue-i18n'
 import { CalendarDaysIcon, XMarkIcon, PlayIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { isAdminLike } from '@/lib/roles'
 import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
 import {
   getVisitStatusLabel,
@@ -315,8 +316,7 @@ const allowedStatuses = computed(() => {
 })
 
 // To'lovni faqat administrator kiritadi; doktor faqat narx va status belgilaydi
-const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
-const isAdmin = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
+const isAdmin = computed(() => isAdminLike(authStore))
 
 // Methods
 const formatDate = (dateStr) => {

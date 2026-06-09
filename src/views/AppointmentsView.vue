@@ -210,7 +210,7 @@
       </div>
 
       <!-- Schedule view (Doctor calendar grid) -->
-      <div v-else-if="displayMode === 'schedule'" class="-mx-4 sm:-mx-6 lg:-mx-8">
+      <div v-else-if="displayMode === 'schedule'" class="relative z-0 sm:-mx-6 lg:-mx-8">
         <DoctorScheduleView
           :selected-date="selectedDate"
           :view-mode="viewMode"
@@ -613,6 +613,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { isAdminLike } from '@/lib/roles'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
@@ -646,8 +647,7 @@ const patientsStore = usePatientsStore()
 const toast = useToast()
 const { t } = useI18n()
 
-const isClinicScopedSuperAdmin = computed(() => authStore.userRole === 'super_admin' && authStore.superAdminScope === 'clinic')
-const isAdmin = computed(() => authStore.userRole === 'admin' || isClinicScopedSuperAdmin.value)
+const isAdmin = computed(() => isAdminLike(authStore))
 
 const STORAGE_KEYS = {
   displayMode: 'shifocrm.appointments.displayMode',

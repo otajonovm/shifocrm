@@ -7,7 +7,7 @@
           <p class="text-sm sm:text-base text-gray-500 mt-0.5">{{ t('services.subtitle') }}</p>
         </div>
         <button
-          v-if="activeTab === 'services'"
+          v-if="activeTab === 'services' && canEditPrices"
           class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-xl transition-all touch-manipulation min-h-[44px]"
           @click="openServiceModal()"
         >
@@ -98,7 +98,7 @@
                       </span>
                     </td>
                     <td class="px-4 py-3 text-right">
-                      <div class="flex items-center justify-end gap-2">
+                      <div v-if="canEditPrices" class="flex items-center justify-end gap-2">
                         <button
                           class="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors"
                           :title="t('services.edit')"
@@ -114,6 +114,7 @@
                           <TrashIcon class="w-5 h-5" />
                         </button>
                       </div>
+                      <span v-else class="text-xs text-slate-400">—</span>
                     </td>
                   </tr>
                 </tbody>
@@ -286,6 +287,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
+import { useDataPermission } from '@/composables/useDataPermission'
+import { logActivity } from '@/lib/activityLog'
 import {
   listServices,
   createService,
@@ -297,6 +300,8 @@ import {
 
 const { t } = useI18n()
 const toast = useToast()
+
+const { allowed: canEditPrices } = useDataPermission('can_edit_prices')
 
 const tabs = [
   { id: 'services', label: 'services.tabServices' },
@@ -420,6 +425,10 @@ const loadStats = async () => {
 }
 
 const openServiceModal = (service = null) => {
+  if (!canEditPrices.value) {
+    toast.error("Preyskurant narxlarini tahrirlash huquqingiz yo'q.")
+    return
+  }
   if (service) {
     serviceForm.value = {
       id: service.id,
@@ -482,6 +491,13 @@ const saveService = async () => {
     }
   }
 
+  const isEditing = Boolean(serviceForm.value.id)
+  const previousService = isEditing
+    ? services.value.find((s) => Number(s.id) === Number(serviceForm.value.id))
+    : null
+  const oldPrice = previousService ? Number(previousService.base_price) || 0 : null
+  const newPrice = basePayload.base_price
+
   try {
     try {
       await trySave(payloadWithOdontogram)
@@ -495,6 +511,25 @@ const saveService = async () => {
       }
     }
     toast.success(serviceForm.value.id ? t('services.toastUpdated') : t('services.toastCreated'))
+    if (isEditing) {
+      const priceChanged = oldPrice !== null && oldPrice !== newPrice
+      await logActivity({
+        action: 'service.update',
+        entity: 'service',
+        entityId: serviceForm.value.id,
+        summary: priceChanged
+          ? `"${basePayload.name}" xizmati narxi o'zgartirildi: ${formatCurrency(oldPrice)} → ${formatCurrency(newPrice)}`
+          : `"${basePayload.name}" xizmati tahrirlandi`,
+        meta: { old_price: oldPrice, new_price: newPrice, price_changed: priceChanged },
+      })
+    } else {
+      await logActivity({
+        action: 'service.create',
+        entity: 'service',
+        summary: `Yangi xizmat qo'shildi: "${basePayload.name}" (${formatCurrency(newPrice)})`,
+        meta: { price: newPrice },
+      })
+    }
     await loadServices()
     closeServiceModal()
   } catch (error) {
@@ -504,10 +539,21 @@ const saveService = async () => {
 }
 
 const deleteServiceRow = async (service) => {
+  if (!canEditPrices.value) {
+    toast.error("Preyskurant narxlarini tahrirlash huquqingiz yo'q.")
+    return
+  }
   if (!window.confirm(t('services.confirmDelete'))) return
   try {
     await deleteService(service.id)
     toast.success(t('services.toastDeleted'))
+    await logActivity({
+      action: 'service.delete',
+      entity: 'service',
+      entityId: service.id,
+      summary: `Xizmat o'chirildi: "${service.name}" (${formatCurrency(service.base_price)})`,
+      meta: { price: service.base_price },
+    })
     await loadServices()
   } catch (error) {
     console.error('Failed to delete service:', error)

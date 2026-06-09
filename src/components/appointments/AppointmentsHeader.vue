@@ -1,6 +1,6 @@
 <template>
-  <!-- Sticky Header Container -->
-  <div class="sticky top-0 z-30 bg-white border-b border-slate-200">
+  <!-- Desktop: sticky; mobil: oddiy oqim (jadval ustiga chiqmasin) -->
+  <div class="relative z-20 bg-white border-b border-slate-200 lg:sticky lg:top-0 lg:z-30">
     <div class="px-4 py-4 sm:px-6">
       <!-- DESKTOP: Single Row Layout -->
       <div class="hidden lg:flex items-center justify-between gap-4 flex-wrap">
@@ -197,9 +197,39 @@
           </button>
         </div>
 
-        <!-- Mobile Expanded Filters -->
-        <transition name="slide-down">
-          <div v-if="isMobileMenuOpen" class="space-y-3 pt-2">
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobil filtrlar: alohida panel (jadval ustiga chiqmasin) -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="isMobileMenuOpen"
+        class="fixed inset-0 z-40 lg:hidden"
+        aria-modal="true"
+        role="dialog"
+      >
+        <div
+          class="absolute inset-0 bg-black/40"
+          @click="closeMobileMenu"
+        />
+        <div class="absolute inset-x-0 top-16 bottom-0 bg-white shadow-xl flex flex-col">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 flex-shrink-0">
+            <p class="text-sm font-semibold text-slate-900">Filtrlash</p>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg"
+              @click="closeMobileMenu"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Yopish
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
             <!-- Search Input -->
             <div class="relative">
               <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -226,9 +256,9 @@
               </option>
             </select>
 
-            <!-- Weekly Calendar Strip (Horizontal Scroll) -->
-            <div class="overflow-x-auto no-scrollbar -mx-4 px-4">
-              <div class="flex gap-2 pb-2">
+            <!-- Weekly Calendar Strip -->
+            <div class="overflow-x-auto no-scrollbar -mx-1 px-1">
+              <div class="flex gap-2 pb-1">
                 <button
                   v-for="(day, idx) in weekDays"
                   :key="idx"
@@ -236,7 +266,7 @@
                   :class="[
                     'flex flex-col items-center justify-center px-3 py-2 rounded-lg min-w-max transition-all duration-200 flex-shrink-0',
                     isSelectedDate(day.date)
-                      ? 'bg-blue-600 text-white font-semibold scale-105 shadow-md'
+                      ? 'bg-blue-600 text-white font-semibold shadow-md'
                       : 'bg-slate-50 text-slate-600'
                   ]"
                 >
@@ -246,137 +276,103 @@
               </div>
             </div>
 
-            <!-- Navigation Buttons -->
+            <!-- Navigation -->
             <div class="flex items-center justify-center gap-2 bg-slate-100 rounded-lg p-2">
-              <button
-                @click="navigateDate(-1)"
-                class="p-1.5 hover:bg-slate-200 rounded transition-colors"
-              >
+              <button type="button" @click="navigateDate(-1)" class="p-1.5 hover:bg-slate-200 rounded transition-colors">
                 <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <button @click="goToToday" class="px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded transition-colors">
+              <button type="button" @click="goToToday" class="px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded transition-colors">
                 Bugun
               </button>
-              <button
-                @click="navigateDate(1)"
-                class="p-1.5 hover:bg-slate-200 rounded transition-colors"
-              >
+              <button type="button" @click="navigateDate(1)" class="p-1.5 hover:bg-slate-200 rounded transition-colors">
                 <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
               </button>
             </div>
 
-            <!-- View Mode Toggles -->
+            <!-- View Mode -->
             <div class="space-y-2">
-              <div class="text-xs font-semibold text-slate-600 px-1">Kun tanlang</div>
+              <div class="text-xs font-semibold text-slate-600 px-1">Davr</div>
               <div class="grid grid-cols-3 gap-2">
                 <button
+                  type="button"
                   @click="emit('view-change', 'day')"
-                  :class="[
-                    'px-2 py-2 text-xs font-semibold rounded transition-all',
-                    viewMode === 'day'
-                      ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                      : 'bg-slate-100 text-slate-600'
-                  ]"
+                  :class="viewModeBtnClass('day')"
                 >
                   Kun
                 </button>
                 <button
+                  type="button"
                   @click="emit('view-change', 'week')"
-                  :class="[
-                    'px-2 py-2 text-xs font-semibold rounded transition-all',
-                    viewMode === 'week'
-                      ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                      : 'bg-slate-100 text-slate-600'
-                  ]"
+                  :class="viewModeBtnClass('week')"
                 >
                   Hafta
                 </button>
                 <button
+                  type="button"
                   @click="emit('view-change', 'month')"
-                  :class="[
-                    'px-2 py-2 text-xs font-semibold rounded transition-all',
-                    viewMode === 'month'
-                      ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                      : 'bg-slate-100 text-slate-600'
-                  ]"
+                  :class="viewModeBtnClass('month')"
                 >
                   Oy
                 </button>
               </div>
             </div>
 
-            <!-- Layout Toggles -->
+            <!-- Layout -->
             <div class="space-y-2">
               <div class="text-xs font-semibold text-slate-600 px-1">Ko'rinish</div>
               <div class="grid grid-cols-2 gap-2">
                 <button
+                  type="button"
                   @click="emit('layout-change', 'list')"
-                  :class="[
-                    'px-2 py-2 text-xs font-semibold rounded transition-all',
-                    layout === 'list'
-                      ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                      : 'bg-slate-100 text-slate-600'
-                  ]"
+                  :class="layoutBtnClass('list')"
                 >
                   Ro'yxat
                 </button>
                 <button
+                  type="button"
                   @click="emit('layout-change', 'schedule')"
-                  :class="[
-                    'px-2 py-2 text-xs font-semibold rounded transition-all',
-                    layout === 'schedule'
-                      ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                      : 'bg-slate-100 text-slate-600'
-                  ]"
+                  :class="layoutBtnClass('schedule')"
                 >
                   Jadval
                 </button>
               </div>
             </div>
 
-            <!-- Doctors Filter -->
-            <div class="space-y-2">
+            <!-- Doctors -->
+            <div v-if="doctors.length" class="space-y-2 pb-2">
               <div class="text-xs font-semibold text-slate-600 px-1">Shifokor</div>
               <div class="flex flex-wrap gap-2">
                 <button
+                  type="button"
                   @click="emit('doctor-change', '')"
-                  :class="[
-                    'px-2.5 py-1 text-xs font-medium rounded-full transition-all',
-                    selectedDoctorId === ''
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'bg-slate-100 text-slate-600'
-                  ]"
+                  :class="doctorBtnClass('')"
                 >
                   Hammasi
                 </button>
                 <button
                   v-for="doctor in doctors"
                   :key="doctor.id"
+                  type="button"
                   @click="emit('doctor-change', doctor.id)"
-                  :class="[
-                    'px-2.5 py-1 text-xs font-medium rounded-full transition-all',
-                    selectedDoctorId === doctor.id
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'bg-slate-100 text-slate-600'
-                  ]"
+                  :class="doctorBtnClass(doctor.id)"
                 >
                   {{ doctor.full_name?.split(' ')[0] || 'Dr.' }}
                 </button>
               </div>
             </div>
           </div>
-        </transition>
+        </div>
       </div>
-    </div>
-  </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 
 const props = defineProps({
   selectedDate: {
@@ -426,6 +422,42 @@ const emit = defineEmits([
 
 const isMobileMenuOpen = ref(false)
 
+const closeMobileMenu = () => {
+  isMobileMenuOpen.value = false
+}
+
+watch(isMobileMenuOpen, (open) => {
+  if (typeof document === 'undefined') return
+  document.body.classList.toggle('modal-open', open)
+})
+
+onUnmounted(() => {
+  if (typeof document !== 'undefined') {
+    document.body.classList.remove('modal-open')
+  }
+})
+
+const viewModeBtnClass = (mode) => [
+  'px-2 py-2 text-xs font-semibold rounded transition-all',
+  props.viewMode === mode
+    ? 'bg-blue-100 text-blue-700 border border-blue-300'
+    : 'bg-slate-100 text-slate-600',
+]
+
+const layoutBtnClass = (mode) => [
+  'px-2 py-2 text-xs font-semibold rounded transition-all',
+  props.layout === mode
+    ? 'bg-blue-100 text-blue-700 border border-blue-300'
+    : 'bg-slate-100 text-slate-600',
+]
+
+const doctorBtnClass = (id) => [
+  'px-2.5 py-1 text-xs font-medium rounded-full transition-all',
+  props.selectedDoctorId === id
+    ? 'bg-blue-100 text-blue-700 border border-blue-200'
+    : 'bg-slate-100 text-slate-600',
+]
+
 // Generate weekly calendar strip
 const weekDays = computed(() => {
   const current = new Date(props.selectedDate)
@@ -457,7 +489,7 @@ const isSelectedDate = (date) => {
 // Select specific date
 const selectDate = (date) => {
   emit('date-change', date)
-  isMobileMenuOpen.value = false
+  closeMobileMenu()
 }
 
 // Navigate dates
@@ -507,20 +539,14 @@ const formatDateMobile = (dateStr) => {
   display: none;
 }
 
-/* Transition animations */
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition: all 0.3s ease;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
 }
 
-.slide-down-enter-from {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
-}
-
-.slide-down-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
 }
 
 /* Focus styles */
