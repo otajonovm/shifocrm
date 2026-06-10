@@ -149,6 +149,7 @@
               :patient-id="patient.id"
               :patient-name="patient.full_name || ''"
               :patient-med-id="patient.med_id || ''"
+              :patient-phone="patient.phone || ''"
               @update-status="handlePaymentStatusUpdate"
             />
           </div>

@@ -47,7 +47,7 @@
           Pechat
         </button>
         <button
-          v-if="payments.length > 0"
+          v-if="printServices.length > 0 || totalPaidNet > 0"
           type="button"
           class="inline-flex items-center gap-2 rounded-lg bg-gray-600 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 shadow-md transition-colors"
           @click="handlePrintA4"
@@ -57,7 +57,7 @@
           A4 chop etish
         </button>
         <button
-          v-if="payments.length > 0"
+          v-if="printServices.length > 0 || totalPaidNet > 0"
           type="button"
           class="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 shadow-md transition-colors"
           @click="handlePrintReceipt"
@@ -110,7 +110,7 @@
           <span>Pechat</span>
         </button>
         <button
-          v-if="payments.length > 0"
+          v-if="printServices.length > 0 || totalPaidNet > 0"
           type="button"
           class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gray-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-gray-700 active:scale-[0.99] transition-all"
           @click="handlePrintA4"
@@ -120,7 +120,7 @@
           <span>A4 chop etish</span>
         </button>
         <button
-          v-if="payments.length > 0"
+          v-if="printServices.length > 0 || totalPaidNet > 0"
           type="button"
           class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-amber-600 active:scale-[0.99] transition-all"
           @click="handlePrintReceipt"
@@ -144,116 +144,17 @@
       </div>
     </div>
 
-    <div class="md:hidden space-y-3">
-      <div
-        v-if="loading"
-        class="rounded-xl border border-gray-200 bg-white p-4 text-sm text-slate-500 shadow-sm"
+    <!-- Yagona ro'yxat: bajarilgan xizmatlar -->
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-sm font-semibold text-gray-900">{{ t('patientPayments.services') }}</h3>
+      <button
+        v-if="canManagePayments && latestPaymentEntry"
+        type="button"
+        class="text-xs font-medium text-primary-600 hover:text-primary-700"
+        @click="openEditModal(latestPaymentEntry)"
       >
-        {{ t('patientPayments.loading') }}
-      </div>
-      <div
-        v-else-if="payments.length === 0"
-        class="rounded-xl border border-gray-200 bg-white p-4 text-sm text-slate-500 shadow-sm"
-      >
-        {{ t('patientPayments.noPayments') }}
-      </div>
-      <div
-        v-for="entry in payments"
-        :key="`mobile-payment-${entry.id}`"
-        class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-      >
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <p class="text-xs text-slate-500">{{ formatDate(entry.paid_at) }}</p>
-            <p class="mt-1 text-sm font-semibold text-slate-900">#{{ entry.visit_id || '-' }}</p>
-          </div>
-          <span :class="['text-xs font-semibold px-2 py-1 rounded-full', getTypeClass(entry)]">
-            {{ getTypeDisplayLabel(entry) }}
-          </span>
-        </div>
-        <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <div>
-            <p class="text-xs text-slate-500">{{ t('patientPayments.amount') }}</p>
-            <p class="font-semibold text-slate-900">{{ getFormattedAmount(entry) }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-slate-500">{{ t('patientPayments.method') }}</p>
-            <p class="font-medium text-slate-700">{{ entry.method || '-' }}</p>
-          </div>
-        </div>
-        <div class="mt-2 text-sm text-slate-700">
-          <p class="text-xs text-slate-500">{{ t('patientPayments.note') }}</p>
-          <p>{{ getDisplayNote(entry) }}</p>
-          <p v-if="getDiscountPercent(entry)" class="mt-1 text-xs font-semibold text-violet-700">
-            {{ getDiscountPercent(entry) }}%
-          </p>
-        </div>
-        <div v-if="canManagePayments" class="mt-3 flex items-center gap-4 text-sm">
-          <button class="font-medium text-primary-600" @click="openEditModal(entry)">
-            {{ t('patientPayments.edit') }}
-          </button>
-          <button class="font-medium text-rose-600" @click="confirmDelete(entry)">
-            {{ t('patientPayments.delete') }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="hidden md:block overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-      <table class="min-w-full divide-y divide-gray-200 text-sm">
-        <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-          <tr>
-            <th class="px-4 py-3">{{ t('patientPayments.date') }}</th>
-            <th class="px-4 py-3">{{ t('patientPayments.visitId') }}</th>
-            <th class="px-4 py-3">{{ t('patientPayments.type') }}</th>
-            <th class="px-4 py-3">{{ t('patientPayments.amount') }}</th>
-            <th class="px-4 py-3">{{ t('patientPayments.method') }}</th>
-            <th class="px-4 py-3">{{ t('patientPayments.note') }}</th>
-            <th class="px-4 py-3">{{ t('patientPayments.actions') }}</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-if="loading">
-            <td class="px-4 py-4 text-slate-500" colspan="7">{{ t('patientPayments.loading') }}</td>
-          </tr>
-          <tr v-else-if="payments.length === 0">
-            <td class="px-4 py-4 text-slate-500" colspan="7">{{ t('patientPayments.noPayments') }}</td>
-          </tr>
-          <tr v-for="entry in payments" :key="entry.id" class="bg-white">
-            <td class="px-4 py-3 text-slate-700">{{ formatDate(entry.paid_at) }}</td>
-            <td class="px-4 py-3 text-slate-700">#{{ entry.visit_id }}</td>
-            <td class="px-4 py-3 text-slate-700">
-              <span :class="getTypeClass(entry)">
-                {{ getTypeDisplayLabel(entry) }}
-              </span>
-            </td>
-            <td class="px-4 py-3 text-slate-700">
-              {{ getFormattedAmount(entry) }}
-            </td>
-            <td class="px-4 py-3 text-slate-700">{{ entry.method || '-' }}</td>
-            <td class="px-4 py-3 text-slate-700">
-              <div>{{ getDisplayNote(entry) }}</div>
-              <span
-                v-if="getDiscountPercent(entry)"
-                class="mt-1 inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700"
-              >
-                {{ getDiscountPercent(entry) }}%
-              </span>
-            </td>
-            <td class="px-4 py-3 text-slate-700">
-              <div v-if="canManagePayments" class="flex items-center gap-2">
-                <button class="text-primary-600 hover:text-primary-700 text-sm" @click="openEditModal(entry)">
-                  {{ t('patientPayments.edit') }}
-                </button>
-                <button class="text-rose-600 hover:text-rose-700 text-sm" @click="confirmDelete(entry)">
-                  {{ t('patientPayments.delete') }}
-                </button>
-              </div>
-              <span v-else class="text-slate-400 text-sm">—</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        Oxirgi to'lovni tahrirlash
+      </button>
     </div>
 
     <div class="md:hidden space-y-3">
@@ -270,7 +171,7 @@
         {{ t('patientPayments.noServices') }}
       </div>
       <div
-        v-for="service in services"
+        v-for="service in printServices"
         :key="`mobile-service-${service.id}`"
         class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
       >
@@ -311,6 +212,15 @@
           </div>
         </div>
       </div>
+      <div
+        v-if="!servicesLoading && printServices.length > 0"
+        class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm space-y-2"
+      >
+        <div class="flex justify-between"><span class="text-slate-600">Jami xizmatlar</span><span class="font-semibold">{{ formatCurrency(totalServices) }}</span></div>
+        <div v-if="totalDiscountAmount > 0" class="flex justify-between text-violet-700"><span>Chegirma</span><span class="font-semibold">-{{ formatCurrency(totalDiscountAmount) }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-600">To'langan</span><span class="font-semibold text-emerald-700">{{ formatCurrency(totalPaidNet) }}</span></div>
+        <div class="flex justify-between border-t border-slate-300 pt-2"><span class="font-semibold">Qarzdorlik</span><span class="font-bold text-amber-700">{{ formatCurrency(remainingDebt) }}</span></div>
+      </div>
     </div>
 
     <div class="hidden md:block overflow-x-auto rounded-xl border border-slate-200">
@@ -333,7 +243,7 @@
           <tr v-else-if="services.length === 0">
             <td class="px-4 py-4 text-slate-500" :colspan="canManagePayments ? 7 : 6">{{ t('patientPayments.noServices') }}</td>
           </tr>
-          <tr v-for="service in services" :key="service.id" class="bg-white">
+          <tr v-for="service in printServices" :key="service.id" class="bg-white">
             <td class="px-4 py-3 text-slate-700">#{{ service.visit_id }}</td>
             <td class="px-4 py-3 text-slate-700">{{ service.service_name }}</td>
             <td class="px-4 py-3 text-slate-700">{{ service.tooth_id ? `#${service.tooth_id}` : '-' }}</td>
@@ -353,6 +263,28 @@
             </td>
           </tr>
         </tbody>
+        <tfoot v-if="printServices.length > 0" class="bg-slate-50 text-sm font-semibold text-slate-800">
+          <tr class="border-t-2 border-slate-200">
+            <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 3">Jami xizmatlar</td>
+            <td class="px-4 py-2">{{ formatCurrency(totalServices) }}</td>
+            <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 2"></td>
+          </tr>
+          <tr v-if="totalDiscountAmount > 0">
+            <td class="px-4 py-2 text-violet-700" :colspan="canManagePayments ? 3 : 3">Chegirma</td>
+            <td class="px-4 py-2 text-violet-700">-{{ formatCurrency(totalDiscountAmount) }}</td>
+            <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 2"></td>
+          </tr>
+          <tr>
+            <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 3">To'langan</td>
+            <td class="px-4 py-2 text-emerald-700">{{ formatCurrency(totalPaidNet) }}</td>
+            <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 2"></td>
+          </tr>
+          <tr class="border-t border-slate-300">
+            <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 3">Qarzdorlik</td>
+            <td class="px-4 py-2 text-amber-700">{{ formatCurrency(remainingDebt) }}</td>
+            <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 2"></td>
+          </tr>
+        </tfoot>
       </table>
     </div>
 
@@ -451,172 +383,6 @@
       </div>
     </Transition>
 
-    <!-- A4 Report Template (hidden, shown only during A4 print) -->
-    <div id="print-a4-report" class="hidden">
-      <div class="a4-print-container">
-        <!-- Header with clinic info -->
-        <div class="a4-header">
-          <div v-if="clinicStore.logoUrl" class="a4-logo">
-            <img :src="clinicStore.logoUrl" :alt="clinicStore.displayName" />
-          </div>
-          <div class="a4-clinic-info">
-            <h1 class="a4-clinic-name">{{ clinicStore.displayName || 'SHIFOCRM' }}</h1>
-            <p class="a4-clinic-address">{{ clinicStore.address || '' }}</p>
-            <p class="a4-clinic-phone">{{ clinicStore.phone || '' }}</p>
-          </div>
-        </div>
-
-        <!-- Patient info -->
-        <div class="a4-patient-section">
-          <h2 class="a4-section-title">Bemor Ma'lumotlari</h2>
-          <div class="a4-patient-details">
-            <div class="a4-patient-row">
-              <span class="a4-label">F.I.Sh:</span>
-              <span class="a4-value">{{ patientName }}</span>
-            </div>
-            <div class="a4-patient-row">
-              <span class="a4-label">Bemor ID:</span>
-              <span class="a4-value">{{ patientMedId || '-' }}</span>
-            </div>
-            <div class="a4-patient-row">
-              <span class="a4-label">Chop etilgan sana:</span>
-              <span class="a4-value">{{ formatDatetime(new Date()) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Transaction history table -->
-        <div class="a4-transactions-section">
-          <h2 class="a4-section-title">To'lov Tarixi</h2>
-          <table class="a4-transactions-table">
-            <thead>
-              <tr>
-                <th>Sana</th>
-                <th>Tashrif ID</th>
-                <th>Turi</th>
-                <th>Summa</th>
-                <th>Usuli</th>
-                <th>Izoh</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="payments.length === 0">
-                <td colspan="6" class="a4-empty">To'lovlar mavjud emas</td>
-              </tr>
-              <tr v-for="entry in payments" :key="entry.id">
-                <td>{{ formatDate(entry.paid_at) }}</td>
-                <td>#{{ entry.visit_id }}</td>
-                <td>{{ getTypeDisplayLabel(entry) }}</td>
-                <td class="a4-amount">{{ getFormattedAmount(entry) }}</td>
-                <td>{{ entry.method || '-' }}</td>
-                <td>{{ getDisplayNote(entry) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Summary section -->
-        <div class="a4-summary-section">
-          <div class="a4-summary-row">
-            <span class="a4-summary-label">Jami xizmatlar:</span>
-            <span class="a4-summary-value">{{ formatCurrency(totalServices) }}</span>
-          </div>
-          <div class="a4-summary-row">
-            <span class="a4-summary-label">Jami to'langan:</span>
-            <span class="a4-summary-value">{{ formatCurrency(totalPayments) }}</span>
-          </div>
-          <div class="a4-summary-row a4-summary-row-debt">
-            <span class="a4-summary-label">Qoldiq qarzdorlik:</span>
-            <span class="a4-summary-value">{{ formatCurrency(remainingDebt) }}</span>
-          </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="a4-footer">
-          <p class="a4-footer-text">Hujjat avtomatik ravishda tuzilgan: {{ clinicStore.displayName || 'SHIFOCRM' }} tizimida</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- 80mm Receipt Template (hidden, shown only during receipt print) -->
-    <div id="print-receipt" class="hidden">
-      <div class="receipt-print-container">
-        <!-- Header -->
-        <div class="receipt-header">
-          <div v-if="clinicStore.logoUrl" class="receipt-logo">
-            <img :src="clinicStore.logoUrl" :alt="clinicStore.displayName" />
-          </div>
-          <h1 class="receipt-title">{{ clinicStore.displayName || 'SHIFOCRM' }}</h1>
-          <p v-if="clinicStore.address" class="receipt-meta">{{ clinicStore.address }}</p>
-          <p v-if="clinicStore.phone" class="receipt-meta">Tel: {{ clinicStore.phone }}</p>
-        </div>
-
-        <!-- Separator -->
-        <div class="receipt-separator"></div>
-
-        <!-- Patient info -->
-        <div class="receipt-section">
-          <div class="receipt-row">
-            <span class="receipt-label">Bemor:</span>
-            <span class="receipt-value">{{ patientName }}</span>
-          </div>
-          <div class="receipt-row">
-            <span class="receipt-label">ID:</span>
-            <span class="receipt-value">{{ patientMedId || '-' }}</span>
-          </div>
-          <div class="receipt-row">
-            <span class="receipt-label">Sana:</span>
-            <span class="receipt-value">{{ formatDate(new Date()) }}</span>
-          </div>
-          <div class="receipt-row">
-            <span class="receipt-label">Vaqt:</span>
-            <span class="receipt-value">{{ formatTime(new Date()) }}</span>
-          </div>
-        </div>
-
-        <!-- Separator -->
-        <div class="receipt-separator"></div>
-
-        <!-- Payment details -->
-        <div class="receipt-section">
-          <div v-if="payments.length > 0">
-            <div class="receipt-items-header">
-              <span class="receipt-items-col-1">Turi</span>
-              <span class="receipt-items-col-2">Summa</span>
-            </div>
-            <div v-for="entry in payments.slice(0, 5)" :key="entry.id" class="receipt-item">
-              <span class="receipt-items-col-1 receipt-item-type">{{ getTypeDisplayLabel(entry) }}</span>
-              <span class="receipt-items-col-2 receipt-item-amount">{{ getFormattedAmount(entry) }}</span>
-            </div>
-            <p v-if="payments.length > 5" class="receipt-more-text">+{{ payments.length - 5 }} ko'proq...</p>
-          </div>
-        </div>
-
-        <!-- Separator -->
-        <div class="receipt-separator"></div>
-
-        <!-- Totals -->
-        <div class="receipt-totals">
-          <div class="receipt-total-row">
-            <span class="receipt-total-label">Jami summa:</span>
-            <span class="receipt-total-value">{{ formatCurrency(totalPayments) }}</span>
-          </div>
-          <div class="receipt-total-row">
-            <span class="receipt-total-label">Qarzdorlik:</span>
-            <span class="receipt-total-value">{{ formatCurrency(remainingDebt) }}</span>
-          </div>
-        </div>
-
-        <!-- Separator -->
-        <div class="receipt-separator"></div>
-
-        <!-- Footer -->
-        <div class="receipt-footer">
-          <p class="receipt-footer-text">Rahmat!</p>
-          <p class="receipt-footer-text">{{ formatDatetime(new Date()) }}</p>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -633,6 +399,11 @@ import { listInventoryItems } from '@/api/inventoryApi'
 import { updatePatient } from '@/api/patientsApi'
 import { completeAllPatientVisits } from '@/lib/completePatientVisits'
 import { openPatientCompletionPreview } from '@/lib/patientCompletionPrint'
+import {
+  buildPaymentPrintPayload,
+  openA4Print,
+  openReceiptPrint,
+} from '@/lib/patientPaymentPrint'
 import { useToast } from '@/composables/useToast'
 import { sendPatientCompletionSummary } from '@/api/telegramApi'
 
@@ -651,6 +422,10 @@ const props = defineProps({
   },
   patientMedId: {
     type: [String, Number],
+    default: ''
+  },
+  patientPhone: {
+    type: String,
     default: ''
   }
 })
@@ -690,6 +465,47 @@ const totalPayments = computed(() =>
 )
 
 const latestPaymentEntry = computed(() => payments.value[0] || null)
+
+const totalDiscountAmount = computed(() => getDiscountTotal(payments.value))
+
+const totalPaidNet = computed(() => getPaidNetWithoutDiscounts(payments.value))
+
+const remainingDebt = computed(() =>
+  Math.max(0, totalServices.value - totalDiscountAmount.value - totalPaidNet.value)
+)
+
+const primaryDoctorName = computed(() => {
+  const fromService = services.value.find((s) => s.performed_by)?.performed_by
+  if (fromService) return fromService
+  const fromVisit = visits.value.find((v) => v.doctor_name)?.doctor_name
+  return fromVisit || '-'
+})
+
+/** Chop etish uchun takrorlanmagan xizmatlar (har tish bo'yicha oxirgi) */
+const printServices = computed(() => {
+  const seen = new Set()
+  const list = []
+  const sorted = [...services.value].sort(
+    (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+  )
+  for (const s of sorted) {
+    const vid = s.visit_id
+    if (vid == null) continue
+    const tid = s.tooth_id
+    const key = tid != null ? `v${vid}t${tid}` : `v${vid}s${s.id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    list.push(s)
+  }
+  return list
+})
+
+const printDocumentNumber = computed(() => {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  const pid = String(props.patientId || '').slice(-4).padStart(4, '0')
+  return `CHK-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pid}`
+})
 
 const parsePrice = (v) => {
   if (v == null) return 0
@@ -1036,67 +852,44 @@ const printLastCompletion = () => {
   }
 }
 
-// Dual print methods for A4 report and receipt
+const buildPrintData = () =>
+  buildPaymentPrintPayload({
+    clinicStore,
+    patientId: props.patientId,
+    patientName: props.patientName,
+    patientMedId: props.patientMedId,
+    patientPhone: props.patientPhone,
+    doctorName: primaryDoctorName.value,
+    printServices: printServices.value,
+    totalServices: totalServices.value,
+    totalDiscountAmount: totalDiscountAmount.value,
+    totalPaidNet: totalPaidNet.value,
+    remainingDebt: remainingDebt.value,
+    documentNumber: printDocumentNumber.value,
+  })
+
 const handlePrintA4 = () => {
-  const a4Template = document.getElementById('print-a4-report')
-  const receiptTemplate = document.getElementById('print-receipt')
-
-  if (!a4Template) {
-    toast.error('A4 shabloni topilmadi')
-    return
+  try {
+    const result = openA4Print(buildPrintData())
+    if (!result.ok) {
+      toast.error('Chop etish oynasi bloklandi. Brauzerda pop-up ruxsatini yoqing.')
+    }
+  } catch (error) {
+    console.error('A4 print failed:', error)
+    toast.error('A4 chop etishda xatolik yuz berdi')
   }
-
-  // Mark templates with data attributes
-  a4Template.setAttribute('data-print-mode', 'a4')
-  if (receiptTemplate) receiptTemplate.setAttribute('data-print-mode', 'hidden')
-
-  // Show A4 template
-  a4Template.classList.remove('hidden')
-  if (receiptTemplate) receiptTemplate.classList.add('hidden')
-
-  // Trigger print
-  setTimeout(() => {
-    window.print()
-  }, 100)
-
-  // Restore visibility after print dialog closes
-  setTimeout(() => {
-    a4Template.classList.add('hidden')
-    if (receiptTemplate) receiptTemplate.classList.remove('hidden')
-    a4Template.removeAttribute('data-print-mode')
-    if (receiptTemplate) receiptTemplate.removeAttribute('data-print-mode')
-  }, 1000)
 }
 
 const handlePrintReceipt = () => {
-  const a4Template = document.getElementById('print-a4-report')
-  const receiptTemplate = document.getElementById('print-receipt')
-
-  if (!receiptTemplate) {
-    toast.error('Chek shabloni topilmadi')
-    return
+  try {
+    const result = openReceiptPrint(buildPrintData())
+    if (!result.ok) {
+      toast.error('Chop etish oynasi bloklandi. Brauzerda pop-up ruxsatini yoqing.')
+    }
+  } catch (error) {
+    console.error('Receipt print failed:', error)
+    toast.error('Chek chop etishda xatolik yuz berdi')
   }
-
-  // Mark templates with data attributes
-  if (a4Template) a4Template.setAttribute('data-print-mode', 'hidden')
-  receiptTemplate.setAttribute('data-print-mode', 'receipt')
-
-  // Show receipt template
-  if (a4Template) a4Template.classList.add('hidden')
-  receiptTemplate.classList.remove('hidden')
-
-  // Trigger print
-  setTimeout(() => {
-    window.print()
-  }, 100)
-
-  // Restore visibility after print dialog closes
-  setTimeout(() => {
-    if (a4Template) a4Template.classList.remove('hidden')
-    receiptTemplate.classList.add('hidden')
-    if (a4Template) a4Template.removeAttribute('data-print-mode')
-    receiptTemplate.removeAttribute('data-print-mode')
-  }, 1000)
 }
 
 onMounted(loadAll)
@@ -1386,466 +1179,3 @@ watch(
   }
 )
 </script>
-
-<style scoped>
-/* Print templates - hidden by default */
-#print-a4-report,
-#print-receipt {
-  display: none;
-}
-
-/* A4 Report Print CSS */
-.a4-print-container {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  max-width: 210mm;
-  width: 100%;
-  color: #333;
-  line-height: 1.4;
-  box-sizing: border-box;
-  /* emulate printable margins so content doesn't collide with browser header/footer
-     (we set the real @page margin to 0 so browsers don't reserve space for their
-     own header/footer; the user still should disable "Headers and footers" in
-     the print dialog to completely remove the browser-added header/footer). */
-  padding: 15mm;
-}
-
-
-.a4-header {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.a4-logo {
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.a4-logo img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-.a4-clinic-info {
-  flex: 1;
-}
-
-.a4-clinic-name {
-  font-size: 24px;
-  font-weight: bold;
-  margin: 0;
-  color: #1f2937;
-}
-
-.a4-clinic-address {
-  font-size: 12px;
-  color: #6b7280;
-  margin: 4px 0 0 0;
-}
-
-.a4-clinic-phone {
-  font-size: 12px;
-  color: #6b7280;
-  margin: 2px 0 0 0;
-}
-
-.a4-patient-section,
-.a4-transactions-section,
-.a4-summary-section {
-  margin-bottom: 25px;
-}
-
-.a4-section-title {
-  font-size: 16px;
-  font-weight: bold;
-  margin: 0 0 15px 0;
-  color: #1f2937;
-  border-bottom: 1px solid #d1d5db;
-  padding-bottom: 8px;
-}
-
-.a4-patient-details {
-  background: #f9fafb;
-  padding: 12px;
-  border-radius: 6px;
-}
-
-.a4-patient-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 0;
-  font-size: 13px;
-}
-
-.a4-label {
-  font-weight: 600;
-  color: #6b7280;
-  width: 150px;
-}
-
-.a4-value {
-  flex: 1;
-  color: #1f2937;
-  text-align: right;
-}
-
-.a4-transactions-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.a4-transactions-table thead {
-  background: #f3f4f6;
-}
-
-.a4-transactions-table th {
-  padding: 10px;
-  text-align: left;
-  font-weight: 600;
-  border-bottom: 2px solid #d1d5db;
-  color: #4b5563;
-}
-
-.a4-transactions-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.a4-transactions-table tbody tr:hover {
-  background: #f9fafb;
-}
-
-.a4-amount {
-  text-align: right;
-  font-weight: 500;
-}
-
-.a4-empty {
-  text-align: center;
-  color: #9ca3af;
-  padding: 15px !important;
-}
-
-.a4-summary-section {
-  margin-top: 30px;
-  padding: 20px;
-  background: #eff6ff;
-  border: 2px solid #0284c7;
-  border-radius: 8px;
-}
-
-.a4-summary-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  font-size: 14px;
-}
-
-.a4-summary-row-debt {
-  border-top: 2px solid #0284c7;
-  padding-top: 12px;
-  margin-top: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  color: #0c4a6e;
-}
-
-.a4-summary-label {
-  font-weight: 600;
-}
-
-.a4-summary-value {
-  text-align: right;
-  font-weight: 700;
-}
-
-.a4-footer {
-  margin-top: 40px;
-  padding-top: 20px;
-  border-top: 1px solid #e5e7eb;
-  text-align: center;
-}
-
-.a4-footer-text {
-  font-size: 11px;
-  color: #9ca3af;
-  margin: 0;
-}
-
-/* 80mm Receipt Print CSS */
-.receipt-print-container {
-  font-family: 'Courier New', monospace;
-  width: 80mm;
-  max-width: 100%;
-  margin: 0 auto;
-  padding: 8mm;
-  background: white;
-  color: #000;
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.receipt-header {
-  text-align: center;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed #000;
-}
-
-.receipt-logo {
-  width: 40mm;
-  height: 30mm;
-  margin: 0 auto 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.receipt-logo img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-.receipt-title {
-  font-weight: bold;
-  font-size: 14px;
-  margin: 6px 0;
-  text-transform: uppercase;
-}
-
-.receipt-meta {
-  font-size: 10px;
-  margin: 2px 0;
-  color: #333;
-}
-
-.receipt-separator {
-  border-top: 1px dashed #000;
-  margin: 8px 0;
-}
-
-.receipt-section {
-  margin-bottom: 8px;
-  padding: 0 2px;
-}
-
-.receipt-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  margin-bottom: 3px;
-  gap: 8px;
-}
-
-.receipt-label {
-  font-weight: bold;
-  min-width: 45%;
-}
-
-.receipt-value {
-  text-align: right;
-  flex: 1;
-  word-break: break-word;
-}
-
-.receipt-items-header {
-  display: flex;
-  justify-content: space-between;
-  font-weight: bold;
-  font-size: 10px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid #000;
-  padding-bottom: 2px;
-}
-
-.receipt-items-col-1 {
-  flex: 1;
-}
-
-.receipt-items-col-2 {
-  text-align: right;
-  min-width: 25mm;
-}
-
-.receipt-item {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  margin-bottom: 2px;
-  gap: 4px;
-}
-
-.receipt-item-type {
-  flex: 1;
-  word-break: break-word;
-}
-
-.receipt-item-amount {
-  text-align: right;
-  min-width: 25mm;
-  font-weight: 500;
-}
-
-.receipt-more-text {
-  font-size: 9px;
-  text-align: center;
-  margin: 2px 0;
-  color: #666;
-}
-
-.receipt-totals {
-  padding: 6px 0;
-  border-top: 2px double #000;
-  border-bottom: 2px double #000;
-  margin: 6px 0;
-}
-
-.receipt-total-row {
-  display: flex;
-  justify-content: space-between;
-  font-weight: bold;
-  font-size: 12px;
-  margin-bottom: 3px;
-  gap: 8px;
-}
-
-.receipt-total-label {
-  flex: 1;
-}
-
-.receipt-total-value {
-  text-align: right;
-  min-width: 25mm;
-}
-
-.receipt-footer {
-  text-align: center;
-  padding-top: 6px;
-  margin-top: 8px;
-}
-
-.receipt-footer-text {
-  font-size: 11px;
-  font-weight: bold;
-  margin: 3px 0;
-}
-
-/* Print media query - only show relevant template */
-@media print {
-  * {
-    margin: 0;
-    padding: 0;
-    background: white !important;
-  }
-
-  body {
-    background: white !important;
-  }
-
-  /* Hide everything except print templates */
-  body > * {
-    display: none !important;
-  }
-
-  #print-a4-report,
-  #print-receipt {
-    display: block !important;
-  }
-
-  /* Hide non-printing template during print */
-  #print-a4-report[data-print-mode='hidden'],
-  #print-receipt[data-print-mode='hidden'] {
-    display: none !important;
-  }
-
-  /* A4 print mode
-     Set page margin to 0 so browser header/footer don't occupy page margins.
-     Visual margins are provided by .a4-print-container padding above. Note:
-     to fully remove browser header/footer (date/url/page num) disable
-     "Headers and footers" in the print dialog (browser UI). */
-  @page {
-    size: A4;
-    margin: 0;
-  }
-
-  #print-a4-report {
-    page-break-after: avoid;
-  }
-
-  #print-a4-report * {
-    page-break-inside: avoid;
-  }
-
-  /* 80mm receipt print mode */
-  #print-receipt {
-    width: 80mm;
-  }
-
-  /* Ensure tables print properly */
-  table {
-    page-break-inside: avoid;
-    width: 100%;
-  }
-
-  tr {
-    page-break-inside: avoid;
-  }
-
-  /* Hide buttons and other UI elements during print */
-  button,
-  input,
-  select,
-  textarea,
-  .hidden,
-  .md\\:hidden,
-  .md\\:flex,
-  .md\\:block,
-  [class*='modal'],
-  [class*='transition'] {
-    display: none !important;
-  }
-
-  /* Ensure text is black for printing */
-  a {
-    color: #000 !important;
-    text-decoration: underline;
-  }
-
-  img {
-    max-width: 100%;
-  }
-}
-
-/* Screen print mode override - show templates temporarily */
-body.print-mode #print-a4-report,
-body.print-mode #print-receipt {
-  display: block !important;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: white;
-  z-index: 9999;
-  overflow: auto;
-  padding: 20px;
-}
-
-body.print-mode-a4 > *:not(#print-a4-report) {
-  display: none !important;
-}
-
-body.print-mode-receipt > *:not(#print-receipt) {
-  display: none !important;
-}
-</style>

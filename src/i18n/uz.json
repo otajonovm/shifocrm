@@ -551,6 +551,7 @@
     "noServices": "Bajarilgan ishlar topilmadi.",
     "typeRefund": "Qaytarim",
     "typeAdjustment": "Tuzatma",
+    "typeDiscount": "Chegirma",
     "typePayment": "To'lov",
     "paidAt": "To'lov vaqti",
     "visitIdPlaceholder": "Masalan: 12345",
