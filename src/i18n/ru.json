@@ -20,7 +20,8 @@
     "minutesAgo": "минут назад",
     "hoursAgo": "часов назад",
     "daysAgo": "дней назад",
-    "medicalSystem": "Медицинская система"
+    "medicalSystem": "Медицинская система",
+    "cancel": "Отмена"
   },
   "role": {
     "admin": "Администратор",
@@ -403,7 +404,8 @@
     "toastRescheduled": "Приёмы перенесены",
     "toastCompleted": "Приём завершён",
     "toastExportReady": "Экспорт готов",
-    "errorNotFound": "Приём не найден."
+    "errorNotFound": "Приём не найден.",
+    "errorLoad": "Ошибка загрузки приёмов"
   },
   "regions": {
     "tashkentCity": "г. Ташкент",
@@ -558,7 +560,8 @@
     "yakunlash": "Завершить приёмы",
     "confirmCompleteAll": "Подтвердите завершение всех визитов пациента?",
     "toastAllCompleted": "Все визиты завершены",
-    "errorCompleteAll": "Ошибка завершения визитов"
+    "errorCompleteAll": "Ошибка завершения визитов",
+    "errorLoad": "Ошибка загрузки платежей"
   },
   "patientDocuments": {
     "titleLabel": "Название документа",
@@ -782,7 +785,8 @@
     "toastMessageFailed": "Ошибка отправки сообщения",
     "errorNotConfigured": "Telegram API не настроен",
     "errorChatNotFound": "Пациент не зарегистрирован в Telegram боте",
-    "errorUnauthorized": "Неверный API ключ"
+    "errorUnauthorized": "Неверный API ключ",
+    "accessDenied": "Нет доступа к просмотру этого пациента"
   },
   "payments": {
     "title": "Платежи",
@@ -839,6 +843,7 @@
     "toastDeleted": "Платеж удалён",
     "errorSave": "Ошибка сохранения платежа",
     "errorDelete": "Ошибка удаления платежа",
+    "errorLoad": "Ошибка загрузки платежей",
     "noData": "Нет данных для экспорта.",
     "errorVisitRequired": "Введите ID визита",
     "errorPatientRequired": "Выберите пациента",

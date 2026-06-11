@@ -7,6 +7,7 @@ import {
   legacyDoctorScheduleSlots,
   parseChairNumber,
   requiresDoctorCalendarBridge,
+  specialtyToRole,
 } from './staffHelpers'
 
 describe('staffHelpers schedule validation', () => {
@@ -101,6 +102,14 @@ describe('staffHelpers schedule validation', () => {
   it('requiresDoctorCalendarBridge excludes admin roles', () => {
     expect(requiresDoctorCalendarBridge('Terapevt')).toBe(true)
     expect(requiresDoctorCalendarBridge('Administrator (Reception)')).toBe(false)
+    expect(requiresDoctorCalendarBridge('Administrator')).toBe(false)
+  })
+
+  it('specialtyToRole detects free-text admin and doctor roles', () => {
+    expect(specialtyToRole('Administrator')).toBe('administrator')
+    expect(specialtyToRole('Qabulxona')).toBe('administrator')
+    expect(specialtyToRole('Kassir')).toBe('cashier')
+    expect(specialtyToRole('Implantolog')).toBe('doctor')
   })
 
   it('legacyDoctorScheduleSlots parses work_schedule JSON', () => {

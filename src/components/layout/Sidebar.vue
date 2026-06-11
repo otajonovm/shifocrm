@@ -125,6 +125,8 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useClinicStore } from '@/stores/clinic'
 import { useDoctorPermissionsStore } from '@/stores/doctorPermissions'
+import { useEmployeePermissionsStore } from '@/stores/employeePermissions'
+import { getEmployeeById } from '@/api/employeesApi'
 import { getDoctorById } from '@/api/doctorsApi'
 import { useI18n } from 'vue-i18n'
 import {
@@ -165,11 +167,23 @@ const route = useRoute()
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()
 const doctorPermsStore = useDoctorPermissionsStore()
+const employeePermsStore = useEmployeePermissionsStore()
 const { t } = useI18n()
 
 onMounted(async () => {
   if (authStore.userClinicId != null) {
     await clinicStore.loadFromClinicId(authStore.userClinicId)
+  }
+
+  if (authStore.userRole === ROLES.ADMIN && authStore.user?.employee_id) {
+    try {
+      const employee = await getEmployeeById(authStore.user.employee_id)
+      if (employee) {
+        employeePermsStore.loadFromEmployee(employee)
+      }
+    } catch {
+      // ruxsatlar keyinroq yuklanadi
+    }
   }
 
   // Doktor kirganida ruxsatlarni localStorage/Supabase dan yuklash

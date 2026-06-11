@@ -83,17 +83,14 @@
             <label for="specialization" class="block text-sm font-medium text-gray-700 mb-2">
               Klinikadagi mutaxassisligi (Roli)
             </label>
-            <select
+            <input
               id="specialization"
               v-model="form.specialization"
+              type="text"
               class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              @change="onSpecializationChange('create')"
-            >
-              <option value="">Mutaxassislikni tanlang</option>
-              <option v-for="option in specializationOptions" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </select>
+              placeholder="Masalan: Administrator, Terapevt, Kassir"
+              @input="onSpecializationChange('create')"
+            />
           </div>
 
           <div v-if="isDoctorRole(form.specialization)">
@@ -335,25 +332,33 @@
                 </span>
               </td>
               <td v-if="canManageStaff" class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  @click="openEditModal(employee)"
-                  class="text-gray-600 hover:text-gray-900 mr-3"
-                >
-                  Tahrirlash
-                </button>
-                <button
-                  @click="openPermissionsModal(employee)"
-                  class="text-blue-600 hover:text-blue-900 mr-3"
-                  title="Huquqlarni boshqarish"
-                >
-                  Huquqlar
-                </button>
-                <button
-                  @click="handleDeleteEmployee(employee.id)"
-                  class="text-red-600 hover:text-red-900"
-                >
-                  O'chirish
-                </button>
+                <div class="inline-flex items-center gap-3">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 text-gray-600 hover:text-gray-900 transition-colors"
+                    @click="openEditModal(employee)"
+                  >
+                    <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
+                    Tahrirlash
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-900 transition-colors"
+                    title="Huquqlarni boshqarish"
+                    @click="openPermissionsModal(employee)"
+                  >
+                    <ShieldCheckIcon class="h-4 w-4" aria-hidden="true" />
+                    Huquqlar
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 text-red-600 hover:text-red-900 transition-colors"
+                    @click="handleDeleteEmployee(employee.id)"
+                  >
+                    <TrashIcon class="h-4 w-4" aria-hidden="true" />
+                    O'chirish
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -432,16 +437,13 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Mutaxassisligi (Roli)</label>
-              <select
+              <input
                 v-model="editForm.specialization"
+                type="text"
                 class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
-                @change="onSpecializationChange('edit')"
-              >
-                <option value="">Mutaxassislikni tanlang</option>
-                <option v-for="option in specializationOptions" :key="option" :value="option">
-                  {{ option }}
-                </option>
-              </select>
+                placeholder="Masalan: Administrator, Terapevt, Kassir"
+                @input="onSpecializationChange('edit')"
+              />
             </div>
             <div v-if="isDoctorRole(editForm.specialization)">
               <label class="block text-sm font-medium text-gray-700 mb-2">Shifokor ulushi (%)</label>
@@ -745,7 +747,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { EyeIcon, EyeSlashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import {
+  EyeIcon,
+  EyeSlashIcon,
+  XMarkIcon,
+  PencilSquareIcon,
+  ShieldCheckIcon,
+  TrashIcon,
+} from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { canManageStaff as checkCanManageStaff, isClinicAdmin } from '@/lib/roles'
 import { useEmployeesStore } from '@/stores/employees'
@@ -758,6 +767,7 @@ import {
   DATA_PERMISSION_DEFS,
 } from '@/stores/doctorPermissions'
 import { syncDoctorPermissionsFromEmployee } from '@/lib/staffBridge'
+import { CLINIC_ADMIN_DATA_DEFAULTS } from '@/lib/dataPermission'
 import { useToast } from '@/composables/useToast'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import {
@@ -767,7 +777,6 @@ import {
   isValidUzPhone,
 } from '@/lib/phoneUz'
 import {
-  SPECIALIZATION_OPTIONS,
   CHAIR_OPTIONS,
   WEEK_FORM_DAYS_FIXED,
   isDoctorRole,
@@ -791,7 +800,6 @@ const toast = useToast()
 const canManageStaff = computed(() => checkCanManageStaff(authStore))
 const isClinicAdminOnly = computed(() => isClinicAdmin(authStore))
 
-const specializationOptions = SPECIALIZATION_OPTIONS
 const chairOptions = CHAIR_OPTIONS
 const weekDays = WEEK_FORM_DAYS_FIXED
 const modulePermissionDefs = MODULE_PERMISSIONS
@@ -973,10 +981,13 @@ const buildEmployeeRecord = (data, clinicId, { includePassword = true } = {}) =>
   return record
 }
 
-const buildInitialPermissions = () => ({
-  module_permissions: { ...DEFAULT_PERMISSIONS },
-  ...DEFAULT_DATA_PERMISSIONS,
-})
+const buildInitialPermissions = (specialization = '') => {
+  const isAdminStaff = specialtyToRole(specialization) === 'administrator'
+  return {
+    module_permissions: { ...DEFAULT_PERMISSIONS },
+    ...(isAdminStaff ? CLINIC_ADMIN_DATA_DEFAULTS : DEFAULT_DATA_PERMISSIONS),
+  }
+}
 
 const handleCreate = async () => {
   if (!canManageStaff.value) return
@@ -993,7 +1004,7 @@ const handleCreate = async () => {
     const doctorRole = isDoctorRole(form.value.specialization)
     const scheduleData = buildSchedulePayload(form.value, null, { isDoctor: doctorRole })
     assertNoChairConflict(scheduleData)
-    const permissionsData = buildInitialPermissions()
+    const permissionsData = buildInitialPermissions(form.value.specialization)
 
     await employeesStore.create(employeeData, permissionsData, scheduleData)
 

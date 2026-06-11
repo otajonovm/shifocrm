@@ -466,26 +466,52 @@ const totalPayments = computed(() =>
 
 const latestPaymentEntry = computed(() => payments.value[0] || null)
 
-const totalDiscountAmount = computed(() => getDiscountTotal(payments.value))
+/** Chek/A4 va joriy hisob: faqat ochiq yoki qarzdor tashriflar (yakunlangan eski tashriflar emas) */
+const isVisitBillable = (visit) => {
+  if (!visit) return false
+  if (visit.status === 'cancelled' || visit.status === 'no_show') return false
+  const debt = Number(visit.debt_amount) || 0
+  if (visit.status === 'completed_paid' && debt <= 0) return false
+  if (visit.status === 'completed_debt' || debt > 0) return true
+  return ['in_progress', 'pending', 'arrived'].includes(visit.status)
+}
 
-const totalPaidNet = computed(() => getPaidNetWithoutDiscounts(payments.value))
+const billingVisitIds = computed(() => {
+  const ids = new Set()
+  for (const v of visits.value) {
+    const vid = Number(v.id)
+    if (Number.isFinite(vid) && isVisitBillable(v)) ids.add(vid)
+  }
+  if (ids.size > 0) return ids
 
-const remainingDebt = computed(() =>
-  Math.max(0, totalServices.value - totalDiscountAmount.value - totalPaidNet.value)
-)
+  const visitIdsWithServices = [
+    ...new Set(services.value.map((s) => Number(s.visit_id)).filter(Number.isFinite)),
+  ]
+  if (visitIdsWithServices.length === 0) return ids
 
-const primaryDoctorName = computed(() => {
-  const fromService = services.value.find((s) => s.performed_by)?.performed_by
-  if (fromService) return fromService
-  const fromVisit = visits.value.find((v) => v.doctor_name)?.doctor_name
-  return fromVisit || '-'
+  const latestVisitId = visitIdsWithServices.reduce(
+    (max, id) => (id > max ? id : max),
+    visitIdsWithServices[0]
+  )
+  ids.add(latestVisitId)
+  return ids
 })
 
-/** Chop etish uchun takrorlanmagan xizmatlar (har tish bo'yicha oxirgi) */
-const printServices = computed(() => {
+const paymentsForBilling = computed(() =>
+  payments.value.filter((entry) => {
+    const vid = Number(entry.visit_id)
+    return Number.isFinite(vid) && billingVisitIds.value.has(vid)
+  })
+)
+
+const totalDiscountAmount = computed(() => getDiscountTotal(paymentsForBilling.value))
+
+const totalPaidNet = computed(() => getPaidNetWithoutDiscounts(paymentsForBilling.value))
+
+const dedupeVisitToothServices = (items) => {
   const seen = new Set()
   const list = []
-  const sorted = [...services.value].sort(
+  const sorted = [...items].sort(
     (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
   )
   for (const s of sorted) {
@@ -498,6 +524,28 @@ const printServices = computed(() => {
     list.push(s)
   }
   return list
+}
+
+/** Joriy hisobdagi xizmatlar (faqat billing tashriflari, har tish bo'yicha oxirgi) */
+const printServices = computed(() => {
+  const scoped = services.value.filter((s) =>
+    billingVisitIds.value.has(Number(s.visit_id))
+  )
+  return dedupeVisitToothServices(scoped)
+})
+
+const remainingDebt = computed(() =>
+  Math.max(0, totalServices.value - totalDiscountAmount.value - totalPaidNet.value)
+)
+
+const primaryDoctorName = computed(() => {
+  const scopedVisits = visits.value.filter((v) => billingVisitIds.value.has(Number(v.id)))
+  const fromService = printServices.value.find((s) => s.performed_by)?.performed_by
+  if (fromService) return fromService
+  const fromVisit = scopedVisits.find((v) => v.doctor_name)?.doctor_name
+  if (fromVisit) return fromVisit
+  const fromAny = visits.value.find((v) => v.doctor_name)?.doctor_name
+  return fromAny || '-'
 })
 
 const printDocumentNumber = computed(() => {
@@ -535,23 +583,13 @@ const hasIncompleteVisits = computed(() => {
   )
 })
 
-// Har tish uchun faqat oxirgi xizmat; faqat tishga bog'liq xizmatlar (tooth_id bo'lganlar)
-const totalServices = computed(() => {
-  const seen = new Set()
-  let sum = 0
-  const sorted = [...services.value].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
-  for (const e of sorted) {
-    const tid = e.tooth_id
-    const vid = e.visit_id
-    // tooth_id bo'lmagan yozuvlar tish xizmati emas — jami hisobga kiritmaymiz
-    if (tid == null || vid == null) continue
-    const key = `v${vid}t${tid}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    sum += parsePrice(e.price)
-  }
-  return sum
-})
+// Joriy billing tashriflari: har tish uchun faqat oxirgi xizmat narxi
+const totalServices = computed(() =>
+  printServices.value.reduce((sum, e) => {
+    if (e.tooth_id == null || e.visit_id == null) return sum
+    return sum + parsePrice(e.price)
+  }, 0)
+)
 
 const formatCurrency = (amount) => {
   if (!amount) return '0 so\'m'
@@ -736,6 +774,7 @@ const loadPayments = async () => {
   } catch (error) {
     console.error('Failed to load payments:', error)
     payments.value = []
+    toast.error(t('patientPayments.errorLoad') || 'To\'lovlarni yuklashda xatolik')
   } finally {
     loading.value = false
   }

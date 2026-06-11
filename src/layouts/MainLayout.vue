@@ -22,9 +22,9 @@
           </button>
 
           <!-- Page Title -->
-          <div class="hidden sm:block">
-            <h1 class="text-xl font-semibold text-gray-900">{{ pageTitle }}</h1>
-            <p class="text-sm text-gray-500">{{ pageSubtitle }}</p>
+          <div>
+            <h1 class="text-base sm:text-xl font-semibold text-gray-900 truncate max-w-[50vw] sm:max-w-none">{{ pageTitle }}</h1>
+            <p class="hidden sm:block text-sm text-gray-500">{{ pageSubtitle }}</p>
           </div>
         </div>
 

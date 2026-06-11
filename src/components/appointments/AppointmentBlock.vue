@@ -9,7 +9,7 @@
       <span
         class="h-2.5 w-2.5 rounded-full shadow-sm ring-1 ring-white"
         :class="statusDotClass"
-        :title="getStatusLabel(appointment.status)"
+        :title="getStatusLabel(effectiveStatus)"
       />
     </div>
 
@@ -22,12 +22,12 @@
       {{ appointment.patient_name || 'N/A' }}
     </button>
 
-    <!-- Vaqt (responsive) -->
-    <div class="text-gray-600 mt-0.5 flex items-center gap-1 text-[11px] sm:text-xs">
-      <svg class="w-3 h-3 flex-shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
+    <!-- Vaqt -->
+    <div class="mt-1 flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-800 tabular-nums">
+      <svg class="w-3.5 h-3.5 flex-shrink-0 text-slate-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
       </svg>
-      <span class="line-clamp-1">{{ localStartTime }} - {{ localEndTime }}</span>
+      <span class="whitespace-nowrap">{{ localStartTime }} – {{ localEndTime }}</span>
     </div>
 
     <!-- Compact hint -->
@@ -75,6 +75,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { extractLocalTime, timeStringToMinutes, getTimeDuration } from '@/utils/timezoneUtils'
+import { VISIT_STATUSES } from '@/constants/visitStatus'
 
 const props = defineProps({
   appointment: {
@@ -88,10 +89,24 @@ const props = defineProps({
   positionedByParent: {
     type: Boolean,
     default: false
+  },
+  moveSelectActive: {
+    type: Boolean,
+    default: false
+  },
+  isDragging: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['update-status', 'open-payment', 'open-patient-modal', 'open-patient-detail'])
+const emit = defineEmits([
+  'update-status',
+  'open-payment',
+  'open-patient-modal',
+  'open-patient-detail',
+  'toggle-move-select',
+])
 
 const { t } = useI18n()
 
@@ -137,7 +152,11 @@ const appointmentHeight = computed(() => {
 })
 
 const blockClasses = computed(() => {
-  const base = 'appointment-block rounded-xl border border-l-4 p-2 sm:p-2.5 text-xs cursor-pointer transition-all duration-150 hover:shadow-lg group'
+  const base = [
+    'appointment-block rounded-xl border border-l-4 p-2 sm:p-2.5 text-xs transition-all duration-150 hover:shadow-lg group',
+    props.isDragging ? 'opacity-50 cursor-grabbing' : 'cursor-grab',
+    props.moveSelectActive ? 'ring-2 ring-primary-500 ring-offset-1 shadow-md scale-[1.02]' : '',
+  ].filter(Boolean).join(' ')
   if (props.positionedByParent) {
     return `${base} relative w-full h-full`
   }
@@ -162,40 +181,62 @@ const resolvedBlockStyle = computed(() => {
   return blockStyle.value
 })
 
-// Status orqali rang
-const appointmentClasses = computed(() => {
+/** Qarz 0 bo'lsa completed_debt ham yashil (to'langan) ko'rinadi */
+const effectiveStatus = computed(() => {
   const status = props.appointment.status
-  const serviceName = String(props.appointment.service_name || '').toLowerCase()
+  const debt = Number(props.appointment.debt_amount) || 0
+  if (status === VISIT_STATUSES.COMPLETED_DEBT && debt <= 0) {
+    return VISIT_STATUSES.COMPLETED_PAID
+  }
+  return status
+})
 
-  if (serviceName.includes('implant')) return 'bg-rose-50 border-rose-400'
-  if (serviceName.includes('ortho') || serviceName.includes('breket')) return 'bg-emerald-50 border-emerald-400'
-  if (serviceName.includes('ko\'rik') || serviceName.includes('consult') || serviceName.includes('tekshir')) return 'bg-sky-50 border-sky-400'
+const STATUS_BLOCK_CLASSES = {
+  [VISIT_STATUSES.PENDING]: 'bg-blue-50 border-blue-500',
+  [VISIT_STATUSES.ARRIVED]: 'bg-amber-50 border-amber-500',
+  [VISIT_STATUSES.IN_PROGRESS]: 'bg-violet-50 border-violet-500',
+  [VISIT_STATUSES.COMPLETED_PAID]: 'bg-emerald-50 border-emerald-500',
+  [VISIT_STATUSES.COMPLETED_DEBT]: 'bg-orange-50 border-orange-500',
+  [VISIT_STATUSES.CANCELLED]: 'bg-gray-100 border-gray-400',
+  [VISIT_STATUSES.NO_SHOW]: 'bg-rose-50 border-rose-500',
+}
 
-  if (status === 'pending') return 'bg-blue-50 border-blue-400'
-  if (status === 'arrived') return 'bg-amber-50 border-amber-400'
-  if (status === 'in_progress') return 'bg-violet-50 border-violet-400'
-  if (status === 'completed_paid' || status === 'completed_debt') return 'bg-emerald-50 border-emerald-400'
-  if (status === 'cancelled') return 'bg-gray-50 border-gray-400'
-  if (status === 'no_show') return 'bg-rose-50 border-rose-400'
+const STATUS_DOT_CLASSES = {
+  [VISIT_STATUSES.PENDING]: 'bg-blue-500',
+  [VISIT_STATUSES.ARRIVED]: 'bg-amber-500',
+  [VISIT_STATUSES.IN_PROGRESS]: 'bg-violet-500',
+  [VISIT_STATUSES.COMPLETED_PAID]: 'bg-emerald-500',
+  [VISIT_STATUSES.COMPLETED_DEBT]: 'bg-orange-500',
+  [VISIT_STATUSES.CANCELLED]: 'bg-gray-400',
+  [VISIT_STATUSES.NO_SHOW]: 'bg-rose-500',
+}
 
-  return 'bg-white border-slate-300'
+// Faqat status bo'yicha rang (xizmat nomi rangini bosib ketmaydi)
+const appointmentClasses = computed(() => {
+  return STATUS_BLOCK_CLASSES[effectiveStatus.value] || 'bg-white border-slate-300'
 })
 
 const statusDotClass = computed(() => {
-  const status = props.appointment.status
-  if (status === 'pending') return 'bg-blue-500'
-  if (status === 'arrived') return 'bg-amber-500'
-  if (status === 'in_progress') return 'bg-violet-500'
-  if (status === 'completed_paid') return 'bg-emerald-500'
-  if (status === 'completed_debt') return 'bg-orange-500'
-  if (status === 'cancelled') return 'bg-gray-400'
-  if (status === 'no_show') return 'bg-rose-500'
-  return 'bg-slate-400'
+  return STATUS_DOT_CLASSES[effectiveStatus.value] || 'bg-slate-400'
 })
 
 const compactHint = computed(() => {
-  if (props.appointment.status === 'completed_paid') return translateOrFallback('appointments.paid', 'To\'langan')
-  if (props.appointment.status === 'completed_debt') return translateOrFallback('appointments.debt', 'Qarz')
+  const status = effectiveStatus.value
+  if (status === VISIT_STATUSES.COMPLETED_PAID) {
+    return translateOrFallback('appointments.paymentPaid', 'To\'langan')
+  }
+  if (status === VISIT_STATUSES.COMPLETED_DEBT) {
+    const debt = Number(props.appointment.debt_amount) || 0
+    if (debt > 0) {
+      return translateOrFallback('appointments.paymentDebt', 'Qarzdor')
+    }
+  }
+  if (status === VISIT_STATUSES.CANCELLED) {
+    return translateOrFallback('appointments.statusCancelled', 'Bekor')
+  }
+  if (status === VISIT_STATUSES.NO_SHOW) {
+    return translateOrFallback('appointments.statusNoShow', 'Kelmadi')
+  }
   return props.appointment.service_name || props.appointment.specialization || ''
 })
 
@@ -222,10 +263,17 @@ const getStatusLabel = (status) => {
   return statusMap[status] || 'N/A'
 }
 
-// Emit events
+let lastBlockClickAt = 0
+
 const handleBlockClick = () => {
-  // Block click - open patient details modal
-  emit('open-patient-modal', props.appointment)
+  const now = Date.now()
+  if (now - lastBlockClickAt < 350) {
+    emit('open-patient-modal', props.appointment)
+    lastBlockClickAt = 0
+    return
+  }
+  lastBlockClickAt = now
+  emit('toggle-move-select', props.appointment)
 }
 
 const handleStartAppointment = () => {

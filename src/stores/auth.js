@@ -7,11 +7,13 @@ import {
   getClinic,
   getDoctorByClinicId,
 } from '@/services/adminService'
+import { authenticateEmployee } from '@/api/employeesApi'
 import {
   migrateLegacyClinicOwnerSession,
   ROLES,
   isSoloClinic,
   resolveDoctorLoginRole,
+  employeeDbRoleToAuthRole,
 } from '@/lib/roles'
 
 const USER_CLINIC_KEY = 'userClinicId'
@@ -47,7 +49,14 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = ref(localStorage.getItem('isAuthenticated') === 'true')
   const userRole = ref(localStorage.getItem('userRole') || null)
   const userEmail = ref(localStorage.getItem('userEmail') || null)
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+  let parsedUser = null
+  try {
+    const rawUser = localStorage.getItem('user')
+    parsedUser = rawUser ? JSON.parse(rawUser) : null
+  } catch {
+    localStorage.removeItem('user')
+  }
+  const user = ref(parsedUser)
   const userClinicId = ref(localStorage.getItem(USER_CLINIC_KEY) ? Number(localStorage.getItem(USER_CLINIC_KEY)) : null)
   const impersonatorRole = ref(localStorage.getItem(IMPERSONATOR_ROLE_KEY) || null)
   const superAdminScope = ref(localStorage.getItem(SUPER_ADMIN_SCOPE_KEY) || null)
@@ -178,6 +187,61 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
         return true
       }
+
+      const staffEmployee = await authenticateEmployee(loginVal, password)
+      const staffAuthRole = staffEmployee ? employeeDbRoleToAuthRole(staffEmployee.role) : null
+      if (staffEmployee && staffAuthRole) {
+        const clinicId = staffEmployee.clinic_id != null && Number.isFinite(Number(staffEmployee.clinic_id))
+          ? Number(staffEmployee.clinic_id)
+          : null
+
+        if (clinicId != null) {
+          try {
+            const clinic = await getClinic(clinicId)
+            if (!clinic || clinic.is_active === false) {
+              error.value = 'Invalid credentials'
+              return false
+            }
+          } catch {
+            // klinika tekshiruvi muvaffaqiyatsiz bo'lsa ham kirishga ruxsat (demo)
+          }
+        }
+
+        const employeeUser = {
+          employee_id: staffEmployee.id,
+          full_name: staffEmployee.full_name,
+          email: staffEmployee.email,
+          phone: staffEmployee.phone,
+          clinic_id: clinicId,
+          account_type: 'employee_admin',
+          login: String(loginVal).trim(),
+        }
+
+        isAuthenticated.value = true
+        userRole.value = staffAuthRole
+        userEmail.value = staffEmployee.email || staffEmployee.phone || null
+        user.value = employeeUser
+        userClinicId.value = clinicId
+        impersonatorRole.value = null
+        superAdminScope.value = null
+        localStorage.setItem('isAuthenticated', 'true')
+        localStorage.setItem('userRole', staffAuthRole)
+        if (userEmail.value) {
+          localStorage.setItem('userEmail', userEmail.value)
+        } else {
+          localStorage.removeItem('userEmail')
+        }
+        localStorage.setItem('user', JSON.stringify(employeeUser))
+        if (clinicId != null) {
+          localStorage.setItem(USER_CLINIC_KEY, String(clinicId))
+        } else {
+          localStorage.removeItem(USER_CLINIC_KEY)
+        }
+        localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
+        localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
+        return true
+      }
+
       error.value = 'Invalid credentials'
       return false
     } catch (e) {

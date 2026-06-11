@@ -62,13 +62,13 @@ export const useEmployeePermissionsStore = defineStore('employeePermissions', ()
     const mergedModule = mergeModulePermissions(modulePerms)
     const mergedData = mergeDataPermissions(dataPerms)
 
-    modulePermissionsMap.value = { ...modulePermissionsMap.value, [id]: mergedModule }
-    dataPermissionsMap.value = { ...dataPermissionsMap.value, [id]: mergedData }
-
     await updateEmployeePermissions(employeeId, {
       module_permissions: mergedModule,
       ...mergedData,
     })
+
+    modulePermissionsMap.value = { ...modulePermissionsMap.value, [id]: mergedModule }
+    dataPermissionsMap.value = { ...dataPermissionsMap.value, [id]: mergedData }
 
     return { module_permissions: mergedModule, data_permissions: mergedData }
   }

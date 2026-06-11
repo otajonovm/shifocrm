@@ -20,7 +20,8 @@
     "minutesAgo": "daqiqa oldin",
     "hoursAgo": "soat oldin",
     "daysAgo": "kun oldin",
-    "medicalSystem": "Tibbiyot tizimi"
+    "medicalSystem": "Tibbiyot tizimi",
+    "cancel": "Bekor qilish"
   },
   "role": {
     "admin": "Administrator",
@@ -430,7 +431,8 @@
     "toastRescheduled": "Uchrashuvlar ko'chirildi",
     "toastCompleted": "Uchrashuv yakunlandi",
     "toastExportReady": "Export tayyor",
-    "errorNotFound": "Uchrashuv topilmadi."
+    "errorNotFound": "Uchrashuv topilmadi.",
+    "errorLoad": "Uchrashuvlarni yuklashda xatolik"
   },
   "regions": {
     "tashkentCity": "Toshkent sh.",
@@ -587,7 +589,8 @@
     "yakunlash": "Tashriflarni yakunlash",
     "confirmCompleteAll": "Bemorning barcha tashriflarini yakunlashni tasdiqlaysizmi?",
     "toastAllCompleted": "Barcha tashriflar yakunlandi",
-    "errorCompleteAll": "Tashriflarni yakunlashda xatolik"
+    "errorCompleteAll": "Tashriflarni yakunlashda xatolik",
+    "errorLoad": "To'lovlarni yuklashda xatolik"
   },
   "patientDocuments": {
     "titleLabel": "Hujjat nomi",
@@ -811,7 +814,8 @@
     "toastMessageFailed": "Xabar yuborishda xatolik",
     "errorNotConfigured": "Telegram API sozlanmagan",
     "errorChatNotFound": "Bemor Telegram bot'da ro'yxatdan o'tmagan",
-    "errorUnauthorized": "API kalit noto'g'ri"
+    "errorUnauthorized": "API kalit noto'g'ri",
+    "accessDenied": "Bu bemorni ko'rishga ruxsat yo'q"
   },
   "payments": {
     "title": "To'lovlar",
@@ -868,6 +872,7 @@
     "toastDeleted": "To'lov o'chirildi",
     "errorSave": "To'lovni saqlashda xatolik",
     "errorDelete": "To'lovni o'chirishda xatolik",
+    "errorLoad": "To'lovlarni yuklashda xatolik",
     "noData": "Eksport uchun ma'lumot topilmadi.",
     "errorVisitRequired": "Tashrif ID kiriting",
     "errorPatientRequired": "Bemor tanlang",

@@ -210,6 +210,14 @@ const doctorPhone = ref('')
 const doctorPassword = ref('')
 const isLoading = ref(false)
 
+const safeRedirect = (fallback) => {
+  const target = route.query.redirect
+  if (typeof target !== 'string' || !target.startsWith('/') || target.startsWith('//')) {
+    return fallback
+  }
+  return router.resolve(target).matched.length ? target : fallback
+}
+
 const handleAdminLogin = async () => {
   isLoading.value = true
   const success = await authStore.login({
@@ -223,8 +231,7 @@ const handleAdminLogin = async () => {
     const defaultRedirect = isClinicOwner(authStore) || authStore.userRole === ROLES.ADMIN
       ? '/dashboard'
       : (isGlobalSuperAdmin(authStore) ? '/admin/clinics' : '/dashboard')
-    const redirect = route.query.redirect || defaultRedirect
-    router.push(redirect)
+    router.push(safeRedirect(defaultRedirect))
   } else {
     toast.error(t('auth.loginOrPasswordWrong'))
   }
@@ -254,8 +261,7 @@ const handleDoctorLogin = async () => {
   if (success) {
     toast.success(t('auth.loginSuccess'))
     const defaultDoctorRedirect = isSolo(authStore) ? '/dashboard' : '/doctor/profile'
-    const redirect = route.query.redirect || defaultDoctorRedirect
-    router.push(redirect)
+    router.push(safeRedirect(defaultDoctorRedirect))
   } else {
     toast.error(t('auth.phoneOrPasswordWrong'))
   }

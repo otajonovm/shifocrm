@@ -560,7 +560,7 @@
 
 <script setup>
 import MainLayout from '@/layouts/MainLayout.vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ApexChart from 'vue3-apexcharts'
 import { ArrowDownTrayIcon, DocumentArrowDownIcon } from '@heroicons/vue/24/outline'
@@ -573,12 +573,14 @@ import * as visitsApi from '@/api/visitsApi'
 import { getTopServices } from '@/api/servicesApi'
 import { listExpenses, listInventoryMovements, listInventoryItems } from '@/api/inventoryApi'
 import { useAuthStore } from '@/stores/auth'
+import { useDoctorsStore } from '@/stores/doctors'
 import { useDataPermissionGuard, useDataPermission } from '@/composables/useDataPermission'
 import { exportToCsv, exportToPdf } from '@/lib/exportData'
 
 const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
+const doctorsStore = useDoctorsStore()
 
 useDataPermissionGuard('can_view_revenue', {
   message: "Hisobotlar bo'limiga kirish huquqingiz yo'q.",
@@ -1196,8 +1198,19 @@ const loadReports = async () => {
   }
 }
 
+const refreshDoctorsForReport = async () => {
+  await doctorsStore.fetchAll()
+  doctors.value = doctorsStore.items || []
+}
+
 onMounted(() => {
   resetFilters()
   loadReports()
+})
+
+onActivated(async () => {
+  if (payments.value.length > 0) {
+    await refreshDoctorsForReport()
+  }
 })
 </script>

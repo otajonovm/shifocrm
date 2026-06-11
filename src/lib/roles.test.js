@@ -9,6 +9,7 @@ import {
   canManageStaff,
   isSoloClinic,
   resolveDoctorLoginRole,
+  employeeDbRoleToAuthRole,
 } from './roles.js'
 
 describe('roles', () => {
@@ -63,6 +64,11 @@ describe('roles', () => {
   it('resolveDoctorLoginRole assigns solo only for solo clinics', () => {
     expect(resolveDoctorLoginRole({ slug: 'solo-xyz' })).toBe(ROLES.SOLO)
     expect(resolveDoctorLoginRole({ slug: 'clinic-abc', max_doctors: 1 })).toBe(ROLES.DOCTOR)
+  })
+
+  it('employeeDbRoleToAuthRole maps administrator to admin session', () => {
+    expect(employeeDbRoleToAuthRole('administrator')).toBe(ROLES.ADMIN)
+    expect(employeeDbRoleToAuthRole('doctor')).toBeNull()
   })
 
   it('canManageStaff allows clinic_owner and global super admin, not regular admin', () => {

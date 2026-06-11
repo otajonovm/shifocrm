@@ -30,6 +30,14 @@ export function checkDataPermission(authStore, permissionKey, stores = {}) {
   }
 
   if (isClinicAdmin(authStore)) {
+    const employeeId = authStore.user?.employee_id
+    if (employeeId && employeePermsStore) {
+      const empPerms = employeePermsStore.getDataPermissions(employeeId)
+      return (
+        empPerms[permissionKey] === true
+        || CLINIC_ADMIN_DATA_DEFAULTS[permissionKey] === true
+      )
+    }
     return CLINIC_ADMIN_DATA_DEFAULTS[permissionKey] === true
   }
 

@@ -744,7 +744,9 @@ onMounted(async () => {
       ])
     }
   } catch (error) {
-    console.error('? Failed to load patient:', error)
+    console.error('Failed to load patient:', error)
+    toast.error(t('patientDetail.notFound'))
+    router.replace('/patients')
   } finally {
     loading.value = false
   }

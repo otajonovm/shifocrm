@@ -1,12 +1,12 @@
 <template>
   <MainLayout>
     <div class="space-y-6 animate-fade-in">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">{{ t('payments.title') }}</h1>
           <p class="text-gray-500">{{ t('payments.subtitle') }}</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <button
             v-if="canExport"
             class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
@@ -433,7 +433,7 @@
 import MainLayout from '@/layouts/MainLayout.vue'
 import MobileFilterSheet from '@/components/shared/MobileFilterSheet.vue'
 import MobileFAB from '@/components/shared/MobileFAB.vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon, AdjustmentsHorizontalIcon, PencilSquareIcon, TrashIcon, ArrowDownTrayIcon, DocumentArrowDownIcon } from '@heroicons/vue/24/outline'
 import { listPayments, createPayment, updatePayment, deletePayment, createAdditionalPayment, getPaymentsByVisitId, parseCategoryFromNote, removeCategoryFromNote } from '@/api/paymentsApi'
@@ -442,6 +442,7 @@ import { listPatients } from '@/api/patientsApi'
 import { getVisitById, updateVisit } from '@/api/visitsApi'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { useDoctorsStore } from '@/stores/doctors'
 import { useDataPermissionGuard, useDataPermission } from '@/composables/useDataPermission'
 import { exportToCsv, exportToPdf } from '@/lib/exportData'
 import { logActivity } from '@/lib/activityLog'
@@ -451,6 +452,7 @@ const { t } = useI18n()
 const loading = ref(false)
 const toast = useToast()
 const authStore = useAuthStore()
+const doctorsStore = useDoctorsStore()
 
 useDataPermissionGuard('can_view_revenue', {
   message: "Moliyaviy bo'limga (to'lovlar) kirish huquqingiz yo'q.",
@@ -726,6 +728,7 @@ const loadPayments = async () => {
   } catch (error) {
     console.error('Failed to load payments:', error)
     payments.value = []
+    toast.error(t('payments.errorLoad') || 'To\'lovlarni yuklashda xatolik')
   } finally {
     loading.value = false
   }
@@ -966,5 +969,10 @@ watch(
 
 onMounted(async () => {
   await Promise.all([loadPayments(), loadFiltersData()])
+})
+
+onActivated(async () => {
+  await doctorsStore.fetchAll()
+  doctors.value = doctorsStore.items || []
 })
 </script>

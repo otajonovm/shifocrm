@@ -7,6 +7,7 @@ import {
   supabaseDeleteWhere,
 } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
+import { phoneAuthLookupVariants } from '@/lib/phoneUz'
 import { hydrateEmployee } from '@/lib/staffHelpers'
 
 const EMPLOYEES_TABLE = 'employees'
@@ -52,6 +53,47 @@ async function rollbackEmployee(employeeId) {
 
 function buildEmployeesQuery(suffix = '') {
   return `select=${NESTED_SELECT}${suffix ? `&${suffix}` : ''}`
+}
+
+/**
+ * Xodimni telefon yoki email + parol bilan tekshirish (administrator kirish uchun).
+ * @returns {Promise<ReturnType<typeof hydrateEmployee>|null>}
+ */
+export const authenticateEmployee = async (login, password) => {
+  const p = String(password || '')
+  if (!login || !p) return null
+
+  const matchActive = (rows) => {
+    const row = (Array.isArray(rows) ? rows : []).find(
+      (item) => item?.password === p && item?.is_active !== false
+    )
+    return row ? hydrateEmployee(stripPassword(row)) : null
+  }
+
+  try {
+    for (const phoneVariant of phoneAuthLookupVariants(login)) {
+      const rows = await supabaseGet(
+        EMPLOYEES_TABLE,
+        `phone=eq.${encodeURIComponent(phoneVariant)}`
+      )
+      const found = matchActive(rows)
+      if (found) return found
+    }
+
+    const email = String(login).trim().toLowerCase()
+    if (email.includes('@')) {
+      const rows = await supabaseGet(
+        EMPLOYEES_TABLE,
+        `email=eq.${encodeURIComponent(email)}`
+      )
+      const found = matchActive(rows)
+      if (found) return found
+    }
+  } catch (error) {
+    console.error('❌ Failed to authenticate employee:', error)
+  }
+
+  return null
 }
 
 export const getAllEmployees = async () => {

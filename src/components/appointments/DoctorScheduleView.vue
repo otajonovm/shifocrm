@@ -58,6 +58,13 @@
           </div>
         </div>
 
+        <div
+          v-if="clickMoveAppointment"
+          class="w-full rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-800 animate-fade-in"
+        >
+          «{{ clickMoveAppointment.patient_name }}» ko'chirilmoqda — yangi shifokor/vaqt ustuniga bosing yoki qayta bosing (bekor).
+        </div>
+
         <div class="flex items-center flex-wrap gap-2 text-xs">
           <span class="inline-flex items-center rounded-full bg-primary-50 px-2.5 py-1 font-semibold text-primary-700">
             {{ t('appointments.kpiTotal') }}: {{ bookedAppointmentsCount }}
@@ -91,12 +98,10 @@
             <div
               v-for="hour in hours"
               :key="hour.key"
-              class="relative text-right pr-2 py-0 text-[11px] font-semibold text-slate-500 bg-slate-50 select-none border-b border-slate-100"
-              :style="{ height: slotHeightPx + 'px' }"
+              class="flex items-center justify-end pr-2 sm:pr-3 text-xs sm:text-sm font-bold text-slate-700 bg-slate-50 select-none border-b border-slate-200 font-mono tabular-nums leading-none"
+              :style="{ height: slotHeightPx + 'px', minHeight: slotHeightPx + 'px' }"
             >
-              <div v-if="hour.isLabel" class="absolute -top-2.5 right-1 px-1.5 py-0.5 rounded-md bg-slate-100/90 text-slate-600 font-mono text-[10px]">
-                {{ hour.display }}
-              </div>
+              {{ hour.display }}
             </div>
           </div>
 
@@ -125,9 +130,15 @@
                 <div
                   v-for="hour in hours"
                   :key="`bg-${doctor.id}-${hour.time}`"
-                  class="bg-white border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors duration-150 active:bg-blue-50/50"
+                  class="border-b border-slate-200 cursor-pointer transition-all duration-150"
+                  :class="isDropTarget(doctor.id, hour.time)
+                    ? 'bg-primary-50/80 ring-2 ring-inset ring-primary-400'
+                    : 'bg-white hover:bg-slate-50 active:bg-blue-50/50'"
                   :style="{ height: slotHeightPx + 'px' }"
-                  :title="`${doctor.full_name} — ${hour.time} da qabul ochish`"
+                  :title="`${doctor.full_name} — ${hour.time}`"
+                  @dragover.prevent="onDragOver($event, doctor.id, hour.time)"
+                  @dragleave="onDragLeave($event, doctor.id, hour.time)"
+                  @drop.prevent="onDrop($event, doctor.id, hour.time)"
                   @click="handleSlotClick(doctor.id, hour.time)"
                 />
 
@@ -139,24 +150,29 @@
                   class="absolute left-0 right-0 z-20 pointer-events-none"
                 />
 
-              <!-- Appointments (draggable) -->
+              <!-- Appointments (HTML5 drag-and-drop) -->
               <div class="absolute inset-0 pointer-events-none">
                 <div
                   v-for="appt in getAppointmentsForDoctor(doctor.id)"
                   :key="appt.id"
-                  class="absolute left-2 right-2 pointer-events-auto cursor-grab active:cursor-grabbing"
-                  :class="draggingAppointment && draggingAppointment.id === appt.id ? 'z-40 opacity-85 scale-[0.985]' : 'z-10'"
+                  class="absolute left-2 right-2 pointer-events-auto transition-opacity duration-150"
+                  :class="isDraggingId === appt.id ? 'z-40' : 'z-10'"
                   :style="getAppointmentStyle(appt)"
-                  @mousedown="startDrag($event, appt)"
+                  draggable="true"
+                  @dragstart="onDragStart($event, appt)"
+                  @dragend="onDragEnd"
                 >
                   <AppointmentBlock
                     :appointment="appt"
                     :slot-height-px="slotHeightPx"
                     :positioned-by-parent="true"
+                    :move-select-active="clickMoveAppointment?.id === appt.id"
+                    :is-dragging="isDraggingId === appt.id"
                     @update-status="handleStatusUpdate"
                     @open-payment="handleOpenPayment"
                     @open-patient-modal="handleOpenPatientModal"
                     @open-patient-detail="handleOpenPatientDetail"
+                    @toggle-move-select="handleToggleMoveSelect"
                   />
                 </div>
               </div>
@@ -299,6 +315,7 @@ import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import * as visitsApi from '@/api/visitsApi'
 import { getVisitStatusColors } from '@/constants/visitStatus'
+import { useToast } from '@/composables/useToast'
 import CurrentTimeIndicator from './CurrentTimeIndicator.vue'
 import AppointmentBlock from './AppointmentBlock.vue'
 import PatientModalInfo from './PatientModalInfo.vue'
@@ -317,6 +334,7 @@ const props = defineProps({
 const emit = defineEmits(['update:selectedDate', 'update:view-mode', 'update-status', 'open-payment', 'open-patient-detail'])
 
 const { t } = useI18n()
+const toast = useToast()
 const authStore = useAuthStore()
 const isAdmin = computed(() => isAdminLike(authStore))
 const doctorsStore = useDoctorsStore()
@@ -333,13 +351,10 @@ const currentDate = ref(props.selectedDate || new Date().toISOString().split('T'
 const selectedDoctorIds = ref([]) // Multi-select doctor IDs
 const showDoctorDropdown = ref(false)
 const doctorDropdownRef = ref(null) // Ref for dropdown element
-const dragPendingAppointment = ref(null)
-const draggingAppointment = ref(null)
-const dragStartY = ref(0)
-const dragStartTime = ref('')
-const dragMoved = ref(false)
-const suppressNextModalOpen = ref(false)
-const DRAG_START_THRESHOLD_PX = 8
+const isDraggingId = ref(null)
+const dropHoverTarget = ref(null)
+const clickMoveAppointment = ref(null)
+const skipNextSlotClick = ref(false)
 
 // Responsive breakpoints (mobile, tablet, desktop)
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
@@ -392,9 +407,8 @@ const hours = computed(() => {
 // Doktor uchun faqat o'z appointmentlari, admin uchun barchasi
 // Responsive column widths
 const timeColumnWidth = computed(() => {
-  // Compact widths: Mobile: 3rem (48px), Desktop: 4rem (64px)
-  if (windowWidth.value < 640) return 'w-12' // 48px
-  return 'w-16' // 64px
+  if (windowWidth.value < 640) return 'w-[3.25rem]' // 52px — vaqt o'qilishi uchun
+  return 'w-[4.5rem]' // 72px
 })
 
 /** Ustun minimal kengligi — ko'p shifokor bo'lsa gorizontal scroll */
@@ -635,7 +649,6 @@ const handleStatusUpdate = async (newStatus) => {
 
 // Bemor modal'ini ochish
 const handleOpenPatientModal = (appointment) => {
-  if (suppressNextModalOpen.value) return
   selectedPatientAppointment.value = appointment
   patientModalOpen.value = true
 }
@@ -662,8 +675,152 @@ const clearDoctorSelection = () => {
   selectedDoctorIds.value = []
 }
 
-// Click-to-create appointment
+const getDurationMinutes = (appt) => {
+  if (appt.duration_minutes && appt.duration_minutes > 0) return appt.duration_minutes
+  if (appt.start_time && appt.end_time) {
+    const [sh, sm] = appt.start_time.split(':').map(Number)
+    const [eh, em] = appt.end_time.split(':').map(Number)
+    return Math.max(15, (eh * 60 + em) - (sh * 60 + sm))
+  }
+  return 60
+}
+
+const addMinutesToTime = (timeStr, minutes) => {
+  const [h, m] = timeStr.split(':').map(Number)
+  const total = h * 60 + m + minutes
+  const nh = Math.floor(total / 60) % 24
+  const nm = total % 60
+  return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`
+}
+
+const findAppointmentById = (id) =>
+  appointments.value.find((a) => Number(a.id) === Number(id))
+
+const isDropTarget = (doctorId, time) =>
+  dropHoverTarget.value?.doctorId === Number(doctorId)
+  && dropHoverTarget.value?.time === time
+
+const moveAppointmentTo = async (appointment, targetDoctorId, targetTimeSlot) => {
+  const appt = typeof appointment === 'object'
+    ? findAppointmentById(appointment.id)
+    : findAppointmentById(appointment)
+  if (!appt) return
+
+  const snapshot = {
+    doctor_id: appt.doctor_id,
+    doctor_name: appt.doctor_name,
+    specialization: appt.specialization,
+    start_time: appt.start_time,
+    end_time: appt.end_time,
+  }
+
+  const doctor = visibleDoctors.value.find((d) => Number(d.id) === Number(targetDoctorId))
+  const duration = getDurationMinutes(appt)
+  const nextStart = targetTimeSlot || appt.start_time
+  const nextEnd = addMinutesToTime(nextStart, duration)
+
+  appt.doctor_id = Number(targetDoctorId)
+  appt.doctor_name = doctor?.full_name || appt.doctor_name
+  appt.specialization = doctor?.specialization || appt.specialization
+  appt.start_time = nextStart
+  appt.end_time = nextEnd
+
+  try {
+    await visitsApi.updateVisit(appt.id, {
+      doctor_id: Number(targetDoctorId),
+      start_time: nextStart,
+      end_time: nextEnd,
+    })
+    toast.success('Bemor qabuli boshqa shifokorga ko\'chirildi')
+  } catch (error) {
+    Object.assign(appt, snapshot)
+    console.error('Failed to move appointment:', error)
+    toast.error('Qabulni ko\'chirishda xatolik yuz berdi')
+  }
+}
+
+const onDragStart = (event, appt) => {
+  if (event.target.closest('button')) {
+    event.preventDefault()
+    return
+  }
+  isDraggingId.value = appt.id
+  clickMoveAppointment.value = null
+  const payload = {
+    id: appt.id,
+    doctor_id: appt.doctor_id,
+    start_time: appt.start_time,
+  }
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', JSON.stringify(payload))
+  if (event.dataTransfer.setDragImage && event.currentTarget) {
+    event.dataTransfer.setDragImage(event.currentTarget, 20, 20)
+  }
+}
+
+const onDragEnd = () => {
+  isDraggingId.value = null
+  dropHoverTarget.value = null
+}
+
+const onDragOver = (event, doctorId, timeSlot) => {
+  event.dataTransfer.dropEffect = 'move'
+  dropHoverTarget.value = { doctorId: Number(doctorId), time: timeSlot }
+}
+
+const onDragLeave = (event, doctorId, timeSlot) => {
+  if (
+    dropHoverTarget.value?.doctorId === Number(doctorId)
+    && dropHoverTarget.value?.time === timeSlot
+  ) {
+    dropHoverTarget.value = null
+  }
+}
+
+const onDrop = async (event, targetDoctorId, targetTimeSlot) => {
+  dropHoverTarget.value = null
+  isDraggingId.value = null
+
+  let payload = null
+  try {
+    payload = JSON.parse(event.dataTransfer.getData('text/plain') || '{}')
+  } catch {
+    payload = null
+  }
+  if (!payload?.id) return
+
+  const appt = findAppointmentById(payload.id)
+  if (!appt) return
+
+  const sameDoctor = Number(appt.doctor_id) === Number(targetDoctorId)
+  const sameTime = appt.start_time === targetTimeSlot
+  if (sameDoctor && sameTime) return
+
+  skipNextSlotClick.value = true
+  await moveAppointmentTo(appt, targetDoctorId, targetTimeSlot)
+  setTimeout(() => {
+    skipNextSlotClick.value = false
+  }, 100)
+}
+
+const handleToggleMoveSelect = (appt) => {
+  if (clickMoveAppointment.value?.id === appt.id) {
+    clickMoveAppointment.value = null
+    toast.info('Ko\'chirish bekor qilindi')
+    return
+  }
+  clickMoveAppointment.value = appt
+  toast.info('Yangi shifokor yoki vaqt ustuniga bosing (yoki kartochkani ushlab suring)')
+}
+
+// Click-to-create yoki click-to-move
 const handleSlotClick = (doctorId, timeStr) => {
+  if (skipNextSlotClick.value) return
+  if (clickMoveAppointment.value) {
+    moveAppointmentTo(clickMoveAppointment.value, doctorId, timeStr)
+    clickMoveAppointment.value = null
+    return
+  }
   openNewAppointmentModal(doctorId, timeStr)
 }
 
@@ -673,106 +830,6 @@ const openNewAppointmentModal = (doctorId, startTime) => {
     startTime,
     date: currentDate.value
   })
-}
-
-// Drag & drop implementation
-const startDrag = (event, appt) => {
-  event.stopPropagation() // Prevent slot click
-  dragPendingAppointment.value = appt
-  dragStartY.value = event.clientY
-  dragStartTime.value = appt.start_time
-  dragMoved.value = false
-  suppressNextModalOpen.value = false
-
-  document.addEventListener('mousemove', handleDragMove)
-  document.addEventListener('mouseup', handleDragEnd)
-  document.body.style.cursor = 'grabbing'
-}
-
-const handleDragMove = (event) => {
-  if (!dragPendingAppointment.value) return
-
-  const deltaY = event.clientY - dragStartY.value
-  if (!draggingAppointment.value && Math.abs(deltaY) < DRAG_START_THRESHOLD_PX) {
-    return
-  }
-
-  if (!draggingAppointment.value) {
-    draggingAppointment.value = dragPendingAppointment.value
-    dragStartY.value = event.clientY
-    dragStartTime.value = dragPendingAppointment.value.start_time
-  }
-
-  const deltaYForMove = event.clientY - dragStartY.value
-  const deltaSlots = Math.round(deltaYForMove / slotHeightPx)
-
-  if (deltaSlots !== 0) {
-    dragMoved.value = true
-    const [h, m] = dragStartTime.value.split(':').map(Number)
-    const newMinutes = h * 60 + m + (deltaSlots * SLOT_MINUTES)
-    const newH = Math.floor(newMinutes / 60)
-    const newM = newMinutes % 60
-    const dayStartMinutes = DAY_START_HOUR * 60
-    const dayEndMinutes = DAY_END_HOUR * 60
-    const durationMinutes = draggingAppointment.value.end_time
-      ? (() => {
-          const [endH, endM] = draggingAppointment.value.end_time.split(':').map(Number)
-          return (endH * 60 + endM) - (h * 60 + m)
-        })()
-      : 30
-
-    if (newMinutes >= dayStartMinutes && newMinutes + durationMinutes <= dayEndMinutes) {
-      const newTime = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`
-      draggingAppointment.value.start_time = newTime
-
-      // Update end_time if exists
-      if (draggingAppointment.value.end_time) {
-        const newEndMinutes = newMinutes + durationMinutes
-        const newEndH = Math.floor(newEndMinutes / 60)
-        const newEndM = newEndMinutes % 60
-        draggingAppointment.value.end_time = `${String(newEndH).padStart(2, '0')}:${String(newEndM).padStart(2, '0')}`
-      }
-
-      dragStartY.value = event.clientY
-      dragStartTime.value = newTime
-    }
-  }
-}
-
-const handleDragEnd = async () => {
-  if (!dragPendingAppointment.value) return
-
-  try {
-    if (draggingAppointment.value) {
-      // Update appointment via API
-      await visitsApi.updateVisit(draggingAppointment.value.id, {
-        start_time: draggingAppointment.value.start_time,
-        end_time: draggingAppointment.value.end_time
-      })
-
-      // Reload appointments
-      await loadAppointments()
-    }
-  } catch (error) {
-    console.error('Failed to update appointment:', error)
-    // Reload to revert visual changes
-    await loadAppointments()
-  } finally {
-    suppressNextModalOpen.value = dragMoved.value
-    dragPendingAppointment.value = null
-    draggingAppointment.value = null
-    document.removeEventListener('mousemove', handleDragMove)
-    document.removeEventListener('mouseup', handleDragEnd)
-    document.body.style.cursor = ''
-
-    if (dragMoved.value) {
-      setTimeout(() => {
-        suppressNextModalOpen.value = false
-      }, 0)
-    }
-
-    dragMoved.value = false
-  }
 }
 
 // To'lov modali ochish
@@ -867,9 +924,9 @@ onUnmounted(() => {
   background: #fbfdff; /* very subtle tint */
 }
 
-.day-grid .time-column .text-xs {
-  color: #64748b; /* slightly muted */
-  font-weight: 600;
+.day-grid .time-column {
+  color: #334155;
+  font-weight: 700;
 }
 
 /* Make appointment blocks flatter and with subtle shadow */

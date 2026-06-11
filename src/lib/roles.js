@@ -147,6 +147,13 @@ export function canManageStaff(authStore) {
   return false
 }
 
+/** employees.role (DB) → sessiya roli (faqat administrator uchun admin kirish) */
+export function employeeDbRoleToAuthRole(dbRole) {
+  const role = String(dbRole || '').trim().toLowerCase()
+  if (role === 'administrator' || role === 'super_admin') return ROLES.ADMIN
+  return null
+}
+
 /** Router: admin-only route lar uchun ruxsat */
 export function canAccessAdminRoutes(authStore) {
   if (!authStore?.isAuthenticated) return false

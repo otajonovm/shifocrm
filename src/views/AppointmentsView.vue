@@ -75,7 +75,7 @@
             </div>
           </div>
 
-          <div class="overflow-x-auto overflow-y-visible">
+          <div class="hidden md:block overflow-x-auto overflow-y-visible">
             <table class="w-full text-sm">
               <thead class="bg-gray-50 border-b border-gray-200">
                 <tr class="text-left text-xs font-semibold text-gray-600">
@@ -205,8 +205,54 @@
               </tr>
             </tbody>
           </table>
+          </div>
+
+          <!-- Mobil: uchrashuv kartalari -->
+          <div class="md:hidden divide-y divide-gray-100">
+            <div v-if="loading" class="px-4 py-8 text-center text-sm text-gray-500">
+              {{ t('appointments.loading') }}
+            </div>
+            <div v-else-if="filteredVisits.length === 0" class="px-4 py-8 text-center text-sm text-gray-500">
+              {{ t('appointments.noAppointments') }}
+            </div>
+            <div
+              v-for="visit in filteredVisits"
+              :key="`mobile-${visit.id}`"
+              class="p-4 space-y-2"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <p class="text-sm font-semibold text-gray-900">{{ formatDate(visit.date) }}</p>
+                  <p class="text-xs text-gray-500">{{ formatTimeRange(visit) }}</p>
+                </div>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium shrink-0" :class="getStatusClass(visit.status)">
+                  {{ getStatusLabel(visit.status) }}
+                </span>
+              </div>
+              <router-link
+                :to="{ name: 'patient-detail', params: { id: visit.patient_id } }"
+                class="block text-sm font-medium text-primary-600"
+              >
+                {{ getPatientName(visit.patient_id) }}
+              </router-link>
+              <p class="text-xs text-gray-500">{{ getPatientPhone(visit.patient_id) }}</p>
+              <p v-if="isAdmin" class="text-xs text-gray-600">{{ visit.doctor_name || getDoctorName(visit.doctor_id) }}</p>
+              <p class="text-sm text-gray-700">{{ visit.service_name || '-' }}</p>
+              <div class="flex items-center justify-between text-xs text-gray-500">
+                <span>{{ formatCurrency(visit.price || 0) }}</span>
+                <span v-if="isAdmin">{{ getPaymentLabel(visit) }}</span>
+              </div>
+              <button
+                type="button"
+                class="mt-1 min-h-[44px] w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700"
+                @click="toggleActionMenu(visit.id)"
+              >
+                <EllipsisVerticalIcon class="w-5 h-5" />
+                {{ t('appointments.actions') }}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
       </div>
 
       <!-- Schedule view (Doctor calendar grid) -->
@@ -293,9 +339,13 @@
                     <label class="block text-[11px] font-semibold text-gray-600 mb-1 uppercase tracking-wider">Telefon <span class="text-red-500">*</span></label>
                     <input
                       v-model="quickPatient.phone"
-                      type="text"
-                      placeholder="+998..."
+                      type="tel"
+                      inputmode="tel"
+                      autocomplete="tel"
+                      :placeholder="UZ_PHONE_PLACEHOLDER"
                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                      @input="onQuickPatientPhoneInput"
+                      @focus="ensureQuickPatientPhonePrefix"
                     />
                   </div>
                   <div v-if="quickPatientError" class="sm:col-span-2 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
@@ -630,6 +680,12 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import AppointmentsHeader from '@/components/appointments/AppointmentsHeader.vue'
 import DoctorScheduleView from '@/components/appointments/DoctorScheduleView.vue'
 import {
+  formatPhoneForStorage,
+  formatPhoneUzDisplay,
+  isValidUzPhone,
+  UZ_PHONE_PLACEHOLDER,
+} from '@/lib/phoneUz'
+import {
   XMarkIcon,
   EllipsisVerticalIcon,
   CheckCircleIcon,
@@ -740,7 +796,7 @@ const quickPatientLoading = ref(false)
 const quickPatientError = ref('')
 const quickPatient = ref({
   full_name: '',
-  phone: ''
+  phone: '+998',
 })
 const createForm = ref({
   patient_id: '',
@@ -933,6 +989,7 @@ const loadVisits = async () => {
   } catch (error) {
     console.error('Failed to load visits:', error)
     visits.value = []
+    toast.error(t('appointments.errorLoad') || 'Uchrashuvlarni yuklashda xatolik')
   } finally {
     loading.value = false
   }
@@ -974,21 +1031,40 @@ const closeCreateModal = () => {
   resetQuickPatient()
 }
 
+const ensureQuickPatientPhonePrefix = () => {
+  if (!quickPatient.value.phone) {
+    quickPatient.value.phone = '+998'
+  }
+}
+
+const onQuickPatientPhoneInput = (event) => {
+  quickPatient.value.phone = formatPhoneUzDisplay(event.target.value)
+  event.target.value = quickPatient.value.phone
+}
+
 const resetQuickPatient = () => {
   quickPatient.value = {
     full_name: '',
-    phone: ''
+    phone: '+998',
   }
   quickPatientError.value = ''
 }
 
+watch(quickPatientOpen, (open) => {
+  if (open) ensureQuickPatientPhonePrefix()
+})
+
 const createQuickPatient = async () => {
   quickPatientError.value = ''
   const fullName = String(quickPatient.value.full_name || '').trim()
-  const phone = String(quickPatient.value.phone || '').trim()
+  const phone = formatPhoneForStorage(quickPatient.value.phone)
 
-  if (!fullName || !phone) {
-    quickPatientError.value = 'Ism va telefon majburiy.'
+  if (!fullName) {
+    quickPatientError.value = 'Ism majburiy.'
+    return
+  }
+  if (!phone || !isValidUzPhone(quickPatient.value.phone)) {
+    quickPatientError.value = 'To\'liq telefon raqamini kiriting (+998 XX XXX XX XX).'
     return
   }
 

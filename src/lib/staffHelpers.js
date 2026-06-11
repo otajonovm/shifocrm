@@ -52,14 +52,25 @@ const SPECIALTY_TO_ROLE = {
   'Kassir/Buxgalter': 'cashier',
 }
 
+const ADMIN_ROLE_PATTERNS = [/admin/i, /reception/i, /qabul/i]
+const ASSISTANT_ROLE_PATTERNS = [/assistent/i, /yordamchi/i, /assistant/i]
+const CASHIER_ROLE_PATTERNS = [/kassir/i, /buxgalter/i, /cashier/i]
+
 export function specialtyToRole(specialty) {
   const text = String(specialty || '').trim()
-  return SPECIALTY_TO_ROLE[text] || 'doctor'
+  if (!text) return 'doctor'
+  if (SPECIALTY_TO_ROLE[text]) return SPECIALTY_TO_ROLE[text]
+
+  const lower = text.toLowerCase()
+  if (ADMIN_ROLE_PATTERNS.some((re) => re.test(lower))) return 'administrator'
+  if (ASSISTANT_ROLE_PATTERNS.some((re) => re.test(lower))) return 'assistant'
+  if (CASHIER_ROLE_PATTERNS.some((re) => re.test(lower))) return 'cashier'
+  return 'doctor'
 }
 
 export function isDoctorRole(specialization) {
-  if (!specialization) return false
-  return !NON_DOCTOR_SPECIALIZATIONS.includes(String(specialization).trim())
+  if (!specialization?.trim()) return false
+  return specialtyToRole(specialization) === 'doctor'
 }
 
 /** Kalendar (doctors jadvali) bilan sinxronlash kerakmi */
