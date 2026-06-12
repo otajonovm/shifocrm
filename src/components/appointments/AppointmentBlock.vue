@@ -16,11 +16,15 @@
     <!-- Bemor ismi (click -> patient detail) -->
     <button
       type="button"
-      class="font-semibold text-gray-900 line-clamp-2 sm:line-clamp-1 text-sm sm:text-[15px] text-left hover:text-primary-700 hover:underline leading-tight"
+      class="font-semibold text-gray-900 truncate w-full text-sm text-left hover:text-primary-700 hover:underline leading-tight pr-5"
       @click.stop="handleOpenPatientDetail"
     >
       {{ appointment.patient_name || 'N/A' }}
     </button>
+
+    <p v-if="appointment.phone" class="mt-0.5 text-[11px] sm:text-xs text-slate-600 truncate pr-4">
+      {{ appointment.phone }}
+    </p>
 
     <!-- Vaqt -->
     <div class="mt-1 flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-800 tabular-nums">
@@ -84,7 +88,11 @@ const props = defineProps({
   },
   slotHeightPx: {
     type: Number,
-    default: 60 // 1 soat = 60px
+    default: 40,
+  },
+  slotMinutes: {
+    type: Number,
+    default: 30,
   },
   positionedByParent: {
     type: Boolean,
@@ -148,12 +156,13 @@ const getDuration = () => {
 // Duration (minutlar) -> height (px) o'tkazish
 const appointmentHeight = computed(() => {
   const duration = getDuration()
-  return Math.max(props.slotHeightPx, (duration / 60) * props.slotHeightPx)
+  const minutesPerSlot = Math.max(15, Number(props.slotMinutes) || 30)
+  return Math.max(props.slotHeightPx, (duration / minutesPerSlot) * props.slotHeightPx)
 })
 
 const blockClasses = computed(() => {
   const base = [
-    'appointment-block rounded-xl border border-l-4 p-2 sm:p-2.5 text-xs transition-all duration-150 hover:shadow-lg group',
+    'appointment-block rounded-lg border border-l-4 p-1.5 sm:p-2 text-xs transition-all duration-150 group w-full min-w-0',
     props.isDragging ? 'opacity-50 cursor-grabbing' : 'cursor-grab',
     props.moveSelectActive ? 'ring-2 ring-primary-500 ring-offset-1 shadow-md scale-[1.02]' : '',
   ].filter(Boolean).join(' ')

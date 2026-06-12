@@ -1,19 +1,34 @@
 <template>
   <MainLayout>
-    <div class="space-y-6 animate-fade-in">
-      <!-- New Header Component (Filters) -->
+    <div
+      class="overflow-x-hidden max-w-full min-w-0"
+      :class="displayMode === 'schedule'
+        ? 'flex flex-col h-[calc(100dvh-4rem)] min-h-0 -m-4 sm:-m-6 lg:-m-8 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] max-w-none'
+        : 'space-y-4 animate-fade-in'"
+    >
+      <!-- Filtrlar paneli -->
       <AppointmentsHeader
+        :class="displayMode === 'schedule' ? 'flex-shrink-0 rounded-none border-x-0 border-t-0 shadow-none' : ''"
         :selectedDate="selectedDate"
         :searchQuery="searchQuery"
         :viewMode="viewMode"
         :layout="displayMode"
         :selectedDoctorId="selectedDoctor"
+        :selectedStatus="selectedStatus"
+        :selectedService="selectedService"
+        :selectedDuration="selectedDuration"
         :doctors="isAdmin ? doctors : []"
+        :statuses="statusOptions"
+        :services="serviceFilterOptions"
         @date-change="selectedDate = $event"
         @search-change="searchQuery = $event"
         @view-change="viewMode = $event"
-        @layout-change="displayMode = $event"
+        @layout-change="handleLayoutChange"
         @doctor-change="selectedDoctor = $event"
+        @status-change="selectedStatus = $event"
+        @service-change="selectedService = $event"
+        @duration-change="selectedDuration = $event"
+        @clear-filters="clearAppointmentFilters"
       />
 
       <!-- Bulk Actions (List view only) -->
@@ -255,19 +270,31 @@
         </div>
       </div>
 
-      <!-- Schedule view (Doctor calendar grid) -->
-      <div v-else-if="displayMode === 'schedule'" class="relative z-0 sm:-mx-6 lg:-mx-8">
+      <!-- Jadval ko'rinishi — to'liq ekran -->
+      <div v-else-if="displayMode === 'schedule'" class="relative z-0 flex-1 min-h-0 w-full overflow-hidden">
         <DoctorScheduleView
+          :key="`schedule-${scheduleRefreshKey}`"
           :selected-date="selectedDate"
-          :view-mode="viewMode"
+          :filter-doctor-id="selectedDoctor"
+          :refresh-key="scheduleRefreshKey"
           @update:selected-date="selectedDate = $event"
-          @update:view-mode="viewMode = $event"
           @update-status="handleStatusUpdate"
           @open-payment="handleSchedulePaymentAction"
           @open-patient-detail="goToPatientDetail"
         />
       </div>
     </div>
+    <QuickAppointmentModal
+      :open="showQuickModal"
+      :slot-meta="quickSlotMeta"
+      :patients="availablePatients"
+      :doctors="doctors"
+      :is-admin="isAdmin"
+      :default-doctor-id="doctorId"
+      @close="closeQuickModal"
+      @saved="onQuickAppointmentSaved"
+    />
+
     <Teleport to="body">
       <Transition
         enter-active-class="transition ease-out duration-200"
@@ -679,6 +706,7 @@ import { getVisitStatusLabel, getVisitStatusColors } from '@/constants/visitStat
 import MainLayout from '@/layouts/MainLayout.vue'
 import AppointmentsHeader from '@/components/appointments/AppointmentsHeader.vue'
 import DoctorScheduleView from '@/components/appointments/DoctorScheduleView.vue'
+import QuickAppointmentModal from '@/components/appointments/QuickAppointmentModal.vue'
 import {
   formatPhoneForStorage,
   formatPhoneUzDisplay,
@@ -784,12 +812,39 @@ const selectedDate = ref(getInitialPeriod())
 const displayMode = ref(getInitialDisplayMode()) // 'list' or 'schedule'
 
 const searchQuery = ref('')
+const selectedStatus = ref('')
 const selectedDoctor = ref('')
+const selectedService = ref('')
+const selectedDuration = ref('')
+
+const serviceFilterOptions = computed(() => {
+  const names = new Set()
+  for (const visit of visits.value) {
+    const name = String(visit?.service_name || visit?.service || '').trim()
+    if (name) names.add(name)
+  }
+  return Array.from(names).sort((a, b) => a.localeCompare(b, 'uz'))
+})
+
+const clearAppointmentFilters = () => {
+  searchQuery.value = ''
+  selectedStatus.value = ''
+  selectedDoctor.value = ''
+  selectedService.value = ''
+  selectedDuration.value = ''
+}
 
 const selectedIds = ref([])
 const bulkDoctorId = ref('')
 
 const showCreateModal = ref(false)
+const showQuickModal = ref(false)
+const scheduleRefreshKey = ref(0)
+const quickSlotMeta = ref({
+  doctorId: null,
+  date: '',
+  startTime: '',
+})
 const createError = ref('')
 const quickPatientOpen = ref(false)
 const quickPatientLoading = ref(false)
@@ -969,6 +1024,19 @@ const filteredVisits = computed(() => {
       return name.includes(query) || phone.includes(query) || medId.includes(query)
     })
   }
+  if (selectedStatus.value) {
+    result = result.filter(v => v.status === selectedStatus.value)
+  }
+  if (selectedService.value) {
+    result = result.filter((v) => {
+      const name = String(v?.service_name || v?.service || '').trim()
+      return name === selectedService.value
+    })
+  }
+  if (selectedDuration.value) {
+    const mins = Number(selectedDuration.value)
+    result = result.filter((v) => Number(v?.duration_minutes) === mins)
+  }
 
   return result
 })
@@ -996,14 +1064,19 @@ const loadVisits = async () => {
 }
 
 const openCreateModal = () => {
+  if (displayMode.value === 'schedule') {
+    openQuickModal({
+      date: selectedDate.value,
+      doctorId: isAdmin.value ? null : doctorId.value,
+    })
+    return
+  }
   createError.value = ''
-  // Doktor uchun avtomatik to'ldirish
   if (!isAdmin.value && doctorId.value) {
     createForm.value.doctor_id = String(doctorId.value)
   } else {
     createForm.value.doctor_id = ''
   }
-  // Bugungi sanani default qilish
   if (!createForm.value.date) {
     createForm.value.date = selectedDate.value || new Date().toISOString().split('T')[0]
   }
@@ -1129,19 +1202,29 @@ const openCompleteModal = (visit) => {
   showCompleteModal.value = true
 }
 
+const openQuickModal = (meta = {}) => {
+  quickSlotMeta.value = {
+    doctorId: meta.doctorId ?? null,
+    date: meta.date || selectedDate.value || new Date().toISOString().split('T')[0],
+    startTime: meta.startTime || '',
+  }
+  showQuickModal.value = true
+}
+
+const closeQuickModal = () => {
+  showQuickModal.value = false
+}
+
+const onQuickAppointmentSaved = async () => {
+  toast.success('Qabul muvaffaqiyatli qo\'shildi')
+  scheduleRefreshKey.value += 1
+  await loadVisits()
+  await patientsStore.fetchPatients()
+}
+
 const handleSchedulePaymentAction = (appointmentId, meta = null) => {
-  // Schedule'dan yangi appointment ochish
   if (!appointmentId) {
-    openCreateModal()
-    if (meta?.doctorId != null) {
-      createForm.value.doctor_id = String(meta.doctorId)
-    }
-    if (meta?.date) {
-      createForm.value.date = meta.date
-    }
-    if (meta?.startTime) {
-      createForm.value.start_time = meta.startTime
-    }
+    openQuickModal(meta)
     return
   }
 
@@ -1641,6 +1724,19 @@ onUnmounted(() => {
 watch([viewMode, selectedDate], () => {
   loadVisits()
 }, { deep: false })
+
+const handleLayoutChange = async (mode) => {
+  if (displayMode.value === mode) return
+  displayMode.value = mode
+  if (mode === 'schedule') {
+    scheduleRefreshKey.value += 1
+    await nextTick()
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'))
+    })
+  }
+}
 
 watch(displayMode, (value) => {
   writeStorage(STORAGE_KEYS.displayMode, value)

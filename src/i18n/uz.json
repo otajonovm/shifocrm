@@ -112,6 +112,10 @@
   "leads": {
     "subtitle": "Bemor so'rovlari: ism, telefon, kelish vaqti"
   },
+  "sidebar": {
+    "collapse": "Menyuni yig'ish",
+    "expand": "Menyuni ochish"
+  },
   "language": {
     "label": "Til",
     "uz": "O'zbekcha",
@@ -1182,7 +1186,11 @@
     "locationUrlPlaceholder": "https://maps.google.com/...",
     "descriptionLabel": "Klinika haqida",
     "descriptionPlaceholder": "Klinika haqida qisqacha ma'lumot",
-    "workingHoursTitle": "Ishlash vaqtlari",
+    "calendarHoursTitle": "Kalendar ish vaqti",
+    "calendarHoursHint": "Qabullar jadvalida faqat shu soatlar oralig'i ko'rinadi (tungi bo'sh qatorlar chiqmaydi).",
+    "calendarStartLabel": "Ish boshlanish vaqti",
+    "calendarEndLabel": "Ish tugash vaqti",
+    "workingHoursTitle": "Haftalik ish jadvali",
     "saveProfile": "Profilni saqlash",
     "saving": "Saqlanmoqda...",
     "profileSaved": "Klinika profili saqlandi",

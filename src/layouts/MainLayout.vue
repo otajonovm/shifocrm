@@ -3,12 +3,17 @@
     <!-- Sidebar -->
     <Sidebar
       :is-open="sidebarOpen"
+      :collapsed="sidebarCollapsed"
       @close="sidebarOpen = false"
       @logout="handleLogout"
+      @toggle-collapse="toggleSidebarCollapse"
     />
 
     <!-- Main Content -->
-    <div class="lg:pl-64">
+    <div
+      class="transition-all duration-300 ease-in-out"
+      :class="sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'"
+    >
       <!-- Header -->
       <header class="sticky top-0 z-30 flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200 sm:px-6 lg:px-8">
         <!-- Left: Mobile menu & Page title -->
@@ -49,7 +54,7 @@
       </header>
 
       <!-- Page Content -->
-      <main class="p-4 sm:p-6 lg:p-8">
+      <main class="p-4 sm:p-6 lg:p-8 overflow-x-hidden max-w-full min-w-0">
         <slot />
       </main>
     </div>
@@ -78,8 +83,16 @@ const route = useRoute()
 const authStore = useAuthStore()
 const { t } = useI18n()
 
+const SIDEBAR_COLLAPSED_KEY = 'shifocrm_sidebar_collapsed'
+
 const sidebarOpen = ref(false)
+const sidebarCollapsed = ref(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true')
 const shifoAIOpen = ref(false)
+
+const toggleSidebarCollapse = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed.value))
+}
 
 const PAGE_ROUTE_KEYS = {
   '/dashboard': 'dashboard',

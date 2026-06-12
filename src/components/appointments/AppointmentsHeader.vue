@@ -1,414 +1,304 @@
 <template>
-  <!-- Desktop: sticky; mobil: oddiy oqim (jadval ustiga chiqmasin) -->
-  <div class="relative z-20 bg-white border-b border-slate-200 lg:sticky lg:top-0 lg:z-30">
-    <div class="px-4 py-4 sm:px-6">
-      <!-- DESKTOP: Single Row Layout -->
-      <div class="hidden lg:flex items-center justify-between gap-4 flex-wrap">
-        <!-- 1. WEEKLY CALENDAR STRIP (Left) -->
-        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0">
-          <button
-            v-for="(day, idx) in weekDays"
-            :key="idx"
-            @click="selectDate(day.date)"
-            :class="[
-              'flex flex-col items-center justify-center px-3 py-2 rounded-lg min-w-max transition-all duration-200 flex-shrink-0',
-              isSelectedDate(day.date)
-                ? 'bg-blue-600 text-white font-semibold scale-105 shadow-md'
-                : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-            ]"
-          >
-            <span class="text-xs font-medium">{{ day.dayName }}</span>
-            <span class="text-sm font-semibold">{{ day.dayNum }}</span>
-          </button>
+  <div class="relative z-30 flex-shrink-0 bg-white border-b border-gray-100">
+    <!-- Ixcham navigatsiya qatori -->
+    <div class="px-3 py-2 sm:px-4 sm:py-2.5 flex items-center gap-2 sm:gap-3 min-h-[44px]">
+      <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-0.5 flex-shrink-0">
+        <button
+          type="button"
+          class="p-1.5 rounded-md text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
+          title="Kecha"
+          aria-label="Kecha"
+          @click="goYesterday"
+        >
+          <ChevronLeftIcon class="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          class="px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white rounded-md transition-colors whitespace-nowrap hidden xs:inline"
+          @click="goYesterday"
+        >
+          Kecha
+        </button>
+        <button
+          type="button"
+          class="px-2 py-1 text-xs font-bold text-primary-700 bg-white rounded-md shadow-sm border border-primary-100 whitespace-nowrap"
+          @click="goToToday"
+        >
+          Bugun
+        </button>
+        <button
+          type="button"
+          class="px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white rounded-md transition-colors whitespace-nowrap hidden xs:inline"
+          @click="goTomorrow"
+        >
+          Erta
+        </button>
+        <button
+          type="button"
+          class="p-1.5 rounded-md text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
+          title="Ertaga"
+          aria-label="Ertaga"
+          @click="goTomorrow"
+        >
+          <ChevronRightIcon class="w-4 h-4" />
+        </button>
+      </div>
+
+      <p class="text-sm font-semibold text-slate-900 truncate min-w-0 flex-1">
+        {{ formatDateLabel(selectedDate) }}
+      </p>
+
+      <!-- Filtrlar (R) — o'ng tepa -->
+      <button
+        type="button"
+        class="relative inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-all duration-300 ease-in-out flex-shrink-0 shadow-sm"
+        :class="isFilterOpen
+          ? 'bg-primary-600 text-white border-primary-600 shadow-primary-200/50'
+          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'"
+        :aria-expanded="isFilterOpen"
+        aria-controls="calendar-filter-panel"
+        @click="toggleFilters"
+      >
+        <FunnelIcon class="w-4 h-4" />
+        <span class="whitespace-nowrap">Filtrlar</span>
+        <kbd
+          class="hidden sm:inline-flex items-center justify-center min-w-[1.25rem] px-1 py-0.5 text-[10px] font-bold rounded border leading-none"
+          :class="isFilterOpen ? 'bg-primary-500 border-primary-400 text-white' : 'bg-slate-100 border-slate-200 text-slate-500'"
+        >
+          R
+        </kbd>
+        <span
+          v-if="activeFilterCount > 0 && !isFilterOpen"
+          class="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white"
+        >
+          {{ activeFilterCount }}
+        </span>
+      </button>
+    </div>
+
+    <!-- Fon qoplami (mobil) -->
+    <Transition
+      enter-active-class="transition-opacity duration-300 ease-in-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-300 ease-in-out"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="isFilterOpen"
+        class="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-[1px] sm:hidden"
+        aria-hidden="true"
+        @click="closeFilters"
+      />
+    </Transition>
+
+    <!-- Suzuvchi filtr paneli -->
+    <Transition
+      enter-active-class="transition-all duration-300 ease-in-out"
+      enter-from-class="opacity-0 -translate-y-2 scale-[0.98]"
+      enter-to-class="opacity-100 translate-y-0 scale-100"
+      leave-active-class="transition-all duration-300 ease-in-out"
+      leave-from-class="opacity-100 translate-y-0 scale-100"
+      leave-to-class="opacity-0 -translate-y-2 scale-[0.98]"
+    >
+      <div
+        v-show="isFilterOpen"
+        id="calendar-filter-panel"
+        class="absolute right-2 sm:right-4 top-full mt-1.5 z-50 w-[min(calc(100vw-1rem),22rem)] origin-top-right rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 ring-1 ring-black/5 overflow-hidden"
+        @click.stop
+      >
+        <div class="px-3 py-2.5 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
+          <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide">Filtrlar</p>
+          <p class="text-[10px] text-slate-400">Yopish: <kbd class="font-mono">R</kbd> yoki <kbd class="font-mono">Esc</kbd></p>
         </div>
 
-        <!-- 2. SEARCH & FILTERS (Center) -->
-        <div class="flex items-center gap-2 flex-1 max-w-2xl">
-          <!-- Search Input -->
-          <div class="relative flex-1">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+        <div class="max-h-[min(70dvh,28rem)] overflow-y-auto overscroll-contain px-3 py-3 space-y-3 filter-scroll">
+          <!-- Qidiruv -->
+          <div class="relative">
+            <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             <input
               :value="searchQuery"
-              @input="emit('search-change', $event.target.value)"
               type="text"
               placeholder="Bemor ismi, telefon..."
-              class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              class="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-200"
+              @input="emit('search-change', $event.target.value)"
             />
           </div>
 
-          <!-- Status Filter -->
-          <select
-            :value="selectedStatus"
-            @change="emit('status-change', $event.target.value)"
-            class="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
-          >
-            <option value="">Barcha</option>
-            <option v-for="status in statuses" :key="status.value" :value="status.value">
-              {{ status.label }}
-            </option>
-          </select>
-        </div>
-
-        <!-- 3. CONTROLS BLOCK (Right) -->
-        <div class="flex items-center gap-3 flex-shrink-0">
-          <!-- Navigation + View Mode Segmented Control -->
-          <div class="inline-flex items-center gap-2 bg-slate-100 rounded-lg p-1">
-            <button
-              @click="navigateDate(-1)"
-              class="p-1.5 hover:bg-slate-200 rounded transition-colors"
-              title="Oldingi"
-            >
-              <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button
-              @click="goToToday"
-              class="px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded transition-colors"
-            >
-              Bugun
-            </button>
-            <button
-              @click="navigateDate(1)"
-              class="p-1.5 hover:bg-slate-200 rounded transition-colors"
-              title="Keyingi"
-            >
-              <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-
-          <!-- View Mode Toggle: Day/Week/Month -->
-          <div class="inline-flex gap-1.5 bg-slate-100 rounded-lg p-1">
-            <button
-              @click="emit('view-change', 'day')"
-              :class="[
-                'px-2 py-1 text-xs font-semibold rounded transition-all',
-                viewMode === 'day'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:bg-white hover:bg-opacity-50'
-              ]"
-            >
-              Kun
-            </button>
-            <button
-              @click="emit('view-change', 'week')"
-              :class="[
-                'px-2 py-1 text-xs font-semibold rounded transition-all',
-                viewMode === 'week'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:bg-white hover:bg-opacity-50'
-              ]"
-            >
-              Hafta
-            </button>
-            <button
-              @click="emit('view-change', 'month')"
-              :class="[
-                'px-2 py-1 text-xs font-semibold rounded transition-all',
-                viewMode === 'month'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:bg-white hover:bg-opacity-50'
-              ]"
-            >
-              Oy
-            </button>
-          </div>
-
-          <!-- Layout Toggle: List/Schedule -->
-          <div class="inline-flex gap-1.5 bg-slate-100 rounded-lg p-1">
-            <button
-              @click="emit('layout-change', 'list')"
-              :class="[
-                'px-2 py-1 text-xs font-semibold rounded transition-all',
-                layout === 'list'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:bg-white hover:bg-opacity-50'
-              ]"
-            >
-              Ro'yxat
-            </button>
-            <button
-              @click="emit('layout-change', 'schedule')"
-              :class="[
-                'px-2 py-1 text-xs font-semibold rounded transition-all',
-                layout === 'schedule'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:bg-white hover:bg-opacity-50'
-              ]"
-            >
-              Jadval
-            </button>
-          </div>
-
-          <!-- Doctors Filter Chips (small) -->
-          <div class="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-xs">
-            <button
-              @click="emit('doctor-change', '')"
-              :class="[
-                'px-2 py-1 text-xs font-medium rounded-full transition-all flex-shrink-0',
-                selectedDoctorId === ''
-                  ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              ]"
-            >
-              Barcha
-            </button>
-            <button
-              v-for="doctor in doctors"
-              :key="doctor.id"
-              @click="emit('doctor-change', doctor.id)"
-              :class="[
-                'px-2 py-1 text-xs font-medium rounded-full transition-all whitespace-nowrap flex-shrink-0',
-                selectedDoctorId === doctor.id
-                  ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              ]"
-            >
-              {{ doctor.full_name?.split(' ')[0] || 'Dr.' }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- MOBILE: Collapsible Filters -->
-      <div class="lg:hidden space-y-3">
-        <!-- Mobile Top Bar -->
-        <div class="flex items-center justify-between">
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-slate-900">
-              {{ formatDateMobile(selectedDate) }}
-            </p>
-          </div>
-          <button
-            @click="isMobileMenuOpen = !isMobileMenuOpen"
-            class="inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors text-sm font-medium text-slate-700"
-          >
-            <svg v-if="!isMobileMenuOpen" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span>{{ isMobileMenuOpen ? 'Yopish' : 'Filtrlash' }}</span>
-          </button>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- Mobil filtrlar: alohida panel (jadval ustiga chiqmasin) -->
-  <Teleport to="body">
-    <Transition name="fade">
-      <div
-        v-if="isMobileMenuOpen"
-        class="fixed inset-0 z-40 lg:hidden"
-        aria-modal="true"
-        role="dialog"
-      >
-        <div
-          class="absolute inset-0 bg-black/40"
-          @click="closeMobileMenu"
-        />
-        <div class="absolute inset-x-0 top-16 bottom-0 bg-white shadow-xl flex flex-col">
-          <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 flex-shrink-0">
-            <p class="text-sm font-semibold text-slate-900">Filtrlash</p>
-            <button
-              type="button"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg"
-              @click="closeMobileMenu"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Yopish
-            </button>
-          </div>
-
-          <div class="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
-            <!-- Search Input -->
-            <div class="relative">
-              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                :value="searchQuery"
-                @input="emit('search-change', $event.target.value)"
-                type="text"
-                placeholder="Bemor ismi, telefon..."
-                class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              />
-            </div>
-
-            <!-- Status Filter -->
+          <!-- Status -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Status</label>
             <select
               :value="selectedStatus"
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 outline-none"
               @change="emit('status-change', $event.target.value)"
-              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
             >
               <option value="">Barcha statuslar</option>
               <option v-for="status in statuses" :key="status.value" :value="status.value">
                 {{ status.label }}
               </option>
             </select>
+          </div>
 
-            <!-- Weekly Calendar Strip -->
-            <div class="overflow-x-auto no-scrollbar -mx-1 px-1">
-              <div class="flex gap-2 pb-1">
+          <!-- Shifokor -->
+          <div v-if="doctors.length">
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Shifokor</label>
+            <select
+              :value="String(selectedDoctorId || '')"
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+              @change="emit('doctor-change', $event.target.value)"
+            >
+              <option value="">Barcha shifokorlar</option>
+              <option v-for="doctor in doctors" :key="doctor.id" :value="String(doctor.id)">
+                {{ doctor.full_name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Xizmat turi -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Xizmat turi</label>
+            <select
+              :value="selectedService"
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+              @change="emit('service-change', $event.target.value)"
+            >
+              <option value="">Barcha xizmatlar</option>
+              <option v-for="service in services" :key="service" :value="service">
+                {{ service }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Daqiqa ko'rsatkichi -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Qabul davomiyligi (daqiqa)</label>
+            <select
+              :value="String(selectedDuration || '')"
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+              @change="emit('duration-change', $event.target.value ? Number($event.target.value) : '')"
+            >
+              <option value="">Barcha davomiyliklar</option>
+              <option v-for="min in durationOptions" :key="min" :value="String(min)">
+                {{ min }} daqiqa
+              </option>
+            </select>
+          </div>
+
+          <!-- Hafta stripi -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Kun tanlash</label>
+            <div class="overflow-x-auto filter-scroll -mx-0.5 px-0.5">
+              <div class="flex gap-1.5 pb-0.5">
                 <button
                   v-for="(day, idx) in weekDays"
                   :key="idx"
+                  type="button"
+                  class="flex flex-col items-center justify-center px-2.5 py-1.5 rounded-lg min-w-[3rem] transition-all duration-200 flex-shrink-0"
+                  :class="isSelectedDate(day.date)
+                    ? 'bg-primary-600 text-white font-semibold shadow-sm'
+                    : 'bg-slate-50 text-slate-600 border border-slate-200 hover:border-slate-300'"
                   @click="selectDate(day.date)"
-                  :class="[
-                    'flex flex-col items-center justify-center px-3 py-2 rounded-lg min-w-max transition-all duration-200 flex-shrink-0',
-                    isSelectedDate(day.date)
-                      ? 'bg-blue-600 text-white font-semibold shadow-md'
-                      : 'bg-slate-50 text-slate-600'
-                  ]"
                 >
-                  <span class="text-xs font-medium">{{ day.dayName }}</span>
-                  <span class="text-sm font-semibold">{{ day.dayNum }}</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Navigation -->
-            <div class="flex items-center justify-center gap-2 bg-slate-100 rounded-lg p-2">
-              <button type="button" @click="navigateDate(-1)" class="p-1.5 hover:bg-slate-200 rounded transition-colors">
-                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <button type="button" @click="goToToday" class="px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded transition-colors">
-                Bugun
-              </button>
-              <button type="button" @click="navigateDate(1)" class="p-1.5 hover:bg-slate-200 rounded transition-colors">
-                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-
-            <!-- View Mode -->
-            <div class="space-y-2">
-              <div class="text-xs font-semibold text-slate-600 px-1">Davr</div>
-              <div class="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  @click="emit('view-change', 'day')"
-                  :class="viewModeBtnClass('day')"
-                >
-                  Kun
-                </button>
-                <button
-                  type="button"
-                  @click="emit('view-change', 'week')"
-                  :class="viewModeBtnClass('week')"
-                >
-                  Hafta
-                </button>
-                <button
-                  type="button"
-                  @click="emit('view-change', 'month')"
-                  :class="viewModeBtnClass('month')"
-                >
-                  Oy
-                </button>
-              </div>
-            </div>
-
-            <!-- Layout -->
-            <div class="space-y-2">
-              <div class="text-xs font-semibold text-slate-600 px-1">Ko'rinish</div>
-              <div class="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  @click="emit('layout-change', 'list')"
-                  :class="layoutBtnClass('list')"
-                >
-                  Ro'yxat
-                </button>
-                <button
-                  type="button"
-                  @click="emit('layout-change', 'schedule')"
-                  :class="layoutBtnClass('schedule')"
-                >
-                  Jadval
-                </button>
-              </div>
-            </div>
-
-            <!-- Doctors -->
-            <div v-if="doctors.length" class="space-y-2 pb-2">
-              <div class="text-xs font-semibold text-slate-600 px-1">Shifokor</div>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  @click="emit('doctor-change', '')"
-                  :class="doctorBtnClass('')"
-                >
-                  Hammasi
-                </button>
-                <button
-                  v-for="doctor in doctors"
-                  :key="doctor.id"
-                  type="button"
-                  @click="emit('doctor-change', doctor.id)"
-                  :class="doctorBtnClass(doctor.id)"
-                >
-                  {{ doctor.full_name?.split(' ')[0] || 'Dr.' }}
+                  <span class="text-[10px] font-medium leading-none">{{ day.dayName }}</span>
+                  <span class="text-sm font-bold leading-tight">{{ day.dayNum }}</span>
                 </button>
               </div>
             </div>
           </div>
+
+          <!-- Ko'rinish -->
+          <div class="pt-1 border-t border-slate-100">
+            <p class="text-xs font-semibold text-slate-500 mb-1.5">Ko'rinish</p>
+            <div class="inline-flex gap-0.5 bg-slate-50 border border-slate-200 rounded-lg p-0.5 w-full">
+              <button
+                type="button"
+                class="flex-1 px-1.5 py-1.5 text-[11px] font-semibold rounded-md transition-all duration-200"
+                :class="layout === 'list' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white'"
+                @click="switchLayout('list')"
+              >
+                Ro'yxat
+              </button>
+              <button
+                type="button"
+                class="flex-1 px-1.5 py-1.5 text-[11px] font-semibold rounded-md transition-all duration-200"
+                :class="layout === 'schedule' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white'"
+                @click="switchLayout('schedule')"
+              >
+                Jadval
+              </button>
+            </div>
+          </div>
+
+          <button
+            v-if="activeFilterCount > 0"
+            type="button"
+            class="w-full py-2 text-xs font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-dashed border-slate-200 transition-colors duration-200"
+            @click="clearAllFilters"
+          >
+            Filtrlarni tozalash
+          </button>
         </div>
       </div>
     </Transition>
-  </Teleport>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon,
+} from '@heroicons/vue/24/outline'
 
 const props = defineProps({
   selectedDate: {
     type: String,
-    required: true
+    required: true,
   },
   searchQuery: {
     type: String,
-    default: ''
+    default: '',
   },
   viewMode: {
     type: String,
-    enum: ['day', 'week', 'month'],
-    default: 'week'
+    default: 'day',
   },
   layout: {
     type: String,
-    enum: ['list', 'schedule'],
-    default: 'list'
+    default: 'schedule',
   },
   selectedDoctorId: {
     type: [String, Number],
-    default: ''
+    default: '',
   },
   selectedStatus: {
     type: String,
-    default: ''
+    default: '',
+  },
+  selectedService: {
+    type: String,
+    default: '',
+  },
+  selectedDuration: {
+    type: [String, Number],
+    default: '',
   },
   doctors: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   statuses: {
     type: Array,
-    default: () => []
-  }
+    default: () => [],
+  },
+  services: {
+    type: Array,
+    default: () => [],
+  },
 })
 
 const emit = defineEmits([
@@ -417,145 +307,134 @@ const emit = defineEmits([
   'view-change',
   'layout-change',
   'doctor-change',
-  'status-change'
+  'status-change',
+  'service-change',
+  'duration-change',
+  'clear-filters',
 ])
 
-const isMobileMenuOpen = ref(false)
+const isFilterOpen = ref(false)
 
-const closeMobileMenu = () => {
-  isMobileMenuOpen.value = false
-}
+const durationOptions = [15, 30, 45, 60, 90, 120]
 
-watch(isMobileMenuOpen, (open) => {
-  if (typeof document === 'undefined') return
-  document.body.classList.toggle('modal-open', open)
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (props.searchQuery?.trim()) count += 1
+  if (props.selectedStatus) count += 1
+  if (props.selectedDoctorId) count += 1
+  if (props.selectedService) count += 1
+  if (props.selectedDuration) count += 1
+  return count
 })
 
-onUnmounted(() => {
-  if (typeof document !== 'undefined') {
-    document.body.classList.remove('modal-open')
-  }
-})
-
-const viewModeBtnClass = (mode) => [
-  'px-2 py-2 text-xs font-semibold rounded transition-all',
-  props.viewMode === mode
-    ? 'bg-blue-100 text-blue-700 border border-blue-300'
-    : 'bg-slate-100 text-slate-600',
-]
-
-const layoutBtnClass = (mode) => [
-  'px-2 py-2 text-xs font-semibold rounded transition-all',
-  props.layout === mode
-    ? 'bg-blue-100 text-blue-700 border border-blue-300'
-    : 'bg-slate-100 text-slate-600',
-]
-
-const doctorBtnClass = (id) => [
-  'px-2.5 py-1 text-xs font-medium rounded-full transition-all',
-  props.selectedDoctorId === id
-    ? 'bg-blue-100 text-blue-700 border border-blue-200'
-    : 'bg-slate-100 text-slate-600',
-]
-
-// Generate weekly calendar strip
 const weekDays = computed(() => {
   const current = new Date(props.selectedDate)
-  if (isNaN(current.getTime())) return []
+  if (Number.isNaN(current.getTime())) return []
 
   const days = []
   for (let i = -2; i <= 4; i++) {
     const date = new Date(current)
     date.setDate(date.getDate() + i)
-
-    const dayNum = String(date.getDate()).padStart(2, '0')
-    const dayName = ['YAK', 'DSH', 'SSH', 'CHSH', 'PYH', 'JMH', 'SHH'][date.getDay()]
-    const isoDate = date.toISOString().split('T')[0]
-
     days.push({
-      date: isoDate,
-      dayNum,
-      dayName
+      date: date.toISOString().split('T')[0],
+      dayNum: String(date.getDate()).padStart(2, '0'),
+      dayName: ['YAK', 'DSH', 'SSH', 'CHSH', 'PYH', 'JMH', 'SHH'][date.getDay()],
     })
   }
   return days
 })
 
-// Check if date is selected
-const isSelectedDate = (date) => {
-  return date === props.selectedDate
+const toggleFilters = () => {
+  isFilterOpen.value = !isFilterOpen.value
 }
 
-// Select specific date
+const closeFilters = () => {
+  isFilterOpen.value = false
+}
+
+const switchLayout = (mode) => {
+  if (mode === props.layout) return
+  closeFilters()
+  emit('layout-change', mode)
+}
+
+watch(() => props.layout, () => {
+  closeFilters()
+})
+
+const clearAllFilters = () => {
+  emit('clear-filters')
+}
+
+const isSelectedDate = (date) => date === props.selectedDate
+
 const selectDate = (date) => {
   emit('date-change', date)
-  closeMobileMenu()
 }
 
-// Navigate dates
-const navigateDate = (direction) => {
+const shiftDate = (days) => {
   const current = new Date(props.selectedDate)
-  if (isNaN(current.getTime())) return
-
-  const shift = direction * (props.viewMode === 'month' ? 30 : 1)
-  current.setDate(current.getDate() + shift)
-
-  const isoDate = current.toISOString().split('T')[0]
-  emit('date-change', isoDate)
+  if (Number.isNaN(current.getTime())) return
+  current.setDate(current.getDate() + days)
+  emit('date-change', current.toISOString().split('T')[0])
 }
 
-// Go to today
+const goYesterday = () => shiftDate(-1)
+const goTomorrow = () => shiftDate(1)
+
 const goToToday = () => {
-  const today = new Date().toISOString().split('T')[0]
-  emit('date-change', today)
+  emit('date-change', new Date().toISOString().split('T')[0])
 }
 
-// Format date for mobile header
-const formatDateMobile = (dateStr) => {
+const formatDateLabel = (dateStr) => {
   if (!dateStr) return ''
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return dateStr
+  const date = new Date(`${dateStr}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return dateStr
 
-  const dayNames = ['Yak', 'DSH', 'SSH', 'CHSH', 'PYH', 'JMH', 'SHH']
-  const monthNames = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek']
-
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = monthNames[date.getMonth()]
-  const year = date.getFullYear()
-  const dayName = dayNames[date.getDay()]
-
-  return `${year}-yil ${day}-${month}, ${dayName}`
+  const dayNames = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba']
+  const monthNames = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
+  return `${date.getDate()}-${monthNames[date.getMonth()]} ${date.getFullYear()}, ${dayNames[date.getDay()]}`
 }
+
+const shouldIgnoreHotkey = (event) => {
+  const tag = event.target?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+  if (event.target?.isContentEditable) return true
+  if (event.ctrlKey || event.metaKey || event.altKey) return true
+  return false
+}
+
+const handleKeyPress = (event) => {
+  if (event.key === 'Escape' && isFilterOpen.value) {
+    event.preventDefault()
+    closeFilters()
+    return
+  }
+
+  if (event.key !== 'r' && event.key !== 'R') return
+  if (shouldIgnoreHotkey(event)) return
+
+  event.preventDefault()
+  isFilterOpen.value = !isFilterOpen.value
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyPress)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyPress)
+})
 </script>
 
 <style scoped>
-/* Hide scrollbar but keep functionality */
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.filter-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-/* Focus styles */
-input:focus {
-  outline: none;
-}
-
-/* Smooth transitions */
-button {
-  transition: all 0.2s ease;
+.filter-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
 }
 </style>

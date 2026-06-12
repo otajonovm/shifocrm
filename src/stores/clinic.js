@@ -6,14 +6,28 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
+import {
+  DEFAULT_CALENDAR_END,
+  DEFAULT_CALENDAR_START,
+  normalizeCalendarTime,
+} from '@/lib/clinicCalendarHours'
+
 const STORAGE_KEY_LOGO = 'shifocrm_clinic_logo'
 const STORAGE_KEY_NAME = 'shifocrm_clinic_name'
+const STORAGE_KEY_CALENDAR_START = 'shifocrm_calendar_start'
+const STORAGE_KEY_CALENDAR_END = 'shifocrm_calendar_end'
 const DEFAULT_LOGO = '/logo.jpg'
 const DEFAULT_NAME = 'SHIFOCRM'
 
 export const useClinicStore = defineStore('clinic', () => {
   const logoUrl = ref(localStorage.getItem(STORAGE_KEY_LOGO) || DEFAULT_LOGO)
   const clinicName = ref(localStorage.getItem(STORAGE_KEY_NAME) || '')
+  const calendarStartTime = ref(
+    normalizeCalendarTime(localStorage.getItem(STORAGE_KEY_CALENDAR_START) || DEFAULT_CALENDAR_START)
+  )
+  const calendarEndTime = ref(
+    normalizeCalendarTime(localStorage.getItem(STORAGE_KEY_CALENDAR_END) || DEFAULT_CALENDAR_END)
+  )
 
   const isCustomLogo = computed(() => {
     const v = localStorage.getItem(STORAGE_KEY_LOGO)
@@ -57,9 +71,33 @@ export const useClinicStore = defineStore('clinic', () => {
     return localStorage.getItem(STORAGE_KEY_NAME) || ''
   }
 
+  function setCalendarHours(start, end) {
+    const startNorm = normalizeCalendarTime(start) || DEFAULT_CALENDAR_START
+    const endNorm = normalizeCalendarTime(end) || DEFAULT_CALENDAR_END
+    localStorage.setItem(STORAGE_KEY_CALENDAR_START, startNorm)
+    localStorage.setItem(STORAGE_KEY_CALENDAR_END, endNorm)
+    calendarStartTime.value = startNorm
+    calendarEndTime.value = endNorm
+  }
+
+  function loadCalendarFromWorkSchedule(workSchedule) {
+    if (!workSchedule || typeof workSchedule !== 'object') return
+    const start = workSchedule.calendar_start || workSchedule.calendarStart
+    const end = workSchedule.calendar_end || workSchedule.calendarEnd
+    if (start || end) {
+      setCalendarHours(start || calendarStartTime.value, end || calendarEndTime.value)
+    }
+  }
+
   function initFromStorage() {
     logoUrl.value = getLogoUrl()
     clinicName.value = getClinicName()
+    calendarStartTime.value = normalizeCalendarTime(
+      localStorage.getItem(STORAGE_KEY_CALENDAR_START) || DEFAULT_CALENDAR_START
+    )
+    calendarEndTime.value = normalizeCalendarTime(
+      localStorage.getItem(STORAGE_KEY_CALENDAR_END) || DEFAULT_CALENDAR_END
+    )
   }
 
   async function loadFromClinicId(clinicId) {
@@ -71,6 +109,7 @@ export const useClinicStore = defineStore('clinic', () => {
       if (!clinic) return
       if (clinic.name) setClinicName(clinic.name)
       if (clinic.logo_url) setLogo(clinic.logo_url)
+      loadCalendarFromWorkSchedule(clinic.work_schedule)
     } catch {
       // Klinika ma'lumotlari ixtiyoriy — default nom qoladi
     }
@@ -90,7 +129,11 @@ export const useClinicStore = defineStore('clinic', () => {
     getClinicName,
     initFromStorage,
     loadFromClinicId,
+    calendarStartTime,
+    calendarEndTime,
+    setCalendarHours,
+    loadCalendarFromWorkSchedule,
     defaultLogo: DEFAULT_LOGO,
-    defaultName: DEFAULT_NAME
+    defaultName: DEFAULT_NAME,
   }
 })

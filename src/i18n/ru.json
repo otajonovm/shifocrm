@@ -112,6 +112,10 @@
   "leads": {
     "subtitle": "Заявки пациентов: имя, телефон, время визита"
   },
+  "sidebar": {
+    "collapse": "Свернуть меню",
+    "expand": "Развернуть меню"
+  },
   "language": {
     "label": "Язык",
     "uz": "O'zbekcha",
@@ -1153,7 +1157,11 @@
     "locationUrlPlaceholder": "https://maps.google.com/...",
     "descriptionLabel": "О клинике",
     "descriptionPlaceholder": "Краткая информация о клинике",
-    "workingHoursTitle": "Часы работы",
+    "calendarHoursTitle": "Время работы календаря",
+    "calendarHoursHint": "В расписании приёмов отображается только этот интервал (без ночных строк).",
+    "calendarStartLabel": "Начало рабочего дня",
+    "calendarEndLabel": "Конец рабочего дня",
+    "workingHoursTitle": "Недельный график",
     "saveProfile": "Сохранить профиль",
     "saving": "Сохранение...",
     "profileSaved": "Профиль клиники сохранён",

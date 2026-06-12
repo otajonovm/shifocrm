@@ -20,16 +20,16 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 const props = defineProps({
   showText: {
     type: Boolean,
-    default: true
+    default: true,
   },
-  startHour: {
+  startMinutes: {
     type: Number,
-    default: 9
+    default: 9 * 60,
   },
-  endHour: {
+  endMinutes: {
     type: Number,
-    default: 18
-  }
+    default: 18 * 60,
+  },
 })
 
 const currentTime = ref(new Date())
@@ -40,33 +40,23 @@ const currentTimeText = computed(() => {
   return `${h}:${m}`
 })
 
-const totalMinutes = computed(() => {
-  return (props.endHour - props.startHour) * 60
-})
+const totalMinutes = computed(() => Math.max(30, props.endMinutes - props.startMinutes))
 
 const currentMinutes = computed(() => {
   const now = currentTime.value
-  const hour = now.getHours()
-  const minute = now.getMinutes()
-
-  // Convert current time to minutes from start of day
-  const nowMinutes = hour * 60 + minute
-  const startMinutes = props.startHour * 60
-
-  // Calculate how many minutes into the working hours
-  const minutesIntoCurrent = nowMinutes - startMinutes
-
-  // Clamp between 0 and totalMinutes
-  return Math.max(0, Math.min(minutesIntoCurrent, totalMinutes.value))
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const minutesIntoRange = nowMinutes - props.startMinutes
+  return Math.max(0, Math.min(minutesIntoRange, totalMinutes.value))
 })
 
 const positionPercent = computed(() => {
+  if (!totalMinutes.value) return '0%'
   return `${(currentMinutes.value / totalMinutes.value) * 100}%`
 })
 
 const isVisible = computed(() => {
-  const hour = currentTime.value.getHours()
-  return hour >= props.startHour && hour < props.endHour
+  const nowMinutes = currentTime.value.getHours() * 60 + currentTime.value.getMinutes()
+  return nowMinutes >= props.startMinutes && nowMinutes < props.endMinutes
 })
 
 const updateTime = () => {
@@ -76,13 +66,10 @@ const updateTime = () => {
 let interval
 onMounted(() => {
   updateTime()
-  interval = setInterval(updateTime, 60000) // Update har 1 minutda
+  interval = setInterval(updateTime, 60000)
 })
 
 onUnmounted(() => {
   clearInterval(interval)
 })
 </script>
-
-<style scoped>
-</style>

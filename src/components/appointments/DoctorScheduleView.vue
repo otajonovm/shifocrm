@@ -1,63 +1,9 @@
 <template>
-  <div class="doctor-schedule-container w-full space-y-4">
-    <!-- Schedule grid - Day view (Dentist+ style) -->
-    <div v-if="selectedViewMode === 'day'" class="bg-white overflow-hidden flex flex-col w-full max-w-none min-h-[360px] h-[calc(100dvh-11rem)] sm:h-[calc(100dvh-14rem)] lg:h-[calc(100vh-250px)] lg:min-h-[500px]">
-      <!-- Toolbar -->
-      <div class="px-4 sm:px-6 lg:px-8 py-4 bg-gradient-to-r from-slate-50 to-blue-50/60 flex items-center justify-between flex-wrap gap-3">
-        <!-- Doctor Filter with Multi-select -->
-        <div v-if="isAdmin" class="flex items-center gap-2">
-          <label class="text-sm font-medium text-gray-700">Shifokorlar:</label>
-          <div class="relative" ref="doctorDropdownRef">
-            <button
-              @click="showDoctorDropdown = !showDoctorDropdown"
-              class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm bg-white flex items-center gap-2 min-w-[200px]"
-            >
-              <span v-if="selectedDoctorIds.length === 0" class="text-gray-500">Hammasi</span>
-              <span v-else-if="selectedDoctorIds.length === visibleDoctors.length" class="text-gray-900">Hammasi tanlangan</span>
-              <span v-else class="text-gray-900">{{ selectedDoctorIds.length }} ta tanlangan</span>
-              <svg class="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            <!-- Dropdown -->
-            <div
-              v-if="showDoctorDropdown"
-              class="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[250px]"
-            >
-              <div class="p-2 border-b border-gray-200 flex gap-2">
-                <button
-                  @click="selectAllDoctors"
-                  class="px-2 py-1 text-xs text-primary-600 hover:bg-primary-50 rounded"
-                >
-                  Hammasini tanlash
-                </button>
-                <button
-                  @click="clearDoctorSelection"
-                  class="px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 rounded"
-                >
-                  Tozalash
-                </button>
-              </div>
-              <div class="max-h-60 overflow-y-auto p-2">
-                <label
-                  v-for="doctor in visibleDoctors"
-                  :key="doctor.id"
-                  class="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 rounded cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    :value="doctor.id"
-                    v-model="selectedDoctorIds"
-                    class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  />
-                  <span class="text-sm">{{ doctor.full_name }}</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
+  <div class="doctor-schedule-container w-full h-full max-w-full min-w-0 overflow-hidden flex flex-col">
+    <!-- Kunlik shifokor ustunlari jadvali -->
+    <div class="bg-white overflow-hidden flex flex-col flex-1 w-full min-h-0 h-full">
+      <!-- Toolbar (ixcham, soyasiz) -->
+      <div class="px-2 sm:px-3 py-2 bg-white flex items-center justify-between flex-wrap gap-2 border-b border-gray-100 flex-shrink-0">
         <div
           v-if="clickMoveAppointment"
           class="w-full rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-800 animate-fade-in"
@@ -77,7 +23,7 @@
         <!-- New Appointment Button -->
         <button
           @click="openNewAppointmentModal(null, null)"
-          class="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-primary-500 to-cyan-600 px-3 py-2 text-white transition-all hover:from-primary-600 hover:to-cyan-700 sm:px-4"
+          class="inline-flex items-center justify-center gap-2 bg-primary-600 px-3 py-1.5 text-white transition-colors hover:bg-primary-700 sm:px-4"
           aria-label="Yangi uchrashuv"
         >
           <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -87,65 +33,75 @@
         </button>
       </div>
 
-      <!-- Schedule Canvas -->
-      <div class="flex-1 overflow-auto relative bg-white" ref="scheduleCanvasRef">
-        <div class="day-grid flex w-full min-w-full">
+      <!-- Schedule Canvas: vertikal scroll tashqi, gorizontal scroll faqat jadvalda -->
+      <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative bg-white" ref="scheduleCanvasRef">
+        <div class="w-full min-w-full h-full overflow-x-auto touch-pan-x overscroll-x-contain">
+          <div class="day-grid flex w-full min-w-full h-full">
           <!-- Left: Time column (sticky) -->
-          <div class="bg-slate-50 time-column flex-shrink-0 sticky left-0 z-40 pl-2 sm:pl-3 border-r border-slate-200" :class="timeColumnWidth">
-            <!-- Empty space for top-left intersection to align with doctor headers (compact) -->
-            <div class="sticky top-0 z-50 bg-slate-50 h-[48px] sm:h-[56px] border-b border-slate-200"></div>
+          <div class="bg-gray-50/80 time-column flex-shrink-0 sticky left-0 z-40 pl-2 sm:pl-3 border-r border-gray-100" :class="timeColumnWidth">
+            <div class="sticky top-0 z-50 bg-gray-50/95 h-[44px] sm:h-[48px] border-b border-gray-100"></div>
 
             <div
-              v-for="hour in hours"
-              :key="hour.key"
-              class="flex items-center justify-end pr-2 sm:pr-3 text-xs sm:text-sm font-bold text-slate-700 bg-slate-50 select-none border-b border-slate-200 font-mono tabular-nums leading-none"
+              v-for="slot in timeSlots"
+              :key="slot.key"
+              class="flex items-center justify-end pr-2 sm:pr-3 select-none border-b border-gray-100 font-mono tabular-nums leading-none"
+              :class="slot.isHalfHour
+                ? 'text-[10px] sm:text-xs font-medium text-gray-400 bg-gray-50/60'
+                : 'text-xs sm:text-sm font-semibold text-gray-600 bg-gray-50/80'"
               :style="{ height: slotHeightPx + 'px', minHeight: slotHeightPx + 'px' }"
             >
-              {{ hour.display }}
+              {{ slot.display }}
             </div>
           </div>
 
-          <!-- Right: Doctor columns — soniga qarab teng kenglik -->
-          <div class="flex flex-1 min-w-0 w-full">
+          <!-- Right: Doctor columns — ekranga teng taqsimlanadi, ko'p bo'lsa gorizontal scroll -->
+          <div class="flex flex-1 min-w-0 w-full h-full">
             <div
-              v-for="(doctor, docIdx) in displayedDoctors"
+              v-for="(doctor, docIdx) in activeDoctors"
               :key="doctor.id"
-              class="relative border-r border-slate-200 flex-1 basis-0 min-w-0"
-              :style="doctorColumnStyle"
+              class="doctor-column relative border-r border-gray-100 flex-1 basis-0 min-w-[8rem] sm:min-w-[10rem] lg:min-w-[11rem]"
             >
-              <!-- Doctor header (sticky top) -->
-              <div class="sticky top-0 z-30 bg-white/95 backdrop-blur px-3 py-2 shadow-sm h-[48px] sm:h-[56px] flex items-center gap-2 border-b border-slate-200">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-cyan-500 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-sm">
-                  {{ doctor.full_name ? doctor.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'DR' }}
+              <!-- Shifokor sarlavhasi -->
+              <div class="sticky top-0 z-30 bg-white px-2 sm:px-3 py-2 min-h-[52px] sm:min-h-[56px] flex items-center gap-2 border-b border-gray-100">
+                <div class="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                  {{ doctorInitials(doctor) }}
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="text-xs sm:text-sm font-bold text-slate-800 truncate" :title="doctor.full_name">{{ doctor.full_name }}</div>
-                  <div class="text-[10px] text-slate-500 font-semibold truncate">{{ doctor.specialization || 'Shifokor' }}</div>
+                  <div class="text-[10px] sm:text-xs text-slate-500 font-medium truncate">{{ doctor.specialization || 'Shifokor' }}</div>
                 </div>
+                <span
+                  class="flex-shrink-0 inline-flex items-center justify-center min-w-[1.35rem] h-5 px-1.5 rounded-full text-[10px] font-bold"
+                  :class="getAppointmentsForDoctor(doctor.id).length > 0
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-slate-100 text-slate-500'"
+                  :title="`Bugun: ${getAppointmentsForDoctor(doctor.id).length} bemor`"
+                >
+                  {{ getAppointmentsForDoctor(doctor.id).length }}
+                </span>
               </div>
 
               <!-- Time slots area -->
               <div class="relative">
                 <!-- Background grid (clickable) -->
                 <div
-                  v-for="hour in hours"
-                  :key="`bg-${doctor.id}-${hour.time}`"
-                  class="border-b border-slate-200 cursor-pointer transition-all duration-150"
-                  :class="isDropTarget(doctor.id, hour.time)
-                    ? 'bg-primary-50/80 ring-2 ring-inset ring-primary-400'
-                    : 'bg-white hover:bg-slate-50 active:bg-blue-50/50'"
+                  v-for="slot in timeSlots"
+                  :key="`bg-${doctor.id}-${slot.time}`"
+                  class="border-b border-gray-100 cursor-pointer transition-colors duration-150"
+                  :class="isDropTarget(doctor.id, slot.time)
+                    ? 'bg-primary-50/60'
+                    : slot.isHalfHour ? 'bg-white hover:bg-slate-50/70' : 'bg-white hover:bg-gray-50/80'"
                   :style="{ height: slotHeightPx + 'px' }"
-                  :title="`${doctor.full_name} — ${hour.time}`"
-                  @dragover.prevent="onDragOver($event, doctor.id, hour.time)"
-                  @dragleave="onDragLeave($event, doctor.id, hour.time)"
-                  @drop.prevent="onDrop($event, doctor.id, hour.time)"
-                  @click="handleSlotClick(doctor.id, hour.time)"
+                  :title="`${doctor.full_name} — ${slot.time}`"
+                  @dragover.prevent="onDragOver($event, doctor.id, slot.time)"
+                  @dragleave="onDragLeave($event, doctor.id, slot.time)"
+                  @drop.prevent="onDrop($event, doctor.id, slot.time)"
+                  @click="handleSlotClick(doctor.id, slot.time)"
                 />
 
-                <!-- Current time indicator: Only show text on the first doctor, or just use a horizontal line spanning everything -->
                 <CurrentTimeIndicator
-                  :start-hour="0"
-                  :end-hour="24"
+                  :start-minutes="dayStartMinutes"
+                  :end-minutes="dayEndMinutes"
                   :show-text="docIdx === 0"
                   class="absolute left-0 right-0 z-20 pointer-events-none"
                 />
@@ -155,7 +111,7 @@
                 <div
                   v-for="appt in getAppointmentsForDoctor(doctor.id)"
                   :key="appt.id"
-                  class="absolute left-2 right-2 pointer-events-auto transition-opacity duration-150"
+                  class="absolute inset-x-0.5 pointer-events-auto transition-opacity duration-150 w-[calc(100%-0.25rem)]"
                   :class="isDraggingId === appt.id ? 'z-40' : 'z-10'"
                   :style="getAppointmentStyle(appt)"
                   draggable="true"
@@ -165,6 +121,7 @@
                   <AppointmentBlock
                     :appointment="appt"
                     :slot-height-px="slotHeightPx"
+                    :slot-minutes="SLOT_MINUTES"
                     :positioned-by-parent="true"
                     :move-select-active="clickMoveAppointment?.id === appt.id"
                     :is-dragging="isDraggingId === appt.id"
@@ -181,111 +138,11 @@
         </div>
         </div>
       </div>
-    </div>
-
-    <!-- Schedule grid - Week view -->
-    <div v-else-if="selectedViewMode === 'week'" class="bg-white overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead>
-            <tr class="border-b border-gray-200">
-              <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900 bg-gray-50 w-32">{{ t('appointments.time') }}</th>
-              <th
-                v-for="day in weekDays"
-                :key="day.dateStr"
-                class="px-4 py-3 text-center text-sm font-semibold text-gray-900 bg-gray-50 border-l border-gray-200"
-              >
-                <div class="font-medium">{{ day.dayName }}</div>
-                <div class="text-xs text-gray-500">{{ day.dateStr }}</div>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(doctor, docIdx) in visibleDoctors"
-              :key="`doctor-${doctor.id}`"
-              :class="[
-                'border-b border-gray-200',
-                docIdx !== visibleDoctors.length - 1 ? 'border-b-2' : ''
-              ]"
-            >
-              <td class="px-4 py-2 text-sm font-medium text-gray-900 bg-gray-50 border-r border-gray-200 sticky left-0">
-                <div>{{ doctor.full_name }}</div>
-                <div class="text-xs text-gray-500">{{ doctor.specialization }}</div>
-              </td>
-              <td
-                v-for="day in weekDays"
-                :key="`${doctor.id}-${day.dateStr}`"
-                class="px-2 py-3 border-l border-gray-200 text-center min-w-[120px] bg-gradient-to-br from-blue-50 to-transparent hover:from-blue-100 cursor-pointer transition-colors"
-                @click="currentDate = day.dateStr; selectedViewMode = 'day'"
-              >
-                <div class="text-2xl font-bold text-primary-600">
-                  {{ getAppointmentsForDoctorAndDate(doctor.id, day.dateStr).length }}
-                </div>
-                <div class="text-xs text-gray-500 mt-1">uchrashuvlar</div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Schedule grid - Month view -->
-    <div v-else-if="selectedViewMode === 'month'" class="bg-white overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead>
-            <tr class="border-b border-gray-200 bg-gray-50">
-              <th
-                v-for="dayName in dayNames"
-                :key="dayName"
-                class="px-4 py-3 text-center text-sm font-semibold text-gray-900"
-              >
-                {{ dayName }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(week, weekIdx) in monthCalendar"
-              :key="weekIdx"
-              class="border-b border-gray-200"
-            >
-              <td
-                v-for="day in week"
-                :key="day.dateStr"
-                :class="[
-                  'px-4 py-3 border-r border-gray-200 h-40 align-top',
-                  day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'
-                ]"
-              >
-                <div :class="['text-sm font-semibold mb-2', day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400']">
-                  {{ day.dayNum }}
-                </div>
-                <div v-if="day.isCurrentMonth" class="space-y-1 text-xs">
-                  <div
-                    v-for="appt in getAppointmentsForDateMonth(day.dateStr)"
-                    :key="appt.id"
-                    :class="['p-1 rounded cursor-pointer hover:shadow-md truncate', getStatusBadgeClass(appt.status)]"
-                    :title="`${appt.patient_name} - ${appt.doctor_name} (${appt.start_time})`"
-                    @click="$emit('open-payment', appt.id)"
-                  >
-                    <div class="font-medium truncate">{{ appt.patient_name }}</div>
-                    <div class="text-xs opacity-75">{{ appt.doctor_name }}</div>
-                  </div>
-                  <div v-if="getAppointmentsForDateMonth(day.dateStr).length > 3" class="text-xs text-gray-500 mt-1">
-                    +{{ getAppointmentsForDateMonth(day.dateStr).length - 3 }} boshqa
-                  </div>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </div>
 
     <!-- Info: no doctors -->
-    <div v-if="visibleDoctors.length === 0" class="text-center py-12 text-gray-500">
+    <div v-if="activeDoctors.length === 0" class="text-center py-12 text-gray-500">
       <p>{{ t('appointments.noDoctors') || 'Doktorlar topilmadi' }}</p>
     </div>
 
@@ -307,14 +164,20 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { isAdminLike } from '@/lib/roles'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
+import { useClinicStore } from '@/stores/clinic'
+import {
+  buildCalendarTimeSlots,
+  minutesToTimeString,
+  resolveCalendarMinuteRange,
+} from '@/lib/clinicCalendarHours'
 import * as visitsApi from '@/api/visitsApi'
-import { getVisitStatusColors } from '@/constants/visitStatus'
+import { updateAppointment, getAppointmentsByPatientId } from '@/api/appointmentsApi'
 import { useToast } from '@/composables/useToast'
 import CurrentTimeIndicator from './CurrentTimeIndicator.vue'
 import AppointmentBlock from './AppointmentBlock.vue'
@@ -325,13 +188,17 @@ const props = defineProps({
     type: String,
     required: true
   },
-  viewMode: {
-    type: String,
-    default: 'day'
+  filterDoctorId: {
+    type: [String, Number],
+    default: '',
+  },
+  refreshKey: {
+    type: Number,
+    default: 0
   }
 })
 
-const emit = defineEmits(['update:selectedDate', 'update:view-mode', 'update-status', 'open-payment', 'open-patient-detail'])
+const emit = defineEmits(['update:selectedDate', 'update-status', 'open-payment', 'open-patient-detail'])
 
 const { t } = useI18n()
 const toast = useToast()
@@ -339,18 +206,16 @@ const authStore = useAuthStore()
 const isAdmin = computed(() => isAdminLike(authStore))
 const doctorsStore = useDoctorsStore()
 const patientsStore = usePatientsStore()
+const clinicStore = useClinicStore()
 
 const loading = ref(false)
 const appointments = ref([])
 const patientModalOpen = ref(false)
 const selectedPatientAppointment = ref(null)
 const scheduleCanvasRef = ref(null)
-// Hourly slots
-const slotHeightPx = 60 // 1 soat = 60px
+const canvasHeight = ref(0)
+let canvasResizeObserver = null
 const currentDate = ref(props.selectedDate || new Date().toISOString().split('T')[0])
-const selectedDoctorIds = ref([]) // Multi-select doctor IDs
-const showDoctorDropdown = ref(false)
-const doctorDropdownRef = ref(null) // Ref for dropdown element
 const isDraggingId = ref(null)
 const dropHoverTarget = ref(null)
 const clickMoveAppointment = ref(null)
@@ -359,50 +224,21 @@ const skipNextSlotClick = ref(false)
 // Responsive breakpoints (mobile, tablet, desktop)
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
-const dayNames = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Yak']
-const DAY_START_HOUR = 0
-const DAY_END_HOUR = 24
-const SLOT_MINUTES = 60
+const SLOT_MINUTES = 30
 
-const selectedViewMode = computed({
-  get: () => {
-    const mode = String(props.viewMode || 'day')
-    return ['day', 'week', 'month'].includes(mode) ? mode : 'day'
-  },
-  set: (mode) => {
-    if (!['day', 'week', 'month'].includes(String(mode))) return
-    emit('update:view-mode', mode)
-  }
-})
+const calendarMinuteRange = computed(() =>
+  resolveCalendarMinuteRange(clinicStore.calendarStartTime, clinicStore.calendarEndTime)
+)
+const dayStartMinutes = computed(() => calendarMinuteRange.value.startMinutes)
+const dayEndMinutes = computed(() => calendarMinuteRange.value.endMinutes)
 
-// Close dropdown on outside click
-const handleClickOutside = (event) => {
-  if (doctorDropdownRef.value && !doctorDropdownRef.value.contains(event.target)) {
-    showDoctorDropdown.value = false
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
-
-// Time array for day view grid (24 hours, 1 hour slots)
-const hours = computed(() => {
-  const result = []
-  for (let h = DAY_START_HOUR; h < DAY_END_HOUR; h++) {
-    result.push({
-      key: `${h}-0`,
-      time: `${String(h).padStart(2, '0')}:00`,
-      display: `${String(h).padStart(2, '0')}:00`,
-      isLabel: true
-    })
-  }
-  return result
-})
+const timeSlots = computed(() =>
+  buildCalendarTimeSlots(
+    clinicStore.calendarStartTime,
+    clinicStore.calendarEndTime,
+    SLOT_MINUTES
+  )
+)
 
 // Doktor uchun faqat o'z appointmentlari, admin uchun barchasi
 // Responsive column widths
@@ -411,35 +247,51 @@ const timeColumnWidth = computed(() => {
   return 'w-[4.5rem]' // 72px
 })
 
-/** Ustun minimal kengligi — ko'p shifokor bo'lsa gorizontal scroll */
-const doctorColumnMinWidthPx = computed(() => {
-  if (windowWidth.value < 640) return 120
-  if (windowWidth.value < 1024) return 150
-  return 160
+/** Vaqt katakchasi balandligi — mavjud ekran balandligiga moslashadi */
+const slotHeightPx = computed(() => {
+  const slotCount = timeSlots.value.length
+  if (!slotCount) return 40
+
+  const headerRowPx = windowWidth.value < 640 ? 52 : 56
+  const available = Math.max(0, canvasHeight.value - headerRowPx)
+  if (!available) {
+    return windowWidth.value < 640 ? 36 : 40
+  }
+
+  const perSlot = Math.floor(available / slotCount)
+  const minH = windowWidth.value < 640 ? 28 : 32
+  const maxH = windowWidth.value < 640 ? 48 : 56
+  return Math.max(minH, Math.min(maxH, perSlot))
 })
 
-const doctorColumnStyle = computed(() => ({
-  flex: '1 1 0%',
-  minWidth: `${doctorColumnMinWidthPx.value}px`,
-}))
-
 const visibleDoctors = computed(() => {
-  const allDoctors = doctorsStore.items || []
+  const allDoctors = (doctorsStore.items || []).filter((d) => d.is_active !== false)
   if (isAdmin.value) {
     return allDoctors
   }
-  // Doktor uchun faqat o'zini ko'rsatish
   const myId = authStore.user?.id
-  return allDoctors.filter(d => Number(d.id) === Number(myId))
+  return allDoctors.filter((d) => Number(d.id) === Number(myId))
 })
 
-// Displayed doctors (filtered by selection)
-const displayedDoctors = computed(() => {
-  if (selectedDoctorIds.value.length === 0) {
+const activeDoctors = computed(() => {
+  if (!props.filterDoctorId) {
     return visibleDoctors.value
   }
-  return visibleDoctors.value.filter(d => selectedDoctorIds.value.includes(d.id))
+  return visibleDoctors.value.filter(
+    (d) => String(d.id) === String(props.filterDoctorId)
+  )
 })
+
+const doctorInitials = (doctor) => {
+  const name = doctor?.full_name || ''
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'DR'
+}
 
 const patientByIdMap = computed(() => {
   const map = new Map()
@@ -454,20 +306,16 @@ const dayAppointments = computed(() => {
   return appointments.value.filter(appt => appt.date === currentDate.value)
 })
 
-const displayedDoctorIdSet = computed(() => new Set(displayedDoctors.value.map(doctor => Number(doctor.id))))
+const activeDoctorIdSet = computed(() => new Set(activeDoctors.value.map((doctor) => Number(doctor.id))))
 
 const displayedDayAppointments = computed(() => {
-  if (selectedViewMode.value !== 'day') return []
-  const idSet = displayedDoctorIdSet.value
-  return dayAppointments.value.filter(appt => idSet.has(Number(appt.doctor_id)))
+  const idSet = activeDoctorIdSet.value
+  return dayAppointments.value.filter((appt) => idSet.has(Number(appt.doctor_id)))
 })
 
 const bookedAppointmentsCount = computed(() => displayedDayAppointments.value.length)
 
-const totalSlotsCount = computed(() => {
-  if (selectedViewMode.value !== 'day') return 0
-  return displayedDoctors.value.length * hours.value.length
-})
+const totalSlotsCount = computed(() => activeDoctors.value.length * timeSlots.value.length)
 
 const emptySlotsCount = computed(() => {
   const total = totalSlotsCount.value
@@ -482,102 +330,12 @@ const getAppointmentsForDoctor = (doctorId) => {
     .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
 }
 
-// Week days
-const weekDays = computed(() => {
-  const weekStart = getWeekStart(currentDate.value)
-  const days = []
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(weekStart)
-    d.setDate(d.getDate() + i)
-    const dateStr = d.toISOString().split('T')[0]
-    days.push({
-      dateStr,
-      dayName: d.toLocaleDateString('uz-UZ', { weekday: 'short' }),
-      dayNum: d.getDate()
-    })
-  }
-  return days
-})
-
-// Month calendar (42-day grid)
-const monthCalendar = computed(() => {
-  const date = new Date(currentDate.value + 'T00:00:00')
-  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1)
-
-  const startDate = new Date(firstDay)
-  startDate.setDate(startDate.getDate() - firstDay.getDay())
-
-  const calendar = []
-  let week = []
-  const current = new Date(startDate)
-
-  for (let i = 0; i < 42; i++) {
-    const dateStr = current.toISOString().split('T')[0]
-    const isCurrentMonth = current.getMonth() === date.getMonth()
-
-    week.push({
-      dateStr,
-      dayNum: current.getDate(),
-      isCurrentMonth
-    })
-
-    if (week.length === 7) {
-      calendar.push(week)
-      week = []
-    }
-
-    current.setDate(current.getDate() + 1)
-  }
-
-  return calendar
-})
-
-const getWeekStart = (dateStr) => {
-  const date = new Date(dateStr + 'T00:00:00')
-  const day = date.getDay() || 7
-  const diff = date.getDate() - day + 1
-  const weekStart = new Date(date.setDate(diff))
-  return weekStart.toISOString().split('T')[0]
-}
-
-const getStatusBadgeClass = (status) => {
-  const colors = getVisitStatusColors(status)
-  return `${colors.bgClass} ${colors.textClass}`
-}
-
-const getAppointmentsForDoctorAndDate = (doctorId, dateStr) => {
-  return appointments.value
-    .filter(appt => appt.date === dateStr && Number(appt.doctor_id) === Number(doctorId))
-    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
-}
-
-const getAppointmentsForDateMonth = (dateStr) => {
-  return appointments.value
-    .filter(appt => appt.date === dateStr)
-    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
-}
-
 // Appointmentlarni yuklash
 const loadAppointments = async () => {
   loading.value = true
   try {
-    let startDate, endDate
-
-    if (selectedViewMode.value === 'day') {
-      startDate = currentDate.value
-      endDate = currentDate.value
-    } else if (selectedViewMode.value === 'week') {
-      const weekStart = getWeekStart(currentDate.value)
-      startDate = weekStart
-      const weekEnd = new Date(weekStart + 'T00:00:00')
-      weekEnd.setDate(weekEnd.getDate() + 6)
-      endDate = weekEnd.toISOString().split('T')[0]
-    } else {
-      const date = new Date(currentDate.value + 'T00:00:00')
-      startDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`
-      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0)
-      endDate = lastDay.toISOString().split('T')[0]
-    }
+    const startDate = currentDate.value
+    const endDate = currentDate.value
 
     let visits = []
     if (isAdmin.value) {
@@ -597,8 +355,9 @@ const loadAppointments = async () => {
       const patient = patientByIdMap.value.get(Number(visit.patient_id))
 
       // Temporary: agar start_time yo'q bo'lsa, default qiymat ishlatish
-      const startTime = visit.start_time || '09:00'
-      const endTime = visit.end_time || '10:00'
+      const startTime = normalizeTimeSlot(visit.start_time)
+        || minutesToTimeString(calendarMinuteRange.value.startMinutes)
+      const endTime = normalizeTimeSlot(visit.end_time) || addMinutesToTime(startTime, visit.duration_minutes || 60)
 
       return {
         ...visit,
@@ -666,15 +425,6 @@ const handleCallPatient = (phone) => {
   }
 }
 
-// Multi-select dropdown metodlari
-const selectAllDoctors = () => {
-  selectedDoctorIds.value = visibleDoctors.value.map(d => d.id)
-}
-
-const clearDoctorSelection = () => {
-  selectedDoctorIds.value = []
-}
-
 const getDurationMinutes = (appt) => {
   if (appt.duration_minutes && appt.duration_minutes > 0) return appt.duration_minutes
   if (appt.start_time && appt.end_time) {
@@ -685,12 +435,70 @@ const getDurationMinutes = (appt) => {
   return 60
 }
 
+const normalizeTimeSlot = (timeStr) => {
+  if (!timeStr) return ''
+  const parts = String(timeStr).split(':')
+  const h = Number(parts[0])
+  const m = Number(parts[1] || 0)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return ''
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
 const addMinutesToTime = (timeStr, minutes) => {
-  const [h, m] = timeStr.split(':').map(Number)
+  const normalized = normalizeTimeSlot(timeStr)
+  if (!normalized) return ''
+  const [h, m] = normalized.split(':').map(Number)
   const total = h * 60 + m + minutes
   const nh = Math.floor(total / 60) % 24
   const nm = total % 60
   return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`
+}
+
+const patchAppointmentInList = (appointmentId, patch) => {
+  const index = appointments.value.findIndex((a) => Number(a.id) === Number(appointmentId))
+  if (index === -1) return null
+  appointments.value[index] = {
+    ...appointments.value[index],
+    ...patch,
+  }
+  return appointments.value[index]
+}
+
+const syncLinkedAppointment = async ({
+  patientId,
+  date,
+  previousDoctorId,
+  previousStartTime,
+  nextStartTime,
+  nextDoctorId,
+  durationMinutes,
+}) => {
+  if (!date || !patientId) return
+
+  try {
+    const rows = await getAppointmentsByPatientId(patientId)
+    const prevStart = normalizeTimeSlot(previousStartTime)
+    const scheduledAt = `${date}T${normalizeTimeSlot(nextStartTime)}:00`
+
+    const match = (rows || []).find((row) => {
+      if (!row?.scheduled_at) return false
+      const rowDate = String(row.scheduled_at).slice(0, 10)
+      const rowTime = normalizeTimeSlot(String(row.scheduled_at).slice(11, 19))
+      return rowDate === date
+        && Number(row.doctor_id) === Number(previousDoctorId)
+        && rowTime === prevStart
+    })
+
+    if (!match?.id) return
+
+    await updateAppointment(match.id, {
+      doctor_id: Number(nextDoctorId),
+      scheduled_at: scheduledAt,
+      duration_minutes: durationMinutes,
+    })
+  } catch (syncErr) {
+    console.warn('appointments jadvali sinxronlash:', syncErr?.message)
+  }
 }
 
 const findAppointmentById = (id) =>
@@ -712,28 +520,62 @@ const moveAppointmentTo = async (appointment, targetDoctorId, targetTimeSlot) =>
     specialization: appt.specialization,
     start_time: appt.start_time,
     end_time: appt.end_time,
+    duration_minutes: appt.duration_minutes,
   }
 
   const doctor = visibleDoctors.value.find((d) => Number(d.id) === Number(targetDoctorId))
   const duration = getDurationMinutes(appt)
-  const nextStart = targetTimeSlot || appt.start_time
+  const nextStart = normalizeTimeSlot(targetTimeSlot || appt.start_time)
   const nextEnd = addMinutesToTime(nextStart, duration)
+  if (!nextStart || !nextEnd) return
 
-  appt.doctor_id = Number(targetDoctorId)
-  appt.doctor_name = doctor?.full_name || appt.doctor_name
-  appt.specialization = doctor?.specialization || appt.specialization
-  appt.start_time = nextStart
-  appt.end_time = nextEnd
+  const optimisticPatch = {
+    doctor_id: Number(targetDoctorId),
+    doctor_name: doctor?.full_name || appt.doctor_name,
+    specialization: doctor?.specialization || appt.specialization,
+    start_time: nextStart,
+    end_time: nextEnd,
+    duration_minutes: duration,
+  }
+  patchAppointmentInList(appt.id, optimisticPatch)
 
   try {
-    await visitsApi.updateVisit(appt.id, {
-      doctor_id: Number(targetDoctorId),
+    const updated = await visitsApi.updateVisit(appt.id, {
+      doctor_id: optimisticPatch.doctor_id,
+      doctor_name: optimisticPatch.doctor_name,
       start_time: nextStart,
       end_time: nextEnd,
+      duration_minutes: duration,
     })
-    toast.success('Bemor qabuli boshqa shifokorga ko\'chirildi')
+
+    if (updated) {
+      patchAppointmentInList(appt.id, {
+        doctor_id: updated.doctor_id ?? optimisticPatch.doctor_id,
+        doctor_name: updated.doctor_name || optimisticPatch.doctor_name,
+        start_time: normalizeTimeSlot(updated.start_time) || nextStart,
+        end_time: normalizeTimeSlot(updated.end_time) || nextEnd,
+        duration_minutes: updated.duration_minutes || duration,
+      })
+    }
+
+    await syncLinkedAppointment({
+      patientId: appt.patient_id,
+      date: appt.date || currentDate.value,
+      previousDoctorId: snapshot.doctor_id,
+      previousStartTime: snapshot.start_time,
+      nextStartTime: nextStart,
+      nextDoctorId: optimisticPatch.doctor_id,
+      durationMinutes: duration,
+    })
+
+    const movedDoctor = Number(snapshot.doctor_id) !== Number(targetDoctorId)
+    toast.success(
+      movedDoctor
+        ? 'Qabul boshqa shifokorga ko\'chirildi'
+        : 'Qabul vaqti yangilandi'
+    )
   } catch (error) {
-    Object.assign(appt, snapshot)
+    patchAppointmentInList(appt.id, snapshot)
     console.error('Failed to move appointment:', error)
     toast.error('Qabulni ko\'chirishda xatolik yuz berdi')
   }
@@ -793,7 +635,7 @@ const onDrop = async (event, targetDoctorId, targetTimeSlot) => {
   if (!appt) return
 
   const sameDoctor = Number(appt.doctor_id) === Number(targetDoctorId)
-  const sameTime = appt.start_time === targetTimeSlot
+  const sameTime = normalizeTimeSlot(appt.start_time) === normalizeTimeSlot(targetTimeSlot)
   if (sameDoctor && sameTime) return
 
   skipNextSlotClick.value = true
@@ -839,32 +681,56 @@ const handleOpenPayment = (appointmentId) => {
 
 // Appointment'ning pixel position'ini hisoblash (start_time va end_time bo'yicha)
 const getAppointmentStyle = (appt) => {
-  if (!appt.start_time) return {}
+  const startTime = normalizeTimeSlot(appt.start_time)
+  if (!startTime) return {}
 
-  const [startH, startM] = appt.start_time.split(':').map(Number)
-  const startMinutesFromDay = (startH - DAY_START_HOUR) * 60 + startM
-  const topPx = (startMinutesFromDay / SLOT_MINUTES) * slotHeightPx
+  const hourPx = slotHeightPx.value
+  const [startH, startM] = startTime.split(':').map(Number)
+  const startTotalMinutes = startH * 60 + startM
+  const startMinutesFromDay = startTotalMinutes - dayStartMinutes.value
+  const topPx = (startMinutesFromDay / SLOT_MINUTES) * hourPx
 
-  // Default duration 1 hour agar end_time bo'lmasa
-  let heightPx = slotHeightPx
-  if (appt.end_time) {
-    const [endH, endM] = appt.end_time.split(':').map(Number)
-    const endMinutesFromDay = (endH - DAY_START_HOUR) * 60 + endM
-    const durationMinutes = endMinutesFromDay - startMinutesFromDay
-    heightPx = Math.max(slotHeightPx, (durationMinutes / SLOT_MINUTES) * slotHeightPx)
+  let heightPx = hourPx
+  const endTime = normalizeTimeSlot(appt.end_time)
+  if (endTime) {
+    const [endH, endM] = endTime.split(':').map(Number)
+    const endTotalMinutes = endH * 60 + endM
+    const durationMinutes = endTotalMinutes - startTotalMinutes
+    heightPx = Math.max(hourPx, (durationMinutes / SLOT_MINUTES) * hourPx)
   } else if (appt.duration_minutes) {
-    heightPx = Math.max(slotHeightPx, (appt.duration_minutes / SLOT_MINUTES) * slotHeightPx)
+    heightPx = Math.max(hourPx, (appt.duration_minutes / SLOT_MINUTES) * hourPx)
   }
 
   return {
     top: `${topPx}px`,
     height: `${heightPx}px`,
-    minHeight: `${slotHeightPx}px`
+    minHeight: `${hourPx}px`,
   }
 }
 
 // Watch current date va view mode
-watch([() => currentDate.value, () => selectedViewMode.value], loadAppointments)
+watch(() => currentDate.value, loadAppointments)
+
+watch(
+  () => [clinicStore.calendarStartTime, clinicStore.calendarEndTime],
+  () => loadAppointments()
+)
+
+const remeasureCanvas = () => {
+  if (!scheduleCanvasRef.value) return
+  const height = scheduleCanvasRef.value.clientHeight
+  if (height > 0) canvasHeight.value = height
+}
+
+watch(() => props.refreshKey, () => {
+  if (props.refreshKey > 0) {
+    loadAppointments()
+    nextTick(() => {
+      remeasureCanvas()
+      requestAnimationFrame(remeasureCanvas)
+    })
+  }
+})
 
 watch(() => props.selectedDate, (value) => {
   if (value && value !== currentDate.value) {
@@ -883,7 +749,11 @@ const handleWindowResize = () => {
   windowWidth.value = window.innerWidth
 }
 
-onMounted(() => {
+onMounted(async () => {
+  if (authStore.userClinicId != null) {
+    await clinicStore.loadFromClinicId(authStore.userClinicId)
+  }
+
   loadAppointments()
   if (isAdmin.value) {
     patientsStore.fetchPatients()
@@ -892,19 +762,33 @@ onMounted(() => {
   }
   window.addEventListener('resize', handleWindowResize)
 
-  // Scroll to current hour or 8 AM on mount
+  if (scheduleCanvasRef.value && typeof ResizeObserver !== 'undefined') {
+    canvasResizeObserver = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect?.height
+      if (height) canvasHeight.value = height
+    })
+    canvasResizeObserver.observe(scheduleCanvasRef.value)
+    remeasureCanvas()
+    requestAnimationFrame(remeasureCanvas)
+  }
+
   setTimeout(() => {
     if (scheduleCanvasRef.value) {
       const now = new Date()
-      const currentHour = now.getHours()
-      const targetHour = currentHour >= 8 && currentHour <= 20 ? currentHour - 1 : 8
-      scheduleCanvasRef.value.scrollTop = targetHour * slotHeightPx
+      const nowMinutes = now.getHours() * 60 + now.getMinutes()
+      const start = dayStartMinutes.value
+      const end = dayEndMinutes.value
+      const scrollIndex = nowMinutes >= start && nowMinutes < end
+        ? Math.floor((nowMinutes - start) / SLOT_MINUTES)
+        : 0
+      scheduleCanvasRef.value.scrollTop = scrollIndex * slotHeightPx.value
     }
   }, 150)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleWindowResize)
+  canvasResizeObserver?.disconnect()
 })
 </script>
 
@@ -918,6 +802,10 @@ onUnmounted(() => {
   background: #ffffff;
   width: 100%;
   min-width: 100%;
+}
+
+.doctor-column {
+  flex: 1 1 0%;
 }
 
 .day-grid .time-column {
