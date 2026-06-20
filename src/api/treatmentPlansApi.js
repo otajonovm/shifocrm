@@ -43,7 +43,8 @@ export const createPlan = async ({
   tooth_id = null,
   estimated_cost = null,
   notes = null,
-  remind_at = null
+  remind_at = null,
+  remind_status = null,
 }) => {
   try {
     const payload = {
@@ -57,7 +58,8 @@ export const createPlan = async ({
       tooth_id: tooth_id !== null && tooth_id !== undefined ? Number(tooth_id) : null,
       estimated_cost: estimated_cost !== null && estimated_cost !== undefined ? Number(estimated_cost) : null,
       notes: notes || null,
-      remind_at: remind_at || null
+      remind_at: remind_at || null,
+      remind_status: remind_at ? (remind_status || 'pending') : null,
     }
     const result = await supabasePost(TABLE, payload)
     return result[0]

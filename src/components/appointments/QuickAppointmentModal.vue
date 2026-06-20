@@ -187,6 +187,10 @@
                 </div>
               </section>
 
+              <p v-if="conflictMessage" class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                ⚠️ {{ conflictMessage }}
+              </p>
+
               <p v-if="error" class="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
                 {{ error }}
               </p>
@@ -226,6 +230,7 @@ import {
 import { createPatient } from '@/api/patientsApi'
 import { createAppointment } from '@/api/appointmentsApi'
 import * as visitsApi from '@/api/visitsApi'
+import { findAppointmentConflicts, formatConflictMessage } from '@/lib/appointmentConflict'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -237,6 +242,7 @@ const props = defineProps({
   doctors: { type: Array, default: () => [] },
   isAdmin: { type: Boolean, default: false },
   defaultDoctorId: { type: [String, Number], default: '' },
+  dayVisits: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['close', 'saved'])
@@ -336,7 +342,32 @@ const canSave = computed(() => {
   const hasNew = newFullName.value.trim().length >= 2 && isValidUzPhone(newPhone.value)
   if (!hasExisting && !hasNew) return false
   if (needsDoctorPick.value && !doctorId.value) return false
+  if (appointmentConflicts.value.length) return false
   return true
+})
+
+const appointmentConflicts = computed(() => {
+  const date = props.slotMeta?.date
+  const startTime = props.slotMeta?.startTime
+  const docId = resolvedDoctorId.value
+  if (!date || !startTime || !docId) return []
+
+  return findAppointmentConflicts({
+    visits: props.dayVisits,
+    doctorId: docId,
+    date,
+    startTime,
+    durationMinutes: 60,
+  })
+})
+
+const conflictMessage = computed(() => {
+  if (!appointmentConflicts.value.length) return ''
+  const patientMap = {}
+  for (const p of props.patients) {
+    patientMap[Number(p.id)] = p.full_name
+  }
+  return formatConflictMessage(appointmentConflicts.value, { patientMap })
 })
 
 const resetForm = () => {
@@ -413,7 +444,7 @@ const handleBackdropClick = () => {
   emit('close')
 }
 
-const buildEndTime = (startTime, durationMinutes = 30) => {
+const buildEndTime = (startTime, durationMinutes = 60) => {
   const [h, m] = String(startTime || '09:00').split(':').map(Number)
   const total = h * 60 + m + durationMinutes
   const nh = Math.floor(total / 60) % 24
@@ -468,6 +499,10 @@ const handleSave = async () => {
     error.value = 'Shifokorni tanlang.'
     return
   }
+  if (appointmentConflicts.value.length) {
+    error.value = conflictMessage.value || 'Ushbu vaqt allaqachon band.'
+    return
+  }
   if (!selectedPatientId.value && !isNewPatientActive.value) {
     error.value = 'Mavjud bemorni tanlang yoki yangi bemor ma\'lumotlarini kiriting.'
     return
@@ -477,7 +512,7 @@ const handleSave = async () => {
   try {
     const patientId = await resolvePatientId()
     const doctor = props.doctors.find((d) => String(d.id) === String(doctorIdResolved))
-    const durationMinutes = 30
+    const durationMinutes = 60
     const endTime = buildEndTime(startTime, durationMinutes)
 
     await visitsApi.createVisit({

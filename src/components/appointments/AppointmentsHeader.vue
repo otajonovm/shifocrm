@@ -50,6 +50,7 @@
 
       <!-- Filtrlar (R) — o'ng tepa -->
       <button
+        ref="filterButtonRef"
         type="button"
         class="relative inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-all duration-300 ease-in-out flex-shrink-0 shadow-sm"
         :class="isFilterOpen
@@ -76,44 +77,46 @@
       </button>
     </div>
 
-    <!-- Fon qoplami (mobil) -->
-    <Transition
-      enter-active-class="transition-opacity duration-300 ease-in-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-300 ease-in-out"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="isFilterOpen"
-        class="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-[1px] sm:hidden"
-        aria-hidden="true"
-        @click="closeFilters"
-      />
-    </Transition>
-
-    <!-- Suzuvchi filtr paneli -->
-    <Transition
-      enter-active-class="transition-all duration-300 ease-in-out"
-      enter-from-class="opacity-0 -translate-y-2 scale-[0.98]"
-      enter-to-class="opacity-100 translate-y-0 scale-100"
-      leave-active-class="transition-all duration-300 ease-in-out"
-      leave-from-class="opacity-100 translate-y-0 scale-100"
-      leave-to-class="opacity-0 -translate-y-2 scale-[0.98]"
-    >
-      <div
-        v-show="isFilterOpen"
-        id="calendar-filter-panel"
-        class="absolute right-2 sm:right-4 top-full mt-1.5 z-50 w-[min(calc(100vw-1rem),22rem)] origin-top-right rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 ring-1 ring-black/5 overflow-hidden"
-        @click.stop
+    <Teleport to="body">
+      <!-- Fon qoplami (mobil) -->
+      <Transition
+        enter-active-class="transition-opacity duration-300 ease-in-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-300 ease-in-out"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
       >
+        <div
+          v-if="isFilterOpen"
+          class="fixed inset-0 z-[200] bg-slate-900/20 backdrop-blur-[1px] sm:hidden"
+          aria-hidden="true"
+          @click="closeFilters"
+        />
+      </Transition>
+
+      <!-- Suzuvchi filtr paneli (body — overflow kesilishini oldini oladi) -->
+      <Transition
+        enter-active-class="transition-all duration-300 ease-in-out"
+        enter-from-class="opacity-0 -translate-y-2 scale-[0.98]"
+        enter-to-class="opacity-100 translate-y-0 scale-100"
+        leave-active-class="transition-all duration-300 ease-in-out"
+        leave-from-class="opacity-100 translate-y-0 scale-100"
+        leave-to-class="opacity-0 -translate-y-2 scale-[0.98]"
+      >
+        <div
+          v-if="isFilterOpen"
+          id="calendar-filter-panel"
+          class="fixed z-[201] w-[min(calc(100vw-1rem),22rem)] origin-top-right rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 ring-1 ring-black/5 overflow-hidden"
+          :style="filterPanelStyle"
+          @click.stop
+        >
         <div class="px-3 py-2.5 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
           <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide">Filtrlar</p>
           <p class="text-[10px] text-slate-400">Yopish: <kbd class="font-mono">R</kbd> yoki <kbd class="font-mono">Esc</kbd></p>
         </div>
 
-        <div class="max-h-[min(70dvh,28rem)] overflow-y-auto overscroll-contain px-3 py-3 space-y-3 filter-scroll">
+        <div class="overflow-y-auto overscroll-contain px-3 py-3 space-y-3 filter-scroll" :style="filterScrollStyle">
           <!-- Qidiruv -->
           <div class="relative">
             <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -240,13 +243,14 @@
             Filtrlarni tozalash
           </button>
         </div>
-      </div>
-    </Transition>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -314,6 +318,48 @@ const emit = defineEmits([
 ])
 
 const isFilterOpen = ref(false)
+const filterButtonRef = ref(null)
+const filterPanelStyle = ref({ top: '0px', left: '0px', visibility: 'hidden' })
+const filterScrollStyle = ref({ maxHeight: '28rem' })
+
+const FILTER_PANEL_WIDTH = 352 // 22rem
+
+const updateFilterPanelPosition = () => {
+  const btn = filterButtonRef.value
+  if (!btn) return
+
+  const rect = btn.getBoundingClientRect()
+  const viewportPadding = 8
+  const panelWidth = Math.min(window.innerWidth - viewportPadding * 2, FILTER_PANEL_WIDTH)
+  const gap = 6
+  let left = rect.right - panelWidth
+  left = Math.max(viewportPadding, Math.min(left, window.innerWidth - panelWidth - viewportPadding))
+
+  const top = rect.bottom + gap
+  const maxPanelHeight = Math.max(160, window.innerHeight - top - viewportPadding)
+
+  filterPanelStyle.value = {
+    top: `${top}px`,
+    left: `${left}px`,
+    width: `${panelWidth}px`,
+    visibility: 'visible',
+  }
+  filterScrollStyle.value = {
+    maxHeight: `${Math.min(maxPanelHeight, 448)}px`,
+  }
+}
+
+const onFilterViewportChange = () => {
+  if (isFilterOpen.value) updateFilterPanelPosition()
+}
+
+const openFilters = () => {
+  isFilterOpen.value = true
+  nextTick(() => {
+    updateFilterPanelPosition()
+    requestAnimationFrame(updateFilterPanelPosition)
+  })
+}
 
 const durationOptions = [15, 30, 45, 60, 90, 120]
 
@@ -345,11 +391,16 @@ const weekDays = computed(() => {
 })
 
 const toggleFilters = () => {
-  isFilterOpen.value = !isFilterOpen.value
+  if (isFilterOpen.value) {
+    closeFilters()
+  } else {
+    openFilters()
+  }
 }
 
 const closeFilters = () => {
   isFilterOpen.value = false
+  filterPanelStyle.value = { top: '0px', left: '0px', visibility: 'hidden' }
 }
 
 const switchLayout = (mode) => {
@@ -360,6 +411,12 @@ const switchLayout = (mode) => {
 
 watch(() => props.layout, () => {
   closeFilters()
+})
+
+watch(isFilterOpen, (open) => {
+  if (open) {
+    nextTick(updateFilterPanelPosition)
+  }
 })
 
 const clearAllFilters = () => {
@@ -415,15 +472,23 @@ const handleKeyPress = (event) => {
   if (shouldIgnoreHotkey(event)) return
 
   event.preventDefault()
-  isFilterOpen.value = !isFilterOpen.value
+  if (isFilterOpen.value) {
+    closeFilters()
+  } else {
+    openFilters()
+  }
 }
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeyPress)
+  window.addEventListener('resize', onFilterViewportChange)
+  window.addEventListener('scroll', onFilterViewportChange, true)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyPress)
+  window.removeEventListener('resize', onFilterViewportChange)
+  window.removeEventListener('scroll', onFilterViewportChange, true)
 })
 </script>
 

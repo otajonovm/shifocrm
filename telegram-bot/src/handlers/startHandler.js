@@ -1,55 +1,23 @@
 /**
  * Telegram Bot - Start Command Handler
- *
- * Bu fayl Telegram Bot serverida ishlatiladi (../ShifoCRM_bot/)
- * Bemorlarni telefon raqami orqali ro'yxatdan o'tkazadi
+ * Telefon orqali ro'yxatdan o'tish + /start lead_123 deep link
  */
 
 const { createClient } = require('@supabase/supabase-js')
+const {
+  parseLeadIdFromStart,
+  handleLeadStart,
+} = require('./leadsHandler')
 
-// Supabase client
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-// Foydalanuvchi holatini saqlash (telefon raqam kutilmoqda)
 const userStates = new Map()
 
-/**
- * /start buyrug'i
- */
-async function handleStart(bot, msg) {
-  const chatId = msg.chat.id
-  const firstName = msg.from.first_name || ''
-  const lastName = msg.from.last_name || ''
-  const username = msg.from.username || ''
-
-  const welcomeMessage =
-    `👋 Assalomu alaykum${firstName ? ', ' + firstName : ''}!\n\n` +
-    `ShifoCRM Telegram botiga xush kelibsiz!\n\n` +
-    `Telegram orqali qabul eslatmalari va davolanish natijalarini olish uchun ro'yxatdan o'ting.\n\n` +
-    `📱 Iltimos, telefon raqamingizni quyidagi formatda yuboring:\n\n` +
-    `Format: +998901234567`
-
-  await bot.sendMessage(chatId, welcomeMessage)
-
-  // Holatni saqlash: telefon raqam kutilmoqda
-  userStates.set(chatId, {
-    step: 'waiting_phone',
-    firstName,
-    lastName,
-    username
-  })
-}
-
-/**
- * Telefon raqamni tekshirish va formatlash
- */
 function normalizePhone(phone) {
-  // Faqat raqamlarni qoldirish
   const digits = phone.replace(/\D/g, '')
 
-  // Uzbekiston formatini tekshirish
   if (digits.length === 12 && digits.startsWith('998')) {
     return '+' + digits
   }
@@ -60,9 +28,33 @@ function normalizePhone(phone) {
   return null
 }
 
-/**
- * Telefon raqam yuborilganda
- */
+async function handleStart(bot, msg) {
+  const chatId = msg.chat.id
+  const firstName = msg.from.first_name || ''
+  const leadId = parseLeadIdFromStart(msg.text)
+
+  if (leadId) {
+    await handleLeadStart(bot, msg, leadId)
+    return
+  }
+
+  const welcomeMessage =
+    `👋 Assalomu alaykum${firstName ? ', ' + firstName : ''}!\n\n` +
+    `ShifoCRM Telegram botiga xush kelibsiz!\n\n` +
+    `Telegram orqali qabul eslatmalari va davolanish natijalarini olish uchun ro'yxatdan o'ting.\n\n` +
+    `📱 Iltimos, telefon raqamingizni quyidagi formatda yuboring:\n\n` +
+    `Format: +998901234567`
+
+  await bot.sendMessage(chatId, welcomeMessage)
+
+  userStates.set(chatId, {
+    step: 'waiting_phone',
+    firstName,
+    lastName: msg.from.last_name || '',
+    username: msg.from.username || '',
+  })
+}
+
 async function handlePhoneNumber(bot, msg) {
   const chatId = msg.chat.id
   const text = msg.text || ''
@@ -72,7 +64,6 @@ async function handlePhoneNumber(bot, msg) {
     return false
   }
 
-  // Telefon raqamni formatlash
   const phone = normalizePhone(text)
 
   if (!phone) {
@@ -86,19 +77,15 @@ async function handlePhoneNumber(bot, msg) {
   }
 
   try {
-    // Supabase da telefon raqam bilan patient topish
     const { data: patients, error: searchError } = await supabase
       .from('patients')
-      .select('id, name, phone')
+      .select('id, full_name, phone')
       .eq('phone', phone)
       .limit(1)
 
     if (searchError) {
       console.error('Error searching patient:', searchError)
-      await bot.sendMessage(
-        chatId,
-        '❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.'
-      )
+      await bot.sendMessage(chatId, '❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.')
       userStates.delete(chatId)
       return true
     }
@@ -107,7 +94,7 @@ async function handlePhoneNumber(bot, msg) {
       await bot.sendMessage(
         chatId,
         `❌ ${phone} raqami tizimda topilmadi.\n\n` +
-        'Iltimos, avval klinikada ro\'yxatdan o\'ting.\n\n' +
+        'Iltimos, avval klinikada yoki veb-saytda ro\'yxatdan o\'ting.\n\n' +
         'Qayta urinish uchun /start buyrug\'ini yuboring.'
       )
       userStates.delete(chatId)
@@ -116,7 +103,6 @@ async function handlePhoneNumber(bot, msg) {
 
     const patient = patients[0]
 
-    // telegram_chat_ids jadvaliga saqlash
     const { error: saveError } = await supabase
       .from('telegram_chat_ids')
       .upsert({
@@ -126,33 +112,28 @@ async function handlePhoneNumber(bot, msg) {
         username: state.username,
         first_name: state.firstName,
         last_name: state.lastName,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }, {
-        onConflict: 'patient_id'
+        onConflict: 'patient_id',
       })
 
     if (saveError) {
       console.error('Error saving chat_id:', saveError)
-      await bot.sendMessage(
-        chatId,
-        '❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.'
-      )
+      await bot.sendMessage(chatId, '❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.')
       userStates.delete(chatId)
       return true
     }
 
-    // Muvaffaqiyatli ro'yxatdan o'tdi
     await bot.sendMessage(
       chatId,
       `✅ Ro'yxatdan o'tdingiz!\n\n` +
-      `👤 Ism: ${patient.name || 'Bemor'}\n` +
+      `👤 Ism: ${patient.full_name || 'Bemor'}\n` +
       `📱 Telefon: ${phone}\n\n` +
       `━━━━━━━━━━━━━━━━━\n\n` +
       `Endi siz Telegram orqali quyidagilarni olasiz:\n\n` +
       `⏰ Qabul eslatmalari\n` +
       `✅ Davolanish natijalari\n` +
-      `💰 To'lov ma'lumotlari\n` +
-      `📋 Boshqa xabarlar\n\n` +
+      `💰 To'lov ma'lumotlari\n\n` +
       `Sog'lig'ingiz uchun g'amxo'rlik qilamiz! 💙`
     )
 
@@ -160,39 +141,30 @@ async function handlePhoneNumber(bot, msg) {
     return true
   } catch (error) {
     console.error('Error in handlePhoneNumber:', error)
-    await bot.sendMessage(
-      chatId,
-      '❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.'
-    )
+    await bot.sendMessage(chatId, '❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.')
     userStates.delete(chatId)
     return true
   }
 }
 
-/**
- * /help buyrug'i
- */
 async function handleHelp(bot, msg) {
   const chatId = msg.chat.id
 
   const helpMessage =
     `📖 Yordam\n\n` +
     `Bu bot orqali siz quyidagilarni olasiz:\n\n` +
-    `⏰ Qabul eslatmalari (24 soat va 1 soat oldin)\n` +
-    `✅ Davolanish natijalari (xizmatlar, narxlar, chegirmalar)\n` +
+    `⏰ Qabul eslatmalari\n` +
+    `✅ Davolanish natijalari\n` +
     `💰 To'lov va qarz ma'lumotlari\n\n` +
-    `━━━━━━━━━━━━━━━━━\n\n` +
     `Buyruqlar:\n` +
     `/start - Ro'yxatdan o'tish\n` +
+    `/start lead_123 - Veb arizani bog'lash\n` +
     `/help - Yordam\n` +
     `/info - Mening ma'lumotlarim`
 
   await bot.sendMessage(chatId, helpMessage)
 }
 
-/**
- * /info buyrug'i - foydalanuvchi ma'lumotlarini ko'rsatish
- */
 async function handleInfo(bot, msg) {
   const chatId = msg.chat.id
 
@@ -202,7 +174,7 @@ async function handleInfo(bot, msg) {
       .select(`
         patient_id,
         phone,
-        patients:patient_id (id, name, phone, created_at)
+        patients:patient_id (id, full_name, phone, created_at)
       `)
       .eq('chat_id', String(chatId))
       .single()
@@ -217,42 +189,33 @@ async function handleInfo(bot, msg) {
     }
 
     const patient = chatData.patients
-    const registeredDate = patient.created_at
+    const registeredDate = patient?.created_at
       ? new Date(patient.created_at).toLocaleDateString('uz-UZ', {
           year: 'numeric',
           month: 'long',
-          day: 'numeric'
+          day: 'numeric',
         })
       : '-'
 
     const infoMessage =
       `ℹ️ Mening ma'lumotlarim\n\n` +
-      `👤 Ism: ${patient?.name || '-'}\n` +
+      `👤 Ism: ${patient?.full_name || '-'}\n` +
       `📱 Telefon: ${chatData.phone || '-'}\n` +
       `📅 Ro'yxatdan o'tgan: ${registeredDate}\n\n` +
-      `━━━━━━━━━━━━━━━━━\n\n` +
       `✅ Telegram orqali xabarlar olish faol`
 
     await bot.sendMessage(chatId, infoMessage)
   } catch (error) {
     console.error('Error in handleInfo:', error)
-    await bot.sendMessage(
-      chatId,
-      '❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.'
-    )
+    await bot.sendMessage(chatId, '❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko\'ring.')
   }
 }
 
-/**
- * Oddiy xabar yuborilganda
- */
 async function handleMessage(bot, msg) {
-  // Telefon raqam kutilayotgan holatda bo'lsa
   if (await handlePhoneNumber(bot, msg)) {
     return
   }
 
-  // Boshqa hollarda yordam ko'rsatish
   const chatId = msg.chat.id
   await bot.sendMessage(
     chatId,
@@ -267,5 +230,5 @@ module.exports = {
   handleStart,
   handleHelp,
   handleInfo,
-  handleMessage
+  handleMessage,
 }

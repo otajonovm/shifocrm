@@ -219,7 +219,17 @@
               <td class="px-4 py-3 text-slate-700">{{ priorityLabel(plan.priority) }}</td>
               <td class="px-4 py-3 text-slate-700">{{ plan.tooth_id ? `#${plan.tooth_id}` : '-' }}</td>
               <td class="px-4 py-3 text-slate-700">{{ formatCurrency(plan.estimated_cost) }}</td>
-              <td class="px-4 py-3 text-slate-700">{{ plan.remind_at ? formatDateTime(plan.remind_at) : '-' }}</td>
+              <td class="px-4 py-3 text-slate-700">
+                <span v-if="plan.remind_at">{{ formatDateTime(plan.remind_at) }}</span>
+                <span v-else class="text-slate-400">-</span>
+                <span
+                  v-if="plan.remind_status"
+                  class="ml-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                  :class="remindStatusClass(plan.remind_status)"
+                >
+                  {{ remindStatusLabel(plan.remind_status) }}
+                </span>
+              </td>
               <td class="px-4 py-3 text-right">
                 <div class="flex items-center justify-end gap-2">
                   <button
@@ -489,7 +499,10 @@ const savePlan = async () => {
       tooth_id: form.value.tooth_id,
       estimated_cost: form.value.estimated_cost,
       notes: form.value.notes,
-      remind_at: form.value.remind_at || null
+      remind_at: form.value.remind_at
+        ? new Date(form.value.remind_at).toISOString()
+        : null,
+      remind_status: form.value.remind_at ? 'pending' : null,
     }
     const created = await createPlan(payload)
     const patient = patientsStore.items.find(item => Number(item.id) === Number(created.patient_id))
@@ -547,17 +560,37 @@ const convertToVisit = async (plan) => {
 
 const sendReminder = async (plan) => {
   try {
-    const now = new Date().toISOString()
-    const updated = await updatePlan(plan.id, { remind_at: now })
+    const remindAt = plan.remind_at && new Date(plan.remind_at) > new Date()
+      ? plan.remind_at
+      : new Date().toISOString()
+    const updated = await updatePlan(plan.id, {
+      remind_at: remindAt,
+      remind_status: 'pending',
+    })
     const idx = plans.value.findIndex(item => item.id === plan.id)
     if (idx !== -1) {
       plans.value[idx] = { ...plans.value[idx], ...updated }
     }
-    toast.success(t('treatmentPlans.toastReminderSent'))
+    toast.success('Eslatma navbatga qo\'yildi — Telegram orqali yuboriladi')
   } catch (error) {
     console.error('Failed to set reminder:', error)
     toast.error(t('treatmentPlans.errorReminder'))
   }
+}
+
+const remindStatusLabel = (status) => {
+  if (status === 'sent') return 'Yuborildi'
+  if (status === 'failed') return 'Xato'
+  if (status === 'pending') return 'Kutilmoqda'
+  if (status === 'cancelled') return 'Bekor'
+  return status
+}
+
+const remindStatusClass = (status) => {
+  if (status === 'sent') return 'bg-emerald-100 text-emerald-700'
+  if (status === 'failed') return 'bg-rose-100 text-rose-700'
+  if (status === 'pending') return 'bg-amber-100 text-amber-700'
+  return 'bg-slate-100 text-slate-600'
 }
 
 const statusLabel = (status) => {

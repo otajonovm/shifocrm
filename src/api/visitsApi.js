@@ -8,6 +8,16 @@ import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 import { sendVisitCompleted, schedulePatientFollowUps } from './telegramApi'
+import {
+  createAppointment,
+  updateAppointment,
+  getAppointmentById,
+} from './appointmentsApi'
+import {
+  buildScheduledAt,
+  buildEndTimeFromStart,
+  mapVisitStatusToAppointment,
+} from '@/lib/visitAppointmentSync'
 
 const TABLE = 'visits'
 
@@ -249,6 +259,15 @@ export const createVisit = async ({
     const result = await supabasePost(TABLE, newVisit)
     const created = result && result[0]
     if (!created) throw new Error('Tashrif yaratishda javob olinmadi.')
+
+    if (start_time && !created.appointment_id) {
+      try {
+        await syncAppointmentFromVisit(created)
+      } catch (syncErr) {
+        console.warn('Appointment sinxronlash (createVisit):', syncErr?.message)
+      }
+    }
+
     return created
   } catch (error) {
     console.error('❌ Failed to create visit:', error)
@@ -299,8 +318,29 @@ export const updateVisit = async (id, payload) => {
 
     const q = mergeClinicQuery(`id=eq.${numId}`, cid)
     const result = await supabasePatchWhere(TABLE, q, updateData)
-    console.log('✅ Visit updated:', result[0])
-    return result && result[0] ? result[0] : null
+    const updated = result && result[0] ? result[0] : null
+
+    if (updated && updateData.status && updateData.status !== currentVisit.status) {
+      try {
+        await syncAppointmentStatusFromVisit(updated)
+      } catch (syncErr) {
+        console.warn('Appointment status sinxronlash:', syncErr?.message)
+      }
+    } else if (updated && (
+      updateData.start_time !== undefined
+      || updateData.end_time !== undefined
+      || updateData.doctor_id !== undefined
+      || updateData.date !== undefined
+    )) {
+      try {
+        await syncAppointmentScheduleFromVisit(updated, currentVisit)
+      } catch (syncErr) {
+        console.warn('Appointment vaqt sinxronlash:', syncErr?.message)
+      }
+    }
+
+    console.log('✅ Visit updated:', updated)
+    return updated
   } catch (error) {
     console.error('❌ Failed to update visit:', error)
     throw error
@@ -470,6 +510,144 @@ async function sendVisitCompletedTelegram(visitId) {
   } catch (error) {
     // Xato bo'lsa, asosiy jarayonni to'xtatmaymiz
     console.warn('⚠️ Failed to send visit completed telegram:', error)
+  }
+}
+
+/**
+ * Visit dan appointment yaratish / bog'lash
+ */
+export const syncAppointmentFromVisit = async (visit) => {
+  if (!visit?.id || !visit.patient_id) return null
+
+  const scheduledAt = buildScheduledAt({
+    date: visit.date,
+    startTime: visit.start_time,
+  })
+  if (!scheduledAt) return null
+
+  if (visit.appointment_id) {
+    return getAppointmentById(visit.appointment_id)
+  }
+
+  const apptRows = await createAppointment({
+    patient_id: visit.patient_id,
+    doctor_id: visit.doctor_id,
+    scheduled_at: scheduledAt,
+    duration_minutes: visit.duration_minutes || 60,
+    notes: visit.notes,
+    visit_id: visit.id,
+    status: mapVisitStatusToAppointment(visit.status) || 'scheduled',
+  })
+
+  const appointment = Array.isArray(apptRows) ? apptRows[0] : apptRows
+  if (!appointment?.id) return null
+
+  await updateVisit(visit.id, { appointment_id: appointment.id })
+  return appointment
+}
+
+export const syncAppointmentStatusFromVisit = async (visit) => {
+  if (!visit?.id) return null
+  const apptStatus = mapVisitStatusToAppointment(visit.status)
+  if (!apptStatus) return null
+
+  let appointmentId = visit.appointment_id
+  if (!appointmentId) {
+    const created = await syncAppointmentFromVisit(visit)
+    appointmentId = created?.id
+  }
+  if (!appointmentId) return null
+
+  return updateAppointment(appointmentId, { status: apptStatus, visit_id: visit.id })
+}
+
+export const syncAppointmentScheduleFromVisit = async (visit, previousVisit = null) => {
+  if (!visit?.id) return null
+
+  const scheduledAt = buildScheduledAt({
+    date: visit.date,
+    startTime: visit.start_time,
+  })
+  if (!scheduledAt) return null
+
+  let appointmentId = visit.appointment_id
+  if (!appointmentId) {
+    const created = await syncAppointmentFromVisit(visit)
+    appointmentId = created?.id
+  }
+  if (!appointmentId) return null
+
+  return updateAppointment(appointmentId, {
+    doctor_id: visit.doctor_id,
+    scheduled_at: scheduledAt,
+    duration_minutes: visit.duration_minutes || 60,
+    visit_id: visit.id,
+  })
+}
+
+/**
+ * Visit + Appointment bir vaqtda yaratish
+ */
+export const createVisitWithAppointment = async (data) => {
+  const duration = Number(data.duration_minutes) || 60
+  const endTime = data.end_time || buildEndTimeFromStart(data.start_time, duration)
+
+  const visit = await createVisit({
+    ...data,
+    end_time: endTime,
+    duration_minutes: duration,
+  })
+
+  const appointment = await syncAppointmentFromVisit(visit)
+  return { visit, appointment }
+}
+
+/**
+ * Bemor keldi — visit va appointment statuslarini sinxron yangilash
+ */
+export const markVisitArrived = async (visitId) => {
+  const visit = await getVisitById(visitId)
+  if (!visit) throw new Error('Tashrif topilmadi')
+
+  const updated = await updateVisit(visitId, { status: 'arrived' })
+  return updated
+}
+
+/**
+ * Appointment orqali keldi deb belgilash (DB trigger ham visit yaratadi)
+ */
+export const markAppointmentArrived = async (appointmentId) => {
+  const appointment = await getAppointmentById(appointmentId)
+  if (!appointment) throw new Error('Qabul topilmadi')
+
+  const updated = await updateAppointment(appointmentId, {
+    status: 'arrived',
+    visit_id: appointment.visit_id || undefined,
+  })
+
+  if (updated?.visit_id) {
+    return getVisitById(updated.visit_id)
+  }
+
+  return updated
+}
+
+/**
+ * Statusni visit + appointment bo'yicha sinxron yangilash
+ */
+export const updateVisitStatusWithSync = async (visitId, status, extraPayload = {}) => {
+  const updated = await updateVisit(visitId, { status, ...extraPayload })
+  return updated
+}
+
+export const getVisitByAppointmentId = async (appointmentId) => {
+  try {
+    const cid = await getCurrentClinicId()
+    const q = `appointment_id=eq.${Number(appointmentId)}&limit=1`
+    const rows = await supabaseGetWithClinicFallback(TABLE, q, cid)
+    return rows && rows[0] ? rows[0] : null
+  } catch {
+    return null
   }
 }
 

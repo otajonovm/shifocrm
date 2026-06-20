@@ -107,6 +107,11 @@ export const listInventoryConsumptionsByVisitId = async (visitId) => {
   return await supabaseGetWithClinicFallback(CONSUMPTIONS_TABLE, q, cid)
 }
 
+export const listInventoryConsumptions = async (query = 'order=created_at.desc') => {
+  const cid = await getCurrentClinicId()
+  return await supabaseGetWithClinicFallback(CONSUMPTIONS_TABLE, query, cid)
+}
+
 /** Bitta sarf yozuvini id bo'yicha olish (o'chirganda qoldiqni qaytarish uchun) */
 export const getInventoryConsumptionById = async (id) => {
   const cid = await getCurrentClinicId()

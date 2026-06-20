@@ -1,14 +1,14 @@
 <template>
   <MainLayout>
     <div
-      class="overflow-x-hidden max-w-full min-w-0"
+      class="max-w-full min-w-0"
       :class="displayMode === 'schedule'
-        ? 'flex flex-col h-[calc(100dvh-4rem)] min-h-0 -m-4 sm:-m-6 lg:-m-8 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] max-w-none'
+        ? 'flex flex-col h-[calc(100dvh-4rem)] min-h-0 -m-4 sm:-m-6 lg:-m-8 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] max-w-none overflow-x-hidden'
         : 'space-y-4 animate-fade-in'"
     >
       <!-- Filtrlar paneli -->
       <AppointmentsHeader
-        :class="displayMode === 'schedule' ? 'flex-shrink-0 rounded-none border-x-0 border-t-0 shadow-none' : ''"
+        :class="displayMode === 'schedule' ? 'flex-shrink-0 rounded-none border-x-0 border-t-0 shadow-none' : 'relative z-20'"
         :selectedDate="selectedDate"
         :searchQuery="searchQuery"
         :viewMode="viewMode"
@@ -291,6 +291,7 @@
       :doctors="doctors"
       :is-admin="isAdmin"
       :default-doctor-id="doctorId"
+      :day-visits="quickDayVisits"
       @close="closeQuickModal"
       @saved="onQuickAppointmentSaved"
     />
@@ -506,6 +507,13 @@
               </div>
 
               <!-- Error message -->
+              <div
+                v-if="createConflictMessage"
+                class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-start gap-2"
+              >
+                <span class="font-semibold flex-shrink-0">⚠️ Konflikt:</span>
+                <span>{{ createConflictMessage }}</span>
+              </div>
               <div v-if="createError" class="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
                 {{ createError }}
               </div>
@@ -707,6 +715,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import AppointmentsHeader from '@/components/appointments/AppointmentsHeader.vue'
 import DoctorScheduleView from '@/components/appointments/DoctorScheduleView.vue'
 import QuickAppointmentModal from '@/components/appointments/QuickAppointmentModal.vue'
+import { findAppointmentConflicts, formatConflictMessage } from '@/lib/appointmentConflict'
 import {
   formatPhoneForStorage,
   formatPhoneUzDisplay,
@@ -858,12 +867,42 @@ const createForm = ref({
   doctor_id: '',
   date: '',
   start_time: '',
-  duration_minutes: 30,
+  duration_minutes: 60,
   service_name: '',
   price: null,
   notes: '',
   room: '',
   channel: ''
+})
+
+const quickDayVisits = computed(() => {
+  const date = quickSlotMeta.value.date
+  if (!date) return visits.value
+  return visits.value.filter((v) => String(v.date).slice(0, 10) === date)
+})
+
+const createFormConflicts = computed(() => {
+  const form = createForm.value
+  if (!form.date || !form.start_time || !form.doctor_id) return []
+  const duration = Number(form.duration_minutes) || 60
+  const endTime = buildEndTime(form.start_time, duration)
+  const dayVisits = visits.value.filter((v) => String(v.date).slice(0, 10) === form.date)
+  return findAppointmentConflicts({
+    visits: dayVisits,
+    doctorId: form.doctor_id,
+    date: form.date,
+    startTime: form.start_time,
+    endTime,
+  })
+})
+
+const createConflictMessage = computed(() => {
+  if (!createFormConflicts.value.length) return ''
+  const patientMap = {}
+  for (const p of availablePatients.value) {
+    patientMap[Number(p.id)] = p.full_name
+  }
+  return formatConflictMessage(createFormConflicts.value, { patientMap })
 })
 
 const showRescheduleModal = ref(false)
@@ -1302,6 +1341,11 @@ const createAppointment = async () => {
     return
   }
   const endTime = buildEndTime(createForm.value.start_time, durationMinutes)
+  if (createFormConflicts.value.length) {
+    createError.value = createConflictMessage.value || t('appointments.errorOverlap')
+    loading.value = false
+    return
+  }
   const overlap = await hasOverlap({
     date: createForm.value.date,
     start_time: createForm.value.start_time,

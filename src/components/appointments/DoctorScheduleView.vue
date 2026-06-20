@@ -33,36 +33,52 @@
         </button>
       </div>
 
-      <!-- Schedule Canvas: vertikal scroll tashqi, gorizontal scroll faqat jadvalda -->
-      <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative bg-white" ref="scheduleCanvasRef">
-        <div class="w-full min-w-full h-full overflow-x-auto touch-pan-x overscroll-x-contain">
-          <div class="day-grid flex w-full min-w-full h-full">
-          <!-- Left: Time column (sticky) -->
-          <div class="bg-gray-50/80 time-column flex-shrink-0 sticky left-0 z-40 pl-2 sm:pl-3 border-r border-gray-100" :class="timeColumnWidth">
-            <div class="sticky top-0 z-50 bg-gray-50/95 h-[44px] sm:h-[48px] border-b border-gray-100"></div>
+      <!-- Jadval: ekran balandligini to'ldiradi, kerak bo'lsa vertikal scroll -->
+      <div
+        ref="scheduleCanvasRef"
+        class="flex-1 min-h-0 relative bg-white flex flex-col"
+        :class="needsVerticalScroll ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'"
+      >
+        <div class="flex-1 min-h-0 h-full overflow-x-auto touch-pan-x overscroll-x-contain">
+          <div class="day-grid flex w-full min-w-full h-full min-h-0 relative">
+          <!-- Chap: vaqt ustuni -->
+          <div
+            class="bg-gray-50/80 time-column flex flex-col h-full self-stretch flex-shrink-0 sticky left-0 z-40 pl-2 sm:pl-3 border-r border-gray-100"
+            :class="timeColumnWidth"
+          >
+            <div class="sticky top-0 z-50 bg-gray-50/95 h-14 flex-shrink-0 border-b border-gray-100" />
 
-            <div
-              v-for="slot in timeSlots"
-              :key="slot.key"
-              class="flex items-center justify-end pr-2 sm:pr-3 select-none border-b border-gray-100 font-mono tabular-nums leading-none"
-              :class="slot.isHalfHour
-                ? 'text-[10px] sm:text-xs font-medium text-gray-400 bg-gray-50/60'
-                : 'text-xs sm:text-sm font-semibold text-gray-600 bg-gray-50/80'"
-              :style="{ height: slotHeightPx + 'px', minHeight: slotHeightPx + 'px' }"
-            >
-              {{ slot.display }}
+            <div class="relative flex flex-col flex-1 min-h-0" :style="slotsAreaStyle">
+              <div
+                v-for="slot in timeSlots"
+                :key="slot.key"
+                class="flex items-start justify-end pt-1.5 pr-2 sm:pr-3 select-none border-b border-gray-100 font-mono tabular-nums leading-none text-xs sm:text-sm font-semibold text-gray-600 bg-gray-50/80 flex-shrink-0"
+                :style="slotRowStyle"
+              >
+                {{ slot.display }}
+              </div>
+
+              <div
+                v-if="currentTimeLineStyle"
+                class="absolute right-1 sm:right-2 z-50 pointer-events-none"
+                :style="currentTimeLineStyle"
+              >
+                <span class="inline-flex items-center rounded px-1 py-0.5 text-[10px] sm:text-xs font-bold tabular-nums text-red-600 bg-white/95 shadow-sm ring-1 ring-red-200">
+                  {{ currentTimeLabel }}
+                </span>
+              </div>
             </div>
           </div>
 
-          <!-- Right: Doctor columns — ekranga teng taqsimlanadi, ko'p bo'lsa gorizontal scroll -->
-          <div class="flex flex-1 min-w-0 w-full h-full">
+          <!-- O'ng: shifokor ustunlari -->
+          <div class="relative flex flex-1 min-w-0 w-full h-full self-stretch">
             <div
               v-for="(doctor, docIdx) in activeDoctors"
               :key="doctor.id"
-              class="doctor-column relative border-r border-gray-100 flex-1 basis-0 min-w-[8rem] sm:min-w-[10rem] lg:min-w-[11rem]"
+              class="doctor-column relative border-r border-gray-100 flex flex-col h-full self-stretch flex-1 basis-0 min-w-[8rem] sm:min-w-[10rem] lg:min-w-[11rem]"
             >
               <!-- Shifokor sarlavhasi -->
-              <div class="sticky top-0 z-30 bg-white px-2 sm:px-3 py-2 min-h-[52px] sm:min-h-[56px] flex items-center gap-2 border-b border-gray-100">
+              <div class="sticky top-0 z-30 bg-white px-2 sm:px-3 h-14 flex-shrink-0 flex items-center gap-2 border-b border-gray-100">
                 <div class="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
                   {{ doctorInitials(doctor) }}
                 </div>
@@ -81,17 +97,14 @@
                 </span>
               </div>
 
-              <!-- Time slots area -->
-              <div class="relative">
-                <!-- Background grid (clickable) -->
+              <!-- Vaqt katakchalari -->
+              <div class="relative flex flex-col flex-1 min-h-0" :style="slotsAreaStyle">
                 <div
                   v-for="slot in timeSlots"
                   :key="`bg-${doctor.id}-${slot.time}`"
-                  class="border-b border-gray-100 cursor-pointer transition-colors duration-150"
-                  :class="isDropTarget(doctor.id, slot.time)
-                    ? 'bg-primary-50/60'
-                    : slot.isHalfHour ? 'bg-white hover:bg-slate-50/70' : 'bg-white hover:bg-gray-50/80'"
-                  :style="{ height: slotHeightPx + 'px' }"
+                  class="border-b border-gray-100 cursor-pointer transition-colors duration-150 bg-white hover:bg-gray-50/80 flex-shrink-0"
+                  :class="isDropTarget(doctor.id, slot.time) ? 'bg-primary-50/60' : ''"
+                  :style="slotRowStyle"
                   :title="`${doctor.full_name} — ${slot.time}`"
                   @dragover.prevent="onDragOver($event, doctor.id, slot.time)"
                   @dragleave="onDragLeave($event, doctor.id, slot.time)"
@@ -99,19 +112,25 @@
                   @click="handleSlotClick(doctor.id, slot.time)"
                 />
 
-                <CurrentTimeIndicator
-                  :start-minutes="dayStartMinutes"
-                  :end-minutes="dayEndMinutes"
-                  :show-text="docIdx === 0"
-                  class="absolute left-0 right-0 z-20 pointer-events-none"
-                />
+                <!-- Joriy vaqt chizig'i — uchrashuvlar bilan bir xil konteynerda -->
+                <div
+                  v-if="currentTimeLineStyle"
+                  class="absolute left-0 right-0 z-30 pointer-events-none flex items-center px-0.5"
+                  :style="currentTimeLineStyle"
+                >
+                  <div
+                    v-if="docIdx === 0"
+                    class="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-red-500 rounded-full flex-shrink-0 shadow-[0_0_4px_rgba(239,68,68,0.6)] ring-2 ring-white"
+                  />
+                  <div class="flex-1 min-w-0 h-[2px] sm:h-[2.5px] rounded-full bg-red-500 shadow-[0_0_3px_rgba(239,68,68,0.45)]" />
+                </div>
 
-              <!-- Appointments (HTML5 drag-and-drop) -->
-              <div class="absolute inset-0 pointer-events-none">
+              <!-- Uchrashuvlar -->
+              <div class="absolute inset-0 pointer-events-none overflow-hidden">
                 <div
                   v-for="appt in getAppointmentsForDoctor(doctor.id)"
                   :key="appt.id"
-                  class="absolute inset-x-0.5 pointer-events-auto transition-opacity duration-150 w-[calc(100%-0.25rem)]"
+                  class="absolute inset-x-1 pointer-events-auto transition-opacity duration-150 w-[calc(100%-0.5rem)] overflow-hidden"
                   :class="isDraggingId === appt.id ? 'z-40' : 'z-10'"
                   :style="getAppointmentStyle(appt)"
                   draggable="true"
@@ -175,11 +194,13 @@ import {
   buildCalendarTimeSlots,
   minutesToTimeString,
   resolveCalendarMinuteRange,
+  timeStringToMinutes,
 } from '@/lib/clinicCalendarHours'
 import * as visitsApi from '@/api/visitsApi'
 import { updateAppointment, getAppointmentsByPatientId } from '@/api/appointmentsApi'
+import { getSupabaseClient } from '@/lib/supabaseClient'
+import { getCurrentClinicId } from '@/lib/clinicContext'
 import { useToast } from '@/composables/useToast'
-import CurrentTimeIndicator from './CurrentTimeIndicator.vue'
 import AppointmentBlock from './AppointmentBlock.vue'
 import PatientModalInfo from './PatientModalInfo.vue'
 
@@ -215,16 +236,85 @@ const selectedPatientAppointment = ref(null)
 const scheduleCanvasRef = ref(null)
 const canvasHeight = ref(0)
 let canvasResizeObserver = null
+let scheduleNowInterval = null
 const currentDate = ref(props.selectedDate || new Date().toISOString().split('T')[0])
 const isDraggingId = ref(null)
 const dropHoverTarget = ref(null)
 const clickMoveAppointment = ref(null)
 const skipNextSlotClick = ref(false)
 
+let realtimeChannel = null
+let realtimeReloadTimer = null
+
+const scheduleRealtimeReload = () => {
+  if (realtimeReloadTimer) clearTimeout(realtimeReloadTimer)
+  realtimeReloadTimer = setTimeout(() => {
+    loadAppointments()
+  }, 400)
+}
+
+const teardownRealtime = () => {
+  if (realtimeChannel) {
+    getSupabaseClient().removeChannel(realtimeChannel)
+    realtimeChannel = null
+  }
+}
+
+const setupRealtime = async () => {
+  teardownRealtime()
+  const supabase = getSupabaseClient()
+  const date = currentDate.value
+  const cid = await getCurrentClinicId()
+  const channelName = `doctor-schedule-${date}-${cid || 'all'}`
+
+  const channel = supabase.channel(channelName)
+
+  const visitsFilter = cid
+    ? `clinic_id=eq.${cid}`
+    : undefined
+
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'visits',
+      filter: visitsFilter,
+    },
+    (payload) => {
+      const rowDate = payload.new?.date || payload.old?.date
+      if (!rowDate || String(rowDate).slice(0, 10) === date) {
+        scheduleRealtimeReload()
+      }
+    }
+  )
+
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'appointments',
+      filter: visitsFilter,
+    },
+    (payload) => {
+      const scheduled = payload.new?.scheduled_at || payload.old?.scheduled_at
+      if (!scheduled || String(scheduled).slice(0, 10) === date) {
+        scheduleRealtimeReload()
+      }
+    }
+  )
+
+  channel.subscribe()
+  realtimeChannel = channel
+}
+
 // Responsive breakpoints (mobile, tablet, desktop)
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
-const SLOT_MINUTES = 30
+const SLOT_MINUTES = 60
+const COLUMN_HEADER_PX = 56
+const MIN_SLOT_PX = 52
 
 const calendarMinuteRange = computed(() =>
   resolveCalendarMinuteRange(clinicStore.calendarStartTime, clinicStore.calendarEndTime)
@@ -247,21 +337,82 @@ const timeColumnWidth = computed(() => {
   return 'w-[4.5rem]' // 72px
 })
 
-/** Vaqt katakchasi balandligi — mavjud ekran balandligiga moslashadi */
+/** Vaqt qatorlari balandligi — mavjud ekranni pastigacha to'ldiradi */
+const slotsAreaAvailablePx = computed(() => {
+  return Math.max(0, canvasHeight.value - COLUMN_HEADER_PX)
+})
+
 const slotHeightPx = computed(() => {
   const slotCount = timeSlots.value.length
-  if (!slotCount) return 40
+  if (!slotCount) return MIN_SLOT_PX
 
-  const headerRowPx = windowWidth.value < 640 ? 52 : 56
-  const available = Math.max(0, canvasHeight.value - headerRowPx)
-  if (!available) {
-    return windowWidth.value < 640 ? 36 : 40
+  const available = slotsAreaAvailablePx.value
+  if (!available) return MIN_SLOT_PX
+
+  const ideal = available / slotCount
+  if (ideal < MIN_SLOT_PX) return MIN_SLOT_PX
+  return ideal
+})
+
+const slotsAreaHeightPx = computed(() => slotHeightPx.value * timeSlots.value.length)
+
+const needsVerticalScroll = computed(() => {
+  const available = slotsAreaAvailablePx.value
+  return available > 0 && slotsAreaHeightPx.value > available
+})
+
+const slotsAreaStyle = computed(() => {
+  const height = slotsAreaHeightPx.value
+  if (!height) return { flex: '1 1 0%', minHeight: 0 }
+  return {
+    height: `${height}px`,
+    flex: needsVerticalScroll.value ? '0 0 auto' : '1 1 0%',
+    minHeight: 0,
   }
+})
 
-  const perSlot = Math.floor(available / slotCount)
-  const minH = windowWidth.value < 640 ? 28 : 32
-  const maxH = windowWidth.value < 640 ? 48 : 56
-  return Math.max(minH, Math.min(maxH, perSlot))
+const slotRowStyle = computed(() => {
+  const h = slotHeightPx.value
+  return { height: `${h}px`, minHeight: `${h}px`, flex: '0 0 auto' }
+})
+
+/** Jadval boshlanishi — birinchi slot vaqti (label bilan mos) */
+const gridStartMinutes = computed(() => {
+  const firstSlotTime = timeSlots.value[0]?.time
+  return timeStringToMinutes(firstSlotTime) ?? dayStartMinutes.value
+})
+
+/** Joriy vaqt — uchrashuv kartalari bilan bir xil konteyner va hisob */
+const scheduleNow = ref(new Date())
+
+const currentTimeLabel = computed(() => {
+  const h = String(scheduleNow.value.getHours()).padStart(2, '0')
+  const m = String(scheduleNow.value.getMinutes()).padStart(2, '0')
+  return `${h}:${m}`
+})
+
+const currentTimeTopPx = computed(() => {
+  const nowMinutes = scheduleNow.value.getHours() * 60 + scheduleNow.value.getMinutes()
+  const start = gridStartMinutes.value
+  const end = dayEndMinutes.value
+  if (nowMinutes < start || nowMinutes >= end) return null
+
+  const slotCount = timeSlots.value.length
+  const areaHeight = slotsAreaHeightPx.value
+  if (!slotCount || !areaHeight) return null
+
+  const minutesFromStart = nowMinutes - start
+  const totalGridMinutes = slotCount * SLOT_MINUTES
+  return (minutesFromStart / totalGridMinutes) * areaHeight
+})
+
+const currentTimeLineStyle = computed(() => {
+  const topPx = currentTimeTopPx.value
+  if (topPx == null) return null
+  return {
+    top: `${topPx}px`,
+    transform: 'translateY(-50%)',
+  }
 })
 
 const visibleDoctors = computed(() => {
@@ -687,8 +838,8 @@ const getAppointmentStyle = (appt) => {
   const hourPx = slotHeightPx.value
   const [startH, startM] = startTime.split(':').map(Number)
   const startTotalMinutes = startH * 60 + startM
-  const startMinutesFromDay = startTotalMinutes - dayStartMinutes.value
-  const topPx = (startMinutesFromDay / SLOT_MINUTES) * hourPx
+  const startMinutesFromDay = startTotalMinutes - gridStartMinutes.value
+  const topPx = (startMinutesFromDay / SLOT_MINUTES) * slotHeightPx.value
 
   let heightPx = hourPx
   const endTime = normalizeTimeSlot(appt.end_time)
@@ -696,20 +847,24 @@ const getAppointmentStyle = (appt) => {
     const [endH, endM] = endTime.split(':').map(Number)
     const endTotalMinutes = endH * 60 + endM
     const durationMinutes = endTotalMinutes - startTotalMinutes
-    heightPx = Math.max(hourPx, (durationMinutes / SLOT_MINUTES) * hourPx)
+    heightPx = Math.max(hourPx * 0.92, (durationMinutes / SLOT_MINUTES) * hourPx - 2)
   } else if (appt.duration_minutes) {
-    heightPx = Math.max(hourPx, (appt.duration_minutes / SLOT_MINUTES) * hourPx)
+    heightPx = Math.max(hourPx * 0.92, (appt.duration_minutes / SLOT_MINUTES) * hourPx - 2)
   }
 
   return {
-    top: `${topPx}px`,
+    top: `${Math.max(0, topPx + 1)}px`,
     height: `${heightPx}px`,
-    minHeight: `${hourPx}px`,
+    minHeight: `${Math.min(hourPx * 0.92, heightPx)}px`,
+    maxHeight: `${heightPx}px`,
   }
 }
 
 // Watch current date va view mode
-watch(() => currentDate.value, loadAppointments)
+watch(() => currentDate.value, () => {
+  loadAppointments()
+  setupRealtime()
+})
 
 watch(
   () => [clinicStore.calendarStartTime, clinicStore.calendarEndTime],
@@ -744,9 +899,21 @@ watch(currentDate, (value) => {
   }
 })
 
+watch(
+  () => [timeSlots.value.length, slotsAreaAvailablePx.value],
+  () => {
+    nextTick(() => {
+      remeasureCanvas()
+      requestAnimationFrame(remeasureCanvas)
+    })
+  }
+)
+
 // Window resize handler for responsive design
 const handleWindowResize = () => {
   windowWidth.value = window.innerWidth
+  remeasureCanvas()
+  requestAnimationFrame(remeasureCanvas)
 }
 
 onMounted(async () => {
@@ -755,12 +922,17 @@ onMounted(async () => {
   }
 
   loadAppointments()
+  setupRealtime()
   if (isAdmin.value) {
     patientsStore.fetchPatients()
   } else if (authStore.user?.id) {
     patientsStore.fetchPatientsByDoctor(authStore.user.id)
   }
   window.addEventListener('resize', handleWindowResize)
+  scheduleNow.value = new Date()
+  scheduleNowInterval = setInterval(() => {
+    scheduleNow.value = new Date()
+  }, 60000)
 
   if (scheduleCanvasRef.value && typeof ResizeObserver !== 'undefined') {
     canvasResizeObserver = new ResizeObserver((entries) => {
@@ -773,10 +945,10 @@ onMounted(async () => {
   }
 
   setTimeout(() => {
-    if (scheduleCanvasRef.value) {
+    if (scheduleCanvasRef.value && needsVerticalScroll.value) {
       const now = new Date()
       const nowMinutes = now.getHours() * 60 + now.getMinutes()
-      const start = dayStartMinutes.value
+      const start = gridStartMinutes.value
       const end = dayEndMinutes.value
       const scrollIndex = nowMinutes >= start && nowMinutes < end
         ? Math.floor((nowMinutes - start) / SLOT_MINUTES)
@@ -789,12 +961,16 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleWindowResize)
   canvasResizeObserver?.disconnect()
+  if (scheduleNowInterval) clearInterval(scheduleNowInterval)
+  if (realtimeReloadTimer) clearTimeout(realtimeReloadTimer)
+  teardownRealtime()
 })
 </script>
 
 <style scoped>
 .doctor-schedule-container {
   width: 100%;
+  height: 100%;
 }
 
 /* Google Calendar-like tweaks */
@@ -802,6 +978,7 @@ onUnmounted(() => {
   background: #ffffff;
   width: 100%;
   min-width: 100%;
+  height: 100%;
 }
 
 .doctor-column {
@@ -823,6 +1000,7 @@ onUnmounted(() => {
   border-left-width: 6px !important;
   border-radius: 6px !important;
   padding: 6px !important;
+  overflow: hidden;
 }
 
 /* Smaller text for time labels to fit compact layout */
@@ -830,9 +1008,9 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-/* Make current time indicator more prominent (thin red line with small dot) */
-.day-grid .flex-1.h-0\.5.bg-red-500 {
-  height: 2px !important;
+/* Make current time indicator more prominent */
+.day-grid :deep(.bg-red-500.rounded-full) {
+  min-height: 2px;
 }
 
 </style>

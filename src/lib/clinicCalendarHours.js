@@ -62,10 +62,10 @@ export function resolveCalendarMinuteRange(startTime, endTime) {
   }
 }
 
-/** Klinika ish vaqti oralig'idagi vaqt katakchalari (masalan har 30 daqiqa) */
-export function buildCalendarTimeSlots(startTime, endTime, intervalMinutes = 30) {
+/** Klinika ish vaqti oralig'idagi vaqt katakchalari (masalan har 60 daqiqa) */
+export function buildCalendarTimeSlots(startTime, endTime, intervalMinutes = 60) {
   const { startMinutes, endMinutes } = resolveCalendarMinuteRange(startTime, endTime)
-  const step = Math.max(15, Number(intervalMinutes) || 30)
+  const step = Math.max(15, Number(intervalMinutes) || 60)
   const slots = []
 
   for (let minute = startMinutes; minute < endMinutes; minute += step) {

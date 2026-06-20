@@ -143,6 +143,14 @@
             <PatientOdontogramPlaceholder :patient-id="patient.id" :visit-id="selectedVisitId" />
           </div>
 
+          <!-- Timeline Tab -->
+          <div v-else-if="activeTab === 'timeline'">
+            <PatientClinicalTimeline
+              :patient-id="patient.id"
+              :patient-name="patient.full_name || ''"
+            />
+          </div>
+
           <!-- To'lovlar Tab -->
           <div v-else-if="activeTab === 'payments'">
             <PatientPaymentsPlaceholder
@@ -336,6 +344,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import PatientVisitsTable from '@/components/patients/PatientVisitsTable.vue'
+import PatientClinicalTimeline from '@/components/patients/PatientClinicalTimeline.vue'
 import PatientOdontogramPlaceholder from '@/components/patients/PatientOdontogramPlaceholder.vue'
 import PatientPaymentsPlaceholder from '@/components/patients/PatientPaymentsPlaceholder.vue'
 import PatientTreatmentPlans from '@/components/patients/PatientTreatmentPlans.vue'
@@ -383,6 +392,7 @@ const messageError = ref('')
 
 const tabs = [
   { id: 'visits', labelKey: 'patientDetail.tabVisits', count: null },
+  { id: 'timeline', labelKey: 'patientDetail.tabTimeline', count: null },
   { id: 'odontogram', labelKey: 'patientDetail.tabOdontogram', count: null },
   { id: 'payments', labelKey: 'patientDetail.tabPayments', count: null },
   { id: 'plans', labelKey: 'patientDetail.tabPlans', count: null },

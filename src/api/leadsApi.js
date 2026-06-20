@@ -4,6 +4,7 @@
  */
 
 import { supabaseGet, supabasePost, supabasePatchWhere } from './supabaseConfig'
+import { buildEndTimeFromStart } from '@/lib/visitAppointmentSync'
 
 const TABLE = 'leads'
 const HOLD_MINUTES = 30
@@ -71,7 +72,7 @@ const releaseExpiredHoldsForSlot = async ({ doctorId, preferredDate, preferredTi
     `doctor_id=eq.${Number(doctorId)}`,
     `preferred_date=eq.${encodeURIComponent(String(preferredDate))}`,
     `preferred_time=eq.${encodeURIComponent(String(preferredTime))}`,
-    'status=in.(new,contacted)',
+    'status=in.(hold,new,contacted)',
     `hold_expires_at=lte.${encodeURIComponent(nowIso)}`,
   ].join('&')
 
@@ -127,10 +128,18 @@ export const createLead = async (payload) => {
       preferredTime: cleanPreferredTime,
     })
 
+    const patient = await findOrCreatePatientFromLead({
+      id: null,
+      patient_name: cleanName,
+      phone: cleanPhone,
+      doctor_id: doctorId,
+    })
+
     const preferredSummary = `Sana/Vaqt: ${cleanPreferredDate} ${cleanPreferredTime}`
     const data = {
       doctor_id: doctorId,
       clinic_id: clinicId,
+      patient_id: Number(patient.id),
       patient_name: cleanName,
       phone: cleanPhone,
       preferred_date: cleanPreferredDate,
@@ -138,7 +147,7 @@ export const createLead = async (payload) => {
       selected_service: selected_service ? String(selected_service).trim() : null,
       note: note ? String(note).trim() : null,
       source: 'doctor_public_page',
-      status: 'new',
+      status: 'hold',
       hold_expires_at: holdExpiresAt,
       created_at: now,
       updated_at: now
@@ -243,8 +252,8 @@ export const updateLeadStatus = async (leadId, status) => {
     const cleanStatus = String(status || '').trim()
     if (!cleanStatus) throw new Error('Status required')
 
-    const holdStatuses = ['new', 'contacted']
-    const noHoldStatuses = ['booked', 'qabulda', 'rejected', 'expired']
+    const holdStatuses = ['hold', 'new', 'contacted']
+    const noHoldStatuses = ['booked', 'confirmed', 'qabulda', 'rejected', 'expired', 'canceled', 'cancelled']
     const data = {
       status: cleanStatus,
       updated_at: new Date().toISOString()
@@ -365,9 +374,15 @@ export const convertLeadToBooked = async (leadInput) => {
       status: 'pending',
       date: String(lead.preferred_date).slice(0, 10),
       start_time: startTime,
-      duration_minutes: 30,
+      end_time: buildEndTimeFromStart(startTime, 60),
+      duration_minutes: 60,
       channel: 'public_lead',
       lead_id: leadId,
+    })
+
+    const { syncAppointmentFromVisit } = await import('./visitsApi')
+    await syncAppointmentFromVisit(visit).catch((err) => {
+      console.warn('Lead booked: appointment sync', err?.message)
     })
 
     const updatedLeads = await supabasePatchWhere(TABLE, `id=eq.${leadId}`, {

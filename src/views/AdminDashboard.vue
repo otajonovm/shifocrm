@@ -1,5 +1,68 @@
 <template>
   <div class="space-y-6 animate-fade-in">
+    <!-- Operatsion KPI -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-5">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">No-show foizi</p>
+        <p class="mt-2 text-2xl font-bold text-gray-900">{{ kpi.noShow.rate }}%</p>
+        <p class="mt-1 text-xs text-gray-500">{{ kpi.noShow.noShowCount }} / {{ kpi.noShow.total }} qabul</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-5">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Lead → bemor</p>
+        <p class="mt-2 text-2xl font-bold text-gray-900">{{ kpi.conversion.rate }}%</p>
+        <p class="mt-1 text-xs text-gray-500">{{ kpi.conversion.converted }} / {{ kpi.conversion.total }} lead</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-5">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Umumiy qarzlar</p>
+        <p class="mt-2 text-2xl font-bold text-rose-600">{{ formatCurrency(kpi.debt.total) }}</p>
+        <p class="mt-1 text-xs text-gray-500">{{ kpi.debt.debtorsCount }} ta qarzdor</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-5">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Bandlik (bugun)</p>
+        <p class="mt-2 text-2xl font-bold text-primary-600">{{ kpi.occupancy.rate }}%</p>
+        <p class="mt-1 text-xs text-gray-500">{{ kpi.occupancy.bookedSlots }} / {{ kpi.occupancy.totalSlots }} slot</p>
+      </div>
+    </div>
+
+    <!-- Ombor ogohlantirishlari -->
+    <div v-if="lowStockItems.length" class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+      <h3 class="text-sm font-semibold text-amber-900">Omborda kam qolgan materiallar</h3>
+      <ul class="mt-3 space-y-2">
+        <li
+          v-for="item in lowStockItems.slice(0, 5)"
+          :key="item.id"
+          class="flex items-center justify-between text-sm"
+        >
+          <span class="text-amber-900 font-medium">{{ item.name }}</span>
+          <span class="text-amber-700">{{ item.currentStock }} / min {{ item.minStock }} {{ item.unit }}</span>
+        </li>
+      </ul>
+      <router-link to="/inventory" class="mt-3 inline-block text-xs font-medium text-amber-800 hover:underline">
+        Omborga o'tish →
+      </router-link>
+    </div>
+
+    <!-- Material sarfi (30 kun) -->
+    <div v-if="consumptionReport.byItem.length" class="bg-white rounded-2xl shadow-card border border-gray-100 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-sm font-semibold text-gray-900">Material sarfi (30 kun)</h3>
+          <p class="text-xs text-gray-500">Jami: {{ formatCurrency(consumptionReport.grandTotalCost) }}</p>
+        </div>
+        <router-link to="/inventory" class="text-xs text-primary-600 hover:underline">Batafsil</router-link>
+      </div>
+      <div class="space-y-2">
+        <div
+          v-for="row in consumptionReport.byItem.slice(0, 5)"
+          :key="row.itemId"
+          class="flex items-center justify-between text-sm"
+        >
+          <span class="text-gray-700">{{ row.itemName }}</span>
+          <span class="text-gray-900 font-medium">{{ row.totalQty }} {{ row.unit }} · {{ formatCurrency(row.totalCost) }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Revenue + Debt -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 bg-white rounded-2xl shadow-card border border-gray-100">
@@ -164,8 +227,19 @@ import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePatientsStore } from '@/stores/patients'
 import { useDoctorsStore } from '@/stores/doctors'
-import { getVisitsByDate, getDebtVisits } from '@/api/visitsApi'
+import { getVisitsByDate, getDebtVisits, getVisitsByDateRange } from '@/api/visitsApi'
 import { getPaymentsByDateRange } from '@/api/paymentsApi'
+import { listLeadsByClinic } from '@/api/leadsApi'
+import { listInventoryItems, listInventoryConsumptions } from '@/api/inventoryApi'
+import { getCurrentClinicId } from '@/lib/clinicContext'
+import {
+  calcNoShowRate,
+  calcLeadConversionRate,
+  calcTotalDebt,
+  calcOccupancyRate,
+} from '@/lib/dashboardKpi'
+import { findLowStockItems, buildConsumptionReport } from '@/lib/inventoryReports'
+import { DEFAULT_CALENDAR_START, DEFAULT_CALENDAR_END, timeStringToMinutes } from '@/lib/clinicCalendarHours'
 import { getVisitStatusLabel, getVisitStatusColors, getCompletedStatuses } from '@/constants/visitStatus'
 import { getTodayISO } from '@/lib/date'
 import {
@@ -196,6 +270,16 @@ const debtSummary = ref({
   total: 0,
   topDebtors: [],
 })
+
+const kpi = ref({
+  noShow: { rate: 0, noShowCount: 0, total: 0 },
+  conversion: { rate: 0, converted: 0, total: 0 },
+  debt: { total: 0, debtorsCount: 0 },
+  occupancy: { rate: 0, bookedSlots: 0, totalSlots: 0 },
+})
+
+const lowStockItems = ref([])
+const consumptionReport = ref({ byItem: [], byVisit: [], grandTotalQty: 0, grandTotalCost: 0 })
 
 const selectedRevenueRange = ref('day')
 const revenueRanges = computed(() => ([
@@ -402,6 +486,64 @@ const loadDashboard = async () => {
   debtSummary.value = {
     total: totalDebt,
     topDebtors,
+  }
+
+  await loadKpiMetrics(today, visits, debtVisits)
+  await loadInventoryInsights()
+}
+
+const loadKpiMetrics = async (today, todayVisits, debtVisits) => {
+  const dayStart = timeStringToMinutes(DEFAULT_CALENDAR_START) ?? 8 * 60
+  const dayEnd = timeStringToMinutes(DEFAULT_CALENDAR_END) ?? 20 * 60
+
+  kpi.value.occupancy = calcOccupancyRate({
+    visits: todayVisits,
+    doctors: doctorsStore.items,
+    slotMinutes: 60,
+    dayStartMinutes: dayStart,
+    dayEndMinutes: dayEnd,
+  })
+
+  kpi.value.debt = calcTotalDebt(debtVisits)
+
+  try {
+    const monthAgo = new Date()
+    monthAgo.setDate(monthAgo.getDate() - 30)
+    const start = monthAgo.toISOString().slice(0, 10)
+    const monthVisits = await getVisitsByDateRange(start, today)
+    kpi.value.noShow = calcNoShowRate(monthVisits)
+  } catch {
+    kpi.value.noShow = calcNoShowRate([])
+  }
+
+  try {
+    const clinicId = await getCurrentClinicId()
+    const leads = clinicId ? await listLeadsByClinic(clinicId) : []
+    kpi.value.conversion = calcLeadConversionRate(leads)
+  } catch {
+    kpi.value.conversion = calcLeadConversionRate([])
+  }
+}
+
+const loadInventoryInsights = async () => {
+  try {
+    const items = await listInventoryItems()
+    lowStockItems.value = findLowStockItems(items || [])
+  } catch {
+    lowStockItems.value = []
+  }
+
+  try {
+    const items = await listInventoryItems()
+    const consumptions = await listInventoryConsumptions('order=created_at.desc&limit=500')
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
+    const recent = (consumptions || []).filter((row) => {
+      const ts = new Date(row.created_at).getTime()
+      return !Number.isNaN(ts) && ts >= thirtyDaysAgo
+    })
+    consumptionReport.value = buildConsumptionReport(recent, items || [])
+  } catch {
+    consumptionReport.value = { byItem: [], byVisit: [], grandTotalQty: 0, grandTotalCost: 0 }
   }
 }
 

@@ -92,7 +92,7 @@ const props = defineProps({
   },
   slotMinutes: {
     type: Number,
-    default: 30,
+    default: 60,
   },
   positionedByParent: {
     type: Boolean,
@@ -156,7 +156,7 @@ const getDuration = () => {
 // Duration (minutlar) -> height (px) o'tkazish
 const appointmentHeight = computed(() => {
   const duration = getDuration()
-  const minutesPerSlot = Math.max(15, Number(props.slotMinutes) || 30)
+  const minutesPerSlot = Math.max(15, Number(props.slotMinutes) || 60)
   return Math.max(props.slotHeightPx, (duration / minutesPerSlot) * props.slotHeightPx)
 })
 
@@ -167,7 +167,7 @@ const blockClasses = computed(() => {
     props.moveSelectActive ? 'ring-2 ring-primary-500 ring-offset-1 shadow-md scale-[1.02]' : '',
   ].filter(Boolean).join(' ')
   if (props.positionedByParent) {
-    return `${base} relative w-full h-full`
+    return `${base} relative w-full h-full overflow-hidden`
   }
   return `${base} absolute left-0.5 right-0.5`
 })

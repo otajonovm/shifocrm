@@ -21,6 +21,7 @@ const {
   handleInfo,
   handleMessage
 } = require('./handlers/startHandler')
+const { handleLeadCallback } = require('./handlers/leadsHandler')
 
 // Services
 const {
@@ -32,6 +33,10 @@ const {
   stopMessageScheduler,
   getSchedulerStatus
 } = require('./services/messageScheduler')
+const {
+  startLeadHoldCleanupCron,
+  stopLeadHoldCleanupCron,
+} = require('./services/leadsHoldExpiry')
 
 // Environment variables
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
@@ -49,9 +54,21 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: true })
 console.log('🤖 Telegram bot started...')
 
 // Bot commands
-bot.onText(/\/start/, (msg) => handleStart(bot, msg))
+bot.onText(/\/start(?:@\w+)?(?:\s+(.+))?/i, (msg) => handleStart(bot, msg))
 bot.onText(/\/help/, (msg) => handleHelp(bot, msg))
 bot.onText(/\/info/, (msg) => handleInfo(bot, msg))
+
+bot.on('callback_query', async (query) => {
+  try {
+    const handled = await handleLeadCallback(bot, query)
+    if (!handled && query.data) {
+      await bot.answerCallbackQuery(query.id)
+    }
+  } catch (error) {
+    console.error('callback_query error:', error.message)
+    await bot.answerCallbackQuery(query.id, { text: 'Xatolik' }).catch(() => {})
+  }
+})
 
 // Oddiy xabarlar
 bot.on('message', (msg) => {
@@ -159,12 +176,14 @@ app.listen(PORT, () => {
 setBotInstance(bot)
 startReminderCron()
 startMessageScheduler(bot, { intervalMs: 30000 })
+startLeadHoldCleanupCron(5 * 60 * 1000)
 
 console.log('✅ All systems ready!')
 
 function shutdown(signal) {
   console.log(`🛑 ${signal} qabul qilindi, server to'xtatilmoqda...`)
   stopMessageScheduler()
+  stopLeadHoldCleanupCron()
   bot.stopPolling()
     .then(() => {
       console.log('✅ Telegram polling to‘xtatildi')

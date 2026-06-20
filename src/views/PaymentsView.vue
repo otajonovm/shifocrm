@@ -33,6 +33,57 @@
         </div>
       </div>
 
+      <!-- Kassa smenasi -->
+      <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-card">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 class="text-base font-semibold text-gray-900">Kassa smenasi</h2>
+            <p v-if="openShift" class="mt-1 text-sm text-emerald-600">
+              Ochiq — {{ formatDate(openShift.opened_at) }}
+              <span class="text-gray-500">· Boshlang'ich: {{ formatCurrency(openShift.opening_balance) }}</span>
+            </p>
+            <p v-else class="mt-1 text-sm text-gray-500">Smena yopiq. To'lovlarni qayd etish uchun smenani oching.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-if="!openShift"
+              class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+              :disabled="shiftLoading"
+              @click="showOpenShiftModal = true"
+            >
+              Smenani ochish
+            </button>
+            <button
+              v-else
+              class="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition-colors"
+              :disabled="shiftLoading"
+              @click="prepareCloseShift"
+            >
+              Smenani yopish
+            </button>
+          </div>
+        </div>
+
+        <div v-if="openShift && shiftLiveTotals" class="mt-4 grid gap-3 sm:grid-cols-4">
+          <div class="rounded-xl bg-slate-50 px-3 py-2">
+            <p class="text-[10px] uppercase text-slate-500">Naqd</p>
+            <p class="text-sm font-semibold text-slate-900">{{ formatCurrency(shiftLiveTotals.cash) }}</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 px-3 py-2">
+            <p class="text-[10px] uppercase text-slate-500">Karta</p>
+            <p class="text-sm font-semibold text-slate-900">{{ formatCurrency(shiftLiveTotals.card) }}</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 px-3 py-2">
+            <p class="text-[10px] uppercase text-slate-500">O'tkazma</p>
+            <p class="text-sm font-semibold text-slate-900">{{ formatCurrency(shiftLiveTotals.transfer) }}</p>
+          </div>
+          <div class="rounded-xl bg-emerald-50 px-3 py-2">
+            <p class="text-[10px] uppercase text-emerald-600">Kutilgan balans</p>
+            <p class="text-sm font-semibold text-emerald-700">{{ formatCurrency(shiftExpectedBalance) }}</p>
+          </div>
+        </div>
+      </div>
+
       <div class="grid gap-4 sm:grid-cols-3">
         <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
           <p class="text-xs text-slate-500">{{ t('payments.totalPayments') }}</p>
@@ -426,6 +477,106 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Smena ochish -->
+    <Transition
+      enter-active-class="transition ease-out duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition ease-in duration-150"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="showOpenShiftModal" class="fixed inset-0 z-50 overflow-y-auto" @click.self="showOpenShiftModal = false">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+          <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
+          <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <h3 class="text-lg font-semibold text-gray-900">Kassa smenasini ochish</h3>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Boshlang'ich naqd balans</label>
+              <input
+                v-model="openShiftForm.openingBalance"
+                type="number"
+                min="0"
+                step="1000"
+                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+            <div class="flex justify-end gap-2">
+              <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" @click="showOpenShiftModal = false">Bekor</button>
+              <button class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700" :disabled="shiftLoading" @click="handleOpenShift">
+                {{ shiftLoading ? 'Ochilyapti...' : 'Ochish' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Smena yopish va hisobot -->
+    <Transition
+      enter-active-class="transition ease-out duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition ease-in duration-150"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="showCloseShiftModal" class="fixed inset-0 z-50 overflow-y-auto" @click.self="showCloseShiftModal = false">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+          <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
+          <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg p-6 space-y-4">
+            <h3 class="text-lg font-semibold text-gray-900">Kunlik kassa hisoboti</h3>
+
+            <div v-if="shiftCloseReport" class="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-2 text-sm">
+              <div class="flex justify-between"><span class="text-slate-500">Naqd</span><span class="font-medium">{{ formatCurrency(shiftCloseReport.totals.cash) }}</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Karta</span><span class="font-medium">{{ formatCurrency(shiftCloseReport.totals.card) }}</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">O'tkazma</span><span class="font-medium">{{ formatCurrency(shiftCloseReport.totals.transfer) }}</span></div>
+              <div v-if="shiftCloseReport.totals.refunds > 0" class="flex justify-between text-rose-600">
+                <span>Qaytarimlar</span><span class="font-medium">−{{ formatCurrency(shiftCloseReport.totals.refunds) }}</span>
+              </div>
+              <hr class="border-slate-200" />
+              <div class="flex justify-between"><span class="text-slate-500">Boshlang'ich</span><span>{{ formatCurrency(shiftCloseReport.openingBalance) }}</span></div>
+              <div class="flex justify-between font-semibold text-emerald-700">
+                <span>Kutilgan balans</span><span>{{ formatCurrency(shiftCloseReport.expectedBalance) }}</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Haqiqiy kassa balansi (naqd)</label>
+              <input
+                v-model="closeShiftForm.closingBalance"
+                type="number"
+                min="0"
+                step="1000"
+                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+
+            <p
+              v-if="shiftCloseReport && balanceDifference !== 0"
+              class="text-sm rounded-lg px-3 py-2"
+              :class="balanceDifference > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'"
+            >
+              Farq: {{ balanceDifference > 0 ? '+' : '' }}{{ formatCurrency(balanceDifference) }}
+              {{ balanceDifference > 0 ? '(ortiqcha)' : '(kamomad)' }}
+            </p>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Izoh</label>
+              <textarea v-model="closeShiftForm.notes" rows="2" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2">
+              <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" @click="showCloseShiftModal = false">Bekor</button>
+              <button class="px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700" :disabled="shiftLoading" @click="handleCloseShift">
+                {{ shiftLoading ? 'Yopilyapti...' : 'Smenani yopish' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </MainLayout>
 </template>
 
@@ -446,6 +597,8 @@ import { useDoctorsStore } from '@/stores/doctors'
 import { useDataPermissionGuard, useDataPermission } from '@/composables/useDataPermission'
 import { exportToCsv, exportToPdf } from '@/lib/exportData'
 import { logActivity } from '@/lib/activityLog'
+import { getOpenCashShift, openCashShift, closeCashShift } from '@/api/cashShiftsApi'
+import { summarizePaymentsByMethod, calcExpectedShiftBalance, buildShiftCloseReport } from '@/lib/cashShiftSummary'
 
 const payments = ref([])
 const { t } = useI18n()
@@ -468,6 +621,14 @@ const showFilterSheet = ref(false)
 const isEditing = ref(false)
 const visitPreview = ref(null)
 const visitPreviewLoading = ref(false)
+
+const openShift = ref(null)
+const shiftLoading = ref(false)
+const showOpenShiftModal = ref(false)
+const showCloseShiftModal = ref(false)
+const shiftCloseReport = ref(null)
+const openShiftForm = ref({ openingBalance: 0 })
+const closeShiftForm = ref({ closingBalance: '', notes: '' })
 
 const isSolo = computed(() => authStore.userRole === 'solo')
 const DISCOUNT_NOTE_PREFIX = '[DISCOUNT]'
@@ -512,6 +673,26 @@ const netIncome = computed(() =>
     return sum + (entry.payment_type === 'refund' ? -amount : amount)
   }, 0)
 )
+
+const shiftLiveTotals = computed(() => {
+  if (!openShift.value) return null
+  return summarizePaymentsByMethod(payments.value, {
+    fromIso: openShift.value.opened_at,
+    toIso: new Date().toISOString(),
+  })
+})
+
+const shiftExpectedBalance = computed(() => {
+  if (!openShift.value || !shiftLiveTotals.value) return 0
+  return calcExpectedShiftBalance(openShift.value.opening_balance, shiftLiveTotals.value)
+})
+
+const balanceDifference = computed(() => {
+  if (!shiftCloseReport.value) return 0
+  const closing = Number(closeShiftForm.value.closingBalance)
+  if (!Number.isFinite(closing)) return 0
+  return closing - shiftCloseReport.value.expectedBalance
+})
 
 const patientMap = computed(() => {
   const map = new Map()
@@ -731,6 +912,102 @@ const loadPayments = async () => {
     toast.error(t('payments.errorLoad') || 'To\'lovlarni yuklashda xatolik')
   } finally {
     loading.value = false
+  }
+}
+
+const loadCashShift = async () => {
+  try {
+    openShift.value = await getOpenCashShift()
+  } catch (error) {
+    console.error('Failed to load cash shift:', error)
+    openShift.value = null
+  }
+}
+
+const handleOpenShift = async () => {
+  shiftLoading.value = true
+  try {
+    const openedBy = authStore.user?.full_name || authStore.user?.email || ''
+    openShift.value = await openCashShift({
+      openingBalance: Number(openShiftForm.value.openingBalance) || 0,
+      openedBy,
+    })
+    showOpenShiftModal.value = false
+    openShiftForm.value = { openingBalance: 0 }
+    toast.success('Kassa smenasi ochildi')
+    await logActivity({
+      action: 'cash_shift.open',
+      entity: 'cash_shift',
+      entityId: openShift.value?.id,
+      summary: 'Kassa smenasi ochildi',
+    })
+  } catch (error) {
+    console.error('Open shift failed:', error)
+    toast.error(error.message || 'Smenani ochib bo\'lmadi')
+  } finally {
+    shiftLoading.value = false
+  }
+}
+
+const prepareCloseShift = () => {
+  if (!openShift.value) return
+  shiftCloseReport.value = buildShiftCloseReport({
+    shift: openShift.value,
+    payments: payments.value,
+    closingBalance: shiftExpectedBalance.value,
+  })
+  closeShiftForm.value = {
+    closingBalance: String(Math.round(shiftCloseReport.value.expectedBalance)),
+    notes: '',
+  }
+  showCloseShiftModal.value = true
+}
+
+const handleCloseShift = async () => {
+  if (!openShift.value || !shiftCloseReport.value) return
+  const closingBalance = Number(closeShiftForm.value.closingBalance)
+  if (!Number.isFinite(closingBalance)) {
+    toast.error('Kassa balansini kiriting')
+    return
+  }
+
+  shiftLoading.value = true
+  try {
+    const report = buildShiftCloseReport({
+      shift: openShift.value,
+      payments: payments.value,
+      closingBalance,
+      notes: closeShiftForm.value.notes,
+    })
+
+    await closeCashShift(openShift.value.id, {
+      closingBalance,
+      expectedBalance: report.expectedBalance,
+      cashTotal: report.totals.cash,
+      cardTotal: report.totals.card,
+      transferTotal: report.totals.transfer,
+      otherTotal: report.totals.other,
+      refundTotal: report.totals.refunds,
+      notes: closeShiftForm.value.notes || null,
+    })
+
+    toast.success('Kassa smenasi yopildi')
+    await logActivity({
+      action: 'cash_shift.close',
+      entity: 'cash_shift',
+      entityId: openShift.value.id,
+      summary: `Smena yopildi. Kutilgan: ${formatCurrency(report.expectedBalance)}, haqiqiy: ${formatCurrency(closingBalance)}`,
+      meta: { difference: closingBalance - report.expectedBalance },
+    })
+
+    openShift.value = null
+    showCloseShiftModal.value = false
+    shiftCloseReport.value = null
+  } catch (error) {
+    console.error('Close shift failed:', error)
+    toast.error(error.message || 'Smenani yopib bo\'lmadi')
+  } finally {
+    shiftLoading.value = false
   }
 }
 
@@ -968,7 +1245,7 @@ watch(
 )
 
 onMounted(async () => {
-  await Promise.all([loadPayments(), loadFiltersData()])
+  await Promise.all([loadPayments(), loadFiltersData(), loadCashShift()])
 })
 
 onActivated(async () => {

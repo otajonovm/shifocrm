@@ -80,8 +80,9 @@ export const createAppointment = async (data) => {
       doctor_id: data.doctor_id ? Number(data.doctor_id) : null,
       scheduled_at: data.scheduled_at,
       duration_minutes: data.duration_minutes || 30,
-      status: 'scheduled',
+      status: data.status || 'scheduled',
       notes: data.notes || null,
+      visit_id: data.visit_id ? Number(data.visit_id) : null,
       reminder_24h_sent: false,
       reminder_1h_sent: false
     }
@@ -113,6 +114,7 @@ export const updateAppointment = async (id, data) => {
     if (data.notes !== undefined) payload.notes = data.notes
     if (data.reminder_24h_sent !== undefined) payload.reminder_24h_sent = Boolean(data.reminder_24h_sent)
     if (data.reminder_1h_sent !== undefined) payload.reminder_1h_sent = Boolean(data.reminder_1h_sent)
+    if (data.visit_id !== undefined) payload.visit_id = data.visit_id ? Number(data.visit_id) : null
 
     const result = await supabasePatchWhere(TABLE, q, payload)
     console.log('✅ Appointment updated:', id)
@@ -189,6 +191,25 @@ export const getUpcomingAppointments = async (patientId, days = 30) => {
     return await supabaseGetWithClinicFallback(TABLE, q, cid)
   } catch (error) {
     console.error('❌ Failed to fetch upcoming appointments:', error)
+    throw error
+  }
+}
+
+/**
+ * Sana oralig'idagi qabullar
+ */
+export const getAppointmentsByDateRange = async (startDate, endDate, doctorId = null) => {
+  try {
+    const cid = await getCurrentClinicId()
+    const startIso = `${String(startDate).slice(0, 10)}T00:00:00`
+    const endIso = `${String(endDate).slice(0, 10)}T23:59:59`
+    let q = `and(scheduled_at.gte.${startIso},scheduled_at.lte.${endIso})&order=scheduled_at.asc`
+    if (doctorId) {
+      q = `and(doctor_id.eq.${Number(doctorId)},scheduled_at.gte.${startIso},scheduled_at.lte.${endIso})&order=scheduled_at.asc`
+    }
+    return await supabaseGetWithClinicFallback(TABLE, q, cid)
+  } catch (error) {
+    console.error('❌ Failed to fetch appointments by date range:', error)
     throw error
   }
 }
