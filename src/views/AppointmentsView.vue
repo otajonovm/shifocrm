@@ -630,9 +630,6 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.paidAmountLabel') }}</label>
                 <input v-model.number="completeForm.paid_amount" type="number" min="0" step="1000" class="w-full px-3 py-2 border rounded-lg" />
               </div>
-              <div class="text-sm text-gray-600">
-                {{ t('appointments.debtLabel') }}: <span class="font-semibold">{{ formatCurrency(Math.max(0, (completeForm.price || 0) - (completeForm.paid_amount || 0))) }}</span>
-              </div>
               <div v-if="completeError" class="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2">
                 {{ completeError }}
               </div>
@@ -707,7 +704,6 @@ import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
 import {
   sendAppointmentConfirmed,
   sendAppointmentCanceled,
-  sendDebtReminder,
   sendTelegramNotification
 } from '@/api/telegramApi'
 import { getVisitStatusLabel, getVisitStatusColors } from '@/constants/visitStatus'
@@ -1018,7 +1014,6 @@ const statusOptions = computed(() => [
   { value: 'arrived', label: t('appointments.statusArrived') },
   { value: 'in_progress', label: t('appointments.statusInProgress') },
   { value: 'completed_paid', label: t('appointments.statusCompleted') },
-  { value: 'completed_debt', label: t('appointments.statusDebt') },
   { value: 'cancelled', label: t('appointments.statusCancelled') },
   { value: 'no_show', label: t('appointments.statusNoShow') }
 ])
@@ -1507,14 +1502,6 @@ const completeVisit = async () => {
     if (paidAmount && paidAmount > 0) {
       await syncPayment(completeTarget.value, paidAmount)
     }
-    // Avtomatik Telegram: qarz qolganda qarz eslatmasi
-    if (debt > 0) {
-      await sendDebtReminder({
-        patientId: completeTarget.value.patient_id,
-        amount: debt,
-        dueDate: ''
-      })
-    }
     toast.success(t('appointments.toastCompleted'))
     closeCompleteModal()
     await loadVisits()
@@ -1650,7 +1637,7 @@ const getStatusClass = (status) => {
 const getPaymentStatus = (visit) => {
   const price = Number(visit.price || 0)
   const paid = Number(visit.paid_amount || 0)
-  if (visit.status === 'completed_debt') return 'debt'
+  if (visit.status === 'completed_debt') return 'partial'
   if (price === 0) return 'paid'
   if (paid >= price) return 'paid'
   if (paid > 0 && paid < price) return 'partial'
@@ -1661,7 +1648,6 @@ const getPaymentLabel = (visit) => {
   const status = getPaymentStatus(visit)
   if (status === 'paid') return t('appointments.paymentPaid')
   if (status === 'partial') return t('appointments.paymentPartial')
-  if (status === 'debt') return t('appointments.paymentDebt')
   return t('appointments.paymentUnpaid')
 }
 

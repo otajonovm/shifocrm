@@ -75,14 +75,6 @@
           </div>
         </div>
 
-        <!-- Qarzdorlik Banner — full width on mobile -->
-        <div v-if="totalDebt > 0" class="mt-4 flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
-          <ExclamationCircleIcon class="w-5 h-5 text-red-600 flex-shrink-0" />
-          <span class="text-sm font-medium text-red-700">
-            Umumiy qarzdorlik: {{ formatCurrency(totalDebt) }}
-          </span>
-        </div>
-
         <!-- Xabar yuborish tugmasi -->
         <div class="mt-4 flex justify-end">
           <button
@@ -357,7 +349,7 @@ import { isAdminLike, isDoctor as hasDoctorRole, isSolo as hasSoloRole, ROLES } 
 import { useToast } from '@/composables/useToast'
 import { useDataPermission } from '@/composables/useDataPermission'
 import { PATIENT_STATUSES, getPatientStatusLabel, normalizePatientStatus } from '@/constants/patientStatus'
-import { ArrowLeftIcon, ExclamationCircleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { ArrowLeftIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import * as visitsApi from '@/api/visitsApi'
 import { completeAllPatientVisits } from '@/lib/completePatientVisits'
 import { getVisitServicesByPatientId } from '@/api/visitServicesApi'
@@ -377,7 +369,6 @@ const patient = ref(null)
 const loading = ref(true)
 const activeTab = ref('visits')
 const lastVisitStatus = ref(null)
-const totalDebt = ref(0)
 const visits = ref([])
 const selectedVisitId = ref(null)
 const showPatientStatusModal = ref(false)
@@ -431,23 +422,10 @@ const loadLastVisit = async (patientId) => {
   }
 }
 
-// Umumiy qarzdorlikni hisoblash
-const loadTotalDebt = async (patientId) => {
-  try {
-    totalDebt.value = await visitsApi.getPatientTotalDebt(patientId)
-  } catch (error) {
-    console.error('Failed to load total debt:', error)
-    totalDebt.value = 0
-  }
-}
-
-// Tolovlar bo'limida status o'zgargan bo'lsa bu handler qo'ng'iroa qiladi
+// Tolovlar bo'limida status o'zgargan bo'lsa bu handler qo'ng'iroq qiladi
 const handlePaymentStatusUpdate = async (newStatus) => {
   if (newStatus === 'completed') {
-    // Bemor statusi yangilangan — data refresh qilish
-    await loadTotalDebt(patient.value.id)
     await checkIncompleteVisits(patient.value.id)
-    // Agar PatientsView ochiq bo'lsa, u refresh bo'lishi kerak
     window.dispatchEvent(new CustomEvent('patient-status-updated', {
       detail: { patientId: patient.value.id, status: newStatus }
     }))
@@ -506,7 +484,6 @@ const handleCompleteAll = async () => {
 
       await Promise.all([
         loadLastVisit(patient.value.id),
-        loadTotalDebt(patient.value.id),
         checkIncompleteVisits(patient.value.id)
       ])
     } else {
@@ -749,7 +726,6 @@ onMounted(async () => {
     if (patient.value) {
       await Promise.all([
         loadLastVisit(patient.value.id),
-        loadTotalDebt(patient.value.id),
         checkIncompleteVisits(patient.value.id)
       ])
     }
@@ -767,7 +743,6 @@ watch(() => patient.value?.id, async (newId) => {
   if (newId) {
     await Promise.all([
       loadLastVisit(newId),
-      loadTotalDebt(newId)
     ])
   }
 })

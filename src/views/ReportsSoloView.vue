@@ -42,7 +42,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-1 gap-4">
         <div class="mobile-card">
           <h3 class="text-sm font-medium text-gray-700 mb-2">{{ t('doctorDashboard.nextPatientTitle') }}</h3>
           <div v-if="summary.nextPatient" class="flex items-center justify-between">
@@ -53,17 +53,6 @@
             <router-link :to="`/patients/${summary.nextPatient.id}`" class="text-primary-600">{{ t('reports.view') || t('soloDashboard.viewAll') }}</router-link>
           </div>
           <div v-else class="text-sm text-gray-500">{{ t('doctorDashboard.nextPatientEmpty') }}</div>
-        </div>
-
-        <div class="mobile-card">
-          <h3 class="text-sm font-medium text-gray-700 mb-2">{{ t('soloDashboard.topDebtors') }}</h3>
-          <div v-if="summary.topDebtors.length === 0" class="text-sm text-gray-500">{{ t('adminDashboard.debtEmpty') }}</div>
-          <ul v-else class="space-y-2">
-            <li v-for="debtor in summary.topDebtors" :key="debtor.id" class="flex items-center justify-between">
-              <span class="text-sm text-gray-900">{{ debtor.id }}</span>
-              <span class="text-sm text-gray-700">{{ formatCurrency(debtor.amount) }}</span>
-            </li>
-          </ul>
         </div>
       </div>
     </div>
@@ -82,7 +71,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const loading = ref(true)
-const summary = ref({ todayVisitsCount: 0, todayVisits: [], dailyRevenue: 0, nextPatient: null, newPatientsCount: 0, topDebtors: [] })
+const summary = ref({ todayVisitsCount: 0, todayVisits: [], dailyRevenue: 0, nextPatient: null, newPatientsCount: 0 })
 
 const formatCurrency = (amount) => new Intl.NumberFormat('uz-UZ', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0)
 

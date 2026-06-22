@@ -228,7 +228,9 @@ const handleAdminLogin = async () => {
 
   if (success) {
     toast.success(t('login.toastSuccess'))
-    const defaultRedirect = isClinicOwner(authStore) || authStore.userRole === ROLES.ADMIN
+    const defaultRedirect = isClinicOwner(authStore)
+      || isSolo(authStore)
+      || authStore.userRole === ROLES.ADMIN
       ? '/dashboard'
       : (isGlobalSuperAdmin(authStore) ? '/admin/clinics' : '/dashboard')
     router.push(safeRedirect(defaultRedirect))

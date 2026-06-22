@@ -12,6 +12,14 @@ import {
   parsePermissionsField,
 } from '@/stores/doctorPermissions'
 import { unwrapRelation } from '@/lib/staffHelpers'
+import {
+  clonePermissionsMatrix,
+  defaultMatrixForRole,
+} from '@/lib/staffPermissionsMatrix'
+import {
+  matrixFromLegacyFlags,
+  syncLegacyPermissionFlags,
+} from '@/lib/staffPermissions'
 
 function mergeModulePermissions(raw) {
   const merged = { ...DEFAULT_PERMISSIONS, ...(raw || {}) }
@@ -28,6 +36,7 @@ function mergeDataPermissions(raw) {
 export const useEmployeePermissionsStore = defineStore('employeePermissions', () => {
   const modulePermissionsMap = ref({})
   const dataPermissionsMap = ref({})
+  const matrixPermissionsMap = ref({})
 
   const getPermissions = (employeeId) => {
     if (!employeeId) return { ...DEFAULT_PERMISSIONS }
@@ -39,13 +48,24 @@ export const useEmployeePermissionsStore = defineStore('employeePermissions', ()
     return dataPermissionsMap.value[String(employeeId)] ?? { ...DEFAULT_DATA_PERMISSIONS }
   }
 
+  const getMatrixPermissions = (employeeId) => {
+    if (!employeeId) return clonePermissionsMatrix()
+    return matrixPermissionsMap.value[String(employeeId)] ?? clonePermissionsMatrix()
+  }
+
   const loadFromEmployee = (employee) => {
     if (!employee?.id) return
     const id = String(employee.id)
     const perms = employee.employee_permissions ?? unwrapRelation(employee.employee_permissions)
-    const { module_permissions: moduleField, ...scalarPerms } = perms || {}
+    const {
+      module_permissions: moduleField,
+      permissions: permissionsField,
+      ...scalarPerms
+    } = perms || {}
 
     const moduleRaw = parsePermissionsField(moduleField)
+    const permissionsRaw = parsePermissionsField(permissionsField)
+
     modulePermissionsMap.value = {
       ...modulePermissionsMap.value,
       [id]: mergeModulePermissions(moduleRaw),
@@ -55,30 +75,66 @@ export const useEmployeePermissionsStore = defineStore('employeePermissions', ()
       ...dataPermissionsMap.value,
       [id]: mergeDataPermissions(scalarPerms),
     }
+
+    matrixPermissionsMap.value = {
+      ...matrixPermissionsMap.value,
+      [id]: matrixFromLegacyFlags({
+        module_permissions: mergeModulePermissions(moduleRaw),
+        data_permissions: mergeDataPermissions(scalarPerms),
+        permissions: permissionsRaw,
+      }),
+    }
   }
 
-  const savePermissions = async (employeeId, modulePerms, dataPerms) => {
+  const savePermissions = async (employeeId, modulePerms, dataPerms, matrix) => {
     const id = String(employeeId)
-    const mergedModule = mergeModulePermissions(modulePerms)
-    const mergedData = mergeDataPermissions(dataPerms)
+    const mergedMatrix = clonePermissionsMatrix(
+      matrix ?? matrixPermissionsMap.value[id] ?? defaultMatrixForRole('assistant')
+    )
+    const synced = syncLegacyPermissionFlags(mergedMatrix)
+    const mergedModule = mergeModulePermissions(synced.module_permissions)
+    const mergedData = mergeDataPermissions({
+      can_view_revenue: synced.can_view_revenue,
+      can_export_data: synced.can_export_data,
+      can_edit_prices: synced.can_edit_prices,
+      can_manage_medical_records: synced.can_manage_medical_records,
+      can_allow_debt_treatment: synced.can_allow_debt_treatment,
+      ...dataPerms,
+    })
 
     await updateEmployeePermissions(employeeId, {
+      permissions: synced.permissions,
       module_permissions: mergedModule,
       ...mergedData,
     })
 
     modulePermissionsMap.value = { ...modulePermissionsMap.value, [id]: mergedModule }
     dataPermissionsMap.value = { ...dataPermissionsMap.value, [id]: mergedData }
+    matrixPermissionsMap.value = { ...matrixPermissionsMap.value, [id]: synced.permissions }
 
-    return { module_permissions: mergedModule, data_permissions: mergedData }
+    return {
+      module_permissions: mergedModule,
+      data_permissions: mergedData,
+      permissions: synced.permissions,
+    }
+  }
+
+  const saveMatrixPermissions = async (employeeId, matrix) => {
+    const id = String(employeeId)
+    const currentModule = getPermissions(employeeId)
+    const currentData = getDataPermissions(employeeId)
+    return savePermissions(employeeId, currentModule, currentData, matrix)
   }
 
   return {
     modulePermissionsMap,
     dataPermissionsMap,
+    matrixPermissionsMap,
     getPermissions,
     getDataPermissions,
+    getMatrixPermissions,
     loadFromEmployee,
     savePermissions,
+    saveMatrixPermissions,
   }
 })

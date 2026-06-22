@@ -397,7 +397,6 @@
                 <div class="mt-1 flex flex-wrap gap-4">
                   <span>{{ t('payments.visitPrice') }}: {{ formatCurrency(visitPreview.price || 0) }}</span>
                   <span>{{ t('payments.visitPaid') }}: {{ formatCurrency(visitPreview.paid_amount || 0) }}</span>
-                  <span>{{ t('payments.visitDebt') }}: {{ formatCurrency(visitPreview.debt_amount || 0) }}</span>
                 </div>
               </div>
               <p v-else-if="visitPreviewLoading" class="text-sm text-gray-500">{{ t('payments.loadingVisit') }}</p>

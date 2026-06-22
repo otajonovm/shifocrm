@@ -1,4 +1,4 @@
-import { getVisitsByDate, getDebtVisits } from './visitsApi'
+import { getVisitsByDate } from './visitsApi'
 import { getPaymentsByDateRange } from './paymentsApi'
 import { listPatients } from './patientsApi'
 import { getTodayISO } from '@/lib/date'
@@ -59,36 +59,12 @@ export async function getSoloSummary(doctorId) {
     newPatientsCount = 0
   }
 
-  // Top 3 debtors (aggregate by patient)
-  let topDebtors = []
-  try {
-    const debtVisits = await getDebtVisits()
-    const byPatient = new Map()
-    debtVisits.forEach(v => {
-      // associate only debts related to this doctor where possible
-      const belongsToDoctor = Number(v.doctor_id) === Number(doctorId) || false
-      if (!belongsToDoctor && v.patient && Number(v.patient.doctor_id) !== Number(doctorId)) return
-      const raw = v.debt_amount ?? (Number(v.price || 0) - Number(v.paid_amount || 0))
-      const debt = Number.isNaN(Number(raw)) ? 0 : Number(raw)
-      if (debt <= 0) return
-      const pid = Number(v.patient_id)
-      byPatient.set(pid, (byPatient.get(pid) || 0) + debt)
-    })
-    topDebtors = Array.from(byPatient.entries())
-      .map(([id, amount]) => ({ id, amount }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 3)
-  } catch {
-    topDebtors = []
-  }
-
   return {
     todayVisitsCount,
     todayVisits: doctorVisits,
     dailyRevenue,
     nextPatient,
     newPatientsCount,
-    topDebtors,
   }
 }
 

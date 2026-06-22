@@ -66,7 +66,7 @@
       </div>
 
       <!-- Summary Cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <div class="mobile-card">
           <p class="text-xs text-gray-500 mb-1">{{ t('reports.totalPayments') }}</p>
           <p class="text-base sm:text-lg font-bold text-gray-900 truncate" :title="formatCurrency(summary.totalPayments)">{{ formatCurrency(summary.totalPayments) }}</p>
@@ -78,10 +78,6 @@
         <div class="mobile-card">
           <p class="text-xs text-gray-500 mb-1">{{ t('reports.netIncome') }}</p>
           <p class="text-base sm:text-lg font-bold text-emerald-600 truncate">{{ formatCurrency(summary.netIncome) }}</p>
-        </div>
-        <div class="mobile-card">
-          <p class="text-xs text-gray-500 mb-1">{{ t('reports.totalDebt') }}</p>
-          <p class="text-base sm:text-lg font-bold text-amber-600 truncate">{{ formatCurrency(summary.totalDebt) }}</p>
         </div>
         <div class="mobile-card">
           <p class="text-xs text-gray-500 mb-1">{{ t('reports.expensesTotal') }}</p>
@@ -505,55 +501,6 @@
           </table>
         </div>
       </div>
-
-      <!-- Qarzdorlar ro'yxati (Faqat jadval, chart yo'q) -->
-      <div class="mobile-card">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h2 class="text-base sm:text-lg font-semibold text-gray-900">Qarzdorlar</h2>
-            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Qarz miqdori bo'yicha tartiblangan</p>
-          </div>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-100 text-sm">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  {{ t('reports.patient') }}
-                </th>
-                <th class="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  {{ t('reports.total') }}
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100 bg-white">
-              <tr v-if="loading.debts">
-                <td class="px-4 sm:px-6 py-4 text-gray-500" colspan="2">{{ t('reports.loading') }}</td>
-              </tr>
-              <tr v-else-if="debtors.length === 0">
-                <td class="px-4 sm:px-6 py-4 text-gray-500" colspan="2">{{ t('reports.noData') }}</td>
-              </tr>
-              <tr 
-                v-for="row in debtors" 
-                :key="row.patient_id" 
-                class="hover:bg-red-50 transition-colors"
-              >
-                <td class="px-4 sm:px-6 py-4">
-                  <router-link 
-                    :to="`/patients/${row.patient_id}`"
-                    class="font-medium text-gray-900 hover:text-primary-600 transition-colors"
-                  >
-                    {{ row.label }}
-                  </router-link>
-                </td>
-                <td class="px-4 sm:px-6 py-4 text-right font-semibold text-red-600">
-                  {{ formatCurrency(row.total) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   </MainLayout>
 </template>
@@ -569,7 +516,6 @@ import { listDoctors } from '@/api/doctorsApi'
 import { listPatients } from '@/api/patientsApi'
 import * as paymentsApi from '@/api/paymentsApi'
 import { parseCategoryFromNote, removeCategoryFromNote } from '@/api/paymentsApi'
-import * as visitsApi from '@/api/visitsApi'
 import { getTopServices } from '@/api/servicesApi'
 import { listExpenses, listInventoryMovements, listInventoryItems } from '@/api/inventoryApi'
 import { useAuthStore } from '@/stores/auth'
@@ -600,7 +546,6 @@ const revenuePeriod = ref('day') // 'day', 'week', 'month'
 const loading = ref({
   payments: false,
   income: false,
-  debts: false,
   services: false,
   expenses: false,
   movements: false
@@ -610,7 +555,6 @@ const summary = ref({
   totalPayments: 0,
   totalRefunds: 0,
   netIncome: 0,
-  totalDebt: 0,
   totalAdditionalExpenses: 0,
   totalExpenses: 0,
   totalMovementsOut: 0
@@ -618,7 +562,6 @@ const summary = ref({
 
 const payments = ref([])
 const paymentMethods = ref([])
-const debtors = ref([])
 const topServices = ref([])
 const revenueData = ref([])
 const doctors = ref([])
@@ -865,27 +808,6 @@ const formatDateShort = (value) => {
   return date.toLocaleDateString('uz-UZ')
 }
 
-const buildDebtors = (debtVisits) => {
-  const map = new Map()
-  debtVisits.forEach(visit => {
-    const patientId = visit.patient_id
-    if (!map.has(patientId)) {
-      map.set(patientId, { patient_id: patientId, total: 0 })
-    }
-    const row = map.get(patientId)
-    row.total += Number(visit.debt_amount) || 0
-  })
-  debtors.value = Array.from(map.values())
-    .map(row => ({
-      ...row,
-      label: patientLabel(row.patient_id)
-    }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 20) // Top 20
-
-  summary.value.totalDebt = debtors.value.reduce((sum, row) => sum + row.total, 0)
-}
-
 const patientLabel = (patientId) => {
   const match = patients.value.find(item => Number(item.id) === Number(patientId))
   return match ? `${match.full_name} (#${match.id})` : `#${patientId}`
@@ -1122,7 +1044,6 @@ const exportDoctorRevenuePdf = () => {
 const loadReports = async () => {
   loading.value.payments = true
   loading.value.income = true
-  loading.value.debts = true
   loading.value.services = true
   loading.value.expenses = true
   loading.value.movements = true
@@ -1131,7 +1052,6 @@ const loadReports = async () => {
     const { startDate, endDate } = filters.value
     const [
       paymentsData,
-      debtVisits,
       doctorsData,
       patientsData,
       topServicesData,
@@ -1140,7 +1060,6 @@ const loadReports = async () => {
       itemsData
     ] = await Promise.all([
       paymentsApi.getPaymentsByDateRange(startDate, endDate),
-      visitsApi.getDebtVisits(),
       listDoctors(),
       listPatients(),
       getTopServices(),
@@ -1183,7 +1102,6 @@ const loadReports = async () => {
 
     applySummary()
     buildPaymentMethodStats()
-    buildDebtors(debtVisits || [])
     await loadRevenueData()
   } catch (error) {
     console.error('Failed to load reports:', error)
@@ -1191,7 +1109,6 @@ const loadReports = async () => {
   } finally {
     loading.value.payments = false
     loading.value.income = false
-    loading.value.debts = false
     loading.value.services = false
     loading.value.expenses = false
     loading.value.movements = false

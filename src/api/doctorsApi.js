@@ -119,7 +119,10 @@ export const getDoctorById = async (id) => {
     const numId = Number(id)
     if (!Number.isFinite(numId)) return null
     const cid = await getCurrentClinicId()
-    const rows = await fetchDoctorsWithSelectFallback(`id=eq.${numId}`, cid)
+    let rows = await fetchDoctorsWithSelectFallback(`id=eq.${numId}`, cid)
+    if (!rows.length && cid != null) {
+      rows = await fetchDoctorsWithSelectFallback(`id=eq.${numId}`, null)
+    }
     return rows[0] ? stripPasswordFromDoctor(rows[0]) : null
   } catch (error) {
     console.error('❌ Failed to fetch doctor:', error)

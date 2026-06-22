@@ -5,15 +5,19 @@ import {
   supabasePatchWhere,
   supabaseDelete,
   supabaseDeleteWhere,
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
 } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
-import { phoneAuthLookupVariants } from '@/lib/phoneUz'
+import { formatPhoneForStorage, phoneAuthLookupVariants } from '@/lib/phoneUz'
 import { hydrateEmployee } from '@/lib/staffHelpers'
+import { syncLegacyPermissionFlags } from '@/lib/staffPermissions'
 
 const EMPLOYEES_TABLE = 'employees'
 const PERMISSIONS_TABLE = 'employee_permissions'
 const SCHEDULES_TABLE = 'doctor_schedules'
 const LOGS_TABLE = 'activity_logs'
+const CASH_REGISTERS_TABLE = 'cash_registers'
 
 const NESTED_SELECT = encodeURIComponent('*,employee_permissions(*),doctor_schedules(*)')
 
@@ -227,12 +231,27 @@ export const replaceEmployeeSchedules = async (employeeId, scheduleData) => {
 export const updateEmployeePermissions = async (employeeId, permissions) => {
   if (!employeeId) throw new Error('Xodim id majburiy')
 
-  const { module_permissions, ...scalarPerms } = permissions || {}
-  const payload = stripUndefined({
+  const { module_permissions, permissions: matrix, ...scalarPerms } = permissions || {}
+
+  let payload = stripUndefined({
     ...scalarPerms,
     ...(module_permissions !== undefined ? { module_permissions } : {}),
     updated_at: new Date().toISOString(),
   })
+
+  if (matrix !== undefined) {
+    const synced = syncLegacyPermissionFlags(matrix)
+    payload = stripUndefined({
+      ...payload,
+      permissions: synced.permissions,
+      module_permissions: synced.module_permissions,
+      can_view_revenue: synced.can_view_revenue,
+      can_export_data: synced.can_export_data,
+      can_edit_prices: synced.can_edit_prices,
+      can_manage_medical_records: synced.can_manage_medical_records,
+      can_allow_debt_treatment: synced.can_allow_debt_treatment,
+    })
+  }
 
   const result = await supabasePatchWhere(
     PERMISSIONS_TABLE,
@@ -241,6 +260,65 @@ export const updateEmployeePermissions = async (employeeId, permissions) => {
   )
 
   return result?.[0] || null
+}
+
+/** Telefon klinika ichida takrorlanmasligini tekshirish */
+export const checkPhoneUnique = async (phone, { clinicId, excludeEmployeeId } = {}) => {
+  const stored = formatPhoneForStorage(phone)
+  if (!stored) return { unique: false, reason: 'empty' }
+
+  const variants = phoneAuthLookupVariants(stored)
+  for (const variant of variants) {
+    let query = `phone=eq.${encodeURIComponent(variant)}&select=id,clinic_id`
+    if (clinicId != null && Number.isFinite(Number(clinicId))) {
+      query += `&clinic_id=eq.${Number(clinicId)}`
+    }
+    const rows = await supabaseGet(EMPLOYEES_TABLE, query)
+    const conflict = (Array.isArray(rows) ? rows : []).find(
+      (row) => !excludeEmployeeId || row.id !== excludeEmployeeId
+    )
+    if (conflict) {
+      return { unique: false, employeeId: conflict.id }
+    }
+  }
+
+  return { unique: true }
+}
+
+export const getCashRegisters = async (clinicId) => {
+  if (clinicId == null || !Number.isFinite(Number(clinicId))) {
+    return []
+  }
+  const query = `clinic_id=eq.${Number(clinicId)}&is_active=eq.true&order=name.asc`
+  const rows = await supabaseGet(CASH_REGISTERS_TABLE, query)
+  return Array.isArray(rows) ? rows : []
+}
+
+/** Avatar yuklash — Supabase Storage staff-avatars bucket */
+export const uploadEmployeeAvatar = async (file, employeeId) => {
+  if (!file || !employeeId) throw new Error('Fayl va xodim id majburiy')
+
+  const ext = String(file.name || '').split('.').pop() || 'jpg'
+  const path = `${employeeId}/${Date.now()}.${ext}`
+  const url = `${SUPABASE_URL}/storage/v1/object/staff-avatars/${path}`
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': file.type || 'image/jpeg',
+      'x-upsert': 'true',
+    },
+    body: file,
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    throw new Error(body.message || body.error || 'Rasm yuklashda xatolik')
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/staff-avatars/${path}`
 }
 
 export const deleteEmployee = async (employeeId) => {

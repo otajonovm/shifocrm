@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6 animate-fade-in">
     <!-- Operatsion KPI -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-5">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">No-show foizi</p>
         <p class="mt-2 text-2xl font-bold text-gray-900">{{ kpi.noShow.rate }}%</p>
@@ -11,11 +11,6 @@
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Lead → bemor</p>
         <p class="mt-2 text-2xl font-bold text-gray-900">{{ kpi.conversion.rate }}%</p>
         <p class="mt-1 text-xs text-gray-500">{{ kpi.conversion.converted }} / {{ kpi.conversion.total }} lead</p>
-      </div>
-      <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-5">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Umumiy qarzlar</p>
-        <p class="mt-2 text-2xl font-bold text-rose-600">{{ formatCurrency(kpi.debt.total) }}</p>
-        <p class="mt-1 text-xs text-gray-500">{{ kpi.debt.debtorsCount }} ta qarzdor</p>
       </div>
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-5">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Bandlik (bugun)</p>
@@ -63,9 +58,8 @@
       </div>
     </div>
 
-    <!-- Revenue + Debt -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 bg-white rounded-2xl shadow-card border border-gray-100">
+    <!-- Revenue -->
+    <div class="bg-white rounded-2xl shadow-card border border-gray-100">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-6 border-b border-gray-100">
           <div>
             <h2 class="text-lg font-semibold text-gray-900">{{ t('adminDashboard.revenueTitle') }}</h2>
@@ -98,34 +92,6 @@
           </p>
         </div>
       </div>
-      <div class="bg-white rounded-2xl shadow-card border border-gray-100">
-        <div class="p-6 border-b border-gray-100">
-          <h2 class="text-lg font-semibold text-gray-900">{{ t('adminDashboard.debtTitle') }}</h2>
-          <p class="text-sm text-gray-500">{{ t('adminDashboard.debtSubtitle') }}</p>
-        </div>
-        <div class="p-6">
-          <p class="text-3xl font-bold text-gray-900">{{ formatCurrency(debtSummary.total) }}</p>
-          <div v-if="debtSummary.topDebtors.length" class="mt-4 space-y-3">
-            <div
-              v-for="debtor in debtSummary.topDebtors"
-              :key="debtor.id"
-              class="flex items-center justify-between text-sm"
-            >
-              <router-link
-                :to="`/patients/${debtor.id}`"
-                class="text-gray-700 hover:text-primary-600 font-medium"
-              >
-                {{ debtor.name }}
-              </router-link>
-              <span class="font-semibold text-gray-900">{{ formatCurrency(debtor.amount) }}</span>
-            </div>
-          </div>
-          <div v-else class="mt-4 text-sm text-gray-500">
-            {{ t('adminDashboard.debtEmpty') }}
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Today's Appointments Table -->
     <div class="bg-white rounded-2xl shadow-card border border-gray-100">
@@ -227,7 +193,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePatientsStore } from '@/stores/patients'
 import { useDoctorsStore } from '@/stores/doctors'
-import { getVisitsByDate, getDebtVisits, getVisitsByDateRange } from '@/api/visitsApi'
+import { getVisitsByDate, getVisitsByDateRange } from '@/api/visitsApi'
 import { getPaymentsByDateRange } from '@/api/paymentsApi'
 import { listLeadsByClinic } from '@/api/leadsApi'
 import { listInventoryItems, listInventoryConsumptions } from '@/api/inventoryApi'
@@ -235,7 +201,6 @@ import { getCurrentClinicId } from '@/lib/clinicContext'
 import {
   calcNoShowRate,
   calcLeadConversionRate,
-  calcTotalDebt,
   calcOccupancyRate,
 } from '@/lib/dashboardKpi'
 import { findLowStockItems, buildConsumptionReport } from '@/lib/inventoryReports'
@@ -266,15 +231,10 @@ const stats = ref({
 })
 
 const todayAppointments = ref([])
-const debtSummary = ref({
-  total: 0,
-  topDebtors: [],
-})
 
 const kpi = ref({
   noShow: { rate: 0, noShowCount: 0, total: 0 },
   conversion: { rate: 0, converted: 0, total: 0 },
-  debt: { total: 0, debtorsCount: 0 },
   occupancy: { rate: 0, bookedSlots: 0, totalSlots: 0 },
 })
 
@@ -448,51 +408,11 @@ const loadDashboard = async () => {
     }
   })
 
-  let debtVisits = []
-  try {
-    debtVisits = await getDebtVisits()
-  } catch {
-    debtVisits = []
-  }
-
-  const debtByPatient = new Map()
-  let totalDebt = 0
-
-  debtVisits.forEach((visit) => {
-    const rawDebt = visit.debt_amount !== null && visit.debt_amount !== undefined
-      ? Number(visit.debt_amount)
-      : Number(visit.price || 0) - Number(visit.paid_amount || 0)
-    const debt = Number.isNaN(rawDebt) ? 0 : rawDebt
-    if (debt <= 0) return
-
-    totalDebt += debt
-    const patientId = Number(visit.patient_id)
-    const prev = debtByPatient.get(patientId) || 0
-    debtByPatient.set(patientId, prev + debt)
-  })
-
-  const topDebtors = Array.from(debtByPatient.entries())
-    .map(([patientId, amount]) => {
-      const patient = patientMap.get(Number(patientId))
-      return {
-        id: patientId,
-        name: patient?.full_name || `#${patientId}`,
-        amount,
-      }
-    })
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 3)
-
-  debtSummary.value = {
-    total: totalDebt,
-    topDebtors,
-  }
-
-  await loadKpiMetrics(today, visits, debtVisits)
+  await loadKpiMetrics(today, visits)
   await loadInventoryInsights()
 }
 
-const loadKpiMetrics = async (today, todayVisits, debtVisits) => {
+const loadKpiMetrics = async (today, todayVisits) => {
   const dayStart = timeStringToMinutes(DEFAULT_CALENDAR_START) ?? 8 * 60
   const dayEnd = timeStringToMinutes(DEFAULT_CALENDAR_END) ?? 20 * 60
 
@@ -503,8 +423,6 @@ const loadKpiMetrics = async (today, todayVisits, debtVisits) => {
     dayStartMinutes: dayStart,
     dayEndMinutes: dayEnd,
   })
-
-  kpi.value.debt = calcTotalDebt(debtVisits)
 
   try {
     const monthAgo = new Date()

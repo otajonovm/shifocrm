@@ -1,20 +1,37 @@
 {
   "title": "ShifoAI",
   "subtitle": "Tizim yordamchisi",
-  "intro": "Savolingizni yozing — bemor, tashrif, to'lov, ombor, hisobot, uchrashuv, odontogramma, sozlamalar va boshqa bo'limlar bo'yicha batafsil javob beraman.",
+  "intro": "Savolingizni yozing — bemor, tashrif, to'lov, ombor, hisobot, uchrashuv, leadlar, xodimlar va boshqa bo'limlar bo'yicha batafsil javob beraman.",
   "placeholder": "Savolingizni yozing...",
   "thinking": "Javob yozilmoqda",
+  "modeOnline": "Onlayn AI",
+  "modeLocal": "Mahalliy",
+  "clearChat": "Suhbatni tozalash",
+  "close": "Yopish",
+  "send": "Yuborish",
+  "suggestionsLabel": "Tez savollar",
+  "contextHint": "Hozir siz «{page}» bo'limidasiz — shu bo'yicha ham yordam bera olaman.",
+  "disclaimer": "ShifoAI umumiy yo'riqnoma beradi. Moliyaviy yoki tibbiy qarorlar uchun mas'ul xodimga murojaat qiling.",
+  "fallbackNote": "Onlayn AI vaqtincha ishlamadi — mahalliy javob ko'rsatildi",
+  "errorGeneric": "Javob olishda xatolik yuz berdi. Iltimos, qayta urinib ko'ring yoki savolni boshqacha yozing.",
+  "pages": {
+    "patients": "Bemorlar",
+    "appointments": "Qabullar",
+    "leads": "Leadlar",
+    "payments": "To'lovlar",
+    "staff": "Xodimlar",
+    "dashboard": "Bosh sahifa",
+    "settings": "Sozlamalar"
+  },
   "suggestions": [
     "Bemor qanday qo'shiladi?",
-    "Tashrifni qanday yakunlash?",
-    "Material sarfini qanday kiritaman?",
-    "Hisobotlarda nima ko'rinadi?",
-    "Qarz qanday yoziladi?",
+    "Leadni band qilish qanday?",
     "Uchrashuv qanday yaratiladi?",
-    "Odontogrammada tish holati qanday belgilanadi?",
     "To'lov qanday qo'shiladi?",
-    "Doktor qanday qo'shiladi?",
-    "Sozlamalarda nimalarni o'zgartirish mumkin?"
+    "Xodim va ruxsatlar qanday?",
+    "Hisobotlarda nima ko'rinadi?",
+    "Odontogrammada tish holati qanday belgilanadi?",
+    "Kassa smenasi qanday ishlaydi?"
   ],
   "answers": {
     "empty": "Savolingizni batafsilroq yozing, shunda to'liq yordam bera olaman.",
@@ -31,6 +48,12 @@
     "doktor": "Doktor qanday qo'shiladi va tizimga kirishi (to'liq):\n\nDoktor qo'shish (faqat Admin):\n1. \"Doktorlar\" bo'limiga o'ting.\n2. \"Yangi doktor qo'shish\" tugmasini bosing.\n3. To'ldiring:\n   • F.I.O (masalan: Dr. Aliyev)\n   • Telefon (majburiy, kirish uchun ishlatiladi)\n   • Email (ixtiyoriy)\n   • Boshlang'ich parol (kamida 6 belgi)\n   • Mutaxassislik (dropdown dan tanlang)\n4. Saqlang — doktor yozuvi yaratiladi.\n\nDoktor tizimga kirishi:\n• Login sahifada \"Shifokor\" tabini tanlaydi.\n• Telefon raqam va parol bilan kiradi (admin bergan parol; keyin profil orqali o'zgartirishi mumkin).\n• Kirgach, faqat o'z bemorlari va qabullari ko'rinadi (agar rol bunday bo'lsa).",
     "telegram": "Telegram orqali bemorga xabar yuborish:\n\nQanday ishlatish:\n1. Bemor profilida \"Telegram xabar yuborish\" (yoki shunga o'xshash) tugmasini bosing.\n2. Xabar matnini yozing va yuboring.\n\nBemor tomonda:\n• Bemor avval Telegram botda ro'yxatdan o'tishi kerak: botni ochib /register buyrug'ini yuboradi va telefon raqamini bog'laydi.\n• Shundan keyin klinika tizimidan yuborilgan xabarlar bemorning Telegramiga yetadi.\n\nSozlamalar: Bot token va sozlash uchun loyiha ichidagi TELEGRAM_INTEGRATION.md faylida ko'rsatmalar bor. Agar integratsiya ochilmagan bo'lsa, administratorga murojaat qiling.",
     "xizmat": "Xizmatlar va narxlari:\n\n\"Xizmatlar\" bo'limida (admin):\n• Barcha xizmatlar ro'yxati — nomi, narxi, tavsifi.\n• Yangi xizmat qo'shish — nom, narx, ixtiyoriy kategoriya.\n• Mavjud xizmatni tahrirlash yoki o'chirish.\n\nTashrif va to'lovda:\n• Tashrifni yakunlashda xizmatni ro'yxatdan tanlash mumkin — narx avtomatik chiqadi.\n• To'lovda \"Xizmat\" orqali qaysi xizmat uchun to'lov ekanini belgilash mumkin.\n\nHisobotlarda xizmatlar bo'yicha tushum alohida ko'rsatiladi.",
-    "default": "Bu mavzuda aniq javobim yo'q. Quyidagi so'zlar bilan qayta so'rab ko'ring: bemor qo'shish, tashrif, to'lov, ombor, hisobot, uchrashuv, odontogramma, sozlamalar, doktor. Yoki yuqoridagi taklif savollardan birini tanlang. Agar yordam yetmasa — \"Yordam\" menyusidan yoki administratorga murojaat qiling."
+    "dashboard": "Bosh sahifa (Dashboard) — nima ko'rinadi:\n\n1. Kunlik daromad va to'lovlar statistikasi.\n2. Bugungi qabullar ro'yxati — tez kirish uchun.\n3. Yangi bemorlar va muhim ko'rsatkichlar.\n4. Tezkor tugmalar: yangi qabul, to'lov qo'shish.\n\nMaslahat: Klinikaga kirganingizda avvalo shu sahifadan kun rejasini ko'rib chiqing — 30 soniyada bugungi ish rejasi aniq bo'ladi.",
+    "lead": "Leadlar (Onlayn murojaatlar) — qanday boshqariladi:\n\n1. Har bir shifokor uchun shaxsiy onlayn yozilish linki mavjud.\n2. Internetdan kelgan so'rovlar \"Leadlar\" bo'limiga tushadi.\n3. Statuslar: new (yangi) → contacted (bog'lanildi) → booked (band qilindi) → qabulda.\n4. \"Band qilingan\" tanlanganda tizim avtomatik qabul (visit) yaratadi.\n5. Bir xil doktor+vaqt uchun faqat bitta lead \"booked\" bo'lishi mumkin — slot band bo'lsa, tizim xabar beradi.\n\nAgar slot band bo'lsa: boshqa vaqt taklif qiling yoki mavjud band qilingan leadni tekshiring.",
+    "xodim": "Xodimlar va ruxsatlar (Staff Wizard):\n\n1. \"Xodimlar\" bo'limida \"Yangi xodim\" — 4 qadamli wizard ochiladi.\n2. Qadam 1: Shaxsiy ma'lumotlar (F.I.O, telefon, avatar).\n3. Qadam 2: Ish ma'lumotlari (rol, filial, jadval).\n4. Qadam 3: Moliya (maosh, ulush %).\n5. Qadam 4: Ruxsatlar matritsasi — 5 bo'lim × 4 amal (ko'rish/qo'shish/tahrirlash/o'chirish).\n6. Bo'lim sarlavhasidagi checkbox butun bo'limni bir vaqtda belgilaydi.\n\nFaqat ruxsati bor bo'limlarni xodim ko'radi — bu klinika xavfsizligi uchun muhim.",
+    "kassa": "Kassa smenasi — qanday ishlaydi:\n\n1. Kun boshida kassa smenasini oching (admin/kassir).\n2. Kun davomida naqd, karta va o'tkazma to'lovlari smenaga bog'lanadi.\n3. Kun oxirida smenani yoping — tizim kunlik real pulni hisoblaydi.\n4. Qarzdorlik va to'lovlar alohida kuzatiladi.\n\nMaslahat: Har kuni smena ochish/yopish odatini shakllantiring — moliyaviy shaffoflik uchun.",
+    "audit": "Audit jurnali (faoliyat tarixi):\n\n1. Admin \"Audit jurnali\" bo'limida tizimdagi muhim o'zgarishlarni ko'radi.\n2. Kim, qachon va qanday amal bajarganligi qayd etiladi.\n3. Xodimlar ruxsatlari, bemor/to'lov o'zgarishlari kuzatiladi.\n\nBu klinika ichidagi nazorat va xavfsizlik uchun foydali.",
+    "security": "ShifoCRM xavfsizligi:\n\n• Supabase Row Level Security (RLS) — har bir klinika ma'lumotlari ajratilgan.\n• Clinic isolation — bir klinika boshqa klinika ma'lumotlarini ko'rmaydi.\n• Xodimlar ruxsatnomalari — har bir xodim faqat ruxsat berilgan bo'limlarni ko'radi.\n• Parollar xavfsiz saqlanadi, API kalitlar frontend kodiga qo'yilmaydi.\n\nShubhali faoliyat sezsangiz — administratorga xabar bering.",
+    "default": "Bu mavzuda aniq javobim yo'q. Quyidagi so'zlar bilan qayta so'rab ko'ring: bemor, lead, tashrif, to'lov, ombor, hisobot, uchrashuv, odontogramma, xodim, kassa, sozlamalar. Yoki yuqoridagi tez savollardan birini tanlang."
   }
 }

@@ -9,6 +9,7 @@ import {
   canManageStaff,
   isSoloClinic,
   resolveDoctorLoginRole,
+  resolveClinicOwnerSessionRole,
   employeeDbRoleToAuthRole,
 } from './roles.js'
 
@@ -64,6 +65,12 @@ describe('roles', () => {
   it('resolveDoctorLoginRole assigns solo only for solo clinics', () => {
     expect(resolveDoctorLoginRole({ slug: 'solo-xyz' })).toBe(ROLES.SOLO)
     expect(resolveDoctorLoginRole({ slug: 'clinic-abc', max_doctors: 1 })).toBe(ROLES.DOCTOR)
+  })
+
+  it('resolveClinicOwnerSessionRole assigns solo for solo slug or max_doctors=1', () => {
+    expect(resolveClinicOwnerSessionRole({ slug: 'solo-xyz', max_doctors: 1 })).toBe(ROLES.SOLO)
+    expect(resolveClinicOwnerSessionRole({ slug: 'my-clinic', max_doctors: 1 })).toBe(ROLES.SOLO)
+    expect(resolveClinicOwnerSessionRole({ slug: 'dental-pro', max_doctors: 4 })).toBe(ROLES.CLINIC_OWNER)
   })
 
   it('employeeDbRoleToAuthRole maps administrator to admin session', () => {

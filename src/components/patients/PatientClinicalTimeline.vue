@@ -56,8 +56,8 @@
                   </p>
                 </div>
 
-                <div v-else-if="event.meta?.debt > 0" class="text-right flex-shrink-0">
-                  <p class="text-xs text-rose-600 font-medium">Qarz: {{ formatMoney(event.meta.debt) }}</p>
+                <div v-else-if="event.meta?.paid > 0" class="text-right flex-shrink-0">
+                  <p class="text-xs text-emerald-600 font-medium">To'langan: {{ formatMoney(event.meta.paid) }}</p>
                 </div>
               </div>
             </div>

@@ -142,6 +142,16 @@ const onChangeStatus = async (lead, status) => {
     let updated = null
     if (status === 'booked') {
       const result = await convertLeadToBooked(lead)
+      if (result?.duplicateResolved) {
+        toast.info('Bu slot allaqachon band qilingan. Takroriy murojaat rad etildi.')
+        await loadLeads()
+        return
+      }
+      if (result?.alreadyBooked) {
+        toast.info('Lead allaqachon band qilingan')
+        await loadLeads()
+        return
+      }
       updated = result?.lead || null
     } else if (status === 'qabulda') {
       const result = await convertLeadToQabulda(lead)
@@ -152,7 +162,7 @@ const onChangeStatus = async (lead, status) => {
 
     const index = leads.value.findIndex(item => Number(item.id) === leadId)
     if (index >= 0) {
-      leads.value[index] = { ...leads.value[index], ...(updated || {}), status }
+      leads.value[index] = { ...leads.value[index], ...(updated || {}), status: updated?.status || status }
     }
     if (status === 'booked') {
       toast.success('Band qilindi va qabul yaratildi')
@@ -164,6 +174,7 @@ const onChangeStatus = async (lead, status) => {
   } catch (error) {
     console.error('Failed to update lead status:', error)
     toast.error(error?.message || 'Statusni yangilab bo\'lmadi')
+    await loadLeads()
   }
 }
 

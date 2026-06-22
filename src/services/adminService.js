@@ -129,6 +129,36 @@ export async function getDoctorByClinicId(clinicId) {
 }
 
 /**
+ * Yakka stomatolog sessiyasi uchun doktor yozuvini topish.
+ * clinic_id bo'yicha, keyin owner login/email orqali.
+ */
+export async function findDoctorForSoloClinic(clinicId, ownerLogin = '') {
+  const byClinic = await getDoctorByClinicId(clinicId)
+  if (byClinic?.id) return byClinic
+
+  const login = String(ownerLogin || '').trim().toLowerCase()
+  if (!login) return null
+
+  const emailCandidates = login.includes('@')
+    ? [login]
+    : [login, `${login}@solo.local`]
+
+  for (const email of emailCandidates) {
+    try {
+      const rows = await supabaseGet(
+        DOCTORS_TABLE,
+        `email=eq.${encodeURIComponent(email)}&limit=1`,
+      )
+      if (rows?.[0]?.id) return rows[0]
+    } catch {
+      // keyingi variant
+    }
+  }
+
+  return null
+}
+
+/**
  * Suspend (deactivate) a clinic.
  * @param {number} id
  * @returns {Promise<import('@/types/super-admin').Clinic>}

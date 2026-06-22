@@ -159,6 +159,9 @@ import { useToast } from 'vue-toastification'
 import QRCode from 'qrcode'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
+import { findDoctorForSoloClinic, getDoctorByClinicId } from '@/services/adminService'
+import { isSolo } from '@/lib/roles'
+import { phoneAuthLookupVariants } from '@/lib/phoneUz'
 import MainLayout from '@/layouts/MainLayout.vue'
 import DoctorProfileForm from '@/components/doctor/DoctorProfileForm.vue'
 import PasswordChangeForm from '@/components/doctor/PasswordChangeForm.vue'
@@ -312,14 +315,54 @@ watch(
   { immediate: true }
 )
 
+const syncSessionDoctorId = (doctorId) => {
+  const id = Number(doctorId)
+  if (!Number.isFinite(id)) return
+  const current = authStore.user
+  if (!current || current.id) return
+  const nextUser = { ...current, id }
+  authStore.user = nextUser
+  localStorage.setItem('user', JSON.stringify(nextUser))
+}
+
 const resolveDoctorId = async () => {
-  if (authStore.user?.id) return authStore.user.id
-  if (!authStore.userEmail) return null
+  const user = authStore.user
+  if (user?.id && Number.isFinite(Number(user.id))) {
+    return Number(user.id)
+  }
+
+  const clinicId = Number(authStore.userClinicId ?? user?.clinic_id)
+  if (Number.isFinite(clinicId)) {
+    const ownerLogin = user?.login || authStore.userEmail || ''
+    const clinicDoctor = isSolo(authStore)
+      ? await findDoctorForSoloClinic(clinicId, ownerLogin)
+      : await getDoctorByClinicId(clinicId)
+    if (clinicDoctor?.id) {
+      syncSessionDoctorId(clinicDoctor.id)
+      return Number(clinicDoctor.id)
+    }
+  }
+
+  const lookupKeys = [user?.email, user?.phone, authStore.userEmail].filter(Boolean)
   if (doctorsStore.items.length === 0) {
     await doctorsStore.fetchAll()
   }
-  const doctor = doctorsStore.items.find(item => item.email === authStore.userEmail)
-  return doctor?.id || null
+
+  for (const key of lookupKeys) {
+    const doctor = doctorsStore.items.find((item) => {
+      if (!item) return false
+      if (item.email && String(item.email).toLowerCase() === String(key).toLowerCase()) return true
+      if (item.phone && item.phone === key) return true
+      const variants = phoneAuthLookupVariants(key)
+      return variants.some((variant) => variant === item.phone)
+    })
+    if (doctor?.id) {
+      syncSessionDoctorId(doctor.id)
+      return Number(doctor.id)
+    }
+  }
+
+  return null
 }
 
 const loadProfile = async () => {

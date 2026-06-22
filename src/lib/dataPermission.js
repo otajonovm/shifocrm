@@ -6,6 +6,7 @@ import {
   isSolo,
 } from '@/lib/roles'
 import { DEFAULT_DATA_PERMISSIONS } from '@/stores/doctorPermissions'
+import { checkMatrixDataPermission } from '@/lib/staffPermissions'
 
 /** Klinika administratori (clinic_admins) uchun standart ruxsatlar */
 export const CLINIC_ADMIN_DATA_DEFAULTS = {
@@ -31,8 +32,13 @@ export function checkDataPermission(authStore, permissionKey, stores = {}) {
 
   if (isClinicAdmin(authStore)) {
     const employeeId = authStore.user?.employee_id
+    const { employeePermsStore } = stores
     if (employeeId && employeePermsStore) {
       const empPerms = employeePermsStore.getDataPermissions(employeeId)
+      const matrix = employeePermsStore.getMatrixPermissions?.(employeeId)
+      if (matrix && checkMatrixDataPermission(matrix, permissionKey)) {
+        return true
+      }
       return (
         empPerms[permissionKey] === true
         || CLINIC_ADMIN_DATA_DEFAULTS[permissionKey] === true

@@ -76,6 +76,17 @@ export function resolveDoctorLoginRole(clinic) {
 }
 
 /**
+ * Klinika rahbari login+parol sessiyasi uchun rol.
+ * Yakka stom (solo- slug yoki max_doctors=1) → solo; aks holda clinic_owner.
+ */
+export function resolveClinicOwnerSessionRole(clinic) {
+  if (!clinic) return ROLES.CLINIC_OWNER
+  if (isSoloClinic(clinic)) return ROLES.SOLO
+  if (Number(clinic.max_doctors) === 1) return ROLES.SOLO
+  return ROLES.CLINIC_OWNER
+}
+
+/**
  * Eski localStorage sessiyasini yangi rolga migratsiya qiladi.
  * @returns {boolean} migratsiya bajarildimi
  */

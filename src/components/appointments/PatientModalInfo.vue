@@ -234,7 +234,7 @@ const paymentStatus = computed(() => {
   const status = props.appointment.status
   if (!status?.includes('completed')) return null
   if (status === 'completed_paid') return translateOrFallback('appointments.paid', 'To\'langan')
-  if (status === 'completed_debt') return translateOrFallback('appointments.debt', 'Qarz')
+  if (status === 'completed_debt') return translateOrFallback('appointments.statusCompleted', 'Tugadi')
   return null
 })
 
@@ -267,7 +267,7 @@ const getStatusLabel = (status) => {
     'arrived': translateOrFallback('appointments.statusArrived', 'Keldi'),
     'in_progress': translateOrFallback('appointments.statusInProgress', 'Qabulda'),
     'completed_paid': translateOrFallback('appointments.statusCompleted', 'Tugadi'),
-    'completed_debt': translateOrFallback('appointments.statusDebt', 'Qarzdor'),
+    'completed_debt': translateOrFallback('appointments.statusCompleted', 'Tugadi'),
     'cancelled': translateOrFallback('appointments.statusCancelled', 'Bekor qilindi'),
     'no_show': translateOrFallback('appointments.statusNoShow', 'Kelmadi')
   }

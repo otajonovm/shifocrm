@@ -84,9 +84,6 @@
                 <th v-if="isAdmin && !isSolo" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Oxirgi to'lov
                 </th>
-                <th v-if="isAdmin && !isSolo" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Qarzdorlik
-                </th>
                 <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   {{ t('patients.actions') }}
                 </th>
@@ -134,12 +131,6 @@
                 <td v-if="isAdmin && !isSolo" class="px-6 py-4">
                   <span v-if="getLastPaymentAmount(patient.id) > 0" class="text-xs font-medium text-green-600">
                     {{ getLastPaymentAmount(patient.id).toLocaleString('uz-UZ') }} so'm
-                  </span>
-                  <span v-else class="text-xs text-gray-400">-</span>
-                </td>
-                <td v-if="isAdmin && !isSolo" class="px-6 py-4">
-                  <span v-if="getPatientDebtAmount(patient.id) > 0" class="text-xs font-medium text-red-600">
-                    {{ getPatientDebtAmount(patient.id).toLocaleString('uz-UZ') }} so'm
                   </span>
                   <span v-else class="text-xs text-gray-400">-</span>
                 </td>
@@ -733,10 +724,7 @@ const getPatientRealStatus = (patient) => {
 
   // Visit statusidan bemor statusini aniqlash
   const visitStatus = visit.status
-  if (visitStatus === 'completed_debt') {
-    return 'debt' // Qarzdor statusi
-  }
-  if (visitStatus === 'completed_paid') {
+  if (visitStatus === 'completed_debt' || visitStatus === 'completed_paid') {
     return PATIENT_STATUSES.COMPLETED
   }
   if (visitStatus === 'in_progress' || visitStatus === 'arrived') {
@@ -744,13 +732,6 @@ const getPatientRealStatus = (patient) => {
   }
   // pending, cancelled, no_show
   return PATIENT_STATUSES.WAITING
-}
-
-// Bemor qarzdorlik summasi
-const getPatientDebtAmount = (patientId) => {
-  const visit = patientVisits.value[patientId]
-  if (!visit || visit.status !== 'completed_debt') return 0
-  return Number(visit.debt_amount) || 0
 }
 
 // Oxirgi tashrif yakunlanish vaqtini olish

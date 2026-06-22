@@ -86,6 +86,131 @@ const releaseExpiredHoldsForSlot = async ({ doctorId, preferredDate, preferredTi
   }
 }
 
+const findLeadBySlot = async ({
+  doctorId,
+  preferredDate,
+  preferredTime,
+  status,
+  excludeLeadId = null,
+} = {}) => {
+  const doctor = Number(doctorId)
+  const date = String(preferredDate || '').slice(0, 10)
+  const time = normalizeTime(preferredTime)
+  if (!Number.isFinite(doctor) || !date || !time || !status) return null
+
+  const parts = [
+    `doctor_id=eq.${doctor}`,
+    `preferred_date=eq.${encodeURIComponent(date)}`,
+    `preferred_time=eq.${encodeURIComponent(time)}`,
+    `status=eq.${encodeURIComponent(String(status))}`,
+  ]
+  if (excludeLeadId != null && Number.isFinite(Number(excludeLeadId))) {
+    parts.push(`id=neq.${Number(excludeLeadId)}`)
+  }
+  parts.push('limit=1')
+
+  const rows = await supabaseGet(TABLE, parts.join('&'))
+  return rows?.[0] || null
+}
+
+const clearCompetingHoldsForSlot = async ({
+  doctorId,
+  preferredDate,
+  preferredTime,
+  excludeLeadId = null,
+}) => {
+  const doctor = Number(doctorId)
+  const date = String(preferredDate || '').slice(0, 10)
+  const time = normalizeTime(preferredTime)
+  if (!Number.isFinite(doctor) || !date || !time) return
+
+  const nowIso = new Date().toISOString()
+  const parts = [
+    `doctor_id=eq.${doctor}`,
+    `preferred_date=eq.${encodeURIComponent(date)}`,
+    `preferred_time=eq.${encodeURIComponent(time)}`,
+    'status=in.(hold,new,contacted)',
+  ]
+  if (excludeLeadId != null && Number.isFinite(Number(excludeLeadId))) {
+    parts.push(`id=neq.${Number(excludeLeadId)}`)
+  }
+
+  try {
+    await supabasePatchWhere(TABLE, parts.join('&'), {
+      status: 'expired',
+      hold_expires_at: null,
+      updated_at: nowIso,
+    })
+  } catch {
+    // best-effort cleanup before booking
+  }
+}
+
+const sameLeadPhone = (left, right) => {
+  const leftDigits = normalizePhoneDigits(left?.phone)
+  const rightDigits = normalizePhoneDigits(right?.phone)
+  return leftDigits.length > 0 && leftDigits === rightDigits
+}
+
+const resolveDuplicateBookedLead = async (lead, existingBookedLead) => {
+  const leadId = Number(lead.id)
+  const existingId = Number(existingBookedLead.id)
+  const orphanVisitId = Number(lead.visit_id)
+
+  if (
+    Number.isFinite(orphanVisitId)
+    && orphanVisitId !== Number(existingBookedLead.visit_id)
+  ) {
+    const { deleteVisit } = await import('./visitsApi')
+    await deleteVisit(orphanVisitId).catch(() => {})
+  }
+
+  const noteParts = [
+    lead.note,
+    `Takroriy murojaat — Lead #${existingId} band qilingan`,
+  ].filter(Boolean)
+
+  await supabasePatchWhere(TABLE, `id=eq.${leadId}`, {
+    status: 'rejected',
+    visit_id: null,
+    hold_expires_at: null,
+    note: noteParts.join(' | '),
+    updated_at: new Date().toISOString(),
+  })
+
+  let visit = null
+  if (existingBookedLead.visit_id) {
+    const { getVisitById } = await import('./visitsApi')
+    visit = await getVisitById(existingBookedLead.visit_id)
+  }
+
+  return {
+    lead: existingBookedLead,
+    visit,
+    reusedVisit: true,
+    duplicateResolved: true,
+  }
+}
+
+const patchLeadAsBooked = async (leadId, visitId = null) => {
+  const data = {
+    status: 'booked',
+    hold_expires_at: null,
+    updated_at: new Date().toISOString(),
+  }
+  if (visitId != null && Number.isFinite(Number(visitId))) {
+    data.visit_id = Number(visitId)
+  }
+
+  try {
+    const rows = await supabasePatchWhere(TABLE, `id=eq.${Number(leadId)}`, data)
+    return rows?.[0] || null
+  } catch (error) {
+    if (isSlotConflictError(error)) throw createSlotConflictError()
+    throw error
+  }
+}
+
 /**
  * Submit a public lead from doctor profile page
  * @param {object} payload - {doctor_id, clinic_id, patient_name, phone, preferred_date, preferred_time, selected_service, note}
@@ -349,22 +474,52 @@ export const convertLeadToBooked = async (leadInput) => {
       throw new Error('Leadda sana/vaqt yo‘q. Avval sana va vaqtni kiriting.')
     }
 
+    const preferredDate = String(lead.preferred_date).slice(0, 10)
+    const preferredTime = normalizeTime(String(lead.preferred_time || ''))
+
+    if (String(lead.status || '').toLowerCase() === 'booked') {
+      let visit = null
+      if (lead.visit_id) {
+        const { getVisitById } = await import('./visitsApi')
+        visit = await getVisitById(lead.visit_id)
+      }
+      return { lead, visit, reusedVisit: true, alreadyBooked: true }
+    }
+
+    await clearCompetingHoldsForSlot({
+      doctorId: lead.doctor_id,
+      preferredDate,
+      preferredTime,
+      excludeLeadId: leadId,
+    })
+
+    const existingBooked = await findLeadBySlot({
+      doctorId: lead.doctor_id,
+      preferredDate,
+      preferredTime,
+      status: 'booked',
+      excludeLeadId: leadId,
+    })
+
+    if (existingBooked) {
+      if (sameLeadPhone(lead, existingBooked)) {
+        return await resolveDuplicateBookedLead(lead, existingBooked)
+      }
+      throw createSlotConflictError()
+    }
+
     if (lead.visit_id) {
-      const patched = await supabasePatchWhere(TABLE, `id=eq.${leadId}`, {
-        status: 'booked',
-        hold_expires_at: null,
-        updated_at: new Date().toISOString()
-      })
+      const patchedLead = await patchLeadAsBooked(leadId)
       return {
-        lead: patched?.[0] || lead,
+        lead: patchedLead || lead,
         visit: null,
-        reusedVisit: true
+        reusedVisit: true,
       }
     }
 
     const patient = await findOrCreatePatientFromLead(lead)
-    const { createVisit } = await import('./visitsApi')
-    const startTime = normalizeTime(String(lead.preferred_time || ''))
+    const { createVisit, syncAppointmentFromVisit, deleteVisit } = await import('./visitsApi')
+    const startTime = preferredTime
 
     const visit = await createVisit({
       patient_id: Number(patient.id),
@@ -372,7 +527,7 @@ export const convertLeadToBooked = async (leadInput) => {
       doctor_name: null,
       notes: lead.note || `Public lead #${leadId}`,
       status: 'pending',
-      date: String(lead.preferred_date).slice(0, 10),
+      date: preferredDate,
       start_time: startTime,
       end_time: buildEndTimeFromStart(startTime, 60),
       duration_minutes: 60,
@@ -380,25 +535,26 @@ export const convertLeadToBooked = async (leadInput) => {
       lead_id: leadId,
     })
 
-    const { syncAppointmentFromVisit } = await import('./visitsApi')
     await syncAppointmentFromVisit(visit).catch((err) => {
       console.warn('Lead booked: appointment sync', err?.message)
     })
 
-    const updatedLeads = await supabasePatchWhere(TABLE, `id=eq.${leadId}`, {
-      status: 'booked',
-      visit_id: visit.id,
-      hold_expires_at: null,
-      updated_at: new Date().toISOString()
-    })
-
-    return {
-      lead: updatedLeads?.[0] || null,
-      visit,
-      reusedVisit: false
+    try {
+      const patchedLead = await patchLeadAsBooked(leadId, visit.id)
+      return {
+        lead: patchedLead,
+        visit,
+        reusedVisit: false,
+      }
+    } catch (error) {
+      await deleteVisit(visit.id).catch(() => {})
+      throw error
     }
   } catch (error) {
     console.error('❌ Failed to convert lead to booked:', error)
+    if (isSlotConflictError(error) || error?.code === 'SLOT_ALREADY_BOOKED') {
+      throw createSlotConflictError()
+    }
     throw error
   }
 }

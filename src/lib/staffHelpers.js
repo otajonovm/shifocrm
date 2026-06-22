@@ -410,3 +410,218 @@ export function getWorkHoursSummary(employee) {
   if (unique.length === 1) return unique[0]
   return unique.slice(0, 2).join(' · ') + (unique.length > 2 ? '…' : '')
 }
+
+/** UI rol tanlovi (wizard) */
+export const UI_ROLE_OPTIONS = [
+  { value: 'administrator', labelUz: 'Administrator', dbRole: 'administrator' },
+  { value: 'doctor', labelUz: 'Shifokor', dbRole: 'doctor' },
+  { value: 'assistant', labelUz: 'Assistent', dbRole: 'assistant' },
+  { value: 'cashier', labelUz: 'Kassir', dbRole: 'cashier' },
+]
+
+export const DOCTOR_SPECIALTY_OPTIONS = [
+  'Terapevt',
+  'Ortodont',
+  'Ortoped',
+  'Xirurg',
+  'Implantolog',
+  'Parodontolog',
+  'Terapevt-pedodont',
+]
+
+export function buildFullName({ first_name, last_name, middle_name }) {
+  return [last_name, first_name, middle_name]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .join(' ')
+}
+
+export function splitFullName(fullName) {
+  const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) {
+    return { first_name: '', last_name: '', middle_name: '' }
+  }
+  if (parts.length === 1) {
+    return { first_name: parts[0], last_name: '', middle_name: '' }
+  }
+  if (parts.length === 2) {
+    return { first_name: parts[1], last_name: parts[0], middle_name: '' }
+  }
+  return {
+    last_name: parts[0],
+    first_name: parts[1],
+    middle_name: parts.slice(2).join(' '),
+  }
+}
+
+export function uiRoleFromEmployee(employee) {
+  const role = employee?.role || specialtyToRole(employee?.specialization)
+  if (role === 'administrator') return 'administrator'
+  if (role === 'assistant') return 'assistant'
+  if (role === 'cashier') return 'cashier'
+  return 'doctor'
+}
+
+export function specializationFromUiRole(uiRole, specialty = '') {
+  if (uiRole === 'administrator') return 'Administrator (Reception)'
+  if (uiRole === 'assistant') return 'Assistent (Yordamchi)'
+  if (uiRole === 'cashier') return 'Kassir/Buxgalter'
+  return specialty || 'Terapevt'
+}
+
+export function buildEmptyWizardForm() {
+  const { days } = buildDefaultWorkSchedule()
+  return {
+    first_name: '',
+    last_name: '',
+    middle_name: '',
+    phone: '',
+    additional_phone: '',
+    birth_date: '',
+    gender: '',
+    avatar_url: '',
+    email: '',
+    password: '',
+    ui_role: 'doctor',
+    specialty: 'Terapevt',
+    telegram_chat_id: '',
+    general_percentage: '',
+    orthodontic_percentage: '',
+    allowed_cash_register_id: '',
+    fixed_salary_amount: '',
+    chair: '',
+    is_active: true,
+    work_schedule: { days },
+    permissions: null,
+  }
+}
+
+/** Qadam bo'yicha validatsiya — xato xabari qaytaradi yoki null */
+export function validateWizardStep(step, form, { isEdit = false } = {}) {
+  if (step === 1) {
+    if (!form.first_name?.trim()) return 'Ism majburiy.'
+    if (!form.last_name?.trim()) return 'Familiya majburiy.'
+    if (!form.phone?.trim()) return 'Telefon raqami majburiy.'
+    return null
+  }
+  if (step === 2) {
+    if (!form.ui_role) return 'Rolni tanlang.'
+    if (form.ui_role === 'doctor' && !form.specialty?.trim()) return 'Mutaxassislikni tanlang.'
+    if (!isEdit && (!form.password || form.password.length < 6)) {
+      return 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak.'
+    }
+    if (isEdit && form.password && form.password.length < 6) {
+      return 'Yangi parol kamida 6 ta belgidan iborat bo\'lishi kerak.'
+    }
+    return null
+  }
+  if (step === 3) {
+    if (form.ui_role === 'doctor') {
+      if (form.general_percentage !== '' && form.general_percentage != null) {
+        const pct = Number(form.general_percentage)
+        if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+          return 'Umumiy foiz 0–100 oralig\'ida bo\'lishi kerak.'
+        }
+      }
+      if (form.orthodontic_percentage !== '' && form.orthodontic_percentage != null) {
+        const pct = Number(form.orthodontic_percentage)
+        if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+          return 'Ortodont foiz 0–100 oralig\'ida bo\'lishi kerak.'
+        }
+      }
+      if (!form.chair) return 'Stomatologik kresloni tanlang.'
+    } else if (form.fixed_salary_amount !== '' && form.fixed_salary_amount != null) {
+      const amount = Number(form.fixed_salary_amount)
+      if (!Number.isFinite(amount) || amount < 0) {
+        return 'Oylik maosh noto\'g\'ri kiritilgan.'
+      }
+    }
+    return null
+  }
+  return null
+}
+
+export function employeeToWizardForm(employee, permissionsMatrix) {
+  const names = employee?.first_name
+    ? {
+        first_name: employee.first_name || '',
+        last_name: employee.last_name || '',
+        middle_name: employee.middle_name || '',
+      }
+    : splitFullName(employee?.full_name)
+
+  const { chair, days } = schedulesToFormState(employee?.doctor_schedules)
+  const uiRole = uiRoleFromEmployee(employee)
+
+  return {
+    ...buildEmptyWizardForm(),
+    ...names,
+    phone: employee?.phone || '',
+    additional_phone: employee?.additional_phone || '',
+    birth_date: employee?.birth_date || '',
+    gender: employee?.gender || '',
+    avatar_url: employee?.avatar_url || '',
+    email: employee?.email || '',
+    password: '',
+    ui_role: uiRole,
+    specialty: employee?.specialization || employee?.specialty || 'Terapevt',
+    telegram_chat_id: employee?.telegram_chat_id || '',
+    general_percentage: employee?.general_percentage ?? employee?.salary_percentage ?? '',
+    orthodontic_percentage: employee?.orthodontic_percentage ?? '',
+    allowed_cash_register_id: employee?.allowed_cash_register_id || '',
+    fixed_salary_amount: employee?.fixed_salary_amount ?? '',
+    chair,
+    is_active: employee?.status !== 'inactive' && employee?.is_active !== false,
+    work_schedule: { days },
+    permissions: permissionsMatrix,
+  }
+}
+
+export function wizardFormToEmployeeRecord(form, clinicId, { includePassword = true } = {}) {
+  const specialization = specializationFromUiRole(form.ui_role, form.specialty)
+  const full_name = buildFullName(form)
+
+  const record = {
+    first_name: form.first_name.trim(),
+    last_name: form.last_name.trim(),
+    middle_name: form.middle_name?.trim() || null,
+    full_name,
+    phone: form.phone,
+    additional_phone: form.additional_phone?.trim() || null,
+    birth_date: form.birth_date || null,
+    gender: form.gender || null,
+    avatar_url: form.avatar_url || null,
+    email: form.email?.trim() || null,
+    specialty: specialization,
+    role: specialtyToRole(specialization),
+    telegram_chat_id: form.telegram_chat_id?.trim() || null,
+    allowed_cash_register_id: form.allowed_cash_register_id || null,
+    is_active: !!form.is_active,
+    status: form.is_active ? 'active' : 'inactive',
+    ...(clinicId != null ? { clinic_id: Number(clinicId) } : {}),
+  }
+
+  if (form.ui_role === 'doctor') {
+    record.general_percentage = form.general_percentage !== '' && form.general_percentage != null
+      ? Number(form.general_percentage)
+      : 0
+    record.salary_percentage = record.general_percentage
+    record.orthodontic_percentage = form.orthodontic_percentage !== '' && form.orthodontic_percentage != null
+      ? Number(form.orthodontic_percentage)
+      : 0
+    record.fixed_salary_amount = null
+  } else {
+    record.general_percentage = 0
+    record.salary_percentage = null
+    record.orthodontic_percentage = 0
+    record.fixed_salary_amount = form.fixed_salary_amount !== '' && form.fixed_salary_amount != null
+      ? Number(form.fixed_salary_amount)
+      : null
+  }
+
+  if (includePassword && form.password) {
+    record.password = form.password
+  }
+
+  return record
+}

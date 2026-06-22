@@ -235,10 +235,7 @@ const compactHint = computed(() => {
     return translateOrFallback('appointments.paymentPaid', 'To\'langan')
   }
   if (status === VISIT_STATUSES.COMPLETED_DEBT) {
-    const debt = Number(props.appointment.debt_amount) || 0
-    if (debt > 0) {
-      return translateOrFallback('appointments.paymentDebt', 'Qarzdor')
-    }
+    return translateOrFallback('appointments.statusCompleted', 'Tugadi')
   }
   if (status === VISIT_STATUSES.CANCELLED) {
     return translateOrFallback('appointments.statusCancelled', 'Bekor')
@@ -265,7 +262,7 @@ const getStatusLabel = (status) => {
     'arrived': translateOrFallback('appointments.statusArrived', 'Keldi'),
     'in_progress': translateOrFallback('appointments.statusInProgress', 'Qabulda'),
     'completed_paid': translateOrFallback('appointments.statusCompleted', 'Tugadi'),
-    'completed_debt': translateOrFallback('appointments.statusDebt', 'Qarzdor'),
+    'completed_debt': translateOrFallback('appointments.statusCompleted', 'Tugadi'),
     'cancelled': translateOrFallback('appointments.statusCancelled', 'Bekor qilindi'),
     'no_show': translateOrFallback('appointments.statusNoShow', 'Kelmadi')
   }

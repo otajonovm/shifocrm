@@ -219,7 +219,6 @@
         <div class="flex justify-between"><span class="text-slate-600">Jami xizmatlar</span><span class="font-semibold">{{ formatCurrency(totalServices) }}</span></div>
         <div v-if="totalDiscountAmount > 0" class="flex justify-between text-violet-700"><span>Chegirma</span><span class="font-semibold">-{{ formatCurrency(totalDiscountAmount) }}</span></div>
         <div class="flex justify-between"><span class="text-slate-600">To'langan</span><span class="font-semibold text-emerald-700">{{ formatCurrency(totalPaidNet) }}</span></div>
-        <div class="flex justify-between border-t border-slate-300 pt-2"><span class="font-semibold">Qarzdorlik</span><span class="font-bold text-amber-700">{{ formatCurrency(remainingDebt) }}</span></div>
       </div>
     </div>
 
@@ -277,11 +276,6 @@
           <tr>
             <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 3">To'langan</td>
             <td class="px-4 py-2 text-emerald-700">{{ formatCurrency(totalPaidNet) }}</td>
-            <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 2"></td>
-          </tr>
-          <tr class="border-t border-slate-300">
-            <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 3">Qarzdorlik</td>
-            <td class="px-4 py-2 text-amber-700">{{ formatCurrency(remainingDebt) }}</td>
             <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 2"></td>
           </tr>
         </tfoot>
@@ -366,7 +360,6 @@
                 <div class="mt-1 flex flex-wrap gap-4">
                   <span>{{ t('patientPayments.visitPrice') }}: {{ formatCurrency(visitPreview.price || 0) }}</span>
                   <span>{{ t('patientPayments.visitPaid') }}: {{ formatCurrency(visitPreview.paid_amount || 0) }}</span>
-                  <span>{{ t('patientPayments.visitDebt') }}: {{ formatCurrency(visitPreview.debt_amount || 0) }}</span>
                 </div>
               </div>
             </div>

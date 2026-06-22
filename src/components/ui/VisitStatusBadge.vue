@@ -20,14 +20,6 @@
       
       <!-- Label -->
       <span>{{ config.label }}</span>
-      
-      <!-- Debt amount (agar qarzdor bo'lsa) -->
-      <span
-        v-if="visit?.debt_amount && visit.debt_amount > 0"
-        class="ml-1 font-semibold"
-      >
-        ({{ formatCurrency(visit.debt_amount) }})
-      </span>
     </span>
     
     <!-- Tooltip -->
@@ -44,12 +36,6 @@
         class="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg whitespace-nowrap pointer-events-none"
       >
         {{ config.description }}
-        <div
-          v-if="visit?.debt_amount && visit.debt_amount > 0"
-          class="mt-1 pt-1 border-t border-gray-700"
-        >
-          Qarzdorlik: {{ formatCurrency(visit.debt_amount) }}
-        </div>
         <!-- Arrow -->
         <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
           <div class="w-2 h-2 bg-gray-900 transform rotate-45"></div>
