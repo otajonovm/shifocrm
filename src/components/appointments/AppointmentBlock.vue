@@ -200,6 +200,18 @@ const effectiveStatus = computed(() => {
   return status
 })
 
+const isUnconfirmedOnline = computed(() =>
+  props.appointment.channel === 'public_lead'
+  && !props.appointment.patient_id
+  && effectiveStatus.value === VISIT_STATUSES.PENDING,
+)
+
+const isConfirmedOnline = computed(() =>
+  props.appointment.channel === 'public_lead'
+  && Boolean(props.appointment.patient_id)
+  && effectiveStatus.value === VISIT_STATUSES.ARRIVED,
+)
+
 const STATUS_BLOCK_CLASSES = {
   [VISIT_STATUSES.PENDING]: 'bg-blue-50 border-blue-500',
   [VISIT_STATUSES.ARRIVED]: 'bg-amber-50 border-amber-500',
@@ -222,14 +234,25 @@ const STATUS_DOT_CLASSES = {
 
 // Faqat status bo'yicha rang (xizmat nomi rangini bosib ketmaydi)
 const appointmentClasses = computed(() => {
+  if (isUnconfirmedOnline.value) {
+    return 'bg-slate-100 border-slate-400 border-dashed'
+  }
+  if (isConfirmedOnline.value) {
+    return 'bg-blue-50 border-blue-500'
+  }
   return STATUS_BLOCK_CLASSES[effectiveStatus.value] || 'bg-white border-slate-300'
 })
 
 const statusDotClass = computed(() => {
+  if (isUnconfirmedOnline.value) return 'bg-slate-400'
+  if (isConfirmedOnline.value) return 'bg-blue-500'
   return STATUS_DOT_CLASSES[effectiveStatus.value] || 'bg-slate-400'
 })
 
 const compactHint = computed(() => {
+  if (isUnconfirmedOnline.value) {
+    return translateOrFallback('appointments.unconfirmedOnline', 'Tasdiqlanmagan')
+  }
   const status = effectiveStatus.value
   if (status === VISIT_STATUSES.COMPLETED_PAID) {
     return translateOrFallback('appointments.paymentPaid', 'To\'langan')

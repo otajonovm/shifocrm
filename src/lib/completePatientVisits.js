@@ -6,8 +6,12 @@
 import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
 import { getVisitServicesByVisitId, getVisitServicesByPatientId } from '@/api/visitServicesApi'
 import { updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
-import { listInventoryConsumptionsByVisitId, listInventoryItems } from '@/api/inventoryApi'
+import {
+  listClinicInventoryItems,
+  listVisitConsumptions,
+} from '@/lib/inventoryBridge'
 import { updatePatient } from '@/api/patientsApi'
+import { useAuthStore } from '@/stores/auth'
 
 const DISCOUNT_NOTE_PREFIX = '[DISCOUNT]'
 
@@ -59,9 +63,9 @@ const getVisitServicesTotal = (visitId, services) => {
   return sum
 }
 
-const getVisitConsumptionsTotal = async (visitId, inventoryItems) => {
+const getVisitConsumptionsTotal = async (authStore, visitId, inventoryItems) => {
   try {
-    const consumptions = await listInventoryConsumptionsByVisitId(visitId)
+    const consumptions = await listVisitConsumptions(authStore, visitId)
     return consumptions.reduce((sum, entry) => {
       const qty = Number(entry.quantity) || 0
       const price = getItemPrice(entry.item_id, inventoryItems)
@@ -81,10 +85,11 @@ const getVisitConsumptionsTotal = async (visitId, inventoryItems) => {
  */
 export const completeAllPatientVisits = async (patientId, doctorId = null) => {
   try {
+    const authStore = useAuthStore()
     const [visits, services, inventoryItems] = await Promise.all([
       getVisitsByPatientId(patientId),
       getVisitServicesByPatientId(patientId),
-      listInventoryItems('order=created_at.desc')
+      listClinicInventoryItems(authStore),
     ])
 
     let visitsToComplete = visits.filter(v =>
@@ -147,7 +152,7 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
         })
       }
 
-      const consumptionsTotal = await getVisitConsumptionsTotal(visitId, inventoryItems)
+      const consumptionsTotal = await getVisitConsumptionsTotal(authStore, visitId, inventoryItems)
       const totalPrice = servicesTotal + consumptionsTotal
       const targetPrice = totalPrice > 0 ? totalPrice : (Number(visit.price) || 0)
       totalBeforeDiscount += targetPrice

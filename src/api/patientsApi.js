@@ -143,10 +143,13 @@ export const createPatient = async ({
   doctor_name = null,
   status = 'waiting',
   notes = null,
-  createFirstVisit = true
+  createFirstVisit = true,
+  clinic_id: clinicIdOverride = null,
 }) => {
   try {
-    const cid = await getCurrentClinicId()
+    const cid = clinicIdOverride != null && Number.isFinite(Number(clinicIdOverride))
+      ? Number(clinicIdOverride)
+      : await getCurrentClinicId()
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
 
     const now = new Date().toISOString()

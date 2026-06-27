@@ -197,6 +197,7 @@ import {
   timeStringToMinutes,
 } from '@/lib/clinicCalendarHours'
 import * as visitsApi from '@/api/visitsApi'
+import { enrichVisitsWithLeadInfo } from '@/lib/leadVisitEnrich'
 import { updateAppointment, getAppointmentsByPatientId } from '@/api/appointmentsApi'
 import { getSupabaseClient } from '@/lib/supabaseClient'
 import { getCurrentClinicId } from '@/lib/clinicContext'
@@ -498,6 +499,8 @@ const loadAppointments = async () => {
         endDate
       )
     }
+
+    visits = await enrichVisitsWithLeadInfo(visits)
 
     // Shifokor va bemor ma'lumotlarini qo'shish
     // TEMP: start_time va end_time database'da yo'q bo'lgani uchun placeholder qo'shamiz

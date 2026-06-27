@@ -168,11 +168,38 @@ export const listServicePriceAudit = async (query = 'order=changed_at.desc&limit
   return []
 }
 
-async function fetchVisitServicesForDateRange (startDate, endDate) {
+function parseServicePrice(v) {
+  if (v == null) return 0
+  const n = typeof v === 'string' ? parseFloat(String(v).replace(/\s|,/g, '')) : Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+async function fetchVisitServicesForDateRange(startDate, endDate) {
   const visits = await getVisitsByDateRange(startDate, endDate)
   const ids = (visits || []).map((v) => v.id).filter(Boolean)
   if (!ids.length) return []
   return getVisitServicesByVisitIds(ids)
+}
+
+/** visit_services bo'yicha xizmat statistikasi */
+function aggregateByServiceName(rows = []) {
+  const byService = new Map()
+  for (const r of rows) {
+    const name = String(r.service_name || '').trim() || 'Noma\'lum'
+    const key = name.toLowerCase()
+    if (!byService.has(key)) {
+      byService.set(key, {
+        service_id: key,
+        service_name: name,
+        total_count: 0,
+        total_revenue: 0,
+      })
+    }
+    const item = byService.get(key)
+    item.total_count += 1
+    item.total_revenue += parseServicePrice(r.price)
+  }
+  return Array.from(byService.values()).sort((a, b) => b.total_revenue - a.total_revenue)
 }
 
 export const getServiceRevenueDaily = async () => {
@@ -181,57 +208,54 @@ export const getServiceRevenueDaily = async () => {
   const end = new Date()
   const start = new Date(end)
   start.setDate(start.getDate() - 30)
-  const startStr = start.toISOString().slice(0, 10)
-  const endStr = end.toISOString().slice(0, 10)
-  const rows = await fetchVisitServicesForDateRange(startStr, endStr)
+  const rows = await fetchVisitServicesForDateRange(
+    start.toISOString().slice(0, 10),
+    end.toISOString().slice(0, 10),
+  )
   const byDay = new Map()
   for (const r of rows) {
     const day = (r.created_at || '').slice(0, 10)
     if (!day) continue
     const key = `${day}\t${r.service_name || ''}`
     if (!byDay.has(key)) byDay.set(key, { day, service_name: r.service_name || '', total_revenue: 0 })
-    byDay.get(key).total_revenue += Number(r.price) || 0
+    byDay.get(key).total_revenue += parseServicePrice(r.price)
   }
   return Array.from(byDay.values()).sort((a, b) => (a.day > b.day ? -1 : 1))
 }
 
-export const getServiceRevenueMonthly = async () => {
+/** Oy bo'yicha umumiy tushum (UI uchun agregatsiya) */
+export const getServiceRevenueMonthly = async (months = 6) => {
   const cid = await getCurrentClinicId()
   if (!cid) return []
   const end = new Date()
   const start = new Date(end)
-  start.setMonth(start.getMonth() - 6)
-  const startStr = start.toISOString().slice(0, 10)
-  const endStr = end.toISOString().slice(0, 10)
-  const rows = await fetchVisitServicesForDateRange(startStr, endStr)
+  start.setMonth(start.getMonth() - Math.max(Number(months) || 6, 1))
+  const rows = await fetchVisitServicesForDateRange(
+    start.toISOString().slice(0, 10),
+    end.toISOString().slice(0, 10),
+  )
   const byMonth = new Map()
   for (const r of rows) {
     const d = (r.created_at || '').slice(0, 10)
     if (!d) continue
-    const month = d.slice(0, 7) + '-01'
-    const key = `${month}\t${r.service_name || ''}`
-    if (!byMonth.has(key)) byMonth.set(key, { month, service_name: r.service_name || '', total_revenue: 0 })
-    byMonth.get(key).total_revenue += Number(r.price) || 0
+    const month = d.slice(0, 7)
+    if (!byMonth.has(month)) byMonth.set(month, { month, total_revenue: 0 })
+    byMonth.get(month).total_revenue += parseServicePrice(r.price)
   }
-  return Array.from(byMonth.values()).sort((a, b) => (a.month > b.month ? -1 : 1)).slice(0, 50)
+  return Array.from(byMonth.values())
+    .sort((a, b) => b.month.localeCompare(a.month))
+    .slice(0, months)
 }
 
-export const getTopServices = async () => {
+export const getTopServices = async (limit = 10) => {
   const cid = await getCurrentClinicId()
   if (!cid) return []
   const end = new Date()
   const start = new Date(end)
   start.setFullYear(start.getFullYear() - 1)
-  const startStr = start.toISOString().slice(0, 10)
-  const endStr = end.toISOString().slice(0, 10)
-  const rows = await fetchVisitServicesForDateRange(startStr, endStr)
-  const byService = new Map()
-  for (const r of rows) {
-    const name = r.service_name || ''
-    if (!byService.has(name)) byService.set(name, { service_name: name, total_revenue: 0 })
-    byService.get(name).total_revenue += Number(r.price) || 0
-  }
-  return Array.from(byService.values())
-    .sort((a, b) => (b.total_revenue - a.total_revenue))
-    .slice(0, 10)
+  const rows = await fetchVisitServicesForDateRange(
+    start.toISOString().slice(0, 10),
+    end.toISOString().slice(0, 10),
+  )
+  return aggregateByServiceName(rows).slice(0, Math.max(Number(limit) || 10, 1))
 }

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import {
   canAccessAdminRoutes,
+  canAccessWarehouse,
   canManageStaff,
   isClinicOwner,
   isGlobalSuperAdmin,
@@ -106,8 +107,12 @@ const router = createRouter({
     {
       path: '/inventory',
       name: 'inventory',
-      component: () => import('@/views/InventoryView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin' },
+      component: () => import('@/views/WarehouseView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'admin', requiresWarehouse: true },
+    },
+    {
+      path: '/warehouse',
+      redirect: { name: 'inventory' },
     },
     {
       path: '/settings',
@@ -282,6 +287,12 @@ router.beforeEach(async (to, from, next) => {
       next({ name: 'dashboard' })
       return
     }
+  }
+
+  // Yakka stomatologlar ombor moduliga kira olmaydi
+  if (to.meta.requiresWarehouse && !canAccessWarehouse(authStore)) {
+    next({ name: 'dashboard' })
+    return
   }
 
   next()

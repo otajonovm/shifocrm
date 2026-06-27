@@ -71,12 +71,16 @@ export const getAppointmentById = async (id) => {
  */
 export const createAppointment = async (data) => {
   try {
-    const cid = await getCurrentClinicId()
+    const cid = data?.clinic_id != null && Number.isFinite(Number(data.clinic_id))
+      ? Number(data.clinic_id)
+      : await getCurrentClinicId()
     if (!cid) throw new Error('Klinika tanlanmagan')
 
     const payload = {
       clinic_id: cid,
-      patient_id: Number(data.patient_id),
+      patient_id: data.patient_id != null && Number.isFinite(Number(data.patient_id))
+        ? Number(data.patient_id)
+        : null,
       doctor_id: data.doctor_id ? Number(data.doctor_id) : null,
       scheduled_at: data.scheduled_at,
       duration_minutes: data.duration_minutes || 30,

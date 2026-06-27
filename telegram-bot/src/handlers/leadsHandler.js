@@ -31,13 +31,16 @@ async function handleLeadStart(bot, msg, leadId) {
       ? `${lead.preferred_date || ''} ${lead.preferred_time || ''}`.trim()
       : '—'
 
+    const nameLine = patient?.full_name || lead.patient_name || 'Bemor'
+    const phoneLine = patient?.phone || lead.phone || '—'
+
     await bot.sendMessage(
       chatId,
-      `✅ Ro'yxatdan o'tdingiz!\n\n` +
-      `👤 ${patient.full_name || lead.patient_name}\n` +
-      `📱 ${patient.phone || lead.phone}\n` +
+      `✅ Onlayn yozilish bog'landi!\n\n` +
+      `👤 ${nameLine}\n` +
+      `📱 ${phoneLine}\n` +
       `📅 Qabul: ${when}\n\n` +
-      `Qabul vaqtiga 2 soat qolganda tasdiqlash xabari yuboriladi.`
+      `Qabul vaqtiga 2 soat qolganda «Ha, boraman» tugmasi bilan eslatma yuboriladi.`
     )
   } catch (error) {
     console.error('handleLeadStart error:', error.message)
@@ -65,10 +68,10 @@ async function handleLeadCallback(bot, query) {
 
   try {
     if (action === 'lead_confirm') {
-      await confirmLead(leadId)
+      const { patient } = await confirmLead(leadId)
       await bot.answerCallbackQuery(query.id, { text: 'Qabul tasdiqlandi ✅' })
       await bot.editMessageText(
-        `${query.message.text}\n\n✅ Siz qabulga kelasiz — rahmat!`,
+        `${query.message.text}\n\n✅ Tasdiqlandi — qabulga kelasiz!\n👤 ${patient?.full_name || ''}\n📅 Kalendar yangilandi.`,
         {
           chat_id: chatId,
           message_id: query.message.message_id,
@@ -81,7 +84,7 @@ async function handleLeadCallback(bot, query) {
       await cancelLead(leadId)
       await bot.answerCallbackQuery(query.id, { text: 'Qabul bekor qilindi' })
       await bot.editMessageText(
-        `${query.message.text}\n\n❌ Qabul bekor qilindi.`,
+        `${query.message.text}\n\n❌ Qabul bekor qilindi. Vaqt bo'shatildi.`,
         {
           chat_id: chatId,
           message_id: query.message.message_id,

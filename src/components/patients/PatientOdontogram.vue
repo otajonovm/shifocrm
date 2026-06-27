@@ -28,15 +28,6 @@
             <PlusIcon class="w-5 h-5" />
             {{ t('odontogram.newVisit') }}
           </button>
-          <button
-            v-if="currentVisit && currentVisit.status === 'in_progress' && (isDoctor || isSolo)"
-            @click="completeCurrentVisit"
-            :disabled="loading"
-            class="inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-sm font-medium text-white bg-green-600 rounded-xl hover:bg-green-700 active:scale-[0.98] transition-colors disabled:opacity-50 touch-manipulation min-h-[44px]"
-          >
-            <CheckIcon class="w-5 h-5" />
-            {{ t('odontogram.completeVisit') }}
-          </button>
         </div>
       </div>
     </div>
@@ -436,16 +427,23 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { PlusIcon, CheckIcon, DocumentTextIcon, XMarkIcon, ChevronDownIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, DocumentTextIcon, XMarkIcon, ChevronDownIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { isAdminLike, isDoctorLike } from '@/lib/roles'
 import { formatDate } from '@/lib/date'
 import { getVisitStatusLabel } from '@/constants/visitStatus'
 import * as visitsApi from '@/api/visitsApi'
 import * as odontogramApi from '@/api/odontogramApi'
 import * as visitServicesApi from '@/api/visitServicesApi'
 import { listServices } from '@/api/servicesApi'
-import { listInventoryItems, listInventoryConsumptionsByVisitId, createInventoryConsumption, deleteInventoryConsumption } from '@/api/inventoryApi'
+import {
+  listClinicInventoryItems,
+  listVisitConsumptions,
+  createVisitConsumption,
+  deleteVisitConsumption,
+} from '@/lib/inventoryBridge'
+import { consumeServiceMaterialsForVisit } from '@/api/serviceMaterialsApi'
 import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
 import { sendVisitCompleted, schedulePatientFollowUps } from '@/api/telegramApi'
 import Tooth from './Tooth.vue'
@@ -535,14 +533,12 @@ const hasChanges = computed(() => {
 })
 
 const activeUserRole = computed(() => authStore.userRole || 'doctor')
-const isDoctor = computed(() => activeUserRole.value === 'doctor')
-const isAdmin = computed(() => activeUserRole.value === 'admin')
-const isSolo = computed(() => activeUserRole.value === 'solo')
-// Material sarfini: admin — istalgan tashrifda; doktor va yakka doktor — faqat "Davolanish boshlandi" da
+const isAdminLikeUser = computed(() => isAdminLike(authStore))
+// Material sarfini: rahbar/administrator — istalgan tashrifda; doktor/yakka stom — faqat davolanish boshlanganida
 const canManageMaterial = computed(() => {
   if (!selectedVisitId.value) return false
-  if (isAdmin.value) return true
-  return canEdit.value && (isDoctor.value || isSolo.value)
+  if (isAdminLikeUser.value) return true
+  return canEdit.value && isDoctorLike(authStore)
 })
 
 // Tish bilan ishlashda xizmatlar bo'limidagi xizmatlardan foydalanamiz; bo'sh bo'lsa statuslar
@@ -674,7 +670,7 @@ const loadVisitServices = async () => {
 
 const loadInventoryItems = async () => {
   try {
-    inventoryItems.value = await listInventoryItems('order=created_at.desc')
+    inventoryItems.value = await listClinicInventoryItems(authStore)
   } catch (error) {
     console.error('Failed to load inventory items:', error)
     inventoryItems.value = []
@@ -688,7 +684,7 @@ const loadConsumptions = async () => {
   }
   consumptionsLoading.value = true
   try {
-    consumptions.value = await listInventoryConsumptionsByVisitId(currentVisit.value.id)
+    consumptions.value = await listVisitConsumptions(authStore, currentVisit.value.id)
   } catch (error) {
     console.error('Failed to load consumptions:', error)
     consumptions.value = []
@@ -740,7 +736,7 @@ const confirmDeleteConsumption = async (entry) => {
   if (!confirm(t('odontogram.confirmDeleteMaterial'))) return
   consumptionDeleting.value = entry.id
   try {
-    await deleteInventoryConsumption(entry.id)
+    await deleteVisitConsumption(authStore, entry.id)
     toast.success(t('odontogram.toastMaterialDeleted'))
     await Promise.all([loadConsumptions(), loadInventoryItems()])
   } catch (error) {
@@ -768,7 +764,7 @@ const saveConsumption = async () => {
     return
   }
   try {
-    await createInventoryConsumption({
+    await createVisitConsumption(authStore, {
       visit_id: currentVisit.value.id,
       patient_id: props.patient.id,
       doctor_id: props.doctorId,
@@ -1188,6 +1184,21 @@ const applyMenuSelection = async (option) => {
       serviceName: option.labelKey ? t(option.labelKey) : option.label,
       price: option.price || 0
     })
+    if (currentVisit.value?.id && option.value) {
+      try {
+        const consumed = await consumeServiceMaterialsForVisit({
+          serviceId: Number(option.value),
+          visitId: currentVisit.value.id,
+          patientId: props.patient.id,
+          doctorId: props.doctorId,
+          authStore,
+          inventoryItems: inventoryItems.value,
+        })
+        if (consumed.length) await loadConsumptions()
+      } catch (err) {
+        console.warn('Auto material consumption failed:', err)
+      }
+    }
     // visitServices ni qayta yuklash - narx yangilanishi uchun
     if (currentVisit.value?.id) {
       try {

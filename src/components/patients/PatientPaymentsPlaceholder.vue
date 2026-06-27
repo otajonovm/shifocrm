@@ -19,128 +19,99 @@
         </div>
       </div>
 
-      <!-- Desktop: tugmalar — To'lov qo'shish asosiy harakat -->
-      <div class="hidden md:flex md:flex-wrap items-center justify-end gap-2 shrink-0 ml-4">
-        <button
-          v-if="canManagePayments"
-          class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 shadow-md transition-colors"
-          @click="openCreateModal"
-        >
-          <BanknotesIcon class="w-5 h-5" />
-          {{ t('patientPayments.addPayment') }}
-        </button>
-        <button
-          v-if="canManagePayments"
-          class="inline-flex items-center gap-2 rounded-lg border border-violet-300 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-700 hover:bg-violet-100 transition-colors"
-          @click="openDiscountModal"
-        >
-          <TagIcon class="w-5 h-5" />
-          {{ t('patientPayments.addDiscount') }}
-        </button>
-        <button
-          v-if="canManagePayments && lastCompletionSummary"
-          type="button"
-          class="inline-flex items-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100 transition-colors"
-          @click="printLastCompletion"
-        >
-          <PrinterIcon class="w-5 h-5" />
-          Pechat
-        </button>
-        <button
-          v-if="printServices.length > 0 || totalPaidNet > 0"
-          type="button"
-          class="inline-flex items-center gap-2 rounded-lg bg-gray-600 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 shadow-md transition-colors"
-          @click="handlePrintA4"
-          title="A4 formatida to'lov hisoboti"
-        >
-          <PrinterIcon class="w-5 h-5" />
-          A4 chop etish
-        </button>
-        <button
-          v-if="printServices.length > 0 || totalPaidNet > 0"
-          type="button"
-          class="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 shadow-md transition-colors"
-          @click="handlePrintReceipt"
-          title="80mm termik chek"
-        >
-          <PrinterIcon class="w-5 h-5" />
-          Chek chop etish
-        </button>
-        <button
-          v-if="canManagePayments && hasIncompleteVisits"
-          class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 shadow-md hover:shadow-lg transition-all"
-          @click="completeAllVisits"
-          :disabled="completingAll"
-        >
-          <svg v-if="!completingAll" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-          {{ completingAll ? t('patientPayments.completing') : t('patientPayments.yakunlash') }}
-        </button>
-      </div>
-
-      <!-- Mobil: To'lov qo'shish birinchi — asosiy harakat -->
-      <div v-if="canManagePayments" class="md:hidden space-y-3">
-        <div class="grid grid-cols-2 gap-3">
+      <!-- Harakatlar: asosiy 2 tugma + «Boshqa» menyusi -->
+      <div v-if="canManagePayments" class="flex flex-col gap-2 shrink-0 md:ml-4 md:items-end">
+        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button
             type="button"
-            class="touch-target-lg inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-cyan-600 px-4 py-3.5 text-sm font-semibold text-white shadow-md active:scale-[0.98] active:shadow-lg transition-all"
+            class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-cyan-600 px-4 py-3 sm:py-2.5 text-sm font-semibold text-white shadow-md hover:shadow-lg active:scale-[0.98] transition-all touch-manipulation min-h-[44px]"
             @click="openCreateModal"
           >
-            <BanknotesIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
-            <span class="truncate">{{ t('patientPayments.addPayment') }}</span>
+            <BanknotesIcon class="w-5 h-5 shrink-0" />
+            {{ t('patientPayments.addPayment') }}
           </button>
           <button
+            v-if="hasIncompleteVisits"
             type="button"
-            class="touch-target-lg inline-flex items-center justify-center gap-2 rounded-xl border-2 border-violet-300 bg-violet-50 px-4 py-3.5 text-sm font-semibold text-violet-700 active:bg-violet-100 active:scale-[0.98] transition-all shadow-sm"
-            @click="openDiscountModal"
+            class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 sm:py-2.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-700 active:scale-[0.98] transition-all disabled:opacity-60 touch-manipulation min-h-[44px]"
+            :disabled="completingAll"
+            @click="completeAllVisits"
           >
-            <TagIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
-            <span class="truncate">{{ t('patientPayments.addDiscount') }}</span>
+            <CheckCircleIcon v-if="!completingAll" class="w-5 h-5 shrink-0" />
+            <div v-else class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+            {{ completingAll ? t('patientPayments.completing') : t('patientPayments.yakunlash') }}
           </button>
         </div>
-        <button
-          v-if="lastCompletionSummary"
-          type="button"
-          class="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 active:bg-sky-100 active:scale-[0.99] transition-all"
-          @click="printLastCompletion"
-        >
-          <PrinterIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
-          <span>Pechat</span>
-        </button>
-        <button
-          v-if="printServices.length > 0 || totalPaidNet > 0"
-          type="button"
-          class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gray-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-gray-700 active:scale-[0.99] transition-all"
-          @click="handlePrintA4"
-          title="A4 formatida to'lov hisoboti"
-        >
-          <PrinterIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
-          <span>A4 chop etish</span>
-        </button>
-        <button
-          v-if="printServices.length > 0 || totalPaidNet > 0"
-          type="button"
-          class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-amber-600 active:scale-[0.99] transition-all"
-          @click="handlePrintReceipt"
-          title="80mm termik chek"
-        >
-          <PrinterIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
-          <span>Chek chop etish</span>
-        </button>
-        <button
-          v-if="hasIncompleteVisits"
-          class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-[0.99] transition-all disabled:opacity-60"
-          @click="completeAllVisits"
-          :disabled="completingAll"
-        >
-          <svg v-if="!completingAll" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          <div v-else class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-          <span>{{ completingAll ? t('patientPayments.completing') : t('patientPayments.yakunlash') }}</span>
-        </button>
+
+        <div ref="moreMenuRef" class="relative w-full sm:w-auto">
+          <button
+            type="button"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation min-h-[44px]"
+            :class="moreMenuOpen ? 'ring-2 ring-primary-200 border-primary-300' : ''"
+            @click="moreMenuOpen = !moreMenuOpen"
+          >
+            <EllipsisHorizontalIcon class="w-5 h-5 text-gray-500" />
+            {{ t('patientPayments.moreActions') }}
+            <ChevronDownIcon class="w-4 h-4 text-gray-400 transition-transform" :class="moreMenuOpen ? 'rotate-180' : ''" />
+          </button>
+
+          <Transition
+            enter-active-class="transition ease-out duration-150"
+            enter-from-class="opacity-0 scale-95"
+            enter-to-class="opacity-100 scale-100"
+            leave-active-class="transition ease-in duration-100"
+            leave-from-class="opacity-100 scale-100"
+            leave-to-class="opacity-0 scale-95"
+          >
+            <div
+              v-if="moreMenuOpen"
+              class="absolute right-0 left-0 sm:left-auto sm:min-w-[220px] top-full mt-1.5 z-30 rounded-xl border border-gray-200 bg-white py-1.5 shadow-lg ring-1 ring-black/5"
+            >
+              <button
+                type="button"
+                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-violet-50 hover:text-violet-800 transition-colors text-left"
+                @click="runMoreAction(openDiscountModal)"
+              >
+                <TagIcon class="w-5 h-5 text-violet-500 shrink-0" />
+                {{ t('patientPayments.addDiscount') }}
+              </button>
+              <div class="my-1 border-t border-gray-100" />
+              <p class="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                {{ t('patientPayments.printSection') }}
+              </p>
+              <button
+                v-if="canPrintDocuments"
+                type="button"
+                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                @click="runMoreAction(handlePrintA4)"
+              >
+                <DocumentTextIcon class="w-5 h-5 text-gray-500 shrink-0" />
+                {{ t('patientPayments.printA4') }}
+              </button>
+              <button
+                v-if="canPrintDocuments"
+                type="button"
+                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                @click="runMoreAction(handlePrintReceipt)"
+              >
+                <PrinterIcon class="w-5 h-5 text-amber-500 shrink-0" />
+                {{ t('patientPayments.printReceipt') }}
+              </button>
+              <button
+                v-if="lastCompletionSummary"
+                type="button"
+                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-sky-50 hover:text-sky-800 transition-colors text-left"
+                @click="runMoreAction(printLastCompletion)"
+              >
+                <ClipboardDocumentCheckIcon class="w-5 h-5 text-sky-500 shrink-0" />
+                {{ t('patientPayments.printLastSummary') }}
+              </button>
+              <p v-if="!canPrintDocuments && !lastCompletionSummary" class="px-4 py-2 text-xs text-gray-400">
+                {{ t('patientPayments.printUnavailable') }}
+              </p>
+            </div>
+          </Transition>
+        </div>
       </div>
     </div>
 
@@ -380,15 +351,26 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { TrashIcon, TagIcon, BanknotesIcon, PrinterIcon } from '@heroicons/vue/24/outline'
+import {
+  TrashIcon,
+  TagIcon,
+  BanknotesIcon,
+  PrinterIcon,
+  ChevronDownIcon,
+  EllipsisHorizontalIcon,
+  CheckCircleIcon,
+  DocumentTextIcon,
+  ClipboardDocumentCheckIcon,
+} from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
+import { canManagePatientBilling } from '@/lib/roles'
 import { useClinicStore } from '@/stores/clinic'
 import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId, getPaymentsByVisitId } from '@/api/paymentsApi'
 import { getVisitServicesByPatientId, getVisitServicesByVisitId, deleteVisitServiceById } from '@/api/visitServicesApi'
 import { getVisitById, updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
-import { listInventoryItems } from '@/api/inventoryApi'
+import { listClinicInventoryItems } from '@/lib/inventoryBridge'
 import { updatePatient } from '@/api/patientsApi'
 import { completeAllPatientVisits } from '@/lib/completePatientVisits'
 import { openPatientCompletionPreview } from '@/lib/patientCompletionPrint'
@@ -402,7 +384,7 @@ import { sendPatientCompletionSummary } from '@/api/telegramApi'
 
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()
-const canManagePayments = computed(() => ['admin', 'doctor', 'solo'].includes(authStore.userRole || ''))
+const canManagePayments = computed(() => canManagePatientBilling(authStore))
 
 const props = defineProps({
   patientId: {
@@ -441,6 +423,28 @@ const isDiscountMode = ref(false)
 const visitPreview = ref(null)
 const visitPreviewLoading = ref(false)
 const lastCompletionSummary = ref(null)
+const moreMenuOpen = ref(false)
+const moreMenuRef = ref(null)
+
+const canPrintDocuments = computed(() => printServices.value.length > 0 || totalPaidNet.value > 0)
+
+const closeMoreMenu = () => { moreMenuOpen.value = false }
+
+const runMoreAction = (fn) => {
+  closeMoreMenu()
+  fn()
+}
+
+const onDocumentClick = (event) => {
+  if (!moreMenuOpen.value) return
+  const el = moreMenuRef.value
+  if (el && !el.contains(event.target)) closeMoreMenu()
+}
+
+onMounted(() => {
+  document.addEventListener('click', onDocumentClick)
+  loadAll()
+})
 
 const form = ref({
   id: null,
@@ -556,7 +560,7 @@ const parsePrice = (v) => {
 
 const loadInventoryItems = async () => {
   try {
-    inventoryItems.value = await listInventoryItems('order=created_at.desc')
+    inventoryItems.value = await listClinicInventoryItems(authStore)
   } catch (error) {
     console.error('Failed to load inventory items for billing:', error)
     inventoryItems.value = []
@@ -924,7 +928,10 @@ const handlePrintReceipt = () => {
   }
 }
 
-onMounted(loadAll)
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocumentClick)
+})
+
 watch(() => props.patientId, loadAll)
 
 const openCreateModal = () => {

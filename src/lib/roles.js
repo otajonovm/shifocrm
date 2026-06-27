@@ -173,3 +173,16 @@ export function canAccessAdminRoutes(authStore) {
   if (isLegacyClinicScopedSuperAdmin(authStore)) return true
   return authStore.userRole === ROLES.ADMIN
 }
+
+/** Aqlli Ombor — faqat ko'p xonali klinika adminlari (yakka stom uchun emas) */
+export function canAccessWarehouse(authStore) {
+  if (!authStore?.isAuthenticated) return false
+  if (isSolo(authStore)) return false
+  return isAdminLike(authStore)
+}
+
+/** Bemor to'lovlari, yakunlash, material sarfi (rahbar, administrator, shifokor, yakka stom) */
+export function canManagePatientBilling(authStore) {
+  if (!authStore?.isAuthenticated) return false
+  return isAdminLike(authStore) || isDoctorLike(authStore)
+}

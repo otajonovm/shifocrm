@@ -7,7 +7,7 @@ import { supabaseGet } from './supabaseConfig'
 import { findAvailableSlots } from '@/lib/smartCalendar/schedulingEngine'
 
 const ACTIVE_VISIT_STATUSES = ['pending', 'arrived', 'in_progress', 'scheduled', 'confirmed']
-const ACTIVE_LEAD_HOLD_STATUSES = ['new', 'contacted']
+const ACTIVE_LEAD_HOLD_STATUSES = ['hold', 'new', 'contacted']
 const BOOKED_LEAD_STATUS = 'booked'
 
 const DAY_KEY_BY_INDEX = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
@@ -117,8 +117,10 @@ const isActiveVisit = (visit) => ACTIVE_VISIT_STATUSES.includes(String(visit?.st
 
 const isLeadBlockingSlot = (lead, nowMs) => {
   const status = String(lead?.status || '').toLowerCase()
-  if (status === BOOKED_LEAD_STATUS) return true
+  if (['booked', 'confirmed', 'qabulda'].includes(status)) return true
   if (!ACTIVE_LEAD_HOLD_STATUSES.includes(status)) return false
+
+  if (lead?.visit_id) return true
 
   const expiresAt = lead?.hold_expires_at ? new Date(lead.hold_expires_at).getTime() : NaN
   if (!Number.isFinite(expiresAt)) return false

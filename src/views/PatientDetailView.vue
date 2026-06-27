@@ -87,21 +87,6 @@
             {{ t('patientDetail.sendMessage') }}
           </button>
         </div>
-
-        <!-- Yakunlash tugmasi - yakka doktor uchun -->
-        <div v-if="canComplete && hasIncompleteVisits" class="mt-4 flex justify-end">
-          <button
-            @click="handleCompleteAll"
-            :disabled="completing"
-            class="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white hover:bg-green-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg v-if="!completing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-            <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            {{ completing ? t('patientVisits.completing') : t('patientVisits.complete') }}
-          </button>
-        </div>
       </div>
 
       <!-- Tabs — scroll-snap, touch-friendly on mobile -->
@@ -351,10 +336,7 @@ import { useDataPermission } from '@/composables/useDataPermission'
 import { PATIENT_STATUSES, getPatientStatusLabel, normalizePatientStatus } from '@/constants/patientStatus'
 import { ArrowLeftIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import * as visitsApi from '@/api/visitsApi'
-import { completeAllPatientVisits } from '@/lib/completePatientVisits'
-import { getVisitServicesByPatientId } from '@/api/visitServicesApi'
 import { sendTelegramNotification } from '@/api/telegramApi'
-import { sendPatientCompletionSummary } from '@/api/telegramApi'
 
 const toast = useToast()
 const { t } = useI18n()
@@ -374,8 +356,6 @@ const selectedVisitId = ref(null)
 const showPatientStatusModal = ref(false)
 const newPatientStatus = ref('')
 const updatingPatientStatus = ref(false)
-const completing = ref(false)
-const hasIncompleteVisits = ref(false)
 const showSendMessageModal = ref(false)
 const messageText = ref('')
 const sendingMessage = ref(false)
@@ -393,12 +373,6 @@ const tabs = [
 const isAdmin = computed(() => isAdminLike(authStore) || hasSoloRole(authStore))
 const isSolo = computed(() => hasSoloRole(authStore))
 const isDoctor = computed(() => hasDoctorRole(authStore))
-
-const canComplete = computed(() => {
-  const role = authStore.userRole
-  if (role === ROLES.CLINIC_OWNER || role === ROLES.ADMIN) return true
-  return [ROLES.DOCTOR, ROLES.SOLO].includes(role)
-})
 
 const goBack = () => {
   router.push('/patients')
@@ -425,75 +399,9 @@ const loadLastVisit = async (patientId) => {
 // Tolovlar bo'limida status o'zgargan bo'lsa bu handler qo'ng'iroq qiladi
 const handlePaymentStatusUpdate = async (newStatus) => {
   if (newStatus === 'completed') {
-    await checkIncompleteVisits(patient.value.id)
     window.dispatchEvent(new CustomEvent('patient-status-updated', {
       detail: { patientId: patient.value.id, status: newStatus }
     }))
-  }
-}
-
-// Yakunlanmagan tashriflar bor-yo'qligini tekshirish
-const checkIncompleteVisits = async (patientId) => {
-  try {
-    const [visits, services] = await Promise.all([
-      visitsApi.getVisitsByPatientId(patientId),
-      getVisitServicesByPatientId(patientId)
-    ])
-
-    hasIncompleteVisits.value = visits.some(v =>
-      v.status === 'in_progress' ||
-      v.status === 'completed_debt' ||
-      (v.status === 'completed_paid' && (Number(v.debt_amount) || 0) > 0)
-    ) || services.length > 0
-  } catch (error) {
-    console.error('Failed to check incomplete visits:', error)
-    hasIncompleteVisits.value = false
-  }
-}
-
-// Barcha tashriflarni yakunlash
-const handleCompleteAll = async () => {
-  if (!patient.value) return
-  if (!window.confirm('Barcha tashriflarni yakunlashni tasdiqlaysizmi?')) return
-
-  completing.value = true
-  try {
-    const doctorId = isSolo.value ? authStore.user?.id : (patient.value.doctor_id || null)
-    const result = await completeAllPatientVisits(patient.value.id, doctorId)
-
-    if (result.success) {
-      toast.success(`Muvaffaqiyatli yakunlandi: ${result.completed} ta tashrif`)
-
-      if (result.summary) {
-        const tg = await sendPatientCompletionSummary({
-          patientId: patient.value.id,
-          doctorName: result.summary.doctorName || patient.value.doctor_name || '',
-          visitDate: result.summary.visitDate,
-          services: result.summary.services,
-          discounts: result.summary.discounts,
-          totalBeforeDiscount: result.summary.totalBeforeDiscount,
-          totalDiscount: result.summary.totalDiscount,
-          totalAfterDiscount: result.summary.totalAfterDiscount,
-          paid: result.summary.paid,
-          remaining: result.summary.remaining
-        })
-        if (!tg.ok) {
-          console.warn('Telegram completion summary was not sent:', tg.error)
-        }
-      }
-
-      await Promise.all([
-        loadLastVisit(patient.value.id),
-        checkIncompleteVisits(patient.value.id)
-      ])
-    } else {
-      toast.error(result.error || 'Xatolik yuz berdi')
-    }
-  } catch (error) {
-    console.error('Failed to complete visits:', error)
-    toast.error('Xatolik yuz berdi')
-  } finally {
-    completing.value = false
   }
 }
 
@@ -724,10 +632,7 @@ onMounted(async () => {
 
     // Patient yuklangandan keyin visit va qarzdorlik ma'lumotlarini yuklash
     if (patient.value) {
-      await Promise.all([
-        loadLastVisit(patient.value.id),
-        checkIncompleteVisits(patient.value.id)
-      ])
+      await loadLastVisit(patient.value.id)
     }
   } catch (error) {
     console.error('Failed to load patient:', error)

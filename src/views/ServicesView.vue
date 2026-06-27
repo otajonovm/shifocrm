@@ -1,6 +1,8 @@
 <template>
   <MainLayout>
     <div class="space-y-4 sm:space-y-6 animate-fade-in pb-6">
+      <ServiceHealthWidget :issues="healthIssues" />
+
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 class="text-xl sm:text-2xl font-bold text-gray-900">{{ t('services.title') }}</h1>
@@ -121,6 +123,19 @@
               </table>
             </div>
           </div>
+
+          <ServicePackagesTab
+            v-else-if="activeTab === 'packages'"
+            :services="services"
+            :can-edit="canEditPrices"
+          />
+
+          <ServiceDiscountsTab
+            v-else-if="activeTab === 'discounts'"
+            :can-edit="canEditPrices"
+          />
+
+          <ServiceAuditTab v-else-if="activeTab === 'audit'" />
 
           <!-- Stats tab -->
           <div v-else-if="activeTab === 'stats'" class="space-y-6">
@@ -263,6 +278,14 @@
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('services.notes') }}</label>
                   <textarea v-model="serviceForm.description" rows="3" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"></textarea>
                 </div>
+                <div v-if="serviceForm.id" class="md:col-span-2">
+                  <ServiceMaterialsEditor
+                    ref="materialsEditorRef"
+                    :inventory-items="inventoryItems"
+                    :materials="serviceMaterials"
+                    :base-price="serviceForm.base_price"
+                  />
+                </div>
               </div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
@@ -283,39 +306,58 @@
 
 <script setup>
 import MainLayout from '@/layouts/MainLayout.vue'
+import ServiceHealthWidget from '@/components/services/ServiceHealthWidget.vue'
+import ServicePackagesTab from '@/components/services/ServicePackagesTab.vue'
+import ServiceDiscountsTab from '@/components/services/ServiceDiscountsTab.vue'
+import ServiceAuditTab from '@/components/services/ServiceAuditTab.vue'
+import ServiceMaterialsEditor from '@/components/services/ServiceMaterialsEditor.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 import { useDataPermission } from '@/composables/useDataPermission'
+import { useAuthStore } from '@/stores/auth'
 import { logActivity } from '@/lib/activityLog'
+import { listClinicInventoryItems } from '@/lib/inventoryBridge'
+import { computeServiceHealthIssues } from '@/lib/serviceHealth'
 import {
   listServices,
   createService,
   updateService,
   deleteService,
   getTopServices,
-  getServiceRevenueMonthly
+  getServiceRevenueMonthly,
+  listServicePriceAudit,
 } from '@/api/servicesApi'
+import { getServiceMaterials, setServiceMaterials, getAllServiceMaterialCosts } from '@/api/serviceMaterialsApi'
 
 const { t } = useI18n()
 const toast = useToast()
+const authStore = useAuthStore()
 
 const { allowed: canEditPrices } = useDataPermission('can_edit_prices')
 
 const tabs = [
   { id: 'services', label: 'services.tabServices' },
-  { id: 'stats', label: 'services.tabStats' }
+  { id: 'packages', label: 'services.tabPackages' },
+  { id: 'discounts', label: 'services.tabDiscounts' },
+  { id: 'audit', label: 'services.tabAudit' },
+  { id: 'stats', label: 'services.tabStats' },
 ]
 
 const activeTab = ref('services')
 const services = ref([])
 const topServices = ref([])
 const monthlyRevenue = ref([])
+const auditRows = ref([])
+const healthIssues = ref([])
+const inventoryItems = ref([])
+const serviceMaterials = ref([])
+const materialsEditorRef = ref(null)
 
 const loading = ref({
   services: false,
-  stats: false
+  stats: false,
 })
 
 const filters = ref({
@@ -406,15 +448,42 @@ const loadServices = async () => {
 }
 
 
+const loadInventory = async () => {
+  try {
+    inventoryItems.value = await listClinicInventoryItems(authStore)
+  } catch {
+    inventoryItems.value = []
+  }
+}
+
+const refreshHealth = async () => {
+  try {
+    const [audit, marginMap] = await Promise.all([
+      listServicePriceAudit('order=changed_at.desc&limit=200'),
+      getAllServiceMaterialCosts(inventoryItems.value),
+    ])
+    auditRows.value = audit || []
+    healthIssues.value = computeServiceHealthIssues(
+      services.value,
+      topServices.value,
+      auditRows.value,
+      marginMap,
+    )
+  } catch {
+    healthIssues.value = computeServiceHealthIssues(services.value, topServices.value, [], new Map())
+  }
+}
+
 const loadStats = async () => {
   loading.value.stats = true
   try {
     const [top, monthly] = await Promise.all([
-      getTopServices('order=total_revenue.desc&limit=10'),
-      getServiceRevenueMonthly('order=month.desc&limit=6')
+      getTopServices(10),
+      getServiceRevenueMonthly(6),
     ])
     topServices.value = top || []
     monthlyRevenue.value = monthly || []
+    await refreshHealth()
   } catch (error) {
     console.error('Failed to load stats:', error)
     topServices.value = []
@@ -424,7 +493,7 @@ const loadStats = async () => {
   }
 }
 
-const openServiceModal = (service = null) => {
+const openServiceModal = async (service = null) => {
   if (!canEditPrices.value) {
     toast.error("Preyskurant narxlarini tahrirlash huquqingiz yo'q.")
     return
@@ -440,7 +509,12 @@ const openServiceModal = (service = null) => {
       is_active: Boolean(service.is_active),
       description: service.description || '',
       show_in_odontogram: Boolean(service.show_in_odontogram),
-      odontogram_color: service.odontogram_color || 'cyan'
+      odontogram_color: service.odontogram_color || 'cyan',
+    }
+    try {
+      serviceMaterials.value = await getServiceMaterials(service.id)
+    } catch {
+      serviceMaterials.value = []
     }
   } else {
     serviceForm.value = {
@@ -453,8 +527,9 @@ const openServiceModal = (service = null) => {
       is_active: true,
       description: '',
       show_in_odontogram: false,
-      odontogram_color: 'cyan'
+      odontogram_color: 'cyan',
     }
+    serviceMaterials.value = []
   }
   modals.value.service = true
 }
@@ -531,6 +606,14 @@ const saveService = async () => {
       })
     }
     await loadServices()
+    if (serviceForm.value.id && materialsEditorRef.value?.getPayload) {
+      try {
+        await setServiceMaterials(serviceForm.value.id, materialsEditorRef.value.getPayload())
+      } catch (matErr) {
+        console.warn('Failed to save service materials:', matErr)
+      }
+    }
+    await refreshHealth()
     closeServiceModal()
   } catch (error) {
     console.error('Failed to save service:', error)
@@ -563,6 +646,8 @@ const deleteServiceRow = async (service) => {
 
 
 onMounted(async () => {
+  await loadInventory()
   await Promise.all([loadServices(), loadStats()])
+  await refreshHealth()
 })
 </script>

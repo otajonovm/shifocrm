@@ -155,6 +155,7 @@ import {
   isAdminLike,
   isSolo,
   canManageStaff,
+  canAccessWarehouse,
   ROLES,
 } from '@/lib/roles'
 import {
@@ -164,7 +165,6 @@ import {
   CreditCardIcon,
   ClipboardDocumentListIcon,
   InboxIcon,
-  ArchiveBoxIcon,
   ChartBarIcon,
   Cog6ToothIcon,
   UserCircleIcon,
@@ -173,6 +173,7 @@ import {
   ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  BuildingStorefrontIcon,
 } from '@heroicons/vue/24/outline'
 
 defineProps({
@@ -234,7 +235,7 @@ const adminMenuItems = [
   { labelKey: 'nav.leads', to: '/leads', icon: InboxIcon },
   { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
   { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
-  { labelKey: 'nav.inventory', to: '/inventory', icon: ArchiveBoxIcon },
+  { labelKey: 'nav.inventory', to: '/inventory', icon: BuildingStorefrontIcon, warehouseOnly: true },
   { labelKey: 'nav.reports', to: '/reports', icon: ChartBarIcon },
   { labelKey: 'nav.settings', to: '/settings', icon: Cog6ToothIcon },
 ]
@@ -246,7 +247,6 @@ const soloMenuItems = [
   { labelKey: 'nav.myLeads', to: '/my-leads', icon: InboxIcon },
   { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
   { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
-  { labelKey: 'nav.inventory', to: '/inventory', icon: ArchiveBoxIcon },
   { labelKey: 'nav.reports', to: '/reports', icon: ChartBarIcon },
   { labelKey: 'nav.treatmentPlans', to: '/treatment-plans', icon: DocumentTextIcon },
   { labelKey: 'nav.doctorProfile', to: '/doctor/profile', icon: UserCircleIcon },
@@ -273,13 +273,17 @@ const doctorMenuItems = computed(() => {
 const menuItems = computed(() => {
   if (isSolo(authStore)) return soloMenuItems
   if (adminLike.value) {
+    const base = adminMenuItems.filter(item => {
+      if (item.warehouseOnly) return canAccessWarehouse(authStore)
+      return true
+    })
     if (canManageStaff(authStore)) {
       return [
-        ...adminMenuItems,
+        ...base,
         { labelKey: 'nav.audit', to: '/audit', icon: ShieldCheckIcon },
       ]
     }
-    return adminMenuItems
+    return base
   }
   return doctorMenuItems.value
 })

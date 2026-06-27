@@ -10,7 +10,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 
 const HOLD_STATUSES = ['hold', 'new', 'contacted']
-const REMINDER_STATUSES = ['hold', 'booked', 'confirmed', 'new', 'contacted']
+const REMINDER_STATUSES = ['hold', 'contacted', 'confirmed', 'booked', 'new']
 const REMINDER_WINDOW_MINUTES = 5
 
 const json = (body, status = 200) =>
@@ -120,25 +120,45 @@ Deno.serve(async (req) => {
 
     for (const lead of dueLeads || []) {
       try {
-        if (!lead.patient_id) {
-          summary.remindersFailed += 1
-          continue
-        }
+        let chatId = null
 
-        const { data: chatRow } = await supabase
-          .from('telegram_chat_ids')
+        const { data: byLead } = await supabase
+          .from('lead_telegram_chats')
           .select('chat_id')
-          .eq('patient_id', String(lead.patient_id))
+          .eq('lead_id', Number(lead.id))
           .maybeSingle()
 
-        if (!chatRow?.chat_id) {
+        if (byLead?.chat_id) {
+          chatId = byLead.chat_id
+        }
+
+        if (!chatId && lead.phone) {
+          const { data: byPhone } = await supabase
+            .from('telegram_chat_ids')
+            .select('chat_id')
+            .eq('phone', String(lead.phone).trim())
+            .limit(1)
+            .maybeSingle()
+          if (byPhone?.chat_id) chatId = byPhone.chat_id
+        }
+
+        if (!chatId && lead.patient_id) {
+          const { data: byPatient } = await supabase
+            .from('telegram_chat_ids')
+            .select('chat_id')
+            .eq('patient_id', String(lead.patient_id))
+            .maybeSingle()
+          if (byPatient?.chat_id) chatId = byPatient.chat_id
+        }
+
+        if (!chatId) {
           summary.remindersFailed += 1
           continue
         }
 
         await sendTelegramInlineReminder({
           botToken,
-          chatId: chatRow.chat_id,
+          chatId,
           lead,
         })
 

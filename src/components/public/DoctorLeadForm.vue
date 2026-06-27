@@ -285,7 +285,7 @@ const submitForm = async () => {
   }
 
   submitting.value = true
-  let shouldRedirectTelegram = false
+  let redirectUrl = null
   try {
     const createdLead = await createLead({
       doctor_id: props.doctorId,
@@ -305,7 +305,10 @@ const submitForm = async () => {
 
     successMessage.value = tx.value.success
     toast.success(tx.value.successToast)
-    shouldRedirectTelegram = true
+    const leadId = createdLead?.id
+    redirectUrl = leadId
+      ? `${TELEGRAM_BOT_URL}?start=lead_${leadId}`
+      : TELEGRAM_BOT_URL
 
     form.value = {
       patient_name: '',
@@ -330,8 +333,8 @@ const submitForm = async () => {
     }
   } finally {
     submitting.value = false
-    if (shouldRedirectTelegram) {
-      window.location.href = TELEGRAM_BOT_URL
+    if (redirectUrl) {
+      window.location.href = redirectUrl
     }
   }
 }

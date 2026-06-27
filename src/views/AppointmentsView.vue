@@ -700,6 +700,7 @@ import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
 import * as visitsApi from '@/api/visitsApi'
+import { enrichVisitsWithLeadInfo } from '@/lib/leadVisitEnrich'
 import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
 import {
   sendAppointmentConfirmed,
@@ -1052,8 +1053,8 @@ const filteredVisits = computed(() => {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(v => {
       const patient = patientsStore.items.find(p => Number(p.id) === Number(v.patient_id))
-      const name = patient?.full_name?.toLowerCase() || ''
-      const phone = patient?.phone || ''
+      const name = patient?.full_name?.toLowerCase() || String(v.patient_name || '').toLowerCase()
+      const phone = patient?.phone || v.phone || ''
       const medId = patient?.med_id ? String(patient.med_id) : ''
       return name.includes(query) || phone.includes(query) || medId.includes(query)
     })
@@ -1082,9 +1083,11 @@ const loadVisits = async () => {
   try {
     const { start, end } = dateRange.value
     if (isAdmin.value) {
-      visits.value = await visitsApi.getVisitsByDateRange(start, end)
+      visits.value = await enrichVisitsWithLeadInfo(await visitsApi.getVisitsByDateRange(start, end))
     } else if (doctorId.value) {
-      visits.value = await visitsApi.getVisitsByDoctorAndDateRange(doctorId.value, start, end)
+      visits.value = await enrichVisitsWithLeadInfo(
+        await visitsApi.getVisitsByDoctorAndDateRange(doctorId.value, start, end),
+      )
     } else {
       visits.value = []
     }

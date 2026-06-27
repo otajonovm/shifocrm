@@ -196,7 +196,9 @@ import { useDoctorsStore } from '@/stores/doctors'
 import { getVisitsByDate, getVisitsByDateRange } from '@/api/visitsApi'
 import { getPaymentsByDateRange } from '@/api/paymentsApi'
 import { listLeadsByClinic } from '@/api/leadsApi'
-import { listInventoryItems, listInventoryConsumptions } from '@/api/inventoryApi'
+import { listInventoryConsumptions } from '@/api/inventoryApi'
+import { getCriticalStockItems, usesSmartWarehouse } from '@/lib/inventoryBridge'
+import { useAuthStore } from '@/stores/auth'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import {
   calcNoShowRate,
@@ -219,6 +221,7 @@ const { t } = useI18n()
 
 const patientsStore = usePatientsStore()
 const doctorsStore = useDoctorsStore()
+const authStore = useAuthStore()
 
 const stats = ref({
   todayAppointments: 0,
@@ -445,13 +448,19 @@ const loadKpiMetrics = async (today, todayVisits) => {
 
 const loadInventoryInsights = async () => {
   try {
-    const items = await listInventoryItems()
-    lowStockItems.value = findLowStockItems(items || [])
+    if (usesSmartWarehouse(authStore)) {
+      lowStockItems.value = await getCriticalStockItems(authStore)
+    } else {
+      const { listInventoryItems } = await import('@/api/inventoryApi')
+      const items = await listInventoryItems()
+      lowStockItems.value = findLowStockItems(items || [])
+    }
   } catch {
     lowStockItems.value = []
   }
 
   try {
+    const { listInventoryItems } = await import('@/api/inventoryApi')
     const items = await listInventoryItems()
     const consumptions = await listInventoryConsumptions('order=created_at.desc&limit=500')
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000

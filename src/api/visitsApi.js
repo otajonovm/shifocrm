@@ -223,10 +223,13 @@ export const createVisit = async ({
   lead_id = null,
   room = null,
   channel = null,
-  updated_by = null
+  updated_by = null,
+  clinic_id: clinicIdOverride = null,
 }) => {
   try {
-    const cid = await getCurrentClinicId()
+    const cid = clinicIdOverride != null && Number.isFinite(Number(clinicIdOverride))
+      ? Number(clinicIdOverride)
+      : await getCurrentClinicId()
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
 
     const now = new Date().toISOString()
@@ -236,7 +239,7 @@ export const createVisit = async ({
 
     const newVisit = {
       id,
-      patient_id: Number(patient_id),
+      patient_id: patient_id != null && Number.isFinite(Number(patient_id)) ? Number(patient_id) : null,
       doctor_id: doctor_id ? Number(doctor_id) : null,
       doctor_name: doctor_name || null,
       date: date || now.split('T')[0],
@@ -281,13 +284,15 @@ export const createVisit = async ({
  * @param {Object} payload
  * @returns {Promise<Object>}
  */
-export const updateVisit = async (id, payload) => {
+export const updateVisit = async (id, payload, options = {}) => {
   try {
     const numId = Number(id)
     if (!Number.isFinite(numId)) {
       throw new Error('Invalid visit ID')
     }
-    const cid = await getCurrentClinicId()
+    const cid = options.clinic_id != null && Number.isFinite(Number(options.clinic_id))
+      ? Number(options.clinic_id)
+      : await getCurrentClinicId()
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
 
     // Avval mavjud visitni olish
@@ -400,13 +405,15 @@ export const payDebt = async (id) => {
  * @param {number|string} id
  * @returns {Promise<boolean>}
  */
-export const deleteVisit = async (id) => {
+export const deleteVisit = async (id, options = {}) => {
   try {
     const numId = Number(id)
     if (!Number.isFinite(numId)) {
       throw new Error('Invalid visit ID')
     }
-    const cid = await getCurrentClinicId()
+    const cid = options.clinic_id != null && Number.isFinite(Number(options.clinic_id))
+      ? Number(options.clinic_id)
+      : await getCurrentClinicId()
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
     const q = mergeClinicQuery(`id=eq.${numId}`, cid)
     await supabaseDeleteWhere(TABLE, q)
@@ -517,7 +524,7 @@ async function sendVisitCompletedTelegram(visitId) {
  * Visit dan appointment yaratish / bog'lash
  */
 export const syncAppointmentFromVisit = async (visit) => {
-  if (!visit?.id || !visit.patient_id) return null
+  if (!visit?.id) return null
 
   const scheduledAt = buildScheduledAt({
     date: visit.date,
@@ -530,19 +537,20 @@ export const syncAppointmentFromVisit = async (visit) => {
   }
 
   const apptRows = await createAppointment({
-    patient_id: visit.patient_id,
+    patient_id: visit.patient_id != null ? Number(visit.patient_id) : null,
     doctor_id: visit.doctor_id,
     scheduled_at: scheduledAt,
     duration_minutes: visit.duration_minutes || 60,
     notes: visit.notes,
     visit_id: visit.id,
     status: mapVisitStatusToAppointment(visit.status) || 'scheduled',
+    clinic_id: visit.clinic_id,
   })
 
   const appointment = Array.isArray(apptRows) ? apptRows[0] : apptRows
   if (!appointment?.id) return null
 
-  await updateVisit(visit.id, { appointment_id: appointment.id })
+  await updateVisit(visit.id, { appointment_id: appointment.id }, { clinic_id: visit.clinic_id })
   return appointment
 }
 

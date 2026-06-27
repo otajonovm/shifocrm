@@ -48,10 +48,15 @@ const normalizePhoneDigits = (value) => String(value || '').replace(/\D+/g, '')
 
 const findOrCreatePatientFromLead = async (lead) => {
   const { listPatients, createPatient } = await import('./patientsApi')
+  const clinicId = lead.clinic_id != null && Number.isFinite(Number(lead.clinic_id))
+    ? Number(lead.clinic_id)
+    : null
   const allPatients = await listPatients()
   const targetDigits = normalizePhoneDigits(lead.phone)
   const existingPatient = (allPatients || []).find((patient) => {
-    return normalizePhoneDigits(patient?.phone) === targetDigits && targetDigits.length > 0
+    const samePhone = normalizePhoneDigits(patient?.phone) === targetDigits && targetDigits.length > 0
+    const sameClinic = clinicId == null || Number(patient?.clinic_id) === clinicId
+    return samePhone && sameClinic
   })
 
   if (existingPatient) return existingPatient
@@ -61,8 +66,9 @@ const findOrCreatePatientFromLead = async (lead) => {
     phone: String(lead.phone || '').trim(),
     doctor_id: Number(lead.doctor_id) || null,
     status: 'waiting',
-    notes: `Public lead #${lead.id} dan yaratildi`,
+    notes: `Public lead #${lead.id || 'new'} dan yaratildi`,
     createFirstVisit: false,
+    clinic_id: clinicId,
   })
 }
 
@@ -253,18 +259,11 @@ export const createLead = async (payload) => {
       preferredTime: cleanPreferredTime,
     })
 
-    const patient = await findOrCreatePatientFromLead({
-      id: null,
-      patient_name: cleanName,
-      phone: cleanPhone,
-      doctor_id: doctorId,
-    })
-
     const preferredSummary = `Sana/Vaqt: ${cleanPreferredDate} ${cleanPreferredTime}`
     const data = {
       doctor_id: doctorId,
       clinic_id: clinicId,
-      patient_id: Number(patient.id),
+      patient_id: null,
       patient_name: cleanName,
       phone: cleanPhone,
       preferred_date: cleanPreferredDate,
@@ -310,8 +309,28 @@ export const createLead = async (payload) => {
       result = await supabasePost(TABLE, fallbackData)
     }
 
-    console.log('✅ Lead created:', result[0])
-    return result[0]
+    const createdLead = result?.[0] || result
+    console.log('✅ Lead created:', createdLead)
+
+    // Onlayn yozilish: kalendarda ko'rinishi uchun visit (bemor bazasiga tushmasdan)
+    if (
+      createdLead?.preferred_date
+      && createdLead?.preferred_time
+      && ['hold', 'new', 'contacted'].includes(String(createdLead.status || '').toLowerCase())
+    ) {
+      try {
+        const attached = await attachLeadCalendarVisit(createdLead)
+        return attached?.lead || createdLead
+      } catch (autoBookError) {
+        console.error('❌ Auto calendar attach after lead create failed:', autoBookError)
+        if (autoBookError?.code === 'SLOT_ALREADY_BOOKED') {
+          throw autoBookError
+        }
+        return createdLead
+      }
+    }
+
+    return createdLead
   } catch (error) {
     console.error('❌ Failed to create lead:', error)
     throw error
@@ -427,14 +446,26 @@ export const convertLeadToQabulda = async (leadInput) => {
 
     if (visit?.id) {
       const { updateVisit } = await import('./visitsApi')
+      let patientId = visit.patient_id
+
+      if (!patientId) {
+        const patient = await findOrCreatePatientFromLead(workingLead)
+        patientId = patient.id
+        await updateVisit(visit.id, { patient_id: Number(patient.id) })
+        await supabasePatchWhere(TABLE, `id=eq.${Number(workingLead.id)}`, {
+          patient_id: Number(patient.id),
+          updated_at: new Date().toISOString(),
+        })
+      }
+
       await updateVisit(visit.id, {
-        status: 'arrived'
+        status: 'arrived',
       })
 
-      if (visit.patient_id) {
+      if (patientId) {
         const { updatePatient } = await import('./patientsApi')
-        await updatePatient(visit.patient_id, {
-          status: 'in_consultation'
+        await updatePatient(patientId, {
+          status: 'in_consultation',
         })
       }
     }
@@ -451,6 +482,103 @@ export const convertLeadToQabulda = async (leadInput) => {
     }
   } catch (error) {
     console.error('❌ Failed to convert lead to qabulda:', error)
+    throw error
+  }
+}
+
+/**
+ * Onlayn yozilish uchun kalendarda visit (patient_id siz).
+ * lead.status = hold, visit.status = pending
+ */
+export const attachLeadCalendarVisit = async (leadInput) => {
+  const lead = leadInput?.id ? leadInput : await getLeadById(leadInput)
+  if (!lead) throw new Error('Lead topilmadi')
+
+  const leadId = Number(lead.id)
+  if (!Number.isFinite(leadId)) throw new Error('Lead ID noto‘g‘ri')
+
+  if (!lead.preferred_date || !lead.preferred_time) {
+    throw new Error('Leadda sana/vaqt yo‘q.')
+  }
+
+  const preferredDate = String(lead.preferred_date).slice(0, 10)
+  const preferredTime = normalizeTime(String(lead.preferred_time || ''))
+
+  if (lead.visit_id) {
+    const { getVisitById } = await import('./visitsApi')
+    const visit = await getVisitById(lead.visit_id)
+    return { lead, visit, reusedVisit: true }
+  }
+
+  await clearCompetingHoldsForSlot({
+    doctorId: lead.doctor_id,
+    preferredDate,
+    preferredTime,
+    excludeLeadId: leadId,
+  })
+
+  const existingHold = await findLeadBySlot({
+    doctorId: lead.doctor_id,
+    preferredDate,
+    preferredTime,
+    status: 'hold',
+    excludeLeadId: leadId,
+  })
+  if (existingHold?.visit_id) {
+    throw createSlotConflictError()
+  }
+
+  const existingBooked = await findLeadBySlot({
+    doctorId: lead.doctor_id,
+    preferredDate,
+    preferredTime,
+    status: 'booked',
+    excludeLeadId: leadId,
+  })
+  if (existingBooked) {
+    throw createSlotConflictError()
+  }
+
+  const { createVisit, syncAppointmentFromVisit, deleteVisit } = await import('./visitsApi')
+  const clinicId = lead.clinic_id != null && Number.isFinite(Number(lead.clinic_id))
+    ? Number(lead.clinic_id)
+    : null
+
+  const visit = await createVisit({
+    patient_id: null,
+    doctor_id: Number(lead.doctor_id) || null,
+    doctor_name: null,
+    notes: lead.note || `Onlayn yozilish #${leadId}`,
+    status: 'pending',
+    date: preferredDate,
+    start_time: preferredTime,
+    end_time: buildEndTimeFromStart(preferredTime, 60),
+    duration_minutes: 60,
+    service_name: lead.selected_service || null,
+    channel: 'public_lead',
+    lead_id: leadId,
+    clinic_id: clinicId,
+  })
+
+  await syncAppointmentFromVisit(visit).catch((err) => {
+    console.warn('Lead calendar: appointment sync', err?.message)
+  })
+
+  try {
+    const rows = await supabasePatchWhere(TABLE, `id=eq.${leadId}`, {
+      status: 'hold',
+      visit_id: visit.id,
+      hold_expires_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    return {
+      lead: rows?.[0] || lead,
+      visit,
+      reusedVisit: false,
+    }
+  } catch (error) {
+    await deleteVisit(visit.id, { clinic_id: clinicId }).catch(() => {})
+    if (isSlotConflictError(error)) throw createSlotConflictError()
     throw error
   }
 }
@@ -509,10 +637,27 @@ export const convertLeadToBooked = async (leadInput) => {
     }
 
     if (lead.visit_id) {
-      const patchedLead = await patchLeadAsBooked(leadId)
+      const { getVisitById, updateVisit } = await import('./visitsApi')
+      const existingVisit = await getVisitById(lead.visit_id)
+      const patient = await findOrCreatePatientFromLead(lead)
+
+      if (existingVisit?.id) {
+        await updateVisit(existingVisit.id, {
+          patient_id: Number(patient.id),
+        }, { clinic_id: lead.clinic_id })
+      }
+
+      const patchedLead = await patchLeadAsBooked(leadId, lead.visit_id)
+      if (patchedLead) {
+        patchedLead.patient_id = Number(patient.id)
+        await supabasePatchWhere(TABLE, `id=eq.${leadId}`, {
+          patient_id: Number(patient.id),
+          updated_at: new Date().toISOString(),
+        })
+      }
       return {
         lead: patchedLead || lead,
-        visit: null,
+        visit: existingVisit,
         reusedVisit: true,
       }
     }
@@ -520,6 +665,9 @@ export const convertLeadToBooked = async (leadInput) => {
     const patient = await findOrCreatePatientFromLead(lead)
     const { createVisit, syncAppointmentFromVisit, deleteVisit } = await import('./visitsApi')
     const startTime = preferredTime
+    const clinicId = lead.clinic_id != null && Number.isFinite(Number(lead.clinic_id))
+      ? Number(lead.clinic_id)
+      : null
 
     const visit = await createVisit({
       patient_id: Number(patient.id),
@@ -531,8 +679,10 @@ export const convertLeadToBooked = async (leadInput) => {
       start_time: startTime,
       end_time: buildEndTimeFromStart(startTime, 60),
       duration_minutes: 60,
+      service_name: lead.selected_service || null,
       channel: 'public_lead',
       lead_id: leadId,
+      clinic_id: clinicId,
     })
 
     await syncAppointmentFromVisit(visit).catch((err) => {
@@ -547,7 +697,7 @@ export const convertLeadToBooked = async (leadInput) => {
         reusedVisit: false,
       }
     } catch (error) {
-      await deleteVisit(visit.id).catch(() => {})
+      await deleteVisit(visit.id, { clinic_id: clinicId }).catch(() => {})
       throw error
     }
   } catch (error) {

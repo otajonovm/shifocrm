@@ -7,6 +7,8 @@
  * - To'lov va qarz ma'lumotlari
  */
 
+const path = require('path')
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') })
 require('dotenv').config()
 const TelegramBot = require('node-telegram-bot-api')
 const express = require('express')
