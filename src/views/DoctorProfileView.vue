@@ -1,16 +1,40 @@
 <template>
   <MainLayout>
-    <div class="max-w-4xl mx-auto space-y-6">
-      <!-- Loading State -->
+    <div class="max-w-4xl mx-auto space-y-5">
       <div v-if="isLoading" class="text-center py-8">
         <LoadingSpinner :message="t('doctorProfile.loading')" />
       </div>
 
       <template v-else>
-        <section class="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-indigo-50 p-6 shadow-sm">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">{{ t('page.doctorProfile.title') }}</h1>
+          <p class="mt-1 text-sm text-gray-500">{{ t('page.doctorProfile.subtitle') }}</p>
+        </div>
+
+        <!-- Tab navigatsiya -->
+        <nav class="flex gap-1 rounded-2xl border border-gray-200 bg-gray-50 p-1">
+          <button
+            v-for="tab in profileTabs"
+            :key="tab.id"
+            type="button"
+            class="flex-1 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors"
+            :class="activeTab === tab.id
+              ? 'bg-white text-violet-700 shadow-sm ring-1 ring-violet-100'
+              : 'text-gray-600 hover:text-gray-900'"
+            @click="activeTab = tab.id"
+          >
+            {{ tab.label }}
+          </button>
+        </nav>
+
+        <!-- Onlayn havola kartasi -->
+        <section
+          v-show="activeTab === 'online'"
+          class="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-indigo-50 p-5 shadow-sm"
+        >
           <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
             <div>
-              <h2 class="text-xl font-bold text-sky-900">{{ t('doctorProfile.linkCardTitle') }}</h2>
+              <h2 class="text-lg font-bold text-sky-900">{{ t('doctorProfile.linkCardTitle') }}</h2>
               <p class="text-sm text-sky-700 mt-1">{{ t('doctorProfile.linkCardSubtitle') }}</p>
             </div>
             <span
@@ -24,24 +48,24 @@
           <div class="mb-4">
             <div
               v-if="hasSlug"
-              class="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 font-mono text-sm sm:text-base text-sky-900 break-all"
+              class="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 font-mono text-sm text-sky-900 break-all"
             >
               {{ publicProfileUrl }}
             </div>
             <div
               v-else
-              class="inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs sm:text-sm font-medium text-amber-800"
+              class="inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-800"
             >
               {{ t('doctorProfile.slugRequiredBadge') }}
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
+          <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              @click="copyPublicLink"
               :disabled="!hasSlug"
-              class="rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+              class="rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+              @click="copyPublicLink"
             >
               {{ t('doctorProfile.copyLink') }}
             </button>
@@ -50,74 +74,34 @@
               :aria-disabled="!hasSlug"
               target="_blank"
               rel="noopener noreferrer"
-              class="rounded-xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-indigo-700 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+              class="rounded-xl bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-indigo-700 aria-disabled:pointer-events-none aria-disabled:opacity-50"
             >
               {{ t('doctorProfile.openPage') }}
             </a>
-            <a
-              :href="telegramShareUrl"
-              :aria-disabled="!hasSlug"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="rounded-xl bg-sky-500 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-sky-600 aria-disabled:pointer-events-none aria-disabled:opacity-50"
-            >
-              Telegram
-            </a>
-            <a
-              :href="whatsAppShareUrl"
-              :aria-disabled="!hasSlug"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="rounded-xl bg-green-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-green-700 aria-disabled:pointer-events-none aria-disabled:opacity-50"
-            >
-              WhatsApp
-            </a>
             <button
               type="button"
-              @click="sharePublicLink"
               :disabled="!hasSlug"
-              class="rounded-xl bg-gray-700 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+              class="rounded-xl border border-sky-300 bg-white px-4 py-2.5 text-sm font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+              @click="openQrModal"
+            >
+              {{ t('doctorProfile.getQrCode') }}
+            </button>
+            <button
+              type="button"
+              :disabled="!hasSlug"
+              class="rounded-xl bg-gray-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+              @click="sharePublicLink"
             >
               {{ t('doctorProfile.shareNative') }}
             </button>
           </div>
-
-          <div class="rounded-2xl border border-sky-200 bg-white p-4 sm:p-5">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
-              <div>
-                <p class="text-sm font-semibold text-gray-900">{{ t('doctorProfile.qrTitle') }}</p>
-                <p class="text-xs text-gray-500">{{ t('doctorProfile.qrSubtitle') }}</p>
-              </div>
-              <button
-                type="button"
-                @click="downloadQrPng"
-                :disabled="!canDownloadQr"
-                class="w-full sm:w-auto rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {{ t('doctorProfile.downloadQr') }}
-              </button>
-            </div>
-
-            <div class="flex justify-center">
-              <div class="relative w-full max-w-[280px] sm:max-w-[320px] rounded-2xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
-                <div class="relative w-full aspect-square overflow-hidden rounded-xl bg-white">
-                  <canvas ref="qrCanvasRef" class="block h-full w-full" />
-                  <div
-                    v-if="!profile.is_public"
-                    class="absolute inset-0 flex items-center justify-center bg-black/40 px-4"
-                  >
-                    <span class="text-center text-sm font-semibold text-white">{{ t('doctorProfile.qrClosedWatermark') }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </section>
 
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('doctorProfile.personalInfo') }}</h2>
-
+        <!-- Asosiy forma (bitta instance — tablar orasida ma'lumot saqlanadi) -->
+        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
           <DoctorProfileForm
+            :section="activeTab"
+            :compact-schedule="activeTab === 'schedule'"
             :initial-data="profile"
             :is-submitting="isSubmitting"
             @submit="handleUpdateProfile"
@@ -130,7 +114,7 @@
             </template>
           </DoctorProfileForm>
 
-          <div class="border-t border-gray-200 pt-6 mt-6">
+          <div v-show="activeTab === 'personal'" class="border-t border-gray-200 pt-6">
             <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('doctorProfile.changePassword') }}</h2>
             <PasswordChangeForm
               ref="passwordFormRef"
@@ -148,6 +132,61 @@
           </div>
         </div>
       </template>
+    </div>
+
+    <!-- QR kod modali -->
+    <div v-if="showQrModal" class="fixed inset-0 z-50 overflow-y-auto" @click.self="closeQrModal">
+      <div class="fixed inset-0 bg-black/40" @click="closeQrModal" />
+      <div class="flex min-h-full items-center justify-center p-4">
+        <div class="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+          <button
+            type="button"
+            class="absolute right-4 top-4 rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            :aria-label="t('doctorProfile.collapseDay')"
+            @click="closeQrModal"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          <h3 class="text-lg font-semibold text-gray-900">{{ t('doctorProfile.qrTitle') }}</h3>
+          <p class="mt-1 text-sm text-gray-500">{{ t('doctorProfile.qrSubtitle') }}</p>
+
+          <div class="mt-5 flex justify-center">
+            <div class="relative w-full max-w-[260px] rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+              <div class="relative aspect-square w-full overflow-hidden rounded-xl bg-white">
+                <canvas ref="qrCanvasRef" class="block h-full w-full" />
+                <div
+                  v-if="!profile.is_public"
+                  class="absolute inset-0 flex items-center justify-center bg-black/40 px-4"
+                >
+                  <span class="text-center text-sm font-semibold text-white">{{ t('doctorProfile.qrClosedWatermark') }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              :disabled="!canDownloadQr"
+              class="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+              @click="downloadQrPng"
+            >
+              {{ t('doctorProfile.downloadQr') }}
+            </button>
+            <button
+              type="button"
+              :disabled="!hasSlug"
+              class="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              @click="copyPublicLink"
+            >
+              {{ t('doctorProfile.copyLink') }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </MainLayout>
 </template>
@@ -193,6 +232,8 @@ const profile = ref({
 
 const existingDoctor = ref(null)
 const passwordFormRef = ref(null)
+const activeTab = ref('personal')
+const showQrModal = ref(false)
 
 const isLoading = ref(true)
 const isSubmitting = ref(false)
@@ -203,6 +244,12 @@ const passwordError = ref(null)
 const passwordSuccess = ref(false)
 const passwordResetTrigger = ref(0)
 const qrCanvasRef = ref(null)
+
+const profileTabs = computed(() => [
+  { id: 'personal', label: t('doctorProfile.tabPersonal') },
+  { id: 'online', label: t('doctorProfile.tabOnline') },
+  { id: 'schedule', label: t('doctorProfile.tabSchedule') },
+])
 
 const hasSlug = computed(() => Boolean(String(profile.value.public_slug || '').trim()))
 const publicProfileUrl = computed(() => {
@@ -215,19 +262,19 @@ const shareTitle = computed(() => {
   return fullName ? `Dr. ${fullName}` : t('doctorProfile.shareTitleFallback')
 })
 const shareText = computed(() => t('doctorProfile.shareText'))
-const telegramShareUrl = computed(() => {
-  if (!hasSlug.value) return undefined
-  return `https://t.me/share/url?url=${encodeURIComponent(publicProfileUrl.value)}&text=${encodeURIComponent(shareText.value)}`
-})
-const whatsAppShareUrl = computed(() => {
-  if (!hasSlug.value) return undefined
-  const text = `${shareText.value}\n${publicProfileUrl.value}`
-  return `https://wa.me/?text=${encodeURIComponent(text)}`
-})
 
-const renderQr = async () => {
-  if (!qrCanvasRef.value) return
-  const canvas = qrCanvasRef.value
+const openQrModal = async () => {
+  showQrModal.value = true
+  await nextTick()
+  await renderQr()
+}
+
+const closeQrModal = () => {
+  showQrModal.value = false
+}
+
+const renderQrOnCanvas = async (canvas) => {
+  if (!canvas) return
   const container = canvas.parentElement
   const displaySize = Math.max(200, Math.floor(container?.getBoundingClientRect().width || 240))
   const dpr = window.devicePixelRatio || 1
@@ -242,9 +289,13 @@ const renderQr = async () => {
     margin: 1,
     color: {
       dark: '#111827',
-      light: '#ffffff'
-    }
+      light: '#ffffff',
+    },
   })
+}
+
+const renderQr = async () => {
+  await renderQrOnCanvas(qrCanvasRef.value)
 }
 
 const copyPublicLink = async () => {
@@ -307,12 +358,12 @@ onMounted(async () => {
 })
 
 watch(
-  [publicProfileUrl, () => profile.value.is_public],
+  [publicProfileUrl, () => profile.value.is_public, showQrModal],
   async () => {
+    if (!showQrModal.value) return
     await nextTick()
     await renderQr()
   },
-  { immediate: true }
 )
 
 const syncSessionDoctorId = (doctorId) => {
@@ -436,8 +487,10 @@ const handleUpdateProfile = async (profileData) => {
       public_slug: safeSlug,
     }
 
-    await nextTick()
-    await renderQr()
+    if (showQrModal.value) {
+      await nextTick()
+      await renderQr()
+    }
 
     updateSuccess.value = true
     setTimeout(() => {

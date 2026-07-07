@@ -446,6 +446,8 @@ import {
 import { consumeServiceMaterialsForVisit } from '@/api/serviceMaterialsApi'
 import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
 import { sendVisitCompleted, schedulePatientFollowUps } from '@/api/telegramApi'
+import { useSubscriptionStore } from '@/stores/subscription'
+import { FEATURE_KEYS } from '@/lib/subscriptionFeatures'
 import Tooth from './Tooth.vue'
 
 const { TOOTH_STATES } = odontogramApi
@@ -471,6 +473,7 @@ const props = defineProps({
 
 const toast = useToast()
 const authStore = useAuthStore()
+const subscriptionStore = useSubscriptionStore()
 const { t } = useI18n()
 
 // State
@@ -1015,7 +1018,8 @@ const completeCurrentVisit = async () => {
 
     toast.success(t('odontogram.toastVisitCompleted'))
 
-    // Telegram habar yuborish (async, xatolarni ushlamaydi)
+    // Telegram habar yuborish (sms_marketing moduli faol bo'lsa)
+    if (subscriptionStore.checkFeature(FEATURE_KEYS.SMS_MARKETING)) {
     try {
       const discountPercent = currentVisit.value.discount_percent || 0
       const paidAmount = totalPrice
@@ -1072,6 +1076,7 @@ const completeCurrentVisit = async () => {
       console.log('✅ Telegram habar yuborildi')
     } catch (telegramError) {
       console.warn('⚠️ Telegram habar yuborilmadi (asosiy jarayon davom etadi):', telegramError)
+    }
     }
   } catch (error) {
     console.error('Failed to complete visit:', error)

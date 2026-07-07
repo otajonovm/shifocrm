@@ -2,6 +2,7 @@ const {
   getPendingMessages,
   updateMessageStatus
 } = require('../repository/scheduledMessagesRepo')
+const { insertNotificationEvent } = require('../repository/notificationEventsRepo')
 const {
   getDueTreatmentPlanReminders,
   updateTreatmentPlanReminderStatus,
@@ -52,6 +53,21 @@ async function processPendingMessages() {
         status: 'sent',
         sentAt: new Date().toISOString(),
         failureReason: null
+      })
+
+      const msgText = String(messageRow.message || '').toLowerCase()
+      let eventType = 'follow_up_1d'
+      if (msgText.includes('7') || msgText.includes('hafta')) {
+        eventType = 'follow_up_7d'
+      } else if (msgText.includes('3')) {
+        eventType = 'follow_up_3d'
+      }
+
+      await insertNotificationEvent({
+        patient_id: messageRow.patient_id,
+        event_type: eventType,
+        source_table: 'scheduled_messages',
+        source_id: String(messageRow.id),
       })
 
       sent += 1
@@ -110,6 +126,14 @@ async function processTreatmentPlanReminders() {
         id: plan.id,
         status: 'sent',
         sentAt: new Date().toISOString(),
+      })
+
+      await insertNotificationEvent({
+        patient_id: plan.patient_id,
+        clinic_id: plan.clinic_id || null,
+        event_type: 'treatment_plan',
+        source_table: 'treatment_plans',
+        source_id: String(plan.id),
       })
 
       sent += 1

@@ -3,6 +3,7 @@ const {
   confirmLead,
   cancelLead,
 } = require('../repository/leadsRepo')
+const { updateLeadRecallAction } = require('../repository/notificationEventsRepo')
 
 function parseLeadIdFromStart(text) {
   if (!text) return null
@@ -69,6 +70,7 @@ async function handleLeadCallback(bot, query) {
   try {
     if (action === 'lead_confirm') {
       const { patient } = await confirmLead(leadId)
+      await updateLeadRecallAction(leadId, 'confirmed')
       await bot.answerCallbackQuery(query.id, { text: 'Qabul tasdiqlandi ✅' })
       await bot.editMessageText(
         `${query.message.text}\n\n✅ Tasdiqlandi — qabulga kelasiz!\n👤 ${patient?.full_name || ''}\n📅 Kalendar yangilandi.`,
@@ -82,6 +84,7 @@ async function handleLeadCallback(bot, query) {
 
     if (action === 'lead_cancel') {
       await cancelLead(leadId)
+      await updateLeadRecallAction(leadId, 'canceled')
       await bot.answerCallbackQuery(query.id, { text: 'Qabul bekor qilindi' })
       await bot.editMessageText(
         `${query.message.text}\n\n❌ Qabul bekor qilindi. Vaqt bo'shatildi.`,

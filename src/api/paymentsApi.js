@@ -7,6 +7,7 @@ import { supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabas
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
+import { tryAttributeVisitRevenue } from './notificationEventsApi'
 
 const TABLE = 'payments'
 
@@ -70,7 +71,16 @@ export const createPayment = async ({
     }
 
     const result = await supabasePost(TABLE, payload)
-    return result[0]
+    const created = result[0]
+    if (created && created.visit_id && payment_type === 'payment') {
+      tryAttributeVisitRevenue({
+        visitId: created.visit_id,
+        patientId: created.patient_id,
+        amount: created.amount,
+        clinicId: cid,
+      }).catch(() => {})
+    }
+    return created
   } catch (error) {
     console.error('❌ Failed to create payment:', error)
     throw error

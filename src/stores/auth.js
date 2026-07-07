@@ -8,8 +8,11 @@ import {
   findDoctorForSoloClinic,
 } from '@/services/adminService'
 import { authenticateEmployee } from '@/api/employeesApi'
+import { logSessionLoginOnce } from '@/lib/activityLog'
+import { logAuditAction } from '@/services/authService'
 import {
   migrateLegacyClinicOwnerSession,
+  normalizeRole,
   ROLES,
   resolveClinicOwnerSessionRole,
   resolveDoctorLoginRole,
@@ -73,7 +76,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const isAuthenticated = ref(localStorage.getItem('isAuthenticated') === 'true')
-  const userRole = ref(localStorage.getItem('userRole') || null)
+  const storedRole = localStorage.getItem('userRole')
+  const normalizedStoredRole = normalizeRole(storedRole)
+  if (storedRole && normalizedStoredRole !== storedRole) {
+    localStorage.setItem('userRole', normalizedStoredRole)
+  }
+  const userRole = ref(normalizedStoredRole || null)
   const userEmail = ref(localStorage.getItem('userEmail') || null)
   let parsedUser = null
   try {
@@ -97,19 +105,26 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (adminCredentials.superAdmin?.login === loginVal && adminCredentials.superAdmin?.password === password) {
         isAuthenticated.value = true
-        userRole.value = 'super_admin'
+        userRole.value = ROLES.SUPERADMIN
         userEmail.value = null
         user.value = null
         userClinicId.value = null
         impersonatorRole.value = null
         superAdminScope.value = 'global'
         localStorage.setItem('isAuthenticated', 'true')
-        localStorage.setItem('userRole', 'super_admin')
+        localStorage.setItem('userRole', ROLES.SUPERADMIN)
         localStorage.removeItem('userEmail')
         localStorage.removeItem('user')
         localStorage.removeItem(USER_CLINIC_KEY)
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         localStorage.setItem(SUPER_ADMIN_SCOPE_KEY, 'global')
+        logSessionLoginOnce().catch(() => {})
+        logAuditAction({
+          userId: loginVal,
+          action: 'login',
+          userRole: ROLES.SUPERADMIN,
+          metadata: { source: 'custom_auth' },
+        }).catch(() => {})
         return true
       }
 
@@ -172,6 +187,13 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem(USER_CLINIC_KEY, String(clinicId))
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
+        logSessionLoginOnce().catch(() => {})
+        logAuditAction({
+          userId: sessionUser.id || sessionUser.login,
+          action: 'login',
+          userRole: role,
+          metadata: { source: 'custom_auth', clinic_id: clinicId },
+        }).catch(() => {})
         return true
       }
       const clinicAdmin = await authenticateClinicAdmin(loginVal, password)
@@ -197,6 +219,13 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem(USER_CLINIC_KEY, String(clinicAdmin.clinic_id))
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
+        logSessionLoginOnce().catch(() => {})
+        logAuditAction({
+          userId: adminUser.admin_id || adminUser.login,
+          action: 'login',
+          userRole: ROLES.ADMIN,
+          metadata: { source: 'custom_auth', clinic_id: clinicAdmin.clinic_id },
+        }).catch(() => {})
         return true
       }
 
@@ -251,6 +280,13 @@ export const useAuthStore = defineStore('auth', () => {
         }
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
+        logSessionLoginOnce().catch(() => {})
+        logAuditAction({
+          userId: employeeUser.employee_id || employeeUser.login,
+          action: 'login',
+          userRole: staffAuthRole,
+          metadata: { source: 'custom_auth', clinic_id: clinicId },
+        }).catch(() => {})
         return true
       }
 
@@ -269,6 +305,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem(USER_CLINIC_KEY)
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
+        logSessionLoginOnce().catch(() => {})
         return true
       }
 
@@ -282,6 +319,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const logout = () => {
+    const actorId = user.value?.id || user.value?.owner_id || user.value?.admin_id || user.value?.employee_id || user.value?.login || userEmail.value || null
+    const actorRole = userRole.value
+    logAuditAction({
+      userId: actorId,
+      action: 'logout',
+      userRole: actorRole,
+      metadata: { source: 'custom_auth', clinic_id: userClinicId.value },
+    }).catch(() => {})
     isAuthenticated.value = false
     userRole.value = null
     userEmail.value = null
@@ -349,6 +394,13 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('user', JSON.stringify(safeDoctor))
       localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
       localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
+      logSessionLoginOnce().catch(() => {})
+      logAuditAction({
+        userId: safeDoctor.id,
+        action: 'login',
+        userRole: role,
+        metadata: { source: 'doctor_auth', clinic_id: cid },
+      }).catch(() => {})
       return true
     } catch (err) {
       console.error('Doctor login failed:', err)
@@ -368,10 +420,10 @@ export const useAuthStore = defineStore('auth', () => {
     // Only allow when current session is super admin (or already impersonating as super admin)
     const current = localStorage.getItem('userRole')
     const imp = localStorage.getItem(IMPERSONATOR_ROLE_KEY)
-    if (current !== 'super_admin' && imp !== 'super_admin') return
+    if (normalizeRole(current) !== ROLES.SUPERADMIN && normalizeRole(imp) !== ROLES.SUPERADMIN) return
 
-    impersonatorRole.value = 'super_admin'
-    localStorage.setItem(IMPERSONATOR_ROLE_KEY, 'super_admin')
+    impersonatorRole.value = ROLES.SUPERADMIN
+    localStorage.setItem(IMPERSONATOR_ROLE_KEY, ROLES.SUPERADMIN)
 
     userRole.value = 'admin'
     localStorage.setItem('userRole', 'admin')
@@ -384,7 +436,8 @@ export const useAuthStore = defineStore('auth', () => {
    * Super admin klinika kontekstidan chiqadi.
    */
   const stopClinicSession = () => {
-    if (impersonatorRole.value !== 'super_admin' && localStorage.getItem(IMPERSONATOR_ROLE_KEY) !== 'super_admin') return
+    const activeImpersonatorRole = normalizeRole(impersonatorRole.value || localStorage.getItem(IMPERSONATOR_ROLE_KEY))
+    if (activeImpersonatorRole !== ROLES.SUPERADMIN) return
 
     impersonatorRole.value = null
     localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
@@ -392,15 +445,15 @@ export const useAuthStore = defineStore('auth', () => {
     userClinicId.value = null
     localStorage.removeItem(USER_CLINIC_KEY)
 
-    userRole.value = 'super_admin'
-    localStorage.setItem('userRole', 'super_admin')
+    userRole.value = ROLES.SUPERADMIN
+    localStorage.setItem('userRole', ROLES.SUPERADMIN)
   }
 
-  const isImpersonating = ref(impersonatorRole.value === 'super_admin')
+  const isImpersonating = ref(normalizeRole(impersonatorRole.value) === ROLES.SUPERADMIN)
 
   // keep isImpersonating reactive-ish when methods called
   const syncImpersonatingFlag = () => {
-    isImpersonating.value = (localStorage.getItem(IMPERSONATOR_ROLE_KEY) === 'super_admin')
+    isImpersonating.value = normalizeRole(localStorage.getItem(IMPERSONATOR_ROLE_KEY)) === ROLES.SUPERADMIN
   }
 
   const startClinicSessionWrapped = (clinicId) => {

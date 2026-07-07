@@ -49,6 +49,7 @@ export function getCurrentActor() {
 /** Rol kodlarini o'zbekcha nomga aylantiradi. */
 export function actorRoleLabel(role) {
   const labels = {
+    superadmin: 'Bosh administrator',
     super_admin: 'Bosh administrator',
     clinic_owner: 'Klinika rahbari',
     admin: 'Administrator',
@@ -88,9 +89,32 @@ export async function logActivity({ action, summary, entity = null, entityId = n
       logged_at: new Date().toISOString(),
     }
 
-    return await logEmployeeActivity(actor.employeeId, action, details)
+    return await logEmployeeActivity(actor.employeeId, action, details, actor.clinicId)
   } catch (error) {
     console.warn('⚠️ Audit jurnaliga yozib bo\'lmadi:', error)
+    return null
+  }
+}
+
+const loginDebounceKey = () => {
+  const actor = getCurrentActor()
+  const day = new Date().toISOString().slice(0, 10)
+  const id = actor.employeeId || actor.name || 'anon'
+  return `activity_login_${day}_${id}`
+}
+
+/** Kuniga bir marta sessiya boshlanishini loglaydi. */
+export async function logSessionLoginOnce() {
+  try {
+    const key = loginDebounceKey()
+    if (sessionStorage.getItem(key) === '1') return null
+    sessionStorage.setItem(key, '1')
+    return await logActivity({
+      action: 'session.login',
+      summary: 'Tizimga kirildi',
+      entity: 'session',
+    })
+  } catch {
     return null
   }
 }

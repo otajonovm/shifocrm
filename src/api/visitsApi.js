@@ -8,6 +8,8 @@ import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 import { sendVisitCompleted, schedulePatientFollowUps } from './telegramApi'
+import { clinicHasActiveFeature } from '@/services/subscriptionService'
+import { FEATURE_KEYS } from '@/lib/subscriptionFeatures'
 import {
   createAppointment,
   updateAppointment,
@@ -18,6 +20,8 @@ import {
   buildEndTimeFromStart,
   mapVisitStatusToAppointment,
 } from '@/lib/visitAppointmentSync'
+import { logActivity } from '@/lib/activityLog'
+import { tryAttributeVisitRevenue } from './notificationEventsApi'
 
 const TABLE = 'visits'
 
@@ -271,6 +275,14 @@ export const createVisit = async ({
       }
     }
 
+    logActivity({
+      action: 'visit.create',
+      summary: `Qabul yaratildi #${created.id}`,
+      entity: 'visit',
+      entityId: created.id,
+      meta: { patient_id: created.patient_id, status: created.status },
+    }).catch(() => {})
+
     return created
   } catch (error) {
     console.error('❌ Failed to create visit:', error)
@@ -341,6 +353,26 @@ export const updateVisit = async (id, payload, options = {}) => {
         await syncAppointmentScheduleFromVisit(updated, currentVisit)
       } catch (syncErr) {
         console.warn('Appointment vaqt sinxronlash:', syncErr?.message)
+      }
+    }
+
+    if (updated) {
+      logActivity({
+        action: 'visit.update',
+        summary: `Qabul yangilandi #${updated.id}`,
+        entity: 'visit',
+        entityId: updated.id,
+        meta: { status: updated.status },
+      }).catch(() => {})
+
+      const paidAmount = Number(updated.paid_amount) || 0
+      if (paidAmount > 0) {
+        tryAttributeVisitRevenue({
+          visitId: updated.id,
+          patientId: updated.patient_id,
+          amount: paidAmount,
+          clinicId: cid,
+        }).catch(() => {})
       }
     }
 
@@ -431,6 +463,10 @@ export const deleteVisit = async (id, options = {}) => {
  */
 async function sendVisitCompletedTelegram(visitId) {
   try {
+    const clinicId = await getCurrentClinicId()
+    const smsEnabled = await clinicHasActiveFeature(clinicId, FEATURE_KEYS.SMS_MARKETING)
+    if (!smsEnabled) return
+
     // Visit, patient, doctor, va visit_services ma'lumotlarini olish
     const visit = await getVisitById(visitId)
     if (!visit) return

@@ -1,13 +1,16 @@
 import { fileURLToPath, URL } from 'node:url'
 import { readFileSync, writeFileSync } from 'node:fs'
-import { defineConfig } from 'vite'
+import http from 'node:http'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { VitePWA } from 'vite-plugin-pwa'
+import { parseVisionImagePayload } from './src/lib/visionImportCore.js'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production'
+  const env = loadEnv(mode, process.cwd(), '')
 
   return {
     plugins: [
@@ -88,6 +91,97 @@ export default defineConfig(({ mode }) => {
       !isProduction && {
         name: 'save-db-json',
         configureServer(server) {
+          const geminiKey = env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY
+          const openaiKey = env.OPENAI_API_KEY || env.VITE_OPENAI_API_KEY
+          const visionApiKey = geminiKey
+            || openaiKey
+            || env.VISION_API_KEY
+            || env.DEEPSEEK_API_KEY
+            || env.VITE_DEEPSEEK_API_KEY
+          const visionApiBase = env.VISION_API_BASE
+            || (geminiKey ? 'https://generativelanguage.googleapis.com' : '')
+            || (openaiKey ? 'https://api.openai.com' : '')
+            || 'https://api.deepseek.com'
+          const visionModel = env.VISION_MODEL
+            || (geminiKey ? 'gemini-2.0-flash' : '')
+            || (openaiKey ? 'gpt-4o' : '')
+            || 'deepseek-chat'
+
+          server.middlewares.use('/api/vision-import', (req, res, next) => {
+            if (req.method === 'OPTIONS') {
+              res.writeHead(204, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'content-type',
+              })
+              res.end()
+              return
+            }
+
+            if (req.method !== 'POST') {
+              next()
+              return
+            }
+
+            let body = ''
+            req.on('data', (chunk) => {
+              body += chunk.toString()
+            })
+            req.on('end', async () => {
+              try {
+                const payload = JSON.parse(body)
+                const result = await parseVisionImagePayload({
+                  image_base64: payload.image_base64,
+                  mime_type: payload.mime_type,
+                  apiKey: visionApiKey,
+                  apiBase: visionApiBase,
+                  model: visionModel,
+                })
+                res.writeHead(200, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify(result))
+              } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify({ ok: false, error: error?.message || 'Vision import xatolik' }))
+              }
+            })
+          })
+
+          // Telegram bot API proxy (dev): /api/telegram/* -> localhost:3001/api/*
+          const telegramPort = Number(env.TELEGRAM_BOT_PORT || env.VITE_TELEGRAM_BOT_PORT || 3001)
+          const telegramHost = env.TELEGRAM_BOT_HOST || '127.0.0.1'
+
+          server.middlewares.use('/api/telegram', (req, res) => {
+            const targetPath = `/api${req.url || ''}`
+            const proxyReq = http.request(
+              {
+                hostname: telegramHost,
+                port: telegramPort,
+                path: targetPath,
+                method: req.method,
+                headers: {
+                  ...req.headers,
+                  host: `${telegramHost}:${telegramPort}`,
+                },
+              },
+              (proxyRes) => {
+                res.writeHead(proxyRes.statusCode || 502, proxyRes.headers)
+                proxyRes.pipe(res)
+              }
+            )
+
+            proxyReq.on('error', (err) => {
+              res.writeHead(502, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({
+                ok: false,
+                error: 'TELEGRAM_BOT_UNREACHABLE',
+                message: `Telegram bot ishlamayapti (${telegramHost}:${telegramPort}). telegram-bot papkasida: npm start`,
+                detail: err.message,
+              }))
+            })
+
+            req.pipe(proxyReq)
+          })
+
           server.middlewares.use('/api/save-db', (req, res, next) => {
             if (req.method === 'POST') {
               let body = ''

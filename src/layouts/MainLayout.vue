@@ -35,21 +35,21 @@
 
         <!-- Right: ShifoAI -->
         <div class="flex items-center gap-3">
-          <!-- ShifoAI -->
-          <div class="relative">
-            <button
-              type="button"
-              @click="shifoAIOpen = true"
-              class="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-              title="ShifoAI — Tizim yordamchisi"
-            >
-              <div class="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
-                <SparklesIcon class="w-4 h-4 text-white" />
-              </div>
-              <span class="hidden sm:inline text-sm font-medium text-gray-700">ShifoAI</span>
-            </button>
-          </div>
-
+          <FeatureGate feature="shifo_ai" mode="hide">
+            <div class="relative">
+              <button
+                type="button"
+                @click="shifoAIOpen = true"
+                class="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                title="ShifoAI — Tizim yordamchisi"
+              >
+                <div class="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
+                  <SparklesIcon class="w-4 h-4 text-white" />
+                </div>
+                <span class="hidden sm:inline text-sm font-medium text-gray-700">ShifoAI</span>
+              </button>
+            </div>
+          </FeatureGate>
         </div>
       </header>
 
@@ -60,19 +60,30 @@
     </div>
 
     <!-- ShifoAI Panel -->
-    <ShifoAIPanel :open="shifoAIOpen" @close="shifoAIOpen = false" />
+    <FeatureGate feature="shifo_ai" mode="hide">
+      <ShifoAIPanel :open="shifoAIOpen" @close="shifoAIOpen = false" />
+    </FeatureGate>
 
+    <UpgradeModal
+      :open="upgradeModalOpen"
+      :feature-key="upgradeFeatureKey"
+      @close="closeUpgradeModal"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSubscriptionStore } from '@/stores/subscription'
 import { ROLES } from '@/lib/roles'
+import { FEATURE_KEYS } from '@/lib/subscriptionFeatures'
 import { useI18n } from 'vue-i18n'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import ShifoAIPanel from '@/components/shared/ShifoAIPanel.vue'
+import FeatureGate from '@/components/shared/FeatureGate.vue'
+import UpgradeModal from '@/components/shared/UpgradeModal.vue'
 import {
   Bars3Icon,
   SparklesIcon,
@@ -81,6 +92,7 @@ import {
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const subscriptionStore = useSubscriptionStore()
 const { t } = useI18n()
 
 const SIDEBAR_COLLAPSED_KEY = 'shifocrm_sidebar_collapsed'
@@ -88,6 +100,37 @@ const SIDEBAR_COLLAPSED_KEY = 'shifocrm_sidebar_collapsed'
 const sidebarOpen = ref(false)
 const sidebarCollapsed = ref(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true')
 const shifoAIOpen = ref(false)
+const upgradeModalOpen = ref(false)
+const upgradeFeatureKey = ref('')
+
+onMounted(async () => {
+  if (authStore.userClinicId != null) {
+    await subscriptionStore.loadForClinic(authStore.userClinicId)
+  }
+  openUpgradeFromQuery(route.query.upgrade)
+})
+
+watch(
+  () => route.query.upgrade,
+  (feature) => openUpgradeFromQuery(feature)
+)
+
+const openUpgradeFromQuery = (feature) => {
+  const key = String(feature || '').trim()
+  if (!key || !Object.values(FEATURE_KEYS).includes(key)) {
+    return
+  }
+  upgradeFeatureKey.value = key
+  upgradeModalOpen.value = true
+}
+
+const closeUpgradeModal = () => {
+  upgradeModalOpen.value = false
+  if (route.query.upgrade) {
+    const { upgrade, ...rest } = route.query
+    router.replace({ query: rest })
+  }
+}
 
 const toggleSidebarCollapse = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value
@@ -108,6 +151,9 @@ const PAGE_ROUTE_KEYS = {
   '/inventory': 'inventory',
   '/reports': 'reports',
   '/settings': 'settings',
+  '/data-import': 'dataImport',
+  '/management-center': 'managementCenter',
+  '/audit': 'audit',
   '/treatment-plans': 'treatmentPlans',
   '/doctor/profile': 'doctorProfile',
 }

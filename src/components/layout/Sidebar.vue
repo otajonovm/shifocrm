@@ -143,8 +143,10 @@ import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useClinicStore } from '@/stores/clinic'
+import { useSubscriptionStore } from '@/stores/subscription'
 import { useDoctorPermissionsStore } from '@/stores/doctorPermissions'
 import { useEmployeePermissionsStore } from '@/stores/employeePermissions'
+import { FEATURE_KEYS } from '@/lib/subscriptionFeatures'
 import { getEmployeeById } from '@/api/employeesApi'
 import { getDoctorById } from '@/api/doctorsApi'
 import { useI18n } from 'vue-i18n'
@@ -153,6 +155,7 @@ import {
   getRoleBadgeClass,
   getRoleLabel,
   isAdminLike,
+  isGlobalSuperAdmin,
   isSolo,
   canManageStaff,
   canAccessWarehouse,
@@ -170,6 +173,7 @@ import {
   UserCircleIcon,
   DocumentTextIcon,
   ShieldCheckIcon,
+  ArrowUpTrayIcon,
   ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -192,13 +196,17 @@ defineEmits(['close', 'logout', 'toggle-collapse'])
 const route = useRoute()
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()
+const subscriptionStore = useSubscriptionStore()
 const doctorPermsStore = useDoctorPermissionsStore()
 const employeePermsStore = useEmployeePermissionsStore()
 const { t } = useI18n()
 
 onMounted(async () => {
   if (authStore.userClinicId != null) {
-    await clinicStore.loadFromClinicId(authStore.userClinicId)
+    await Promise.all([
+      clinicStore.loadFromClinicId(authStore.userClinicId),
+      subscriptionStore.loadForClinic(authStore.userClinicId),
+    ])
   }
 
   if (authStore.userRole === ROLES.ADMIN && authStore.user?.employee_id) {
@@ -226,6 +234,13 @@ onMounted(async () => {
 })
 
 const adminLike = computed(() => isAdminLike(authStore))
+const globalSuperAdmin = computed(() => isGlobalSuperAdmin(authStore))
+
+const superadminMenuItems = [
+  { labelKey: 'nav.superadminDashboard', to: '/admin-dashboard', icon: ChartBarIcon },
+  { labelKey: 'nav.manageUsers', to: '/admin/manage-users', icon: UsersIcon },
+  { labelKey: 'nav.superadminClinics', to: '/admin/clinics', icon: ShieldCheckIcon },
+]
 
 const adminMenuItems = [
   { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
@@ -233,24 +248,19 @@ const adminMenuItems = [
   { labelKey: 'nav.staff', to: '/staff', icon: UsersIcon },
   { labelKey: 'nav.appointments', to: '/appointments', icon: CalendarDaysIcon },
   { labelKey: 'nav.leads', to: '/leads', icon: InboxIcon },
-  { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
+  { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon, featureKey: FEATURE_KEYS.KPI_FINANCE },
   { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
-  { labelKey: 'nav.inventory', to: '/inventory', icon: BuildingStorefrontIcon, warehouseOnly: true },
-  { labelKey: 'nav.reports', to: '/reports', icon: ChartBarIcon },
+  { labelKey: 'nav.inventory', to: '/inventory', icon: BuildingStorefrontIcon, featureKey: FEATURE_KEYS.WAREHOUSE, warehouseOnly: true },
+  { labelKey: 'nav.reports', to: '/reports', icon: ChartBarIcon, featureKey: FEATURE_KEYS.KPI_FINANCE },
   { labelKey: 'nav.settings', to: '/settings', icon: Cog6ToothIcon },
 ]
 
 const soloMenuItems = [
-  { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
-  { labelKey: 'nav.patients', to: '/patients', icon: UsersIcon },
   { labelKey: 'nav.appointments', to: '/appointments', icon: CalendarDaysIcon },
-  { labelKey: 'nav.myLeads', to: '/my-leads', icon: InboxIcon },
-  { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
+  { labelKey: 'nav.patients', to: '/patients', icon: UsersIcon },
   { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
   { labelKey: 'nav.reports', to: '/reports', icon: ChartBarIcon },
-  { labelKey: 'nav.treatmentPlans', to: '/treatment-plans', icon: DocumentTextIcon },
   { labelKey: 'nav.doctorProfile', to: '/doctor/profile', icon: UserCircleIcon },
-  { labelKey: 'nav.settings', to: '/settings', icon: Cog6ToothIcon },
 ]
 
 const allDoctorMenuItems = [
@@ -270,18 +280,33 @@ const doctorMenuItems = computed(() => {
   })
 })
 
+const passesFeatureGate = (item) => {
+  if (item.featureKey && !subscriptionStore.checkFeature(item.featureKey)) {
+    return false
+  }
+  if (item.warehouseOnly && !canAccessWarehouse(authStore)) {
+    return false
+  }
+  return true
+}
+
 const menuItems = computed(() => {
-  if (isSolo(authStore)) return soloMenuItems
+  if (globalSuperAdmin.value) {
+    return superadminMenuItems
+  }
+  if (isSolo(authStore)) {
+    return soloMenuItems
+  }
   if (adminLike.value) {
-    const base = adminMenuItems.filter(item => {
-      if (item.warehouseOnly) return canAccessWarehouse(authStore)
-      return true
-    })
+    const base = adminMenuItems.filter(passesFeatureGate)
     if (canManageStaff(authStore)) {
-      return [
-        ...base,
+      const ownerItems = [
+        { labelKey: 'nav.manageUsers', to: '/manage-users', icon: UsersIcon },
+        { labelKey: 'nav.dataImport', to: '/data-import', icon: ArrowUpTrayIcon },
+        { labelKey: 'nav.managementCenter', to: '/management-center', icon: ChartBarIcon, featureKey: FEATURE_KEYS.KPI_FINANCE },
         { labelKey: 'nav.audit', to: '/audit', icon: ShieldCheckIcon },
       ]
+      return [...base, ...ownerItems.filter(passesFeatureGate)]
     }
     return base
   }

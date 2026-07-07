@@ -3,7 +3,9 @@
  */
 
 export const ROLES = {
-  SUPER_ADMIN: 'super_admin',
+  SUPERADMIN: 'superadmin',
+  SUPER_ADMIN: 'superadmin',
+  LEGACY_SUPER_ADMIN: 'super_admin',
   CLINIC_OWNER: 'clinic_owner',
   ADMIN: 'admin',
   DOCTOR: 'doctor',
@@ -12,19 +14,28 @@ export const ROLES = {
 
 const SUPER_ADMIN_SCOPE_KEY = 'superAdminScope'
 
+export function normalizeRole(role) {
+  if (role === ROLES.LEGACY_SUPER_ADMIN) return ROLES.SUPERADMIN
+  return role
+}
+
+export function isSuperAdminRole(role) {
+  return normalizeRole(role) === ROLES.SUPERADMIN
+}
+
 /** Eski sessiya: super_admin + scope=clinic → clinic_owner deb hisoblanadi */
 export function isLegacyClinicScopedSuperAdmin(authOrRole, scope) {
   const role = typeof authOrRole === 'object' ? authOrRole?.userRole : authOrRole
   const s = scope ?? (typeof authOrRole === 'object' ? authOrRole?.superAdminScope : null)
     ?? localStorage.getItem(SUPER_ADMIN_SCOPE_KEY)
-  return role === ROLES.SUPER_ADMIN && s === 'clinic'
+  return isSuperAdminRole(role) && s === 'clinic'
 }
 
 export function isGlobalSuperAdmin(authStore) {
   if (!authStore) return false
-  const role = authStore.userRole
-  if (role !== ROLES.SUPER_ADMIN) return false
-  if (authStore.impersonatorRole === ROLES.SUPER_ADMIN) return false
+  const role = normalizeRole(authStore.userRole)
+  if (role !== ROLES.SUPERADMIN) return false
+  if (isSuperAdminRole(authStore.impersonatorRole)) return false
   return !isLegacyClinicScopedSuperAdmin(authStore)
 }
 
@@ -93,7 +104,7 @@ export function resolveClinicOwnerSessionRole(clinic) {
 export function migrateLegacyClinicOwnerSession() {
   const role = localStorage.getItem('userRole')
   const scope = localStorage.getItem(SUPER_ADMIN_SCOPE_KEY)
-  if (role !== ROLES.SUPER_ADMIN || scope !== 'clinic') return false
+  if (!isSuperAdminRole(role) || scope !== 'clinic') return false
 
   localStorage.setItem('userRole', ROLES.CLINIC_OWNER)
   localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
@@ -161,7 +172,7 @@ export function canManageStaff(authStore) {
 /** employees.role (DB) → sessiya roli (faqat administrator uchun admin kirish) */
 export function employeeDbRoleToAuthRole(dbRole) {
   const role = String(dbRole || '').trim().toLowerCase()
-  if (role === 'administrator' || role === 'super_admin') return ROLES.ADMIN
+  if (role === 'administrator' || role === 'super_admin' || role === 'superadmin') return ROLES.ADMIN
   return null
 }
 

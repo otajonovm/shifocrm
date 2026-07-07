@@ -1,0 +1,11 @@
+# Supabase local / deploy config
+# https://supabase.com/docs/guides/functions/function-configuration
+
+[functions.vision-import]
+verify_jwt = false
+
+[functions.process_payment]
+verify_jwt = false
+
+[functions.subscription-expiry-cron]
+verify_jwt = false

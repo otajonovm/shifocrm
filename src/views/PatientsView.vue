@@ -11,6 +11,15 @@
             {{ isSolo ? t('patients.soloSubtitle') : (isAdmin ? t('patients.allPatientsSubtitle') : t('patients.myPatientsSubtitle')) }}
           </p>
         </div>
+        <div v-if="canImport" class="flex flex-wrap items-center gap-3">
+          <router-link
+            to="/data-import"
+            class="inline-flex items-center gap-2 rounded-xl border border-primary-200 bg-primary-50 px-4 py-2.5 text-sm font-medium text-primary-700 hover:bg-primary-100"
+          >
+            <ArrowUpTrayIcon class="h-5 w-5" />
+            {{ t('nav.dataImport') }}
+          </router-link>
+        </div>
       </div>
 
       <!-- Qidiruv va filter: solo uchun sodda -->
@@ -551,7 +560,7 @@ import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
 import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
 import MobileFAB from '@/components/shared/MobileFAB.vue'
 import { useAuthStore } from '@/stores/auth'
-import { isAdminLike, isSolo as hasSoloRole } from '@/lib/roles'
+import { isAdminLike, isSolo as hasSoloRole, canManageStaff } from '@/lib/roles'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
@@ -567,6 +576,7 @@ import {
   XMarkIcon,
   ExclamationTriangleIcon,
   PhoneIcon,
+  ArrowUpTrayIcon,
 } from '@heroicons/vue/24/outline'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -580,6 +590,7 @@ const { t } = useI18n()
 
 const isAdmin = computed(() => isAdminLike(authStore) || hasSoloRole(authStore))
 const isSolo = computed(() => hasSoloRole(authStore))
+const canImport = computed(() => canManageStaff(authStore))
 
 // Doktor ID ni olish
 const getCurrentDoctorId = () => {
@@ -679,6 +690,13 @@ const filteredPatients = computed(() => {
 
   if (selectedStatus.value) {
     result = result.filter(p => normalizePatientStatus(p.status) === selectedStatus.value)
+  }
+
+  if (isSolo.value && authStore.user?.id) {
+    const did = Number(authStore.user.id)
+    if (Number.isFinite(did)) {
+      result = result.filter((p) => !p.doctor_id || Number(p.doctor_id) === did)
+    }
   }
 
   return result

@@ -172,6 +172,15 @@
             <span v-else>{{ t('login.submitDoctor') }}</span>
           </button>
         </form>
+
+        <!-- Individual (yakka doktor) uchun signup havolasi.
+             Klinika (Boshqaruv) tab'ida yashirin — enterprise signup yopiq. -->
+        <p v-if="loginType === 'doctor'" class="text-center text-sm text-gray-500 mt-6">
+          {{ t('login.noAccount') }}
+          <router-link to="/signup" class="text-primary-600 font-medium hover:underline">
+            {{ t('login.signUpLink') }}
+          </router-link>
+        </p>
       </div>
 
       <!-- Footer -->
@@ -190,6 +199,7 @@ import { useClinicStore } from '@/stores/clinic'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from 'vue-i18n'
 import { isClinicOwner, isGlobalSuperAdmin, isSolo, ROLES } from '@/lib/roles'
+import { getSoloHomeRoute } from '@/lib/soloFocus'
 import {
   UZ_PHONE_PLACEHOLDER,
   formatPhoneUzDisplay,
@@ -231,8 +241,8 @@ const handleAdminLogin = async () => {
     const defaultRedirect = isClinicOwner(authStore)
       || isSolo(authStore)
       || authStore.userRole === ROLES.ADMIN
-      ? '/dashboard'
-      : (isGlobalSuperAdmin(authStore) ? '/admin/clinics' : '/dashboard')
+      ? (isSolo(authStore) ? getSoloHomeRoute() : '/dashboard')
+      : (isGlobalSuperAdmin(authStore) ? '/admin-dashboard' : '/dashboard')
     router.push(safeRedirect(defaultRedirect))
   } else {
     toast.error(t('auth.loginOrPasswordWrong'))
@@ -262,7 +272,7 @@ const handleDoctorLogin = async () => {
 
   if (success) {
     toast.success(t('auth.loginSuccess'))
-    const defaultDoctorRedirect = isSolo(authStore) ? '/dashboard' : '/doctor/profile'
+    const defaultDoctorRedirect = isSolo(authStore) ? getSoloHomeRoute() : '/doctor/profile'
     router.push(safeRedirect(defaultDoctorRedirect))
   } else {
     toast.error(t('auth.phoneOrPasswordWrong'))

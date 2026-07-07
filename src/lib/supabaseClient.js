@@ -11,8 +11,11 @@ export const getSupabaseClient = () => {
   if (!client) {
     client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
-        persistSession: false,
-        autoRefreshToken: false,
+        // Supabase Auth (individual signup/login) uchun sessiya saqlanishi kerak.
+        // Mavjud custom login localStorage bilan alohida ishlaydi, ular to'qnashmaydi.
+        persistSession: true,
+        autoRefreshToken: true,
+        storageKey: 'shifocrm-supabase-auth',
       },
       realtime: {
         params: {

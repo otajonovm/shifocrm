@@ -7,7 +7,7 @@
 
 import { getDefaultClinicId } from '@/services/adminService'
 
-import { ROLES } from '@/lib/roles'
+import { normalizeRole, ROLES } from '@/lib/roles'
 
 const USER_CLINIC_KEY = 'userClinicId'
 const USER_ROLE_KEY = 'userRole'
@@ -18,15 +18,23 @@ const SUPER_ADMIN_SCOPE_KEY = 'superAdminScope'
  * @returns {Promise<number|null>}
  */
 export async function getCurrentClinicId() {
-  const role = localStorage.getItem(USER_ROLE_KEY) || ''
+  const role = normalizeRole(localStorage.getItem(USER_ROLE_KEY) || '')
   const superAdminScope = localStorage.getItem(SUPER_ADMIN_SCOPE_KEY) || ''
-  if (role === 'super_admin' && superAdminScope !== 'clinic') return null
+  const impersonator = normalizeRole(localStorage.getItem('impersonatorRole') || '')
 
   const stored = localStorage.getItem(USER_CLINIC_KEY)
   if (stored != null && stored !== '') {
     const n = Number(stored)
     if (Number.isFinite(n)) return n
   }
+
+  // Super admin klinikaga «Kirish» qilgan (impersonation) — clinic_id mavjud
+  if (impersonator === ROLES.SUPERADMIN && stored) {
+    const n = Number(stored)
+    if (Number.isFinite(n)) return n
+  }
+
+  if (role === ROLES.SUPERADMIN && superAdminScope !== 'clinic') return null
 
   const raw = localStorage.getItem(USER_KEY)
   let user = null

@@ -60,9 +60,19 @@ export async function sendTelegramNotification({ patientId, message }) {
         console.error('❌ TELEGRAM: API key noto\'g\'ri. .env VITE_TELEGRAM_API_KEY soshing');
         return { ok: false, error: 'UNAUTHORIZED' };
       }
-      if (response.status === 404 || errorCode === 'CHAT_ID_NOT_FOUND') {
-        console.warn('⚠️ TELEGRAM: Bemor telegram botda ro\'yxatdan o\'tmagan. /start kiriting');
-        return { ok: false, error: 'CHAT_ID_NOT_FOUND' };
+      if (response.status === 404) {
+        if (errorCode === 'CHAT_ID_NOT_FOUND') {
+          console.warn('⚠️ TELEGRAM: Bemor telegram botda ro\'yxatdan o\'tmagan. /start kiriting');
+          return { ok: false, error: 'CHAT_ID_NOT_FOUND' };
+        }
+        console.warn(
+          '⚠️ TELEGRAM: Bot server topilmadi. telegram-bot papkasida `npm start` (port 3001) ishga tushiring.'
+        );
+        return { ok: false, error: errorCode === 'TELEGRAM_BOT_UNREACHABLE' ? errorCode : 'BOT_UNREACHABLE' };
+      }
+      if (response.status === 502 || errorCode === 'TELEGRAM_BOT_UNREACHABLE') {
+        console.warn('⚠️ TELEGRAM: Bot server ishlamayapti (localhost:3001)');
+        return { ok: false, error: 'TELEGRAM_BOT_UNREACHABLE' };
       }
       if (response.status === 500) {
         console.error('❌ TELEGRAM SERVER ERROR:', errorData);

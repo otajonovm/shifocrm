@@ -7,6 +7,7 @@ import { supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabas
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
+import { logActivity } from '@/lib/activityLog'
 
 const TABLE = 'patients'
 
@@ -221,8 +222,17 @@ export const updatePatient = async (id, payload) => {
     if (!Number.isFinite(numId)) throw new Error('Invalid patient id')
     const q = mergeClinicQuery(`id=eq.${numId}`, cid)
     const result = await supabasePatchWhere(TABLE, q, updateData)
-    console.log('✅ Patient updated:', result[0])
-    return result && result[0] ? result[0] : null
+    const updated = result && result[0] ? result[0] : null
+    if (updated) {
+      logActivity({
+        action: 'patient.update',
+        summary: `Bemor kartasi yangilandi: ${updated.full_name || id}`,
+        entity: 'patient',
+        entityId: id,
+      }).catch(() => {})
+    }
+    console.log('✅ Patient updated:', updated)
+    return updated
   } catch (error) {
     console.error('❌ Failed to update patient:', {
       message: error?.message,

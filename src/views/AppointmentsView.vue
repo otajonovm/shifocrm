@@ -6,6 +6,8 @@
         ? 'flex flex-col h-[calc(100dvh-4rem)] min-h-0 -m-4 sm:-m-6 lg:-m-8 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] max-w-none overflow-x-hidden'
         : 'space-y-4 animate-fade-in'"
     >
+      <SoloOnlineBookingCard v-if="isSolo && displayMode === 'list'" class="max-w-3xl" />
+
       <!-- Filtrlar paneli -->
       <AppointmentsHeader
         :class="displayMode === 'schedule' ? 'flex-shrink-0 rounded-none border-x-0 border-t-0 shadow-none' : 'relative z-20'"
@@ -122,12 +124,17 @@
                 <td class="px-4 py-3 text-gray-700 text-xs">{{ formatTimeRange(visit) }}</td>
                 <td class="px-4 py-3">
                   <router-link
+                    v-if="visit.patient_id"
                     :to="{ name: 'patient-detail', params: { id: visit.patient_id } }"
                     class="font-medium text-primary-600 hover:text-primary-700 hover:underline"
                   >
-                    {{ getPatientName(visit.patient_id) }}
+                    {{ resolveVisitPatientName(visit) }}
                   </router-link>
-                  <div class="text-xs text-gray-500 mt-0.5">{{ getPatientPhone(visit.patient_id) }}</div>
+                  <span v-else class="font-medium text-slate-700">
+                    {{ resolveVisitPatientName(visit) }}
+                    <span class="block text-xs font-normal text-amber-600 mt-0.5">{{ t('appointments.unconfirmedOnline') }}</span>
+                  </span>
+                  <div class="text-xs text-gray-500 mt-0.5">{{ resolveVisitPatientPhone(visit) }}</div>
                 </td>
                 <td v-if="isAdmin" class="px-4 py-3 text-gray-700 text-sm">{{ visit.doctor_name || getDoctorName(visit.doctor_id) }}</td>
                 <td class="px-4 py-3 text-gray-700">
@@ -245,12 +252,17 @@
                 </span>
               </div>
               <router-link
+                v-if="visit.patient_id"
                 :to="{ name: 'patient-detail', params: { id: visit.patient_id } }"
                 class="block text-sm font-medium text-primary-600"
               >
-                {{ getPatientName(visit.patient_id) }}
+                {{ resolveVisitPatientName(visit) }}
               </router-link>
-              <p class="text-xs text-gray-500">{{ getPatientPhone(visit.patient_id) }}</p>
+              <p v-else class="text-sm font-medium text-slate-700">
+                {{ resolveVisitPatientName(visit) }}
+                <span class="block text-xs font-normal text-amber-600">{{ t('appointments.unconfirmedOnline') }}</span>
+              </p>
+              <p class="text-xs text-gray-500">{{ resolveVisitPatientPhone(visit) }}</p>
               <p v-if="isAdmin" class="text-xs text-gray-600">{{ visit.doctor_name || getDoctorName(visit.doctor_id) }}</p>
               <p class="text-sm text-gray-700">{{ visit.service_name || '-' }}</p>
               <div class="flex items-center justify-between text-xs text-gray-500">
@@ -695,7 +707,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
-import { isAdminLike } from '@/lib/roles'
+import { isAdminLike, isSolo as hasSoloRole } from '@/lib/roles'
+import SoloOnlineBookingCard from '@/components/solo/SoloOnlineBookingCard.vue'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
@@ -738,6 +751,7 @@ const toast = useToast()
 const { t } = useI18n()
 
 const isAdmin = computed(() => isAdminLike(authStore))
+const isSolo = computed(() => hasSoloRole(authStore))
 
 const STORAGE_KEYS = {
   displayMode: 'shifocrm.appointments.displayMode',
@@ -1623,6 +1637,18 @@ const getPatientName = (patientId) => {
 const getPatientPhone = (patientId) => {
   const patient = patientsStore.items.find(p => Number(p.id) === Number(patientId))
   return patient?.phone || ''
+}
+
+const resolveVisitPatientName = (visit) => {
+  if (visit?.patient_name) return visit.patient_name
+  if (visit?.patient_id) return getPatientName(visit.patient_id)
+  return t('appointments.unconfirmedOnline')
+}
+
+const resolveVisitPatientPhone = (visit) => {
+  if (visit?.phone) return visit.phone
+  if (visit?.patient_id) return getPatientPhone(visit.patient_id)
+  return ''
 }
 
 const getDoctorName = (doctorIdValue) => {

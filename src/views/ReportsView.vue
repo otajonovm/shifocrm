@@ -1,6 +1,7 @@
 <template>
   <MainLayout>
-    <div class="space-y-4 sm:space-y-6 animate-fade-in pb-6 pb-safe">
+    <ReportsSoloView v-if="isSolo" />
+    <div v-else class="space-y-4 sm:space-y-6 animate-fade-in pb-6 pb-safe">
       <!-- Header -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -507,6 +508,7 @@
 
 <script setup>
 import MainLayout from '@/layouts/MainLayout.vue'
+import ReportsSoloView from '@/views/ReportsSoloView.vue'
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ApexChart from 'vue3-apexcharts'

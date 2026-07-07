@@ -141,7 +141,10 @@
 
           <!-- Davolash rejasi Tab -->
           <div v-else-if="activeTab === 'plans'">
-            <PatientTreatmentPlans :patient-id="patient.id" />
+            <PatientTreatmentPlans
+              :patient-id="patient.id"
+              :patient-name="patient.full_name || ''"
+            />
           </div>
 
           <!-- Hujjatlar Tab -->
@@ -337,6 +340,7 @@ import { PATIENT_STATUSES, getPatientStatusLabel, normalizePatientStatus } from 
 import { ArrowLeftIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import * as visitsApi from '@/api/visitsApi'
 import { sendTelegramNotification } from '@/api/telegramApi'
+import { logActivity } from '@/lib/activityLog'
 
 const toast = useToast()
 const { t } = useI18n()
@@ -615,6 +619,13 @@ onMounted(async () => {
       }
     } else {
       console.log('? Patient loaded successfully:', patient.value.full_name)
+
+      logActivity({
+        action: 'patient.view',
+        summary: `Bemor kartasi ochildi: ${patient.value.full_name || patientId}`,
+        entity: 'patient',
+        entityId: patientId,
+      }).catch(() => {})
 
       // Access control: Check if doctor can view this patient
       if (isDoctor.value && authStore.user) {

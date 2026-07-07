@@ -327,13 +327,20 @@ export const deleteEmployee = async (employeeId) => {
   return { id: employeeId }
 }
 
-export const logEmployeeActivity = async (employeeId, action, details = {}) => {
+export const logEmployeeActivity = async (employeeId, action, details = {}, clinicId = null) => {
   if (!action) throw new Error('Action is required')
+
+  const resolvedClinicId = clinicId != null && Number.isFinite(Number(clinicId))
+    ? Number(clinicId)
+    : (details?.clinic_id != null && Number.isFinite(Number(details.clinic_id))
+      ? Number(details.clinic_id)
+      : null)
 
   const payload = {
     employee_id: employeeId || null,
     action,
     details: details || {},
+    clinic_id: resolvedClinicId,
     created_at: new Date().toISOString(),
   }
 

@@ -7,6 +7,7 @@
 
 const cron = require('node-cron')
 const { createClient } = require('@supabase/supabase-js')
+const { insertNotificationEvent } = require('../repository/notificationEventsRepo')
 
 // Supabase client
 const supabaseUrl = process.env.SUPABASE_URL
@@ -65,6 +66,7 @@ async function send24HourReminders() {
       .select(`
         id,
         patient_id,
+        clinic_id,
         scheduled_at,
         patients:patient_id (id, name, phone),
         doctors:doctor_id (id, name, phone)
@@ -105,6 +107,14 @@ async function send24HourReminders() {
           .from('appointments')
           .update({ reminder_24h_sent: true })
           .eq('id', apt.id)
+
+        await insertNotificationEvent({
+          clinic_id: apt.clinic_id || null,
+          patient_id: apt.patient_id,
+          event_type: 'appointment_24h',
+          source_table: 'appointments',
+          source_id: String(apt.id),
+        })
       } catch (sendError) {
         console.error(`Failed to send 24h reminder to ${apt.patient_id}:`, sendError)
       }
@@ -129,6 +139,7 @@ async function send1HourReminders() {
       .select(`
         id,
         patient_id,
+        clinic_id,
         scheduled_at,
         patients:patient_id (id, name, phone),
         doctors:doctor_id (id, name, phone)
@@ -169,6 +180,14 @@ async function send1HourReminders() {
           .from('appointments')
           .update({ reminder_1h_sent: true })
           .eq('id', apt.id)
+
+        await insertNotificationEvent({
+          clinic_id: apt.clinic_id || null,
+          patient_id: apt.patient_id,
+          event_type: 'appointment_1h',
+          source_table: 'appointments',
+          source_id: String(apt.id),
+        })
       } catch (sendError) {
         console.error(`Failed to send 1h reminder to ${apt.patient_id}:`, sendError)
       }

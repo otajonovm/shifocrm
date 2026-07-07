@@ -41,7 +41,6 @@ CREATE INDEX IF NOT EXISTS idx_discount_rules_clinic_id ON public.discount_rules
 ALTER TABLE public.service_packages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.service_package_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.discount_rules ENABLE ROW LEVEL SECURITY;
-
 DO $$ BEGIN CREATE POLICY "sp_select" ON public.service_packages FOR SELECT USING (true); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY "sp_insert" ON public.service_packages FOR INSERT WITH CHECK (true); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY "sp_update" ON public.service_packages FOR UPDATE USING (true) WITH CHECK (true); EXCEPTION WHEN duplicate_object THEN NULL; END $$;

@@ -5,6 +5,7 @@
  */
 
 import { supabaseGet, supabasePost, supabasePatch } from '@/api/supabaseConfig'
+import { seedDefaultFeatures } from '@/services/subscriptionService'
 
 const CLINICS_TABLE = 'clinics'
 const DOCTORS_TABLE = 'doctors'
@@ -55,7 +56,12 @@ export async function createClinic(data) {
   }
   try {
     const result = await supabasePost(CLINICS_TABLE, payload)
-    return result && result[0] ? result[0] : result
+    const clinic = result && result[0] ? result[0] : result
+    const clinicId = Number(clinic?.id ?? clinic)
+    if (Number.isFinite(clinicId)) {
+      await seedDefaultFeatures(clinicId).catch(() => {})
+    }
+    return clinic
   } catch (e) {
     const st = /** @type {*} */ (e).status
     const code = /** @type {*} */ (e).code

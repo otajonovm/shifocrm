@@ -19,6 +19,12 @@
       </div>
     </div>
 
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <FeatureGate :feature="FEATURE_KEYS.KPI_FINANCE" mode="block">
+        <SlotForecastWidget />
+      </FeatureGate>
+    </div>
+
     <!-- Ombor ogohlantirishlari -->
     <div v-if="lowStockItems.length" class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
       <h3 class="text-sm font-semibold text-amber-900">Omborda kam qolgan materiallar</h3>
@@ -209,6 +215,9 @@ import { findLowStockItems, buildConsumptionReport } from '@/lib/inventoryReport
 import { DEFAULT_CALENDAR_START, DEFAULT_CALENDAR_END, timeStringToMinutes } from '@/lib/clinicCalendarHours'
 import { getVisitStatusLabel, getVisitStatusColors, getCompletedStatuses } from '@/constants/visitStatus'
 import { getTodayISO } from '@/lib/date'
+import SlotForecastWidget from '@/components/dashboard/SlotForecastWidget.vue'
+import FeatureGate from '@/components/shared/FeatureGate.vue'
+import { FEATURE_KEYS } from '@/lib/subscriptionFeatures'
 import {
   CalendarDaysIcon,
   CurrencyDollarIcon,

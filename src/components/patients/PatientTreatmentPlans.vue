@@ -5,13 +5,24 @@
         <h3 class="text-lg font-semibold text-gray-900">{{ t('treatmentPlans.title') }}</h3>
         <p class="text-sm text-gray-500">{{ t('treatmentPlans.subtitle') }}</p>
       </div>
-      <button
-        @click="showForm = !showForm"
-        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all"
-      >
-        <PlusIcon class="w-4 h-4" />
-        {{ t('treatmentPlans.newPlan') }}
-      </button>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          @click="generateAiDraft"
+          :disabled="draftLoading"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-lg hover:bg-violet-100 transition-all disabled:opacity-50"
+        >
+          <SparklesIcon class="w-4 h-4" />
+          {{ draftLoading ? t('treatmentPlans.aiDraftLoading') : t('treatmentPlans.aiDraft') }}
+        </button>
+        <button
+          @click="showForm = !showForm"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all"
+        >
+          <PlusIcon class="w-4 h-4" />
+          {{ t('treatmentPlans.newPlan') }}
+        </button>
+      </div>
     </div>
 
     <div v-if="showForm" class="bg-white rounded-xl border border-gray-100 p-4">
@@ -274,16 +285,38 @@
         </div>
       </div>
     </div>
+
+    <div
+      v-if="showDraftModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      @click.self="showDraftModal = false"
+    >
+      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+        <h4 class="text-lg font-semibold text-gray-900">{{ t('treatmentPlans.aiDraftTitle') }}</h4>
+        <p class="mt-1 text-xs text-amber-700">{{ draftResult?.disclaimer || t('treatmentPlans.aiDraftDisclaimer') }}</p>
+        <pre class="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl bg-gray-50 p-4 text-sm text-gray-800">{{ draftResult?.draft }}</pre>
+        <div class="mt-4 flex justify-end gap-2">
+          <button type="button" class="rounded-lg border border-gray-200 px-4 py-2 text-sm" @click="showDraftModal = false">
+            {{ t('treatmentPlans.aiDraftClose') }}
+          </button>
+          <button type="button" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white" @click="applyDraft">
+            {{ t('treatmentPlans.aiDraftApply') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { PlusIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, SparklesIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { listServices } from '@/api/servicesApi'
+import { getOdontogramsByPatientId } from '@/api/odontogramApi'
+import { generateTreatmentPlanDraft, summarizeOdontogramForDraft } from '@/api/treatmentPlanDraftApi'
 import {
   getPlansByPatientId,
   createPlan,
@@ -301,6 +334,10 @@ const props = defineProps({
   patientId: {
     type: [String, Number],
     required: true
+  },
+  patientName: {
+    type: String,
+    default: ''
   }
 })
 
@@ -315,6 +352,9 @@ const showForm = ref(false)
 const formError = ref('')
 const services = ref([])
 const selectedToothId = ref(null)
+const draftLoading = ref(false)
+const showDraftModal = ref(false)
+const draftResult = ref(null)
 
 const statusOptions = [
   { value: 'offered', label: t('treatmentPlans.statusOffered') },
@@ -365,6 +405,37 @@ const resetForm = () => {
   }
   formError.value = ''
   showForm.value = false
+}
+
+const generateAiDraft = async () => {
+  draftLoading.value = true
+  try {
+    const odontograms = await getOdontogramsByPatientId(props.patientId).catch(() => [])
+    const latest = Array.isArray(odontograms) ? odontograms[0] : null
+    const toothSummary = latest?.data
+      ? summarizeOdontogramForDraft(latest.data)
+      : ''
+
+    draftResult.value = await generateTreatmentPlanDraft({
+      patientName: props.patientName || 'Bemor',
+      toothSummary,
+    })
+    if (draftResult.value?.error === 'feature_locked') {
+      toast.error(draftResult.value.disclaimer || t('subscription.upgradeTitle'))
+      return
+    }
+    showDraftModal.value = true
+    showForm.value = true
+  } catch (err) {
+    toast.error(err?.message || t('treatmentPlans.errorLoad'))
+  } finally {
+    draftLoading.value = false
+  }
+}
+
+const applyDraft = () => {
+  form.value.notes = draftResult.value?.draft || ''
+  showDraftModal.value = false
 }
 
 const addStage = () => {

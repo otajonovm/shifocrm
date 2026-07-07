@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
 
     const { data: dueLeads, error: leadsErr } = await supabase
       .from('leads')
-      .select('id, patient_id, patient_name, phone, preferred_date, preferred_time, appointment_time, status')
+      .select('id, patient_id, patient_name, phone, preferred_date, preferred_time, appointment_time, status, clinic_id')
       .in('status', REMINDER_STATUSES)
       .eq('reminder_2h_sent', false)
       .not('appointment_time', 'is', null)
@@ -169,6 +169,17 @@ Deno.serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq('id', lead.id)
+
+        await supabase.from('notification_events').insert({
+          clinic_id: lead.clinic_id || null,
+          patient_id: lead.patient_id || null,
+          channel: 'telegram',
+          event_type: 'lead_2h_recall',
+          source_table: 'leads',
+          source_id: String(lead.id),
+          sent_at: new Date().toISOString(),
+          meta: {},
+        })
 
         summary.remindersSent += 1
       } catch (err) {

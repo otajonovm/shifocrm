@@ -125,6 +125,43 @@
         </div>
 
 
+        <div v-if="isEdit" class="pt-4 border-t border-gray-200 space-y-4">
+          <h3 class="text-sm font-semibold text-gray-900">{{ t('subscription.adminModulesTitle') }}</h3>
+          <p class="text-xs text-gray-500">{{ t('subscription.adminModulesHint') }}</p>
+          <div
+            v-for="mod in featureModules"
+            :key="mod.feature_key"
+            class="rounded-xl border border-gray-100 bg-gray-50/80 p-4 space-y-3"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-sm font-medium text-gray-900">
+                  {{ t(`subscription.features.${mod.feature_key}`) }}
+                </p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input
+                  v-model="mod.is_active"
+                  type="checkbox"
+                  class="sr-only peer"
+                />
+                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-primary-600 peer-focus:ring-2 peer-focus:ring-primary-300 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+              </label>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1">
+                {{ t('subscription.expiresAtLabel') }}
+              </label>
+              <input
+                v-model="mod.expires_at_local"
+                type="datetime-local"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              />
+              <p class="mt-1 text-xs text-gray-400">{{ t('subscription.expiresAtHint') }}</p>
+            </div>
+          </div>
+        </div>
+
         <div v-if="isEdit && clinic?.is_active !== false" class="pt-2">
           <button
             type="button"
@@ -222,6 +259,8 @@ import {
   createClinicOwner,
   updateClinicOwner,
 } from '@/services/adminService'
+import { listClinicFeatures, saveClinicFeatures } from '@/services/subscriptionService'
+import { PREMIUM_FEATURE_KEYS } from '@/lib/subscriptionFeatures'
 import { ArrowLeftIcon, NoSymbolIcon } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
@@ -243,6 +282,34 @@ const form = ref({
   owner_password: '',
 })
 
+const featureModules = ref([])
+
+const toLocalDatetime = (iso) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const fromLocalDatetime = (local) => {
+  if (!local) return null
+  const d = new Date(local)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+const buildFeatureModules = (rows = []) => {
+  const byKey = Object.fromEntries((rows || []).map((r) => [r.feature_key, r]))
+  featureModules.value = PREMIUM_FEATURE_KEYS.map((feature_key) => {
+    const row = byKey[feature_key] || {}
+    return {
+      feature_key,
+      is_active: Boolean(row.is_active),
+      expires_at_local: toLocalDatetime(row.expires_at),
+    }
+  })
+}
+
 const isEdit = computed(() => !!route.params.id)
 
 function copyToClipboard(text) {
@@ -262,12 +329,14 @@ onMounted(async () => {
   const id = Number(route.params.id)
   if (!Number.isFinite(id)) return
   try {
-    const [clinicData, ownerData] = await Promise.all([
+    const [clinicData, ownerData, featureRows] = await Promise.all([
       getClinic(id),
       getClinicOwnerByClinic(id),
+      listClinicFeatures(id),
     ])
     clinic.value = clinicData
     clinicOwner.value = ownerData
+    buildFeatureModules(featureRows)
     if (clinic.value) {
       form.value = {
         name: clinic.value.name || '',
@@ -308,6 +377,14 @@ async function handleSubmit() {
         if (!password) throw new Error("Boshliq paroli majburiy")
         await createClinicOwner(clinicId, { login, password })
       }
+      await saveClinicFeatures(
+        clinicId,
+        featureModules.value.map((mod) => ({
+          feature_key: mod.feature_key,
+          is_active: Boolean(mod.is_active),
+          expires_at: fromLocalDatetime(mod.expires_at_local),
+        }))
+      )
       toast.success(t('superAdmin.saved'))
       router.push({ name: 'admin-clinics' })
       return
