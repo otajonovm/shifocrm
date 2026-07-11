@@ -7,6 +7,7 @@ import {
   migrateLegacyClinicOwnerSession,
   canAccessAdminRoutes,
   canManageStaff,
+  canAccessSuperAdminTools,
   isSoloClinic,
   resolveDoctorLoginRole,
   resolveClinicOwnerSessionRole,
@@ -84,5 +85,12 @@ describe('roles', () => {
     expect(canManageStaff({ userRole: ROLES.ADMIN, impersonatorRole: ROLES.SUPER_ADMIN })).toBe(true)
     expect(canManageStaff({ userRole: ROLES.ADMIN })).toBe(false)
     expect(canManageStaff({ userRole: ROLES.DOCTOR })).toBe(false)
+  })
+
+  it('canAccessSuperAdminTools allows only global super admin or impersonation', () => {
+    expect(canAccessSuperAdminTools({ userRole: ROLES.CLINIC_OWNER })).toBe(false)
+    expect(canAccessSuperAdminTools({ userRole: ROLES.SUPER_ADMIN, superAdminScope: 'global' })).toBe(true)
+    expect(canAccessSuperAdminTools({ userRole: ROLES.ADMIN, impersonatorRole: ROLES.SUPER_ADMIN })).toBe(true)
+    expect(canAccessSuperAdminTools({ userRole: ROLES.ADMIN })).toBe(false)
   })
 })

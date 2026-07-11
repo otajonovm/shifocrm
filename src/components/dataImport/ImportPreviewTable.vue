@@ -9,65 +9,85 @@
             </th>
             <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('dataImport.colName') }}</th>
             <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('dataImport.colPhone') }}</th>
-            <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('dataImport.colNotes') }}</th>
-            <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('dataImport.colTeeth') }}</th>
+            <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('dataImport.colDiagnosis') }}</th>
+            <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('dataImport.colVisits') }}</th>
+            <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('dataImport.colAmount') }}</th>
             <th class="px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">{{ t('dataImport.colStatus') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
-          <tr
-            v-for="(row, idx) in rows"
-            :key="idx"
-            class="hover:bg-gray-50/50"
-            :class="row.duplicate ? 'bg-amber-50/40' : ''"
-          >
-            <td class="px-3 py-2">
-              <input
-                v-model="row.selected"
-                type="checkbox"
-                :disabled="row.duplicate"
-              />
-            </td>
-            <td class="px-3 py-2">
-              <input
-                v-model="row.full_name"
-                type="text"
-                class="w-full min-w-[120px] rounded border border-gray-200 px-2 py-1 text-sm"
-              />
-            </td>
-            <td class="px-3 py-2">
-              <input
-                v-model="row.phone"
-                type="text"
-                class="w-full min-w-[130px] rounded border border-gray-200 px-2 py-1 text-sm font-mono"
-              />
-            </td>
-            <td class="px-3 py-2">
-              <input
-                v-model="row.notes"
-                type="text"
-                class="w-full min-w-[100px] rounded border border-gray-200 px-2 py-1 text-sm"
-              />
-            </td>
-            <td class="px-3 py-2 text-xs text-gray-600">
-              {{ (row.tooth_notes || []).length || '—' }}
-            </td>
-            <td class="px-3 py-2">
-              <span
-                v-if="row.duplicate"
-                class="inline-flex px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800"
-              >
-                {{ row.duplicateReason === 'existing_patient' ? t('dataImport.dupExisting') : t('dataImport.dupBatch') }}
-              </span>
-              <span
-                v-else-if="row.confidence != null && row.confidence < 0.6"
-                class="inline-flex px-2 py-0.5 rounded-full text-xs bg-violet-100 text-violet-800"
-              >
-                AI {{ Math.round(row.confidence * 100) }}%
-              </span>
-              <span v-else class="text-emerald-600 text-xs">{{ t('dataImport.ok') }}</span>
-            </td>
-          </tr>
+          <template v-for="(row, idx) in rows" :key="idx">
+            <tr
+              class="hover:bg-gray-50/50"
+              :class="row.duplicate ? 'bg-amber-50/40' : ''"
+            >
+              <td class="px-3 py-2 align-top">
+                <input
+                  v-model="row.selected"
+                  type="checkbox"
+                  :disabled="row.duplicate"
+                />
+              </td>
+              <td class="px-3 py-2 align-top">
+                <input
+                  v-model="row.full_name"
+                  type="text"
+                  class="w-full min-w-[120px] rounded border border-gray-200 px-2 py-1 text-sm"
+                />
+              </td>
+              <td class="px-3 py-2 align-top">
+                <input
+                  v-model="row.phone"
+                  type="text"
+                  class="w-full min-w-[130px] rounded border border-gray-200 px-2 py-1 text-sm font-mono"
+                />
+              </td>
+              <td class="px-3 py-2 align-top">
+                <input
+                  v-model="row.diagnosis"
+                  type="text"
+                  class="w-full min-w-[100px] rounded border border-gray-200 px-2 py-1 text-sm"
+                  :placeholder="t('dataImport.colDiagnosis')"
+                />
+              </td>
+              <td class="px-3 py-2 align-top text-xs text-gray-600">
+                {{ (row.visit_history || []).length || '—' }}
+              </td>
+              <td class="px-3 py-2 align-top text-xs font-medium text-gray-800">
+                {{ formatMoney(row.total_paid) }}
+              </td>
+              <td class="px-3 py-2 align-top">
+                <span
+                  v-if="row.duplicate"
+                  class="inline-flex px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800"
+                >
+                  {{ row.duplicateReason === 'existing_patient' ? t('dataImport.dupExisting') : t('dataImport.dupBatch') }}
+                </span>
+                <span
+                  v-else-if="row.confidence != null && row.confidence < 0.6"
+                  class="inline-flex px-2 py-0.5 rounded-full text-xs bg-violet-100 text-violet-800"
+                >
+                  AI {{ Math.round(row.confidence * 100) }}%
+                </span>
+                <span v-else class="text-emerald-600 text-xs">{{ t('dataImport.ok') }}</span>
+              </td>
+            </tr>
+            <tr v-if="(row.visit_history || []).length" :key="`${idx}-detail`" class="bg-gray-50/80">
+              <td colspan="7" class="px-4 py-2">
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="(visit, vi) in row.visit_history"
+                    :key="vi"
+                    class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
+                  >
+                    <span class="font-medium">{{ visit.visit_date || '—' }}</span>
+                    <span v-if="visit.service_name">· {{ visit.service_name }}</span>
+                    <span v-if="visit.paid_amount" class="text-emerald-700">{{ formatMoney(visit.paid_amount) }}</span>
+                  </span>
+                </div>
+              </td>
+            </tr>
+          </template>
         </tbody>
       </table>
     </div>
@@ -81,6 +101,12 @@ import { useI18n } from 'vue-i18n'
 const rows = defineModel('rows', { type: Array, default: () => [] })
 
 const { t } = useI18n()
+
+const formatMoney = (amount) => {
+  const n = Number(amount)
+  if (!Number.isFinite(n) || n <= 0) return '—'
+  return `${n.toLocaleString('uz-UZ')} so'm`
+}
 
 const allSelected = computed(() => {
   const eligible = rows.value.filter((r) => !r.duplicate)

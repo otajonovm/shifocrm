@@ -560,7 +560,7 @@ import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
 import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
 import MobileFAB from '@/components/shared/MobileFAB.vue'
 import { useAuthStore } from '@/stores/auth'
-import { isAdminLike, isSolo as hasSoloRole, canManageStaff } from '@/lib/roles'
+import { isAdminLike, isSolo as hasSoloRole, canAccessAdminRoutes } from '@/lib/roles'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
@@ -590,7 +590,7 @@ const { t } = useI18n()
 
 const isAdmin = computed(() => isAdminLike(authStore) || hasSoloRole(authStore))
 const isSolo = computed(() => hasSoloRole(authStore))
-const canImport = computed(() => canManageStaff(authStore))
+const canImport = computed(() => canAccessAdminRoutes(authStore))
 
 // Doktor ID ni olish
 const getCurrentDoctorId = () => {

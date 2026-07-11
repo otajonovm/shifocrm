@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { parseCsvText, markDuplicatePhones } from './importParse'
+import * as XLSX from 'xlsx'
+import { parseCsvText, mapTableToImportRows, parseExcelBuffer, markDuplicatePhones } from './importParse'
 
 describe('importParse', () => {
   it('parseCsvText reads semicolon-separated Uzbek headers', () => {
@@ -23,6 +24,33 @@ Bemor B;902223344`
     const rows = parseCsvText(csv)
     expect(rows[0].full_name).toBe('Bemor A')
     expect(rows[0].phone).toBeTruthy()
+  })
+
+  it('mapTableToImportRows maps header aliases', () => {
+    const rows = mapTableToImportRows(
+      ['Ism', 'Telefon', 'Izoh'],
+      [['Test Bemor', '998901112233', 'Eslatma']]
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].full_name).toBe('Test Bemor')
+    expect(rows[0].phone).toMatch(/998/)
+    expect(rows[0].notes).toBe('Eslatma')
+  })
+
+  it('parseExcelBuffer reads first worksheet', () => {
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ['Ism', 'Telefon', 'Tugilgan sana'],
+      ['Sardor Aliyev', '998901234567', '1991-03-20'],
+    ])
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Bemorlar')
+    const buffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' })
+
+    const rows = parseExcelBuffer(buffer)
+    expect(rows).toHaveLength(1)
+    expect(rows[0].full_name).toBe('Sardor Aliyev')
+    expect(rows[0].phone).toMatch(/998/)
+    expect(rows[0].birth_date).toBe('1991-03-20')
   })
 
   it('markDuplicatePhones flags existing and batch duplicates', () => {

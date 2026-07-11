@@ -169,6 +169,16 @@ export function canManageStaff(authStore) {
   return false
 }
 
+/**
+ * Audit, daftar import, boshqaruv markazi, foydalanuvchilar —
+ * faqat global super admin yoki klinikaga kirgan super admin.
+ */
+export function canAccessSuperAdminTools(authStore) {
+  if (!authStore) return false
+  if (isGlobalSuperAdmin(authStore)) return true
+  return isSuperAdminRole(authStore.impersonatorRole)
+}
+
 /** employees.role (DB) → sessiya roli (faqat administrator uchun admin kirish) */
 export function employeeDbRoleToAuthRole(dbRole) {
   const role = String(dbRole || '').trim().toLowerCase()

@@ -1,10 +1,8 @@
 /**
  * Vision import — daftar rasmini structured JSON ga aylantirish.
+ * Gemini yoki OpenAI GPT-4o Vision.
  *
- * Env (Supabase Edge Function secrets):
- * - VISION_API_KEY yoki DEEPSEEK_API_KEY
- * - VISION_API_BASE (default: https://api.deepseek.com)
- * - VISION_MODEL (default: deepseek-chat — vision uchun OpenAI gpt-4o ham bo'ladi)
+ * Secrets: GEMINI_API_KEY | OPENAI_API_KEY, VISION_MODEL
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
@@ -15,161 +13,129 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+const DENTAL_LEDGER_PROMPT = `Siz stomatologik klinika daftarini o'qiydigan AI ekspertsiz.
+JSON massiv qaytaring. Har bir bemor: full_name, phone, diagnosis, visit_history (visit_date, start_time, service_name, price, paid_amount, treatments).
+Faqat JSON massiv.`
+
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'application/json',
-    },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
-
-const DENTAL_SCHEMA_PROMPT = `Siz stomatologik klinika daftarini o'qiydigan AI assistantsiz.
-Rasm yoki skanerdagi bemorlar ro'yxatini JSON formatida qaytaring.
-
-QOIDALAR:
-- Faqat JSON massiv qaytaring, boshqa matn yo'q.
-- Har bir element:
-  {
-    "full_name": "string",
-    "phone": "string (+998...)",
-    "birth_date": "YYYY-MM-DD yoki null",
-    "last_visit": "YYYY-MM-DD yoki null",
-    "notes": "string yoki null",
-    "confidence": 0.0-1.0,
-    "tooth_notes": [
-      { "tooth_id": "FDI 11-48", "condition": "caries|filled|missing|crown|root_canal", "planned_service": "string", "note": "string" }
-    ]
-  }
-- tooth_notes faqat aniq ko'rinadigan tish ma'lumotlari bo'lsa.
-- O'qib bo'lmasa confidence past qo'ying.
-- Telefonlarni +998 formatida normalizatsiya qiling.`
-
-async function callVisionLLM({ apiKey, apiBase, model, imageBase64, mimeType }) {
-  const isOpenAI = apiBase.includes('openai.com')
-  const url = isOpenAI
-    ? `${apiBase.replace(/\/$/, '')}/v1/chat/completions`
-    : `${apiBase.replace(/\/$/, '')}/v1/chat/completions`
-
-  const userContent = isOpenAI
-    ? [
-        { type: 'text', text: 'Quyidagi daftar/skantdan bemorlar ro\'yxatini ajrating.' },
-        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
-      ]
-    : `Daftar rasmi base64 (${mimeType}). OCR qiling va bemorlar JSON massivini qaytaring.\n\n[IMAGE_BASE64_LENGTH=${imageBase64.length}]`
-
-  const messages = [
-    { role: 'system', content: DENTAL_SCHEMA_PROMPT },
-    { role: 'user', content: userContent },
-  ]
-
-  const body = {
-    model,
-    messages,
-    temperature: 0.1,
-    max_tokens: 4000,
-  }
-
-  if (!isOpenAI && imageBase64) {
-    body.messages[1].content = `${DENTAL_SCHEMA_PROMPT}\n\nRasm base64 (qisqartirilgan OCR simulyatsiyasi — agar vision qo'llab-quvvatlanmasa, matnni o'qing):\n${imageBase64.slice(0, 500)}...`
-  }
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-  })
-
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(err.slice(0, 300) || 'Vision API xatolik')
-  }
-
-  const data = await response.json()
-  const text = data?.choices?.[0]?.message?.content || ''
-  return text
-}
 
 function extractJsonArray(text) {
   const trimmed = String(text || '').trim()
   const start = trimmed.indexOf('[')
   const end = trimmed.lastIndexOf(']')
-  if (start >= 0 && end > start) {
-    return JSON.parse(trimmed.slice(start, end + 1))
-  }
+  if (start >= 0 && end > start) return JSON.parse(trimmed.slice(start, end + 1))
   throw new Error('JSON massiv topilmadi')
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { status: 200, headers: corsHeaders })
-  }
+async function callGeminiVision({ apiKey, model, imageBase64, mimeType }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: DENTAL_LEDGER_PROMPT }] },
+      contents: [{
+        role: 'user',
+        parts: [
+          { text: 'Daftar rasmidan bemorlar JSON massivini ajrating.' },
+          { inline_data: { mime_type: mimeType, data: imageBase64 } },
+        ],
+      }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 8192,
+        responseMimeType: 'application/json',
+      },
+    }),
+  })
+  if (!response.ok) throw new Error((await response.text()).slice(0, 300))
+  const data = await response.json()
+  return (data?.candidates?.[0]?.content?.parts || []).map((p) => p?.text || '').join('')
+}
 
-  if (req.method !== 'POST') {
-    return json({ error: 'POST only' }, 405)
+async function callOpenAIVision({ apiKey, model, imageBase64, mimeType }) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model || 'gpt-4o',
+      messages: [
+        { role: 'system', content: DENTAL_LEDGER_PROMPT },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Daftar rasmidan bemorlar JSON massivini ajrating.' },
+            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
+          ],
+        },
+      ],
+      temperature: 0.1,
+      max_tokens: 8192,
+      response_format: { type: 'json_object' },
+    }),
+  })
+  if (!response.ok) throw new Error((await response.text()).slice(0, 300))
+  const data = await response.json()
+  const content = data?.choices?.[0]?.message?.content || '[]'
+  try {
+    const parsed = JSON.parse(content)
+    return JSON.stringify(parsed.patients || parsed)
+  } catch {
+    return content
   }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { status: 200, headers: corsHeaders })
+  if (req.method !== 'POST') return json({ error: 'POST only' }, 405)
 
   try {
-    const { image_base64, mime_type = 'image/jpeg', clinic_id } = await req.json()
-
+    const { image_base64, mime_type = 'image/jpeg', clinic_id, storage_path } = await req.json()
     if (!image_base64 || String(image_base64).length < 100) {
       return json({ error: 'image_base64 majburiy' }, 400)
     }
 
-    const apiKey = Deno.env.get('VISION_API_KEY')
-      || Deno.env.get('DEEPSEEK_API_KEY')
-      || Deno.env.get('OPENAI_API_KEY')
+    const geminiKey = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('VISION_API_KEY')
+    const openaiKey = Deno.env.get('OPENAI_API_KEY')
+    const useGemini = Boolean(geminiKey)
+    const apiKey = geminiKey || openaiKey
+    if (!apiKey) return json({ error: 'GEMINI_API_KEY yoki OPENAI_API_KEY sozlanmagan' }, 500)
 
-    if (!apiKey) {
-      return json({ error: 'VISION_API_KEY yoki DEEPSEEK_API_KEY sozlanmagan' }, 500)
-    }
+    const model = Deno.env.get('VISION_MODEL') || (useGemini ? 'gemini-flash-latest' : 'gpt-4o')
 
-    const apiBase = Deno.env.get('VISION_API_BASE')
-      || Deno.env.get('DEEPSEEK_API_BASE')
-      || 'https://api.deepseek.com'
-
-    const model = Deno.env.get('VISION_MODEL')
-      || Deno.env.get('DEEPSEEK_MODEL')
-      || 'deepseek-chat'
-
-    const rawText = await callVisionLLM({
-      apiKey,
-      apiBase,
-      model,
-      imageBase64: image_base64,
-      mimeType: mime_type,
-    })
+    const rawText = useGemini
+      ? await callGeminiVision({ apiKey, model, imageBase64: image_base64, mimeType: mime_type })
+      : await callOpenAIVision({ apiKey, model, imageBase64: image_base64, mimeType: mime_type })
 
     let rows = []
-    try {
-      rows = extractJsonArray(rawText)
-    } catch {
-      rows = []
-    }
+    try { rows = extractJsonArray(rawText) } catch { rows = [] }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-
-    if (supabaseUrl && serviceKey && clinic_id) {
+    if (supabaseUrl && serviceKey) {
       const supabase = createClient(supabaseUrl, serviceKey)
-      await supabase.from('import_jobs').insert({
-        clinic_id: Number(clinic_id),
-        source_type: 'vision',
-        status: 'preview',
-        total_rows: rows.length,
-        meta: { model, mime_type },
-      }).catch(() => {})
+      if (storage_path) {
+        await supabase.storage.from('import-temp').remove([storage_path.replace(/^import-temp\//, '')]).catch(() => {})
+      }
+      if (clinic_id) {
+        await supabase.from('import_jobs').insert({
+          clinic_id: Number(clinic_id),
+          source_type: 'vision',
+          status: 'preview',
+          total_rows: rows.length,
+          meta: { model, mime_type },
+        }).catch(() => {})
+      }
     }
 
-    return json({
-      ok: true,
-      rows,
-      row_count: rows.length,
-      clinic_id: clinic_id || null,
-    })
+    return json({ ok: true, rows, row_count: rows.length })
   } catch (err) {
     return json({ ok: false, error: err?.message || 'Unknown error' }, 500)
   }

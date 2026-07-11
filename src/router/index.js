@@ -3,7 +3,7 @@ import { useAuthStore } from '@/stores/auth'
 import {
   canAccessAdminRoutes,
   canAccessWarehouse,
-  canManageStaff,
+  canAccessSuperAdminTools,
   isClinicOwner,
   isGlobalSuperAdmin,
   isLegacyClinicScopedSuperAdmin,
@@ -111,7 +111,7 @@ const router = createRouter({
       path: '/data-import',
       name: 'data-import',
       component: () => import('@/views/DataImportView.vue'),
-      meta: { requiresAuth: true, requiresOwner: true },
+      meta: { requiresAuth: true, requiresRole: 'admin' },
     },
     {
       path: '/leads',
@@ -281,8 +281,8 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // Faqat rahbar (klinika rahbari / super admin) uchun sahifalar (masalan, audit)
-  if (to.meta.requiresOwner && !canManageStaff(authStore)) {
+  // Faqat super admin uchun sahifalar (audit, import, boshqaruv markazi)
+  if (to.meta.requiresOwner && !canAccessSuperAdminTools(authStore)) {
     next({ name: 'dashboard' })
     return
   }

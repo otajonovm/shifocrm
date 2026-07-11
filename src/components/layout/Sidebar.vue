@@ -157,7 +157,7 @@ import {
   isAdminLike,
   isGlobalSuperAdmin,
   isSolo,
-  canManageStaff,
+  canAccessSuperAdminTools,
   canAccessWarehouse,
   ROLES,
 } from '@/lib/roles'
@@ -173,7 +173,6 @@ import {
   UserCircleIcon,
   DocumentTextIcon,
   ShieldCheckIcon,
-  ArrowUpTrayIcon,
   ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -299,14 +298,13 @@ const menuItems = computed(() => {
   }
   if (adminLike.value) {
     const base = adminMenuItems.filter(passesFeatureGate)
-    if (canManageStaff(authStore)) {
-      const ownerItems = [
+    if (canAccessSuperAdminTools(authStore)) {
+      const superAdminClinicItems = [
         { labelKey: 'nav.manageUsers', to: '/manage-users', icon: UsersIcon },
-        { labelKey: 'nav.dataImport', to: '/data-import', icon: ArrowUpTrayIcon },
         { labelKey: 'nav.managementCenter', to: '/management-center', icon: ChartBarIcon, featureKey: FEATURE_KEYS.KPI_FINANCE },
         { labelKey: 'nav.audit', to: '/audit', icon: ShieldCheckIcon },
       ]
-      return [...base, ...ownerItems.filter(passesFeatureGate)]
+      return [...base, ...superAdminClinicItems.filter(passesFeatureGate)]
     }
     return base
   }

@@ -1,28 +1,14 @@
 /**
- * Daftar rasm → bemorlar JSON (DeepSeek / OpenAI vision).
+ * Daftar rasm → bemorlar JSON (Gemini / OpenAI GPT-4o vision).
  * Edge function va local dev proxy uchun umumiy mantiq.
  */
 
-export const DENTAL_SCHEMA_PROMPT = `Siz stomatologik klinika daftarini o'qiydigan AI assistantsiz.
-Rasm yoki skanerdagi bemorlar ro'yxatini JSON formatida qaytaring.
+import {
+  DENTAL_LEDGER_PROMPT,
+  VISION_IMPORT_ROW_SCHEMA,
+} from './visionImportSchema.js'
 
-QOIDALAR:
-- Faqat JSON massiv qaytaring, boshqa matn yo'q.
-- Har bir element:
-  {
-    "full_name": "string",
-    "phone": "string (+998...)",
-    "birth_date": "YYYY-MM-DD yoki null",
-    "last_visit": "YYYY-MM-DD yoki null",
-    "notes": "string yoki null",
-    "confidence": 0.0-1.0,
-    "tooth_notes": [
-      { "tooth_id": "FDI 11-48", "condition": "caries|filled|missing|crown|root_canal", "planned_service": "string", "note": "string" }
-    ]
-  }
-- tooth_notes faqat aniq ko'rinadigan tish ma'lumotlari bo'lsa.
-- O'qib bo'lmasa confidence past qo'ying.
-- Telefonlarni +998 formatida normalizatsiya qiling.`
+export const DENTAL_SCHEMA_PROMPT = DENTAL_LEDGER_PROMPT
 
 export const extractJsonArray = (text) => {
   const trimmed = String(text || '').trim()
@@ -37,44 +23,76 @@ export const extractJsonArray = (text) => {
 const detectProvider = ({ apiBase, model }) => {
   const base = String(apiBase || '').toLowerCase()
   const m = String(model || '').toLowerCase()
-  if (base.includes('generativelanguage') || m.startsWith('gemini')) return 'gemini'
+  if (base.includes('generativelanguage') || m.includes('gemini')) return 'gemini'
   if (base.includes('openai.com') || m.startsWith('gpt-')) return 'openai'
   return 'deepseek'
 }
 
+const parseGeminiError = (raw) => {
+  try {
+    const parsed = JSON.parse(raw)
+    return parsed?.error?.message || raw.slice(0, 280)
+  } catch {
+    return raw.slice(0, 280) || 'Gemini Vision xatolik'
+  }
+}
+
 const callGeminiVision = async ({ apiKey, model, imageBase64, mimeType }) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: DENTAL_SCHEMA_PROMPT }],
+
+  const buildBody = (jsonMode) => ({
+    systemInstruction: {
+      parts: [{ text: DENTAL_SCHEMA_PROMPT }],
+    },
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { text: 'Quyidagi stomatologik daftar/skan rasmidan barcha bemorlar qatorlarini JSON massiv qilib ajrating.' },
+          { inline_data: { mime_type: mimeType, data: imageBase64 } },
+        ],
       },
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: 'Quyidagi daftar/skan rasmidan bemorlar ro\'yxatini JSON massiv qilib ajrating.' },
-            { inline_data: { mime_type: mimeType, data: imageBase64 } },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 4000,
-      },
-    }),
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 8192,
+      ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
+    },
   })
 
+  let response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(buildBody(true)),
+  })
+
+  if (!response.ok && response.status === 400) {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildBody(false)),
+    })
+  }
+
   if (!response.ok) {
-    const err = await response.text()
-    throw new Error(err.slice(0, 300) || 'Gemini Vision xatolik')
+    throw new Error(parseGeminiError(await response.text()))
   }
 
   const data = await response.json()
-  const parts = data?.candidates?.[0]?.content?.parts || []
-  return parts.map((p) => p?.text || '').join('')
+  const candidate = data?.candidates?.[0]
+  const finishReason = candidate?.finishReason
+
+  if (finishReason === 'SAFETY') {
+    throw new Error('Rasm xavfsizlik filtri tufayli rad etildi. Boshqa surat yuklang.')
+  }
+
+  const parts = candidate?.content?.parts || []
+  const text = parts.map((p) => p?.text || '').join('').trim()
+  if (!text) {
+    throw new Error('Gemini javob qaytarmadi. Surat sifatini yaxshilab qayta urinib ko\'ring.')
+  }
+
+  return text
 }
 
 const callOpenAICompatVision = async ({ apiKey, apiBase, model, imageBase64, mimeType, isOpenAI }) => {
@@ -83,15 +101,40 @@ const callOpenAICompatVision = async ({ apiKey, apiBase, model, imageBase64, mim
 
   const userContent = isOpenAI
     ? [
-        { type: 'text', text: 'Quyidagi daftar/skandan bemorlar ro\'yxatini ajrating.' },
+        { type: 'text', text: 'Quyidagi stomatologik daftar/skandan barcha bemorlar va tashriflar ma\'lumotini JSON massiv qilib ajrating.' },
         { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
       ]
     : `${DENTAL_SCHEMA_PROMPT}\n\nDaftar rasmi (${mimeType}). OCR qiling va bemorlar JSON massivini qaytaring.\n[IMAGE_BASE64_LENGTH=${imageBase64.length}]\n${imageBase64.slice(0, 8000)}`
 
-  const messages = [
-    { role: 'system', content: DENTAL_SCHEMA_PROMPT },
-    { role: 'user', content: userContent },
-  ]
+  const body = {
+    model,
+    messages: [
+      { role: 'system', content: DENTAL_SCHEMA_PROMPT },
+      { role: 'user', content: userContent },
+    ],
+    temperature: 0.1,
+    max_tokens: 8192,
+  }
+
+  if (isOpenAI) {
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: {
+        name: 'dental_ledger_import',
+        strict: false,
+        schema: {
+          type: 'object',
+          properties: {
+            patients: {
+              type: 'array',
+              items: VISION_IMPORT_ROW_SCHEMA,
+            },
+          },
+          required: ['patients'],
+        },
+      },
+    }
+  }
 
   const response = await fetch(url, {
     method: 'POST',
@@ -99,12 +142,7 @@ const callOpenAICompatVision = async ({ apiKey, apiBase, model, imageBase64, mim
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.1,
-      max_tokens: 4000,
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
@@ -113,7 +151,23 @@ const callOpenAICompatVision = async ({ apiKey, apiBase, model, imageBase64, mim
   }
 
   const data = await response.json()
-  return data?.choices?.[0]?.message?.content || ''
+  const content = data?.choices?.[0]?.message?.content || ''
+
+  if (isOpenAI) {
+    try {
+      const parsed = JSON.parse(content)
+      if (Array.isArray(parsed.patients)) {
+        return JSON.stringify(parsed.patients)
+      }
+      if (Array.isArray(parsed)) {
+        return JSON.stringify(parsed)
+      }
+    } catch {
+      // fallback extractJsonArray
+    }
+  }
+
+  return content
 }
 
 export const callVisionLLM = async ({
@@ -170,7 +224,15 @@ export const parseVisionImagePayload = async ({
   try {
     rows = extractJsonArray(rawText)
   } catch {
-    rows = []
+    throw new Error(
+      'AI javobini tahlil qilib bo\'lmadi. Surat aniqroq yoki yorug\'roq bo\'lsin, yoki CSV/Excel import qiling.'
+    )
+  }
+
+  if (!Array.isArray(rows) || !rows.length) {
+    throw new Error(
+      'Rasmdan bemor topilmadi. Jadval to\'liq ko\'rinsin, yorug\'lik yetarli bo\'lsin yoki CSV import qiling.'
+    )
   }
 
   return { ok: true, rows, row_count: rows.length }

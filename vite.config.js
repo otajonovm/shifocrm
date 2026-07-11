@@ -103,7 +103,8 @@ export default defineConfig(({ mode }) => {
             || (openaiKey ? 'https://api.openai.com' : '')
             || 'https://api.deepseek.com'
           const visionModel = env.VISION_MODEL
-            || (geminiKey ? 'gemini-2.0-flash' : '')
+            || env.VITE_VISION_MODEL
+            || (geminiKey ? 'gemini-flash-latest' : '')
             || (openaiKey ? 'gpt-4o' : '')
             || 'deepseek-chat'
 
@@ -120,6 +121,15 @@ export default defineConfig(({ mode }) => {
 
             if (req.method !== 'POST') {
               next()
+              return
+            }
+
+            if (!visionApiKey) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({
+                ok: false,
+                error: 'VITE_GEMINI_API_KEY .env da sozlanmagan. Dev serverni qayta ishga tushiring.',
+              }))
               return
             }
 
@@ -140,6 +150,7 @@ export default defineConfig(({ mode }) => {
                 res.writeHead(200, { 'Content-Type': 'application/json' })
                 res.end(JSON.stringify(result))
               } catch (error) {
+                console.error('[vision-import]', error?.message || error)
                 res.writeHead(500, { 'Content-Type': 'application/json' })
                 res.end(JSON.stringify({ ok: false, error: error?.message || 'Vision import xatolik' }))
               }

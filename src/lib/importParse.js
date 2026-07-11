@@ -1,8 +1,10 @@
 /**
- * CSV/daftar import — parsing va dublikat tekshiruv.
+ * CSV/Excel/daftar import — parsing va dublikat tekshiruv.
  */
 
+import * as XLSX from 'xlsx'
 import { formatPhoneForStorage, normalizePhoneDigits } from '@/lib/phoneUz'
+import { normalizeVisionImportRows } from '@/lib/visionImportSchema'
 
 const HEADER_ALIASES = {
   full_name: ['ism', 'name', 'fio', 'f.i.o', 'bemor', 'patient', 'full_name', 'fullname', 'фио', 'имя'],
@@ -61,6 +63,45 @@ const mapHeaderToField = (header) => {
   return null
 }
 
+const createEmptyRow = (sourceLine) => ({
+  full_name: '',
+  phone: '',
+  birth_date: null,
+  notes: null,
+  last_visit: null,
+  address: null,
+  tooth_notes: [],
+  confidence: 1,
+  _sourceLine: sourceLine,
+})
+
+/** Jadval sarlavhasi va qatorlaridan import qatorlari */
+export const mapTableToImportRows = (headerCells, dataRows) => {
+  const fieldByCol = headerCells.map(mapHeaderToField)
+  const rows = []
+
+  dataRows.forEach((cells, index) => {
+    const lineCells = (Array.isArray(cells) ? cells : []).map((cell) => String(cell ?? '').trim())
+    if (lineCells.every((cell) => !cell)) return
+
+    const row = createEmptyRow(index + 2)
+
+    lineCells.forEach((cell, idx) => {
+      const field = fieldByCol[idx]
+      if (!field || !cell) return
+      row[field] = cell
+    })
+
+    if (!row.full_name && lineCells[0]) row.full_name = lineCells[0]
+    if (!row.phone && lineCells[1]) row.phone = lineCells[1]
+
+    row.phone = formatPhoneForStorage(row.phone) || row.phone
+    if (row.full_name) rows.push(row)
+  })
+
+  return rows
+}
+
 export const parseCsvText = (text) => {
   const raw = String(text || '').replace(/^\uFEFF/, '')
   const lines = raw.split(/\r?\n/).filter((l) => l.trim())
@@ -68,40 +109,27 @@ export const parseCsvText = (text) => {
 
   const delimiter = detectDelimiter(lines[0])
   const headerCells = parseCsvLine(lines[0], delimiter)
-  const fieldByCol = headerCells.map(mapHeaderToField)
+  const dataRows = lines.slice(1).map((line) => parseCsvLine(line, delimiter))
 
-  const rows = []
-  for (let i = 1; i < lines.length; i += 1) {
-    const cells = parseCsvLine(lines[i], delimiter)
-    if (cells.every((c) => !c)) continue
-
-    const row = {
-      full_name: '',
-      phone: '',
-      birth_date: null,
-      notes: null,
-      last_visit: null,
-      address: null,
-      tooth_notes: [],
-      confidence: 1,
-      _sourceLine: i + 1,
-    }
-
-    cells.forEach((cell, idx) => {
-      const field = fieldByCol[idx]
-      if (!field || !cell) return
-      row[field] = cell
-    })
-
-    if (!row.full_name && cells[0]) row.full_name = cells[0]
-    if (!row.phone && cells[1]) row.phone = cells[1]
-
-    row.phone = formatPhoneForStorage(row.phone) || row.phone
-    if (row.full_name) rows.push(row)
-  }
-
-  return rows
+  return mapTableToImportRows(headerCells, dataRows)
 }
+
+export const parseExcelBuffer = (buffer) => {
+  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true })
+  const sheetName = workbook.SheetNames?.[0]
+  if (!sheetName) return []
+
+  const sheet = workbook.Sheets[sheetName]
+  const table = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false })
+  if (!Array.isArray(table) || !table.length) return []
+
+  const headerCells = (table[0] || []).map((cell) => String(cell ?? ''))
+  const dataRows = table.slice(1)
+
+  return mapTableToImportRows(headerCells, dataRows)
+}
+
+export const isExcelFileName = (name) => /\.(xlsx|xls)$/i.test(String(name || ''))
 
 export const readFileAsText = (file) =>
   new Promise((resolve, reject) => {
@@ -109,6 +137,14 @@ export const readFileAsText = (file) =>
     reader.onload = () => resolve(String(reader.result || ''))
     reader.onerror = reject
     reader.readAsText(file, 'UTF-8')
+  })
+
+export const readFileAsArrayBuffer = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsArrayBuffer(file)
   })
 
 export const readFileAsBase64 = (file) =>
@@ -121,6 +157,54 @@ export const readFileAsBase64 = (file) =>
     }
     reader.onerror = reject
     reader.readAsDataURL(file)
+  })
+
+/** Daftar rasmini AI uchun siqish (tezroq yuborish, aniqroq OCR) */
+export const compressImageForVision = (file, { maxWidth = 1800, maxHeight = 1800, quality = 0.88 } = {}) =>
+  new Promise((resolve, reject) => {
+    if (!file?.type?.startsWith('image/')) {
+      reject(new Error('Faqat rasm fayllar qabul qilinadi (JPG, PNG, WEBP)'))
+      return
+    }
+
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+
+      let { width, height } = img
+      const scale = Math.min(1, maxWidth / width, maxHeight / height)
+      width = Math.max(1, Math.round(width * scale))
+      height = Math.max(1, Math.round(height * scale))
+
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        readFileAsBase64(file).then((base64) => resolve({
+          base64,
+          mimeType: file.type || 'image/jpeg',
+        })).catch(reject)
+        return
+      }
+
+      ctx.drawImage(img, 0, 0, width, height)
+      const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
+      const dataUrl = canvas.toDataURL(mimeType, quality)
+      resolve({
+        base64: dataUrl.split(',')[1],
+        mimeType,
+      })
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Rasm ochib bo\'lmadi. JPG yoki PNG formatda yuklang.'))
+    }
+
+    img.src = url
   })
 
 /** Mavjud bemorlar bilan telefon bo'yicha dublikat */
@@ -159,15 +243,10 @@ export const markDuplicatePhones = (rows, existingPatients = []) => {
   })
 }
 
-export const normalizeVisionRows = (visionRows = []) =>
-  (Array.isArray(visionRows) ? visionRows : []).map((row, idx) => ({
-    full_name: String(row.full_name || row.name || '').trim(),
-    phone: formatPhoneForStorage(row.phone) || String(row.phone || '').trim(),
-    birth_date: row.birth_date || null,
-    notes: row.notes || null,
-    last_visit: row.last_visit || null,
-    address: row.address || null,
-    tooth_notes: Array.isArray(row.tooth_notes) ? row.tooth_notes : [],
-    confidence: Number(row.confidence) || 0.7,
-    _sourceLine: idx + 1,
-  })).filter((r) => r.full_name)
+export const normalizeVisionRows = (visionRows = []) => {
+  const normalized = normalizeVisionImportRows(visionRows)
+  return normalized.map((row) => ({
+    ...row,
+    phone: formatPhoneForStorage(row.phone) || row.phone,
+  }))
+}

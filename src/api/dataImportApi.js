@@ -1,20 +1,23 @@
 /**
- * Daftar import API — CSV, Vision, batch commit.
+ * Daftar import API — CSV, Excel, Vision, batch commit.
  */
 
+import * as XLSX from 'xlsx'
 import { SUPABASE_URL, SUPABASE_ANON_KEY, supabasePost, supabasePatchWhere } from './supabaseConfig'
 import { getShifoAIApiKey } from './shifoAIApi'
 import { parseVisionImagePayload } from '@/lib/visionImportCore'
 import { getCurrentClinicId } from '@/lib/clinicContext'
-import { createPatient, listPatients } from './patientsApi'
-import { createVisit } from './visitsApi'
-import { createOdontogramSnapshot, createEmptyOdontogram } from './odontogramApi'
+import { listPatients } from './patientsApi'
 import { logActivity, getCurrentActor } from '@/lib/activityLog'
-import { toothNotesToOdontogramData } from '@/lib/importOdontogramMap'
+import { importPatientRow } from '@/services/dataImportService'
+import { uploadImportImage, deleteImportImage } from './importStorageApi'
 import {
   parseCsvText,
+  parseExcelBuffer,
+  isExcelFileName,
   readFileAsText,
-  readFileAsBase64,
+  readFileAsArrayBuffer,
+  compressImageForVision,
   markDuplicatePhones,
   normalizeVisionRows,
 } from '@/lib/importParse'
@@ -53,12 +56,12 @@ const callLocalVisionImport = async (payload) => {
     body: JSON.stringify(payload),
   })
 
+  const body = await response.json().catch(() => ({}))
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}))
     throw new Error(body.error || `Local vision import failed (${response.status})`)
   }
 
-  return response.json()
+  return body
 }
 
 const getVisionConfig = () => {
@@ -69,7 +72,7 @@ const getVisionConfig = () => {
     return {
       apiKey: geminiKey,
       apiBase: 'https://generativelanguage.googleapis.com',
-      model: import.meta.env.VITE_VISION_MODEL || 'gemini-2.0-flash',
+      model: import.meta.env.VITE_VISION_MODEL || 'gemini-flash-latest',
     }
   }
 
@@ -108,10 +111,69 @@ export const parseCsvFile = async (file) => {
   return parseCsvText(text)
 }
 
+export const parseExcelFile = async (file) => {
+  const buffer = await readFileAsArrayBuffer(file)
+  return parseExcelBuffer(buffer)
+}
+
+export const parseSpreadsheetFile = async (file) => {
+  if (isExcelFileName(file?.name)) {
+    return { rows: await parseExcelFile(file), sourceType: 'excel' }
+  }
+  return { rows: await parseCsvFile(file), sourceType: 'csv' }
+}
+
+const hasDirectVisionKey = () =>
+  Boolean(import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY)
+
+const runVisionImport = async (payload) => {
+  const attempts = []
+
+  // Dev: avval server proxy (CORS/referrer muammosiz)
+  if (import.meta.env.DEV && hasDirectVisionKey()) {
+    attempts.push({ name: 'local', run: () => callLocalVisionImport(payload) })
+  }
+
+  // Brauzer → Gemini/OpenAI
+  if (hasDirectVisionKey()) {
+    attempts.push({ name: 'direct', run: () => callDirectVisionImport(payload) })
+  }
+
+  // Supabase faqat kalit yo'q bo'lganda
+  if (!hasDirectVisionKey()) {
+    attempts.push({ name: 'supabase', run: () => callSupabaseVisionImport(payload) })
+  }
+
+  if (!attempts.length) {
+    throw new Error(
+      'Vision API kaliti sozlanmagan. .env ga VITE_GEMINI_API_KEY qo\'ying va serverni qayta ishga tushiring.'
+    )
+  }
+
+  let lastError = null
+
+  for (const attempt of attempts) {
+    try {
+      const data = await attempt.run()
+      if ((data?.rows || []).length > 0) {
+        return data
+      }
+      lastError = new Error('Rasmdan bemor ma\'lumoti topilmadi')
+    } catch (err) {
+      lastError = err
+    }
+  }
+
+  throw lastError || new Error(
+    'Daftar rasmini tahlil qilib bo\'lmadi. Surat sifatini yaxshilang yoki CSV/Excel import qiling.'
+  )
+}
+
 export const parseVisionImage = async (file) => {
-  const base64 = await readFileAsBase64(file)
-  const mimeType = file.type || 'image/jpeg'
+  const { base64, mimeType } = await compressImageForVision(file)
   const clinicId = await getCurrentClinicId()
+
+  const uploaded = await uploadImportImage(file)
 
   const payload = {
     image_base64: base64,
@@ -119,35 +181,14 @@ export const parseVisionImage = async (file) => {
     clinic_id: clinicId,
   }
 
-  let data = null
-
-  if (import.meta.env.DEV) {
-    try {
-      data = await callLocalVisionImport(payload)
-    } catch {
-      try {
-        data = await callSupabaseVisionImport(payload)
-      } catch {
-        data = await callDirectVisionImport(payload)
-      }
-    }
-  } else {
-    try {
-      data = await callSupabaseVisionImport(payload)
-    } catch (supabaseErr) {
-      if (getVisionConfig().apiKey) {
-        data = await callDirectVisionImport(payload)
-      } else if (supabaseErr.status === 404) {
-        throw new Error(
-          'vision-import Supabase da topilmadi. Edge Function deploy qiling yoki .env ga VITE_GEMINI_API_KEY qo\'ying.'
-        )
-      } else {
-        throw supabaseErr
-      }
+  try {
+    const data = await runVisionImport(payload)
+    return normalizeVisionRows(data.rows || [])
+  } finally {
+    if (uploaded?.path) {
+      await deleteImportImage(uploaded.path)
     }
   }
-
-  return normalizeVisionRows(data.rows || [])
 }
 
 export const prepareImportPreview = async (rawRows) => {
@@ -193,6 +234,37 @@ const finalizeImportJob = async (jobId, stats) => {
   }
 }
 
+const buildParsedRowPayload = (row) => ({
+  full_name: row.full_name || '',
+  phone: row.phone || '',
+  birth_date: row.birth_date || null,
+  notes: row.notes || null,
+  diagnosis: row.diagnosis || null,
+  last_visit: row.last_visit || null,
+  address: row.address || null,
+  tooth_notes: row.tooth_notes || [],
+  visit_history: row.visit_history || [],
+  total_price: row.total_price ?? null,
+  total_paid: row.total_paid ?? null,
+})
+
+const saveImportRow = async (jobId, rowIndex, row, status, { patientId = null, errorMessage = null } = {}) => {
+  if (!jobId) return
+  try {
+    await supabasePost(ROWS_TABLE, {
+      job_id: jobId,
+      row_index: rowIndex,
+      status,
+      confidence: row.confidence ?? 1,
+      parsed: buildParsedRowPayload(row),
+      error_message: errorMessage,
+      patient_id: patientId,
+    })
+  } catch {
+    // audit optional
+  }
+}
+
 /**
  * Tasdiqlangan qatorlarni import qiladi.
  * @param {Array} rows — preview rows with selected=true
@@ -215,58 +287,43 @@ export const commitImportRows = async (rows, { sourceType = 'csv', skipDuplicate
     skipped: 0,
     errors: [],
     patientIds: [],
+    visitIds: [],
+    paymentIds: [],
+    appointmentIds: [],
+    totalRevenue: 0,
   }
 
-  for (const row of toImport) {
+  for (let index = 0; index < toImport.length; index += 1) {
+    const row = toImport[index]
+    const rowIndex = row._sourceLine || index + 1
+
     try {
       if (!row.full_name?.trim()) {
         results.skipped += 1
+        await saveImportRow(job?.id, rowIndex, row, 'skipped', {
+          errorMessage: 'Ism kiritilmagan',
+        })
         continue
       }
 
-      const patient = await createPatient({
-        full_name: row.full_name.trim(),
-        phone: row.phone || '',
-        birth_date: row.birth_date || null,
-        address: row.address || null,
-        notes: [row.notes, row.last_visit ? `Oxirgi tashrif: ${row.last_visit}` : null]
-          .filter(Boolean)
-          .join('\n') || null,
-        createFirstVisit: false,
-        status: 'waiting',
-      })
+      const imported = await importPatientRow(row)
 
-      results.patientIds.push(patient.id)
+      results.patientIds.push(imported.patientId)
+      results.visitIds.push(...imported.visitIds)
+      results.paymentIds.push(...imported.paymentIds)
+      results.appointmentIds.push(...imported.appointmentIds)
+      results.totalRevenue += row.total_paid || 0
 
-      const toothNotes = row.tooth_notes || []
-      if (toothNotes.length > 0) {
-        const visit = await createVisit({
-          patient_id: patient.id,
-          status: 'pending',
-          notes: 'Daftar import — odontogramma',
-          channel: 'import',
-        })
-
-        const odontogramData = toothNotesToOdontogramData(
-          toothNotes,
-          createEmptyOdontogram()
-        )
-
-        await createOdontogramSnapshot({
-          patient_id: patient.id,
-          visit_id: visit.id,
-          doctor_id: null,
-          data: odontogramData,
-        })
-      }
-
+      await saveImportRow(job?.id, rowIndex, row, 'imported', { patientId: imported.patientId })
       results.imported += 1
     } catch (err) {
       results.failed += 1
+      const message = err?.message || 'Import xatolik'
       results.errors.push({
         name: row.full_name,
-        message: err?.message || 'Import xatolik',
+        message,
       })
+      await saveImportRow(job?.id, rowIndex, row, 'failed', { errorMessage: message })
     }
   }
 
@@ -286,6 +343,10 @@ export const commitImportRows = async (rows, { sourceType = 'csv', skipDuplicate
       failed: results.failed,
       skipped: results.skipped,
       source_type: sourceType,
+      visits: results.visitIds.length,
+      payments: results.paymentIds.length,
+      appointments: results.appointmentIds.length,
+      total_revenue: results.totalRevenue,
     },
   })
 
@@ -304,4 +365,14 @@ export const downloadImportTemplateCsv = () => {
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
+}
+
+export const downloadImportTemplateExcel = () => {
+  const sheet = XLSX.utils.aoa_to_sheet([
+    ['Ism', 'Telefon', 'Tugilgan sana', 'Izoh', 'Oxirgi tashrif'],
+    ['Ali Valiyev', '+998901234567', '1990-05-12', 'Eslatma', '2026-01-15'],
+  ])
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Bemorlar')
+  XLSX.writeFile(workbook, 'shifocrm_daftar_shablon.xlsx')
 }
