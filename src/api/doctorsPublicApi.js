@@ -158,19 +158,44 @@ const formatDateLabel = (dateText) => {
 export const getDoctorByPublicSlug = async (slug) => {
   try {
     const cleanSlug = String(slug || '').trim().toLowerCase()
-    if (!cleanSlug) throw new Error('Slug required')
+    if (!cleanSlug) return null
 
-    const queryWithLocation = `public_slug=eq.${encodeURIComponent(cleanSlug)}&is_public=eq.true&select=id,full_name,phone,public_bio,public_avatar_url,public_location_url,specialization,clinic_id,public_phone,public_telegram,public_whatsapp,work_schedule`
-    const queryWithoutLocation = `public_slug=eq.${encodeURIComponent(cleanSlug)}&is_public=eq.true&select=id,full_name,phone,public_bio,public_avatar_url,specialization,clinic_id,public_phone,public_telegram,public_whatsapp,work_schedule`
+    const baseFilter = `public_slug=eq.${encodeURIComponent(cleanSlug)}&is_public=eq.true&limit=1`
+    const selectVariants = [
+      'id,full_name,phone,public_bio,public_avatar_url,public_location_url,specialization,clinic_id,public_phone,public_telegram,public_whatsapp,work_schedule',
+      'id,full_name,phone,public_bio,public_avatar_url,specialization,clinic_id,public_phone,public_telegram,public_whatsapp,work_schedule',
+      'id,full_name,phone,public_bio,public_avatar_url,specialization,clinic_id,public_phone,work_schedule',
+      'id,full_name,phone,public_bio,public_avatar_url,specialization,clinic_id,public_phone',
+      'id,full_name,phone,specialization,clinic_id,public_slug,is_public',
+    ]
 
-    let rows
-    try {
-      rows = await supabaseGet('doctors', queryWithLocation)
-    } catch (error) {
-      if (!isMissingColumnError(error, 'public_location_url')) {
+    let rows = null
+    let lastError = null
+    for (const select of selectVariants) {
+      try {
+        rows = await supabaseGet('doctors', `${baseFilter}&select=${select}`)
+        lastError = null
+        break
+      } catch (error) {
+        lastError = error
+        const status = Number(error?.status || 0)
+        // RLS/permission — public sahifa uchun null qaytaramiz (throw qilmaymiz)
+        if (status === 401 || status === 403) {
+          console.warn('⚠️ Public doctor RLS blocked:', error?.message || error)
+          return null
+        }
+        // Column missing / bad request — keyingi select variantiga o'tamiz
+        if (status === 400 || isMissingColumnError(error, 'column')) {
+          continue
+        }
         throw error
       }
-      rows = await supabaseGet('doctors', queryWithoutLocation)
+    }
+
+    if (lastError && !rows) {
+      const status = Number(lastError?.status || 0)
+      if (status === 401 || status === 403 || status === 400) return null
+      throw lastError
     }
 
     if (!rows || !rows[0]) return null
@@ -222,16 +247,27 @@ export const getDoctorServices = async (clinicId) => {
 export const getDoctorClinicInfo = async (clinicId) => {
   try {
     const numId = Number(clinicId)
-    if (!Number.isFinite(numId)) throw new Error('Invalid clinic_id')
+    if (!Number.isFinite(numId)) return null
 
-    const rows = await supabaseGet(
-      'clinics',
-      `id=eq.${numId}&select=id,name,logo_url`
-    )
-    return rows && rows[0] ? rows[0] : null
+    const selectVariants = [
+      'id,name,logo_url',
+      'id,name',
+    ]
+    for (const select of selectVariants) {
+      try {
+        const rows = await supabaseGet('clinics', `id=eq.${numId}&select=${select}&limit=1`)
+        return rows && rows[0] ? rows[0] : null
+      } catch (error) {
+        const status = Number(error?.status || 0)
+        if (status === 401 || status === 403) return null
+        if (status === 400 || isMissingColumnError(error, 'column')) continue
+        throw error
+      }
+    }
+    return null
   } catch (error) {
     console.error('❌ Failed to fetch clinic info:', error)
-    throw error
+    return null
   }
 }
 

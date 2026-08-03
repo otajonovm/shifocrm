@@ -203,7 +203,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'vue-toastification'
 import DoctorLeadForm from '@/components/public/DoctorLeadForm.vue'
@@ -216,6 +216,7 @@ import {
 } from '@/api/doctorsPublicApi'
 
 const route = useRoute()
+const router = useRouter()
 const { t, locale } = useI18n()
 const toast = useToast()
 
@@ -371,10 +372,33 @@ const handleLeadSubmitted = async ({ preferred_date, preferred_time } = {}) => {
 onMounted(async () => {
   try {
     loading.value = true
-    const slug = route.params.slug
+    const slug = String(route.params.slug || '').trim().toLowerCase()
 
     // Fetch doctor
-    const doctorData = await getDoctorByPublicSlug(slug)
+    let doctorData = null
+    try {
+      doctorData = await getDoctorByPublicSlug(slug)
+    } catch (err) {
+      console.error('Error loading doctor by slug:', err)
+      doctorData = null
+    }
+
+    // /d/vipdent kabi clinic slug berilgan bo'lsa — clinic public sahifaga yo'naltiramiz
+    if (!doctorData && slug) {
+      try {
+        const { getClinicByPublicSlug } = await import('@/api/clinicsPublicApi')
+        const clinicMatch = await getClinicByPublicSlug(slug)
+        if (clinicMatch?.slug || clinicMatch?.id) {
+          await router.replace({ name: 'clinic-public-profile', params: { slug } })
+          return
+        }
+      } catch (clinicErr) {
+        console.warn('Clinic slug fallback failed:', clinicErr)
+      }
+      error.value = t('publicDoctorProfile.errorNotFound')
+      return
+    }
+
     if (!doctorData) {
       error.value = t('publicDoctorProfile.errorNotFound')
       return
@@ -384,9 +408,8 @@ onMounted(async () => {
     const initialLang = String(doctorData?.public_language || doctorData?.language || locale.value || 'uz').toLowerCase()
     publicLanguage.value = initialLang.startsWith('ru') ? 'ru' : 'uz'
 
-    // Fetch clinic info
-    const clinicData = await getDoctorClinicInfo(doctorData.clinic_id)
-    clinic.value = clinicData
+    // Fetch clinic info (ixtiyoriy — xato bo'lsa ham profil ochilsin)
+    clinic.value = await getDoctorClinicInfo(doctorData.clinic_id)
 
     // Fetch services (optional)
     services.value = await getDoctorServices(doctorData.clinic_id)
