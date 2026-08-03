@@ -3,13 +3,17 @@
  * REST API orqali fetch bilan ishlash
  */
 
-export const SUPABASE_URL = 'https://qwngzvtanjlkvdbkvbew.supabase.co'
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3bmd6dnRhbmpsa3ZkYmt2YmV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwMzAxOTQsImV4cCI6MjA4MzYwNjE5NH0.PkSebyYQ5TDdPUBikgh3W6NlPh__aiIKT3Z9xcIbFyM'
+export const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
+export const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '')
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.warn('[supabase] VITE_SUPABASE_URL yoki VITE_SUPABASE_ANON_KEY sozlanmagan')
+}
 
 // REST API base URL
 export const REST_URL = `${SUPABASE_URL}/rest/v1`
 
-// Default headers for all requests
+// Default headers for all requests (anon key — oddiy clinic CRM login)
 export const getHeaders = () => ({
   'apikey': SUPABASE_ANON_KEY,
   'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -17,13 +21,35 @@ export const getHeaders = () => ({
   'Prefer': 'return=representation'
 })
 
+const toNetworkError = (error) => {
+  const e = new Error(
+    'Internet aloqasi yo‘q yoki Supabase ga ulanib bo‘lmadi. Wi‑Fi/VPN ni tekshirib qayta urinib ko‘ring.',
+  )
+  e.status = 0
+  e.code = 'NETWORK_ERROR'
+  e.cause = error
+  return e
+}
+
 // Helper: GET request
 export const supabaseGet = async (table, query = '') => {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    const e = new Error('VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY sozlanmagan')
+    e.status = 503
+    e.code = 'ENV_MISSING'
+    throw e
+  }
+
   const url = `${REST_URL}/${table}${query ? `?${query}` : ''}`
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: getHeaders()
-  })
+  let response
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: getHeaders(),
+    })
+  } catch (error) {
+    throw toNetworkError(error)
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}))
@@ -141,4 +167,21 @@ export const supabaseDelete = async (table, id) => {
   }
 
   return true
+}
+
+export const supabaseRpc = async (functionName, args = {}) => {
+  const response = await fetch(`${REST_URL}/rpc/${functionName}`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(args),
+  })
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    const error = new Error(body.message || `${functionName} failed: ${response.status}`)
+    error.status = response.status
+    error.code = body.code
+    error.details = body.details
+    throw error
+  }
+  return response.json().catch(() => null)
 }

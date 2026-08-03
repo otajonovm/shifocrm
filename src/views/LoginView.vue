@@ -200,6 +200,9 @@ import { useToast } from '@/composables/useToast'
 import { useI18n } from 'vue-i18n'
 import { isClinicOwner, isGlobalSuperAdmin, isSolo, ROLES } from '@/lib/roles'
 import { getSoloHomeRoute } from '@/lib/soloFocus'
+import { resolveDoctorHomePath, resolveStaffHomePath } from '@/lib/permissionHome'
+import { isStaffOps, isDoctorLike } from '@/lib/roles'
+import { usePermission } from '@/composables/usePermission'
 import {
   UZ_PHONE_PLACEHOLDER,
   formatPhoneUzDisplay,
@@ -212,6 +215,7 @@ const authStore = useAuthStore()
 const clinicStore = useClinicStore()
 const toast = useToast()
 const { t } = useI18n() // t() is used in script section for toast messages
+const { can, ensurePermissions } = usePermission()
 
 const loginType = ref('admin')
 const adminLogin = ref('')
@@ -245,7 +249,7 @@ const handleAdminLogin = async () => {
       : (isGlobalSuperAdmin(authStore) ? '/admin-dashboard' : '/dashboard')
     router.push(safeRedirect(defaultRedirect))
   } else {
-    toast.error(t('auth.loginOrPasswordWrong'))
+    toast.error(authStore.error || t('auth.loginOrPasswordWrong'))
   }
 }
 
@@ -272,10 +276,22 @@ const handleDoctorLogin = async () => {
 
   if (success) {
     toast.success(t('auth.loginSuccess'))
-    const defaultDoctorRedirect = isSolo(authStore) ? getSoloHomeRoute() : '/doctor/profile'
-    router.push(safeRedirect(defaultDoctorRedirect))
+    if (isSolo(authStore)) {
+      router.push(safeRedirect(getSoloHomeRoute()))
+      return
+    }
+    await ensurePermissions().catch(() => {})
+    if (isStaffOps(authStore)) {
+      router.push(safeRedirect(resolveStaffHomePath(can)))
+      return
+    }
+    if (isDoctorLike(authStore)) {
+      router.push(safeRedirect(resolveDoctorHomePath(can)))
+      return
+    }
+    router.push(safeRedirect(resolveStaffHomePath(can)))
   } else {
-    toast.error(t('auth.phoneOrPasswordWrong'))
+    toast.error(authStore.error || t('auth.phoneOrPasswordWrong'))
   }
 }
 </script>

@@ -66,7 +66,7 @@
   "patients": {
     "title": "Bemorlar",
     "allPatients": "Barcha Bemorlar",
-    "myPatients": "Mening Bemorlarim",
+    "myPatients": "Bemorlarim",
     "patientList": "Tizimdagi barcha bemorlar ro'yxati",
     "myPatientList": "Sizga biriktirilgan bemorlar",
     "addPatient": "Yangi Bemor",
@@ -125,7 +125,7 @@
   },
   "appointments": {
     "title": "Uchrashuvlar",
-    "myAppointments": "Mening Kalendarim",
+    "myAppointments": "Kalendarim",
     "appointmentsCalendar": "Qabullar jadvali",
     "addAppointment": "Yangi Uchrashuv"
   },
@@ -161,7 +161,7 @@
     "overview": "Umumiy ko'rsatkichlar",
     "welcome": "Xush kelibsiz",
     "todaySchedule": "Bugungi jadvalingizni ko'rib chiqing",
-    "myPatients": "Mening Bemorlarim",
+    "myPatients": "Bemorlarim",
     "newThisWeek": "shu hafta",
     "todayAppointments": "Bugungi Uchrashuvlarim",
     "treatmentPlans": "Davolash Rejalari",

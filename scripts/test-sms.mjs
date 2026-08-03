@@ -6,7 +6,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { sendSMS, normalizePhoneForEskiz, ESKIZ_TEST_MESSAGES } from '../services/smsService.js'
+import { sendSMS, normalizePhoneForTextUp, getTextUpAuth } from '../services/smsService.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootEnv = resolve(__dirname, '../.env')
@@ -29,49 +29,41 @@ function loadEnvFile(filePath) {
       process.env[key] = value
     }
   }
-  // Eskiz_token kabi eski nomlarni normalizatsiya
-  if (!process.env.ESKIZ_TOKEN && process.env.Eskiz_token) {
-    process.env.ESKIZ_TOKEN = process.env.Eskiz_token
-  }
 }
 
 loadEnvFile(rootEnv)
 
 const phoneArg = process.argv[2] || '940542722'
-const message = process.argv[3] || ESKIZ_TEST_MESSAGES[0]
+// TextUp faqat tasdiqlangan shablon matnini qabul qiladi
+const message = process.argv[3] || 'TextUp Platformasidan tasdiqlash kodingiz: 1929'
 
-const hasToken = Boolean(
-  String(
-    process.env.ESKIZ_TOKEN
-    || process.env.ESKIZ_API_TOKEN
-    || process.env.Eskiz_token
-    || ''
-  ).trim()
-)
-const hasLogin = Boolean(process.env.ESKIZ_EMAIL && process.env.ESKIZ_PASSWORD)
+const hasLogin = Boolean(process.env.TEXTUP_EMAIL && process.env.TEXTUP_PASSWORD)
 
-if (!hasToken && !hasLogin) {
-  console.error('Xato: .env da quyidagilardan biri bo\'lishi kerak:')
-  console.error('  1) ESKIZ_TOKEN=...  (my.eskiz.uz SMS shlyuz tokeni)')
-  console.error('  2) ESKIZ_EMAIL + ESKIZ_PASSWORD  (login orqali token olish)')
+if (!hasLogin) {
+  console.error('Xato: .env da TEXTUP_EMAIL va TEXTUP_PASSWORD bo\'lishi kerak.')
   console.error('')
-  console.error('PMAk-... Postman kalitidir — Eskiz uchun ishlamaydi!')
+  console.error('Misol:')
+  console.error('  TEXTUP_EMAIL=your@email.uz')
+  console.error('  TEXTUP_PASSWORD=your_password')
+  console.error('  TEXTUP_USER_ID=uuid  # ixtiyoriy — login javobidan ham olinadi')
+  console.error('')
   console.error('Fayl:', rootEnv)
   process.exit(1)
 }
 
-if (String(process.env.ESKIZ_TOKEN || '').startsWith('PMAK-')) {
-  console.error('Xato: ESKIZ_TOKEN PMAK- bilan boshlanadi — bu Postman kaliti, Eskiz JWT emas.')
-  console.error('Postmanda POST https://notify.eskiz.uz/api/auth/login → Body: { email, password }')
-  console.error('Javobdagi data.token (eyJ...) ni ESKIZ_TOKEN ga qo\'ying.')
+console.log('TextUp ga login qilinmoqda...')
+const auth = await getTextUpAuth()
+if (!auth.success) {
+  console.error('Login xatosi:', auth.error)
   process.exit(1)
 }
+console.log('Login OK. userId:', auth.userId)
 
-const normalized = normalizePhoneForEskiz(phoneArg)
+const normalized = normalizePhoneForTextUp(phoneArg)
 console.log('Yuborilmoqda:', normalized)
 console.log('Matn:', message)
 if (!process.argv[3]) {
-  console.log('(Eskiz test hisobi: default ruxsat etilgan matn ishlatildi)')
+  console.log('(Default: .env dagi TEXTUP_TEMPLATE_ID shablon matni ishlatildi)')
 }
 
 const result = await sendSMS(phoneArg, message)

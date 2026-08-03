@@ -414,7 +414,9 @@ export function getWorkHoursSummary(employee) {
 /** UI rol tanlovi (wizard) */
 export const UI_ROLE_OPTIONS = [
   { value: 'administrator', labelUz: 'Administrator', dbRole: 'administrator' },
+  { value: 'chief_doctor', labelUz: 'Bosh shifokor', dbRole: 'chief_doctor' },
   { value: 'doctor', labelUz: 'Shifokor', dbRole: 'doctor' },
+  { value: 'reception', labelUz: 'Qabulxona', dbRole: 'reception' },
   { value: 'assistant', labelUz: 'Assistent', dbRole: 'assistant' },
   { value: 'cashier', labelUz: 'Kassir', dbRole: 'cashier' },
 ]
@@ -457,13 +459,17 @@ export function splitFullName(fullName) {
 export function uiRoleFromEmployee(employee) {
   const role = employee?.role || specialtyToRole(employee?.specialization)
   if (role === 'administrator') return 'administrator'
+  if (role === 'chief_doctor') return 'chief_doctor'
+  if (role === 'reception') return 'reception'
   if (role === 'assistant') return 'assistant'
   if (role === 'cashier') return 'cashier'
   return 'doctor'
 }
 
 export function specializationFromUiRole(uiRole, specialty = '') {
-  if (uiRole === 'administrator') return 'Administrator (Reception)'
+  if (uiRole === 'administrator') return 'Administrator'
+  if (uiRole === 'chief_doctor') return 'Bosh shifokor'
+  if (uiRole === 'reception') return 'Qabulxona (Reception)'
   if (uiRole === 'assistant') return 'Assistent (Yordamchi)'
   if (uiRole === 'cashier') return 'Kassir/Buxgalter'
   return specialty || 'Terapevt'

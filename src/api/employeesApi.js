@@ -133,6 +133,21 @@ export const getEmployeeById = async (employeeId) => {
   return row ? hydrateEmployee(stripPassword(row)) : null
 }
 
+/** Doctors jadvalidagi id bo‘yicha bog‘langan employee (staff wizard). */
+export const getEmployeeByLegacyDoctorId = async (legacyDoctorId, clinicId = null) => {
+  const doctorId = Number(legacyDoctorId)
+  if (!Number.isFinite(doctorId)) return null
+
+  let query = buildEmployeesQuery(`legacy_doctor_id=eq.${doctorId}`)
+  if (clinicId != null && Number.isFinite(Number(clinicId))) {
+    query += `&clinic_id=eq.${Number(clinicId)}`
+  }
+
+  const rows = await supabaseGet(EMPLOYEES_TABLE, query)
+  const row = Array.isArray(rows) ? rows[0] : null
+  return row ? hydrateEmployee(stripPassword(row)) : null
+}
+
 export const createEmployee = async (employeeData, permissionsData, scheduleData) => {
   let createdEmployeeId = null
 
@@ -328,7 +343,7 @@ export const deleteEmployee = async (employeeId) => {
 }
 
 export const logEmployeeActivity = async (employeeId, action, details = {}, clinicId = null) => {
-  if (!action) throw new Error('Action is required')
+  if (!action) return null
 
   const resolvedClinicId = clinicId != null && Number.isFinite(Number(clinicId))
     ? Number(clinicId)
@@ -344,6 +359,14 @@ export const logEmployeeActivity = async (employeeId, action, details = {}, clin
     created_at: new Date().toISOString(),
   }
 
-  const result = await supabasePost(LOGS_TABLE, payload)
-  return result?.[0] || null
+  try {
+    const result = await supabasePost(LOGS_TABLE, payload)
+    return result?.[0] || null
+  } catch (error) {
+    // RLS/401 yoki jadval yo'q — asosiy UI ni buzmasin
+    if (import.meta.env.DEV) {
+      console.debug('[activity_logs] yozilmadi:', error?.message || error)
+    }
+    return null
+  }
 }

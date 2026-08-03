@@ -12,7 +12,7 @@ import {
   createEmptyPermissionsMatrix,
 } from '@/lib/staffPermissionsMatrix'
 
-/** Matritsadan legacy scalar + module_permissions yaratish */
+/** Matritsadan legacy scalar + module_permissions yaratish (deny-by-default). */
 export function syncLegacyPermissionFlags(matrix) {
   const m = clonePermissionsMatrix(matrix)
   const module_permissions = { ...DEFAULT_PERMISSIONS }
@@ -23,22 +23,24 @@ export function syncLegacyPermissionFlags(matrix) {
   if (m.patients?.edit || m.patients?.create) {
     module_permissions.can_view_patients = true
   }
-  if (m.patients?.view) module_permissions.can_view_dashboard = true
 
-  if (m.finances?.view) data_permissions.can_view_revenue = true
-  if (m.analytics?.view) data_permissions.can_view_revenue = true
+  if (m.dashboard?.view) module_permissions.can_view_dashboard = true
+  if (m.appointments?.view) module_permissions.can_view_appointments = true
+  if (m.leads?.view) module_permissions.can_view_leads = true
+  if (m.treatment_plans?.view) module_permissions.can_view_treatment_plans = true
+  if (m.settings?.view || m.settings?.edit) {
+    module_permissions.can_edit_profile = true
+  }
+
+  if (m.payments?.view) data_permissions.can_view_revenue = true
+  if (m.reports?.view) data_permissions.can_view_revenue = true
   if (m.settings?.edit) data_permissions.can_edit_prices = true
   if (m.patients?.edit || m.patients?.delete) {
     data_permissions.can_manage_medical_records = true
   }
-  if (m.analytics?.view || m.finances?.view) {
+  if (m.reports?.view || m.payments?.view) {
     data_permissions.can_export_data = true
   }
-
-  if (m.patients?.view) module_permissions.can_view_appointments = true
-  if (m.patients?.view) module_permissions.can_view_leads = true
-  if (m.patients?.view) module_permissions.can_view_treatment_plans = true
-  module_permissions.can_edit_profile = true
 
   return {
     permissions: m,
@@ -63,22 +65,28 @@ export function matrixFromLegacyFlags({ module_permissions, data_permissions, pe
     matrix.patients.edit = !!mod.can_add_patients
   }
   if (data.can_view_revenue) {
-    matrix.finances.view = true
-    matrix.analytics.view = true
+    matrix.payments.view = true
+    matrix.reports.view = true
   }
   if (data.can_edit_prices) {
     matrix.settings.view = true
     matrix.settings.edit = true
   }
   if (data.can_export_data) {
-    matrix.analytics.view = true
+    matrix.reports.view = true
   }
   if (data.can_manage_medical_records) {
     matrix.patients.edit = true
     matrix.patients.delete = true
   }
   if (mod.can_view_appointments) {
-    matrix.patients.view = true
+    matrix.appointments.view = true
+  }
+  if (mod.can_view_dashboard) matrix.dashboard.view = true
+  if (mod.can_view_leads) matrix.leads.view = true
+  if (mod.can_view_treatment_plans) matrix.treatment_plans.view = true
+  if (mod.can_edit_profile) {
+    matrix.settings.view = true
   }
 
   return matrix
@@ -89,9 +97,9 @@ export function checkMatrixDataPermission(matrix, permissionKey) {
   const m = matrix || createEmptyPermissionsMatrix()
   switch (permissionKey) {
     case 'can_view_revenue':
-      return !!(m.finances?.view || m.analytics?.view)
+      return !!(m.payments?.view || m.reports?.view)
     case 'can_export_data':
-      return !!(m.analytics?.view && (m.analytics?.create || m.finances?.view))
+      return !!(m.reports?.view && (m.reports?.create || m.payments?.view))
     case 'can_edit_prices':
       return !!m.settings?.edit
     case 'can_manage_medical_records':

@@ -24,7 +24,7 @@
               <div class="flex flex-wrap items-center gap-2 mb-1">
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-900 truncate">{{ patient.full_name }}</h1>
                 <button
-                  v-if="isAdmin"
+                  v-if="isAdmin && canEditPatients"
                   @click="openPatientStatusModal"
                   class="cursor-pointer hover:opacity-80 transition-opacity touch-manipulation"
                 >
@@ -112,7 +112,7 @@
         <div class="p-4 sm:p-6">
           <!-- Tashriflar Tab -->
           <div v-if="activeTab === 'visits'">
-            <PatientVisitsTable :patient-id="patient.id" :can-edit="canManageMedicalRecords" />
+            <PatientVisitsTable :patient-id="patient.id" :can-edit="canEditMedicalRecords" />
           </div>
 
           <!-- Odontogramma Tab -->
@@ -333,9 +333,10 @@ import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
 import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
 import { usePatientsStore } from '@/stores/patients'
 import { useAuthStore } from '@/stores/auth'
-import { isAdminLike, isDoctor as hasDoctorRole, isSolo as hasSoloRole, ROLES } from '@/lib/roles'
+import { isAdminLike, isDoctor as hasDoctorRole, isSolo as hasSoloRole } from '@/lib/roles'
 import { useToast } from '@/composables/useToast'
 import { useDataPermission } from '@/composables/useDataPermission'
+import { usePermission } from '@/composables/usePermission'
 import { PATIENT_STATUSES, getPatientStatusLabel, normalizePatientStatus } from '@/constants/patientStatus'
 import { ArrowLeftIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import * as visitsApi from '@/api/visitsApi'
@@ -350,6 +351,9 @@ const router = useRouter()
 const patientsStore = usePatientsStore()
 const authStore = useAuthStore()
 const { allowed: canManageMedicalRecords } = useDataPermission('can_manage_medical_records')
+const { can } = usePermission()
+const canEditPatients = computed(() => can('patients', 'edit'))
+const canEditMedicalRecords = computed(() => canManageMedicalRecords.value && canEditPatients.value)
 
 const patient = ref(null)
 const loading = ref(true)
@@ -409,18 +413,9 @@ const handlePaymentStatusUpdate = async (newStatus) => {
   }
 }
 
-const formatCurrency = (amount) => {
-  if (!amount) return '0 so\'m'
-  return new Intl.NumberFormat('uz-UZ', {
-    style: 'currency',
-    currency: 'UZS',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount).replace('UZS', 'so\'m')
-}
-
 // Patient status o'zgartirish modalini ochish
 const openPatientStatusModal = () => {
+  if (!canEditPatients.value) return
   if (!isAdmin.value) return
   newPatientStatus.value = normalizePatientStatus(patient.value?.status)
   showPatientStatusModal.value = true
@@ -433,6 +428,7 @@ const closePatientStatusModal = () => {
 
 // Patient status o'zgartirish
 const updatePatientStatus = async () => {
+  if (!canEditPatients.value) return
   if (!isAdmin.value || !patient.value) return
 
   updatingPatientStatus.value = true

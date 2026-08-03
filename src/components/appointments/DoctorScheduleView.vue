@@ -33,8 +33,51 @@
         </button>
       </div>
 
-      <!-- Jadval: ekran balandligini to'ldiradi, kerak bo'lsa vertikal scroll -->
+      <!-- Haftalik / oylik ko'rinish -->
       <div
+        v-if="viewMode !== 'day'"
+        class="flex-1 min-h-0 overflow-auto bg-white p-2 sm:p-3"
+      >
+        <div
+          class="grid gap-2"
+          :class="viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-7'"
+        >
+          <button
+            v-for="cell in periodCells"
+            :key="cell.date"
+            type="button"
+            class="min-h-[5.5rem] rounded-lg border p-2 text-left transition-colors"
+            :class="cell.date === currentDate
+              ? 'border-primary-400 bg-primary-50'
+              : (cell.inPeriod ? 'border-gray-200 bg-white hover:border-primary-200' : 'border-transparent bg-gray-50 text-gray-400')"
+            @click="selectPeriodDate(cell.date)"
+          >
+            <div class="text-xs font-semibold tabular-nums">{{ cell.label }}</div>
+            <div class="mt-1 space-y-0.5">
+              <div
+                v-for="appt in cell.appointments.slice(0, viewMode === 'week' ? 4 : 2)"
+                :key="appt.id"
+                class="truncate rounded px-1 py-0.5 text-[10px] font-medium"
+                :class="appt.status === 'cancelled' || appt.status === 'canceled'
+                  ? 'bg-gray-100 text-gray-500'
+                  : 'bg-emerald-50 text-emerald-800'"
+              >
+                {{ normalizeTimeSlot(appt.start_time) }} {{ appt.patient_name }}
+              </div>
+              <div
+                v-if="cell.appointments.length > (viewMode === 'week' ? 4 : 2)"
+                class="text-[10px] text-slate-500"
+              >
+                +{{ cell.appointments.length - (viewMode === 'week' ? 4 : 2) }}
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Kunlik jadval: ekran balandligini to'ldiradi, kerak bo'lsa vertikal scroll -->
+      <div
+        v-else
         ref="scheduleCanvasRef"
         class="flex-1 min-h-0 relative bg-white flex flex-col"
         :class="needsVerticalScroll ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'"
@@ -133,7 +176,7 @@
                   class="absolute inset-x-1 pointer-events-auto transition-opacity duration-150 w-[calc(100%-0.5rem)] overflow-hidden"
                   :class="isDraggingId === appt.id ? 'z-40' : 'z-10'"
                   :style="getAppointmentStyle(appt)"
-                  draggable="true"
+                  :draggable="canEdit"
                   @dragstart="onDragStart($event, appt)"
                   @dragend="onDragEnd"
                 >
@@ -186,7 +229,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
-import { isAdminLike } from '@/lib/roles'
+import { isAdminLike, isStaffOps } from '@/lib/roles'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useClinicStore } from '@/stores/clinic'
@@ -197,6 +240,7 @@ import {
   timeStringToMinutes,
 } from '@/lib/clinicCalendarHours'
 import * as visitsApi from '@/api/visitsApi'
+import { moveVisit, isScheduleConflictError } from '@/services/appointmentService'
 import { enrichVisitsWithLeadInfo } from '@/lib/leadVisitEnrich'
 import { updateAppointment, getAppointmentsByPatientId } from '@/api/appointmentsApi'
 import { getSupabaseClient } from '@/lib/supabaseClient'
@@ -217,8 +261,23 @@ const props = defineProps({
   refreshKey: {
     type: Number,
     default: 0
-  }
+  },
+  insertedVisit: {
+    type: Object,
+    default: null,
+  },
+  canEdit: {
+    type: Boolean,
+    default: true,
+  },
+  viewMode: {
+    type: String,
+    default: 'day',
+    validator: (v) => ['day', 'week', 'month'].includes(v),
+  },
 })
+
+const viewMode = computed(() => props.viewMode || 'day')
 
 const emit = defineEmits(['update:selectedDate', 'update-status', 'open-payment', 'open-patient-detail'])
 
@@ -246,8 +305,10 @@ const skipNextSlotClick = ref(false)
 
 let realtimeChannel = null
 let realtimeReloadTimer = null
+let suppressRealtimeUntil = 0
 
 const scheduleRealtimeReload = () => {
+  if (Date.now() < suppressRealtimeUntil) return
   if (realtimeReloadTimer) clearTimeout(realtimeReloadTimer)
   realtimeReloadTimer = setTimeout(() => {
     loadAppointments()
@@ -263,16 +324,15 @@ const teardownRealtime = () => {
 
 const setupRealtime = async () => {
   teardownRealtime()
+  const cid = await getCurrentClinicId()
+  if (!cid) return
+
   const supabase = getSupabaseClient()
   const date = currentDate.value
-  const cid = await getCurrentClinicId()
-  const channelName = `doctor-schedule-${date}-${cid || 'all'}`
+  const channelName = `doctor-schedule-${date}-${cid}`
 
   const channel = supabase.channel(channelName)
-
-  const visitsFilter = cid
-    ? `clinic_id=eq.${cid}`
-    : undefined
+  const visitsFilter = `clinic_id=eq.${cid}`
 
   channel.on(
     'postgres_changes',
@@ -482,15 +542,128 @@ const getAppointmentsForDoctor = (doctorId) => {
     .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
 }
 
+// Visit qatorini kalendarda ko'rsatish uchun boyitish
+const enrichVisitRow = (visit) => {
+  const doctor = visibleDoctors.value.find(d => Number(d.id) === Number(visit.doctor_id))
+  const patient = patientByIdMap.value.get(Number(visit.patient_id))
+
+  const startTime = normalizeTimeSlot(visit.start_time)
+    || minutesToTimeString(calendarMinuteRange.value.startMinutes)
+  const endTime = normalizeTimeSlot(visit.end_time) || addMinutesToTime(startTime, visit.duration_minutes || 60)
+
+  return {
+    ...visit,
+    start_time: startTime,
+    end_time: endTime,
+    duration_minutes: visit.duration_minutes || 60,
+    doctor_name: doctor?.full_name || visit.doctor_name || 'N/A',
+    specialization: doctor?.specialization || 'N/A',
+    patient_name: patient?.full_name || visit.patient_name || `#${visit.patient_id}`,
+    phone: patient?.phone || visit.phone || '',
+    med_id: patient?.med_id || visit.med_id || '',
+    diagnosis: patient?.diagnosis || visit.diagnosis || null,
+    patient_address: patient?.address || visit.patient_address || '',
+    patient_gender: patient?.gender || visit.patient_gender || '',
+  }
+}
+
+const upsertAppointmentFromVisit = (visit) => {
+  if (!visit?.id) return
+
+  const visitDate = String(visit.date || '').slice(0, 10)
+  const { start, end } = periodRange.value
+  if (visitDate && (visitDate < start || visitDate > end)) return
+
+  const enriched = enrichVisitRow(visit)
+  const index = appointments.value.findIndex((item) => Number(item.id) === Number(visit.id))
+  if (index >= 0) {
+    appointments.value[index] = enriched
+    return
+  }
+
+  appointments.value = [...appointments.value, enriched]
+}
+
+const addDaysIso = (iso, days) => {
+  const d = new Date(`${iso}T12:00:00`)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+const startOfWeekIso = (iso) => {
+  const d = new Date(`${iso}T12:00:00`)
+  const day = d.getDay() // 0 Sun
+  const diff = day === 0 ? -6 : 1 - day // Monday start
+  d.setDate(d.getDate() + diff)
+  return d.toISOString().slice(0, 10)
+}
+
+const periodRange = computed(() => {
+  const base = currentDate.value
+  if (viewMode.value === 'week') {
+    const start = startOfWeekIso(base)
+    return { start, end: addDaysIso(start, 6) }
+  }
+  if (viewMode.value === 'month') {
+    const d = new Date(`${base}T12:00:00`)
+    const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
+    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10)
+    return { start, end }
+  }
+  return { start: base, end: base }
+})
+
+const periodCells = computed(() => {
+  const { start, end } = periodRange.value
+  const cells = []
+  if (viewMode.value === 'month') {
+    const monthStart = start
+    const gridStart = startOfWeekIso(monthStart)
+    for (let i = 0; i < 42; i += 1) {
+      const date = addDaysIso(gridStart, i)
+      const inPeriod = date >= start && date <= end
+      const dayAppts = appointments.value
+        .filter((a) => String(a.date || '').slice(0, 10) === date)
+        .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')))
+      cells.push({
+        date,
+        inPeriod,
+        label: String(Number(date.slice(8, 10))),
+        appointments: dayAppts,
+      })
+    }
+    return cells
+  }
+  // week
+  for (let i = 0; i < 7; i += 1) {
+    const date = addDaysIso(start, i)
+    const dayAppts = appointments.value
+      .filter((a) => String(a.date || '').slice(0, 10) === date)
+      .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')))
+    const d = new Date(`${date}T12:00:00`)
+    cells.push({
+      date,
+      inPeriod: true,
+      label: d.toLocaleDateString('uz-UZ', { weekday: 'short', day: '2-digit', month: '2-digit' }),
+      appointments: dayAppts,
+    })
+  }
+  return cells
+})
+
+const selectPeriodDate = (date) => {
+  currentDate.value = date
+  emit('update:selectedDate', date)
+}
+
 // Appointmentlarni yuklash
 const loadAppointments = async () => {
   loading.value = true
   try {
-    const startDate = currentDate.value
-    const endDate = currentDate.value
+    const { start: startDate, end: endDate } = periodRange.value
 
     let visits = []
-    if (isAdmin.value) {
+    if (isAdmin.value || isStaffOps(authStore)) {
       visits = await visitsApi.getVisitsByDateRange(startDate, endDate)
     } else if (authStore.user?.id) {
       visits = await visitsApi.getVisitsByDoctorAndDateRange(
@@ -504,30 +677,7 @@ const loadAppointments = async () => {
 
     // Shifokor va bemor ma'lumotlarini qo'shish
     // TEMP: start_time va end_time database'da yo'q bo'lgani uchun placeholder qo'shamiz
-    appointments.value = visits.map(visit => {
-      const doctor = visibleDoctors.value.find(d => Number(d.id) === Number(visit.doctor_id))
-      const patient = patientByIdMap.value.get(Number(visit.patient_id))
-
-      // Temporary: agar start_time yo'q bo'lsa, default qiymat ishlatish
-      const startTime = normalizeTimeSlot(visit.start_time)
-        || minutesToTimeString(calendarMinuteRange.value.startMinutes)
-      const endTime = normalizeTimeSlot(visit.end_time) || addMinutesToTime(startTime, visit.duration_minutes || 60)
-
-      return {
-        ...visit,
-        start_time: startTime,
-        end_time: endTime,
-        duration_minutes: visit.duration_minutes || 60,
-        doctor_name: doctor?.full_name || 'N/A',
-        specialization: doctor?.specialization || 'N/A',
-        patient_name: patient?.full_name || visit.patient_name || `#${visit.patient_id}`,
-        phone: patient?.phone || visit.phone || '',
-        med_id: patient?.med_id || visit.med_id || '',
-        diagnosis: patient?.diagnosis || visit.diagnosis || null,
-        patient_address: patient?.address || visit.patient_address || '',
-        patient_gender: patient?.gender || visit.patient_gender || ''
-      }
-    })
+    appointments.value = visits.map((visit) => enrichVisitRow(visit))
   } catch (error) {
     console.error('Failed to load appointments:', error)
     appointments.value = []
@@ -538,6 +688,7 @@ const loadAppointments = async () => {
 
 // Status o'zgartirish
 const handleStatusUpdate = async (newStatus) => {
+  if (!props.canEdit) return
   const appointmentId = typeof newStatus === 'object' ? newStatus.appointmentId : selectedPatientAppointment.value?.id
   const statusToSet = typeof newStatus === 'object' ? newStatus.status : newStatus
   if (!appointmentId || !statusToSet) return
@@ -662,6 +813,47 @@ const isDropTarget = (doctorId, time) =>
   dropHoverTarget.value?.doctorId === Number(doctorId)
   && dropHoverTarget.value?.time === time
 
+const INACTIVE_SCHEDULE_STATUSES = new Set(['cancelled', 'canceled', 'no_show', 'archived'])
+
+const timeSlotToMinutes = (timeStr) => {
+  const normalized = normalizeTimeSlot(timeStr)
+  if (!normalized) return 0
+  const [h, m] = normalized.split(':').map(Number)
+  return h * 60 + m
+}
+
+const hasLocalDoctorScheduleOverlap = ({
+  visitId,
+  doctorId,
+  date,
+  startTime,
+  endTime,
+  durationMinutes,
+}) => {
+  const start = timeSlotToMinutes(startTime)
+  let end = endTime ? timeSlotToMinutes(endTime) : 0
+  if (!end || end <= start) {
+    end = start + Math.max(Number(durationMinutes) || 60, 1)
+  }
+  if (!start || end <= start) return false
+
+  const day = String(date || currentDate.value).slice(0, 10)
+  return appointments.value.some((other) => {
+    if (Number(other.id) === Number(visitId)) return false
+    const status = String(other.status || '').toLowerCase()
+    if (INACTIVE_SCHEDULE_STATUSES.has(status)) return false
+    if (String(other.date || '').slice(0, 10) !== day) return false
+    if (Number(other.doctor_id) !== Number(doctorId)) return false
+
+    const otherStart = timeSlotToMinutes(other.start_time)
+    let otherEnd = timeSlotToMinutes(other.end_time)
+    if (!otherEnd || otherEnd <= otherStart) {
+      otherEnd = otherStart + getDurationMinutes(other)
+    }
+    return start < otherEnd && end > otherStart
+  })
+}
+
 const moveAppointmentTo = async (appointment, targetDoctorId, targetTimeSlot) => {
   const appt = typeof appointment === 'object'
     ? findAppointmentById(appointment.id)
@@ -683,6 +875,19 @@ const moveAppointmentTo = async (appointment, targetDoctorId, targetTimeSlot) =>
   const nextEnd = addMinutesToTime(nextStart, duration)
   if (!nextStart || !nextEnd) return
 
+  const moveDate = String(appt.date || currentDate.value).slice(0, 10)
+  if (hasLocalDoctorScheduleOverlap({
+    visitId: appt.id,
+    doctorId: targetDoctorId,
+    date: moveDate,
+    startTime: nextStart,
+    endTime: nextEnd,
+    durationMinutes: duration,
+  })) {
+    toast.error('Bu vaqtda shifokor band — boshqa slot tanlang')
+    return
+  }
+
   const optimisticPatch = {
     doctor_id: Number(targetDoctorId),
     doctor_name: doctor?.full_name || appt.doctor_name,
@@ -694,21 +899,23 @@ const moveAppointmentTo = async (appointment, targetDoctorId, targetTimeSlot) =>
   patchAppointmentInList(appt.id, optimisticPatch)
 
   try {
-    const updated = await visitsApi.updateVisit(appt.id, {
-      doctor_id: optimisticPatch.doctor_id,
-      doctor_name: optimisticPatch.doctor_name,
-      start_time: nextStart,
-      end_time: nextEnd,
-      duration_minutes: duration,
+    suppressRealtimeUntil = Date.now() + 2000
+    const updated = await moveVisit({
+      visitId: appt.id,
+      doctorId: optimisticPatch.doctor_id,
+      date: moveDate,
+      startTime: nextStart,
+      durationMinutes: duration,
     })
 
     if (updated) {
       patchAppointmentInList(appt.id, {
         doctor_id: updated.doctor_id ?? optimisticPatch.doctor_id,
-        doctor_name: updated.doctor_name || optimisticPatch.doctor_name,
+        doctor_name: optimisticPatch.doctor_name,
         start_time: normalizeTimeSlot(updated.start_time) || nextStart,
         end_time: normalizeTimeSlot(updated.end_time) || nextEnd,
         duration_minutes: updated.duration_minutes || duration,
+        date: updated.date || moveDate,
       })
     }
 
@@ -731,11 +938,19 @@ const moveAppointmentTo = async (appointment, targetDoctorId, targetTimeSlot) =>
   } catch (error) {
     patchAppointmentInList(appt.id, snapshot)
     console.error('Failed to move appointment:', error)
-    toast.error('Qabulni ko\'chirishda xatolik yuz berdi')
+    if (isScheduleConflictError(error)) {
+      toast.error('Bu vaqtda shifokor band — boshqa slot tanlang')
+    } else {
+      toast.error('Qabulni ko\'chirishda xatolik yuz berdi')
+    }
   }
 }
 
 const onDragStart = (event, appt) => {
+  if (!props.canEdit) {
+    event.preventDefault()
+    return
+  }
   if (event.target.closest('button')) {
     event.preventDefault()
     return
@@ -774,6 +989,7 @@ const onDragLeave = (event, doctorId, timeSlot) => {
 }
 
 const onDrop = async (event, targetDoctorId, targetTimeSlot) => {
+  if (!props.canEdit) return
   dropHoverTarget.value = null
   isDraggingId.value = null
 
@@ -800,6 +1016,7 @@ const onDrop = async (event, targetDoctorId, targetTimeSlot) => {
 }
 
 const handleToggleMoveSelect = (appt) => {
+  if (!props.canEdit) return
   if (clickMoveAppointment.value?.id === appt.id) {
     clickMoveAppointment.value = null
     toast.info('Ko\'chirish bekor qilindi')
@@ -869,6 +1086,10 @@ watch(() => currentDate.value, () => {
   setupRealtime()
 })
 
+watch(viewMode, () => {
+  loadAppointments()
+})
+
 watch(
   () => [clinicStore.calendarStartTime, clinicStore.calendarEndTime],
   () => loadAppointments()
@@ -888,6 +1109,16 @@ watch(() => props.refreshKey, () => {
       requestAnimationFrame(remeasureCanvas)
     })
   }
+})
+
+watch(() => props.insertedVisit, (visit) => {
+  if (!visit?.id) return
+  suppressRealtimeUntil = Date.now() + 2500
+  upsertAppointmentFromVisit(visit)
+  nextTick(() => {
+    remeasureCanvas()
+    requestAnimationFrame(remeasureCanvas)
+  })
 })
 
 watch(() => props.selectedDate, (value) => {

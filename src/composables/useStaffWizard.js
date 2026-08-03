@@ -17,7 +17,7 @@ import {
   isDoctorRole,
   specializationFromUiRole,
 } from '@/lib/staffHelpers'
-import { defaultMatrixForRole } from '@/lib/staffPermissionsMatrix'
+import { clonePermissionsMatrix, defaultMatrixForRole } from '@/lib/staffPermissionsMatrix'
 import { syncLegacyPermissionFlags } from '@/lib/staffPermissions'
 import { formatPhoneForStorage, isValidUzPhone } from '@/lib/phoneUz'
 
@@ -43,12 +43,16 @@ export function useStaffWizard({ onSaved } = {}) {
 
   const clinicName = computed(() => clinicStore.displayName || 'Joriy klinika')
 
+  const setPermissions = (matrix) => {
+    const normalized = clonePermissionsMatrix(matrix)
+    Object.keys(normalized).forEach((key) => {
+      permissions[key] = { ...normalized[key] }
+    })
+  }
+
   const resetForm = () => {
     Object.assign(form, buildEmptyWizardForm())
-    const matrix = defaultMatrixForRole('doctor')
-    Object.keys(permissions).forEach((key) => {
-      permissions[key] = { ...matrix[key] }
-    })
+    setPermissions(defaultMatrixForRole('doctor'))
     activeStep.value = 1
     formError.value = ''
     editingEmployeeId.value = null
@@ -57,10 +61,7 @@ export function useStaffWizard({ onSaved } = {}) {
 
   const openCreate = async () => {
     resetForm()
-    const matrix = defaultMatrixForRole('doctor')
-    Object.keys(permissions).forEach((key) => {
-      permissions[key] = { ...matrix[key] }
-    })
+    setPermissions(defaultMatrixForRole('doctor'))
     form.ui_role = 'doctor'
     isOpen.value = true
     await loadCashRegisters()
@@ -72,9 +73,7 @@ export function useStaffWizard({ onSaved } = {}) {
     editingEmployeeId.value = employee.id
     employeePermsStore.loadFromEmployee(employee)
     const matrix = employeePermsStore.getMatrixPermissions(employee.id)
-    Object.keys(permissions).forEach((key) => {
-      permissions[key] = { ...(matrix[key] || { view: false, create: false, edit: false, delete: false }) }
-    })
+    setPermissions(matrix)
     const wizardData = employeeToWizardForm(employee, permissions)
     Object.assign(form, wizardData)
     isOpen.value = true
@@ -134,10 +133,7 @@ export function useStaffWizard({ onSaved } = {}) {
       }
     }
     if (activeStep.value === 2 && !isEditMode.value) {
-      const matrix = defaultMatrixForRole(form.ui_role)
-      Object.keys(permissions).forEach((key) => {
-        permissions[key] = { ...matrix[key] }
-      })
+      setPermissions(defaultMatrixForRole(form.ui_role))
     }
     if (activeStep.value < TOTAL_STEPS) {
       activeStep.value += 1
@@ -209,7 +205,16 @@ export function useStaffWizard({ onSaved } = {}) {
         )
         await employeePermsStore.saveMatrixPermissions(editingEmployeeId.value, permissions)
         if (existing?.legacy_doctor_id) {
-          await syncDoctorPermissionsFromEmployee(existing, permissionsPayload)
+          await syncDoctorPermissionsFromEmployee(existing, {
+            module_permissions: permissionsPayload.module_permissions,
+            data_permissions: {
+              can_view_revenue: permissionsPayload.can_view_revenue,
+              can_export_data: permissionsPayload.can_export_data,
+              can_edit_prices: permissionsPayload.can_edit_prices,
+              can_manage_medical_records: permissionsPayload.can_manage_medical_records,
+              can_allow_debt_treatment: permissionsPayload.can_allow_debt_treatment,
+            },
+          })
         }
       } else {
         const created = await employeesStore.create(
@@ -245,6 +250,7 @@ export function useStaffWizard({ onSaved } = {}) {
     totalSteps: TOTAL_STEPS,
     form,
     permissions,
+    setPermissions,
     formError,
     isSubmitting,
     cashRegisters,

@@ -8,6 +8,7 @@ import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 import { tryAttributeVisitRevenue } from './notificationEventsApi'
+import { postVisitPayment } from '@/services/paymentService'
 
 const TABLE = 'payments'
 
@@ -56,22 +57,17 @@ export const createPayment = async ({
   try {
     const cid = await getCurrentClinicId()
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
-
-    const safePaidAt = paid_at || new Date().toISOString()
-    const payload = {
-      visit_id: visit_id != null ? Number(visit_id) : null,
-      patient_id: patient_id != null ? Number(patient_id) : null,
-      doctor_id: doctor_id != null ? Number(doctor_id) : null,
-      amount: Number(amount),
-      payment_type,
-      method: method || null,
-      note: note || null,
-      paid_at: safePaidAt,
-      clinic_id: cid
-    }
-
-    const result = await supabasePost(TABLE, payload)
-    const created = result[0]
+    if (visit_id == null) throw new Error('Tashrif tanlanmagan.')
+    const normalizedType = payment_type === 'refund' && String(note || '').includes('[DISCOUNT]')
+      ? 'discount'
+      : payment_type
+    const created = await postVisitPayment({
+      visitId: visit_id,
+      amount,
+      type: normalizedType,
+      method,
+      note,
+    })
     if (created && created.visit_id && payment_type === 'payment') {
       tryAttributeVisitRevenue({
         visitId: created.visit_id,
@@ -100,26 +96,16 @@ export const createAdditionalPayment = async ({
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
 
     const safePaidAt = paid_at || new Date().toISOString()
-    // category ni note maydoniga saqlaymiz: [CATEGORY:rent] Izoh matni
-    const categoryPrefix = `[CATEGORY:${category || 'other'}]`
-    const formattedNote = note ? `${categoryPrefix} ${note}` : categoryPrefix
-
-    // Qo'shimcha to'lovlar uchun visit_id va patient_id null bo'lishi mumkin
-    // Database migration qilingandan keyin (visit_id va patient_id nullable bo'lgandan keyin)
-    // payment_type ni 'adjustment' qilib ishlatamiz, chunki 'expense' check constraint'da yo'q
     const payload = {
-      visit_id: null, // Migration qilingandan keyin null bo'lishi mumkin
-      patient_id: null, // Migration qilingandan keyin null bo'lishi mumkin
-      doctor_id: null,
-      amount: -Math.abs(Number(amount)),
-      payment_type: 'adjustment', // Qo'shimcha xarajatlar uchun (expense o'rniga)
-      method: method || null,
-      note: formattedNote,
+      category: category || 'other',
+      amount: Math.abs(Number(amount)),
       paid_at: safePaidAt,
-      clinic_id: cid
+      note: note || null,
+      clinic_id: cid,
+      payment_method: method || null,
     }
 
-    const result = await supabasePost(TABLE, payload)
+    const result = await supabasePost('expenses', payload)
     return result[0]
   } catch (error) {
     console.error('❌ Failed to create additional payment:', error)

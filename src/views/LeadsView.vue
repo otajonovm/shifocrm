@@ -53,6 +53,7 @@
                   <select
                     class="px-2 py-1 border border-gray-200 rounded-lg text-xs"
                     :value="normalizeLeadStatus(lead.status)"
+                    :disabled="!canEditLeads"
                     @change="onChangeStatus(lead, $event.target.value)"
                   >
                     <option
@@ -82,6 +83,7 @@ import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { usePermission } from '@/composables/usePermission'
 import {
   listLeadsByClinic,
   listLeadsByDoctor,
@@ -100,6 +102,8 @@ import {
 const authStore = useAuthStore()
 const toast = useToast()
 const { t } = useI18n()
+const { can } = usePermission()
+const canEditLeads = computed(() => can('leads', 'edit'))
 
 const leads = ref([])
 const loading = ref(false)
@@ -140,6 +144,7 @@ const loadLeads = async () => {
 }
 
 const onChangeStatus = async (lead, status) => {
+  if (!canEditLeads.value) return
   const leadId = Number(lead?.id)
   if (!Number.isFinite(leadId)) return
   try {

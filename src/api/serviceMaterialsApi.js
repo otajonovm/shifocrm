@@ -115,26 +115,52 @@ export async function consumeServiceMaterialsForVisit({
   const materials = await getServiceMaterials(serviceId)
   if (!materials.length) return []
 
-  const { createVisitConsumption } = await import('@/lib/inventoryBridge')
-  const results = []
+  const lines = []
   for (const row of materials) {
     const item = inventoryItems.find((i) => Number(i.id) === Number(row.inventory_item_id))
-    if (!item) continue
-    const stock = Number(item.current_stock) || 0
     const qty = Number(row.quantity) || 0
-    if (qty <= 0 || stock < qty) {
-      console.warn(`Skipping material ${row.inventory_item_id}: insufficient stock`)
-      continue
+    if (!item) {
+      throw new Error(`Retsept materiali topilmadi: #${row.inventory_item_id}`)
     }
-    const log = await createVisitConsumption(authStore, {
-      visit_id: visitId,
-      patient_id: patientId,
-      doctor_id: doctorId,
+    if (qty <= 0) {
+      throw new Error(`Retsept miqdori noto‘g‘ri: #${row.inventory_item_id}`)
+    }
+    const stock = Number(item.current_stock) || 0
+    if (stock < qty) {
+      throw new Error(
+        `Omborda yetarli qoldiq yo‘q (${item.name || row.inventory_item_id}): ${stock} < ${qty}`,
+      )
+    }
+    lines.push({
       item_id: row.inventory_item_id,
       quantity: qty,
-      note: `Xizmat retsepti (avtomatik)`,
+      patient_id: patientId,
+      doctor_id: doctorId,
     })
-    results.push(log)
   }
-  return results
+
+  try {
+    const { consumeVisitMaterials } = await import('@/services/inventoryService')
+    await consumeVisitMaterials({
+      visitId,
+      lines,
+      sourceKey: `service:${serviceId}:visit:${visitId}`,
+    })
+  } catch (rpcErr) {
+    const msg = String(rpcErr?.message || '')
+    if (msg.includes('Could not find the function') || rpcErr?.status === 404) {
+      console.warn("⚠️ consume_visit_materials RPC yo'q — eski usulda material sarflash")
+      const { logTransaction } = await import('@/api/warehouseApi')
+      for (const line of lines) {
+        await logTransaction(line.item_id, 'out', line.quantity, `Xizmat material sarfi visit:${visitId}`, {
+          visitId,
+          patientId: line.patient_id,
+          doctorId: line.doctor_id,
+        })
+      }
+    } else {
+      throw rpcErr
+    }
+  }
+  return lines
 }

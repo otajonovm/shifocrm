@@ -313,7 +313,9 @@ export const useAuthStore = defineStore('auth', () => {
       return false
     } catch (e) {
       console.error('Login failed:', e)
-      error.value = 'Login failed'
+      error.value = e?.code === 'NETWORK_ERROR' || e?.code === 'ENV_MISSING'
+        ? (e.message || 'Internet aloqasi yo‘q')
+        : 'Login failed'
       return false
     }
   }
@@ -466,6 +468,16 @@ export const useAuthStore = defineStore('auth', () => {
     syncImpersonatingFlag()
   }
 
+  /** Staff wizard bog'lanishi — ixtiyoriy (yo'q bo'lsa xato bermasligi uchun) */
+  const ensureDoctorEmployeeLink = async () => {
+    return null
+  }
+
+  /** Edge JWT yo'q — localStorage sessiyasi bo'lsa OK */
+  const validateSession = async () => {
+    return Boolean(isAuthenticated.value)
+  }
+
   return {
     isAuthenticated,
     userRole,
@@ -479,6 +491,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     loginDoctor,
     logout,
+    ensureDoctorEmployeeLink,
+    validateSession,
     startClinicSession: startClinicSessionWrapped,
     stopClinicSession: stopClinicSessionWrapped,
   }

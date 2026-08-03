@@ -102,11 +102,14 @@
               <!-- 2-BO'LIM: Yangi bemor -->
               <section
                 class="rounded-xl border border-slate-200 p-4 space-y-3 transition-opacity duration-200"
-                :class="selectedPatient ? 'opacity-50 pointer-events-none' : ''"
+                :class="(selectedPatient || !canCreatePatient) ? 'opacity-50 pointer-events-none' : ''"
               >
                 <h4 class="text-sm font-semibold text-slate-800">
                   Yangi bemor ro'yxatdan o'tkazish
                 </h4>
+                <p v-if="!canCreatePatient" class="text-xs text-amber-700">
+                  Yangi bemor qo'shish uchun ruxsat berilmagan.
+                </p>
 
                 <div>
                   <label class="block text-sm font-medium text-slate-700 mb-1.5">Ism-sharif</label>
@@ -228,7 +231,6 @@ import {
   isValidUzPhone,
 } from '@/lib/phoneUz'
 import { createPatient } from '@/api/patientsApi'
-import { createAppointment } from '@/api/appointmentsApi'
 import * as visitsApi from '@/api/visitsApi'
 import { findAppointmentConflicts, formatConflictMessage } from '@/lib/appointmentConflict'
 
@@ -243,6 +245,7 @@ const props = defineProps({
   isAdmin: { type: Boolean, default: false },
   defaultDoctorId: { type: [String, Number], default: '' },
   dayVisits: { type: Array, default: () => [] },
+  canCreatePatient: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['close', 'saved'])
@@ -339,7 +342,9 @@ const isNewPatientActive = computed(() => {
 
 const canSave = computed(() => {
   const hasExisting = !!selectedPatientId.value
-  const hasNew = newFullName.value.trim().length >= 2 && isValidUzPhone(newPhone.value)
+  const hasNew = props.canCreatePatient
+    && newFullName.value.trim().length >= 2
+    && isValidUzPhone(newPhone.value)
   if (!hasExisting && !hasNew) return false
   if (needsDoctorPick.value && !doctorId.value) return false
   if (appointmentConflicts.value.length) return false
@@ -454,7 +459,11 @@ const buildEndTime = (startTime, durationMinutes = 60) => {
 
 const resolvePatientId = async () => {
   if (selectedPatientId.value) {
-    return Number(selectedPatientId.value)
+    return { patientId: Number(selectedPatientId.value), createdPatient: null }
+  }
+
+  if (!props.canCreatePatient) {
+    throw new Error("Yangi bemor qo'shish uchun ruxsat berilmagan.")
   }
 
   const fullName = newFullName.value.trim()
@@ -470,7 +479,7 @@ const resolvePatientId = async () => {
   const byPhone = props.patients.find(
     (p) => formatPhoneForStorage(p.phone) === storedPhone
   )
-  if (byPhone) return Number(byPhone.id)
+  if (byPhone) return { patientId: Number(byPhone.id), createdPatient: null }
 
   const doc = props.doctors.find((d) => String(d.id) === String(resolvedDoctorId.value))
   const created = await createPatient({
@@ -482,7 +491,7 @@ const resolvePatientId = async () => {
     status: 'waiting',
     createFirstVisit: false,
   })
-  return Number(created.id)
+  return { patientId: Number(created.id), createdPatient: created }
 }
 
 const handleSave = async () => {
@@ -510,12 +519,12 @@ const handleSave = async () => {
 
   saving.value = true
   try {
-    const patientId = await resolvePatientId()
+    const { patientId, createdPatient } = await resolvePatientId()
     const doctor = props.doctors.find((d) => String(d.id) === String(doctorIdResolved))
     const durationMinutes = 60
     const endTime = buildEndTime(startTime, durationMinutes)
 
-    await visitsApi.createVisit({
+    const createdVisit = await visitsApi.createVisit({
       patient_id: patientId,
       doctor_id: Number(doctorIdResolved),
       doctor_name: doctor?.full_name || '',
@@ -527,20 +536,7 @@ const handleSave = async () => {
       duration_minutes: durationMinutes,
     })
 
-    try {
-      const scheduledAt = `${date}T${startTime.length === 5 ? startTime : startTime.slice(0, 5)}:00`
-      await createAppointment({
-        patient_id: patientId,
-        doctor_id: Number(doctorIdResolved),
-        scheduled_at: scheduledAt,
-        duration_minutes: durationMinutes,
-        notes: notes.value?.trim() || null,
-      })
-    } catch (syncErr) {
-      console.warn('appointments jadvali sinxronlash:', syncErr?.message)
-    }
-
-    emit('saved')
+    emit('saved', { createdPatient, createdVisit })
     emit('close')
   } catch (err) {
     error.value = err?.message || 'Qabulni saqlab bo\'lmadi.'

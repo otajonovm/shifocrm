@@ -10,6 +10,10 @@ export const ROLES = {
   ADMIN: 'admin',
   DOCTOR: 'doctor',
   SOLO: 'solo',
+  CHIEF_DOCTOR: 'chief_doctor',
+  RECEPTION: 'reception',
+  CASHIER: 'cashier',
+  ASSISTANT: 'assistant',
 }
 
 const SUPER_ADMIN_SCOPE_KEY = 'superAdminScope'
@@ -60,7 +64,7 @@ export function isAdminLike(authStore) {
 }
 
 export function isDoctor(authStore) {
-  return authStore?.userRole === ROLES.DOCTOR
+  return authStore?.userRole === ROLES.DOCTOR || authStore?.userRole === ROLES.CHIEF_DOCTOR
 }
 
 export function isSolo(authStore) {
@@ -69,6 +73,22 @@ export function isSolo(authStore) {
 
 export function isDoctorLike(authStore) {
   return isDoctor(authStore) || isSolo(authStore)
+}
+
+export function isCashier(authStore) {
+  return authStore?.userRole === ROLES.CASHIER
+}
+
+export function isReception(authStore) {
+  return authStore?.userRole === ROLES.RECEPTION
+}
+
+export function isAssistant(authStore) {
+  return authStore?.userRole === ROLES.ASSISTANT
+}
+
+export function isStaffOps(authStore) {
+  return isCashier(authStore) || isReception(authStore) || isAssistant(authStore)
 }
 
 /**
@@ -130,6 +150,10 @@ export function getRoleLabel(authStore, t) {
   if (isClinicOwner(authStore)) return t('role.clinicOwner')
   if (isClinicAdmin(authStore) || (authStore.userRole === ROLES.ADMIN)) return t('role.administrator')
   if (isSolo(authStore)) return t('role.solo')
+  if (authStore.userRole === ROLES.CHIEF_DOCTOR) return t('role.chiefDoctor') || 'Bosh shifokor'
+  if (authStore.userRole === ROLES.RECEPTION) return t('role.reception') || 'Qabulxona'
+  if (authStore.userRole === ROLES.CASHIER) return t('role.cashier') || 'Kassir'
+  if (authStore.userRole === ROLES.ASSISTANT) return t('role.assistant') || 'Assistent'
   if (isDoctor(authStore)) return t('role.doctor')
   return authStore.userEmail || t('role.doctor')
 }
@@ -179,10 +203,17 @@ export function canAccessSuperAdminTools(authStore) {
   return isSuperAdminRole(authStore.impersonatorRole)
 }
 
-/** employees.role (DB) → sessiya roli (faqat administrator uchun admin kirish) */
+/** employees.role (DB) → sessiya roli */
 export function employeeDbRoleToAuthRole(dbRole) {
   const role = String(dbRole || '').trim().toLowerCase()
   if (role === 'administrator' || role === 'super_admin' || role === 'superadmin') return ROLES.ADMIN
+  if (role === 'clinic_owner') return ROLES.CLINIC_OWNER
+  if (role === 'chief_doctor') return ROLES.CHIEF_DOCTOR
+  if (role === 'reception' || role === 'receptionist') return ROLES.RECEPTION
+  if (role === 'cashier') return ROLES.CASHIER
+  if (role === 'assistant') return ROLES.ASSISTANT
+  // Admin portal orqali employee.doctor login qilmasin — shifokor tab ishlatiladi
+  if (role === 'doctor') return null
   return null
 }
 
@@ -202,8 +233,17 @@ export function canAccessWarehouse(authStore) {
   return isAdminLike(authStore)
 }
 
-/** Bemor to'lovlari, yakunlash, material sarfi (rahbar, administrator, shifokor, yakka stom) */
+/** Bemor to'lovlari, yakunlash, material sarfi */
 export function canManagePatientBilling(authStore) {
   if (!authStore?.isAuthenticated) return false
-  return isAdminLike(authStore) || isDoctorLike(authStore)
+  return isAdminLike(authStore) || isDoctorLike(authStore) || isCashier(authStore)
+}
+
+/** Klinika foydasi / jamoa KPI — default deny reception/cashier/assistant */
+export function canViewClinicProfit(authStore) {
+  if (!authStore?.isAuthenticated) return false
+  if (isGlobalSuperAdmin(authStore) || isClinicOwner(authStore) || isSolo(authStore)) return true
+  if (authStore.userRole === ROLES.CHIEF_DOCTOR) return true
+  if (isStaffOps(authStore)) return false
+  return isClinicAdmin(authStore)
 }

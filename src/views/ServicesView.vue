@@ -9,7 +9,7 @@
           <p class="text-sm sm:text-base text-gray-500 mt-0.5">{{ t('services.subtitle') }}</p>
         </div>
         <button
-          v-if="activeTab === 'services' && canEditPrices"
+          v-if="activeTab === 'services' && canCreateServices"
           class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-xl transition-all touch-manipulation min-h-[44px]"
           @click="openServiceModal()"
         >
@@ -100,8 +100,9 @@
                       </span>
                     </td>
                     <td class="px-4 py-3 text-right">
-                      <div v-if="canEditPrices" class="flex items-center justify-end gap-2">
+                      <div v-if="canEditServices || canDeleteServices" class="flex items-center justify-end gap-2">
                         <button
+                          v-if="canEditServices"
                           class="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors"
                           :title="t('services.edit')"
                           @click="openServiceModal(service)"
@@ -109,6 +110,7 @@
                           <PencilSquareIcon class="w-5 h-5" />
                         </button>
                         <button
+                          v-if="canDeleteServices"
                           class="p-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
                           :title="t('services.delete')"
                           @click="deleteServiceRow(service)"
@@ -127,12 +129,12 @@
           <ServicePackagesTab
             v-else-if="activeTab === 'packages'"
             :services="services"
-            :can-edit="canEditPrices"
+            :can-edit="canEditServices"
           />
 
           <ServiceDiscountsTab
             v-else-if="activeTab === 'discounts'"
-            :can-edit="canEditPrices"
+            :can-edit="canEditServices"
           />
 
           <ServiceAuditTab v-else-if="activeTab === 'audit'" />
@@ -315,7 +317,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
-import { useDataPermission } from '@/composables/useDataPermission'
+import { usePermission } from '@/composables/usePermission'
 import { useAuthStore } from '@/stores/auth'
 import { logActivity } from '@/lib/activityLog'
 import { listClinicInventoryItems } from '@/lib/inventoryBridge'
@@ -335,7 +337,10 @@ const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
 
-const { allowed: canEditPrices } = useDataPermission('can_edit_prices')
+const { can } = usePermission()
+const canCreateServices = computed(() => can('services', 'create'))
+const canEditServices = computed(() => can('services', 'edit'))
+const canDeleteServices = computed(() => can('services', 'delete'))
 
 const tabs = [
   { id: 'services', label: 'services.tabServices' },
@@ -494,7 +499,8 @@ const loadStats = async () => {
 }
 
 const openServiceModal = async (service = null) => {
-  if (!canEditPrices.value) {
+  const allowed = service ? canEditServices.value : canCreateServices.value
+  if (!allowed) {
     toast.error("Preyskurant narxlarini tahrirlash huquqingiz yo'q.")
     return
   }
@@ -539,6 +545,8 @@ const closeServiceModal = () => {
 }
 
 const saveService = async () => {
+  const requiredAction = serviceForm.value.id ? 'edit' : 'create'
+  if (!can('services', requiredAction)) return
   if (!serviceForm.value.name) {
     toast.error(t('services.errorNameRequired'))
     return
@@ -622,7 +630,7 @@ const saveService = async () => {
 }
 
 const deleteServiceRow = async (service) => {
-  if (!canEditPrices.value) {
+  if (!canDeleteServices.value) {
     toast.error("Preyskurant narxlarini tahrirlash huquqingiz yo'q.")
     return
   }

@@ -236,6 +236,7 @@
         <!-- Umumiy saqlash tugmasi -->
         <div class="flex justify-end">
           <button
+            v-if="canEditSettings"
             type="button"
             :disabled="savingProfile"
             class="inline-flex items-center justify-center gap-2 min-w-[200px] px-6 py-3 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm transition-colors"
@@ -293,6 +294,7 @@ import {
 import { Cog6ToothIcon, PhotoIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/outline'
 import { setLocale } from '@/i18n'
 import { useToast } from '@/composables/useToast'
+import { usePermission } from '@/composables/usePermission'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { getClinic, updateClinic } from '@/services/adminService'
 
@@ -300,8 +302,10 @@ const { locale } = useI18n()
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()
 const toast = useToast()
+const { can } = usePermission()
 
 const isClinicAdmin = computed(() => isAdminLike(authStore))
+const canEditSettings = computed(() => can('settings', 'edit'))
 
 const currentLocale = ref(locale.value)
 const logoError = ref('')
@@ -450,6 +454,7 @@ const loadClinicProfile = async () => {
 }
 
 const saveClinicProfile = async () => {
+  if (!canEditSettings.value) return
   if (!currentClinicId.value) {
     toast.error('Klinika topilmadi. Qayta kiring.')
     return

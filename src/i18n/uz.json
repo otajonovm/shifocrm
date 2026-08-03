@@ -48,12 +48,12 @@
     "inventory": "Ombor",
     "reports": "Hisobotlar",
     "leads": "Onlayn yozilishlar",
-    "myLeads": "Mening onlayn yozilishlarim",
+    "myLeads": "Onlayn yozilishlar",
     "settings": "Sozlamalar",
-    "myPatients": "Mening Bemorlarim",
-    "myAppointments": "Mening Kalendarim",
+    "myPatients": "Bemorlarim",
+    "myAppointments": "Kalendarim",
     "treatmentPlans": "Davolash Rejalari",
-    "doctorProfile": "Mening Profilim",
+    "doctorProfile": "Profilim",
     "manageUsers": "Foydalanuvchilar"
   },
   "dashboard": {
@@ -1796,15 +1796,22 @@
     },
     "permissions": {
       "section": "Bo'lim",
+      "sectionMaster": "Boshliq",
       "view": "Ko'rish",
       "create": "Qo'shish",
       "edit": "Tahrirlash",
       "delete": "O'chirish",
       "sections": {
+        "dashboard": "Bosh sahifa",
         "patients": "Bemorlar",
-        "finances": "Moliya",
+        "staff": "Xodimlar",
+        "appointments": "Kalendar",
+        "leads": "Lidlar",
+        "payments": "To'lovlar",
+        "services": "Xizmatlar",
         "warehouse": "Ombor",
-        "analytics": "Analitika",
+        "treatment_plans": "Davolash rejalari",
+        "reports": "Hisobotlar",
         "settings": "Sozlamalar"
       }
     }

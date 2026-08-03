@@ -53,20 +53,6 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff,woff2}'],
           runtimeCaching: [
             {
-              urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'supabase-cache',
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 60 * 24 // 24 hours
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
-            },
-            {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
               handler: 'CacheFirst',
               options: {
@@ -181,7 +167,8 @@ export default defineConfig(({ mode }) => {
             )
 
             proxyReq.on('error', (err) => {
-              res.writeHead(502, { 'Content-Type': 'application/json' })
+              // Bot ixtiyoriy: 502 o'rniga 200 + ok:false (browser Network'da qizil 502 chiqmasin)
+              res.writeHead(200, { 'Content-Type': 'application/json' })
               res.end(JSON.stringify({
                 ok: false,
                 error: 'TELEGRAM_BOT_UNREACHABLE',

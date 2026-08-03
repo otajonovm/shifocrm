@@ -3,7 +3,7 @@
  * Tenant isolation; clinic_id yo'q bo'lsa filtersiz fallback.
  */
 
-import { supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
+import { supabasePost, supabasePatchWhere, supabaseDeleteWhere, supabaseRpc } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
@@ -93,17 +93,15 @@ export const getVisitsByDoctorAndDateRange = async (doctorId, startDate, endDate
 const generateId = async () => {
   try {
     const cid = await getCurrentClinicId()
-    const q = 'select=id&order=id.desc&limit=1000'
-    const visits = await supabaseGetWithClinicFallback(TABLE, q, cid)
-    const existingIds = (visits || []).map(v => Number(v.id))
-    let newId
-    let attempts = 0
-    do {
-      newId = Math.floor(10000 + Math.random() * 90000)
-      attempts++
-      if (attempts > 100) newId = Math.floor(10000 + Date.now() % 90000)
-    } while (existingIds.includes(newId))
-    return newId
+
+    for (let i = 0; i < 10; i++) {
+      const candidateId = Math.floor(10000 + Math.random() * 90000)
+      const q = `id=eq.${candidateId}&limit=1`
+      const rows = await supabaseGetWithClinicFallback(TABLE, q, cid)
+      if (!rows?.length) return candidateId
+    }
+
+    return Math.floor(10000 + Date.now() % 90000)
   } catch {
     return Math.floor(10000 + Date.now() % 90000)
   }
@@ -263,16 +261,33 @@ export const createVisit = async ({
       clinic_id: cid
     }
 
+    if (start_time) {
+      const rpcResult = await supabaseRpc('create_visit_with_appointment', {
+        p_visit: newVisit,
+      })
+      const created = rpcResult?.visit ?? rpcResult
+      if (!created?.id) throw new Error('Tashrif yaratishda javob olinmadi.')
+
+      logActivity({
+        action: 'visit.create',
+        summary: `Qabul yaratildi #${created.id}`,
+        entity: 'visit',
+        entityId: created.id,
+        meta: { patient_id: created.patient_id, status: created.status },
+      }).catch(() => {})
+
+      return created
+    }
+
     const result = await supabasePost(TABLE, newVisit)
     const created = result && result[0]
     if (!created) throw new Error('Tashrif yaratishda javob olinmadi.')
 
     if (start_time && !created.appointment_id) {
-      try {
-        await syncAppointmentFromVisit(created)
-      } catch (syncErr) {
+      // Kalendar tezligi uchun fon rejimida sinxronlash — UI kutmaydi.
+      syncAppointmentFromVisit(created).catch((syncErr) => {
         console.warn('Appointment sinxronlash (createVisit):', syncErr?.message)
-      }
+      })
     }
 
     logActivity({
@@ -641,6 +656,11 @@ export const createVisitWithAppointment = async (data) => {
     end_time: endTime,
     duration_minutes: duration,
   })
+
+  if (visit?.appointment_id) {
+    const appointment = await getAppointmentById(visit.appointment_id)
+    return { visit, appointment }
+  }
 
   const appointment = await syncAppointmentFromVisit(visit)
   return { visit, appointment }

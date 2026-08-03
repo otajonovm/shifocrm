@@ -77,11 +77,17 @@ async function handlePhoneNumber(bot, msg) {
   }
 
   try {
-    const { data: patients, error: searchError } = await supabase
+    const clinicId = Number(process.env.TELEGRAM_DEFAULT_CLINIC_ID || state.clinicId || 0) || null
+    let query = supabase
       .from('patients')
-      .select('id, full_name, phone')
+      .select('id, full_name, phone, clinic_id')
       .eq('phone', phone)
       .limit(1)
+    if (clinicId) {
+      query = query.eq('clinic_id', clinicId)
+    }
+
+    const { data: patients, error: searchError } = await query
 
     if (searchError) {
       console.error('Error searching patient:', searchError)
@@ -102,11 +108,17 @@ async function handlePhoneNumber(bot, msg) {
     }
 
     const patient = patients[0]
+    if (!clinicId && !patient.clinic_id) {
+      await bot.sendMessage(chatId, '❌ Klinika aniqlanmadi. Operator bilan bog\'laning.')
+      userStates.delete(chatId)
+      return true
+    }
 
     const { error: saveError } = await supabase
       .from('telegram_chat_ids')
       .upsert({
         patient_id: patient.id,
+        clinic_id: clinicId || patient.clinic_id,
         chat_id: String(chatId),
         phone: phone,
         username: state.username,

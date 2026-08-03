@@ -154,6 +154,7 @@
                   <div class="relative action-menu-wrap flex justify-end">
                     <button
                       :ref="(el) => setActionMenuButtonRef(visit.id, el)"
+                      :data-action-menu-btn="visit.id"
                       @click.stop="toggleActionMenu(visit.id)"
                       type="button"
                       class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
@@ -269,14 +270,18 @@
                 <span>{{ formatCurrency(visit.price || 0) }}</span>
                 <span v-if="isAdmin">{{ getPaymentLabel(visit) }}</span>
               </div>
-              <button
-                type="button"
-                class="mt-1 min-h-[44px] w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700"
-                @click="toggleActionMenu(visit.id)"
-              >
-                <EllipsisVerticalIcon class="w-5 h-5" />
-                {{ t('appointments.actions') }}
-              </button>
+              <div class="action-menu-wrap mt-1">
+                <button
+                  type="button"
+                  :data-action-menu-btn="visit.id"
+                  class="min-h-[44px] w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700"
+                  :class="{ 'bg-gray-100 text-gray-900 border-gray-300': openActionMenuId === visit.id }"
+                  @click.stop="toggleActionMenu(visit.id)"
+                >
+                  <EllipsisVerticalIcon class="w-5 h-5" />
+                  {{ t('appointments.actions') }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -285,10 +290,12 @@
       <!-- Jadval ko'rinishi — to'liq ekran -->
       <div v-else-if="displayMode === 'schedule'" class="relative z-0 flex-1 min-h-0 w-full overflow-hidden">
         <DoctorScheduleView
-          :key="`schedule-${scheduleRefreshKey}`"
           :selected-date="selectedDate"
           :filter-doctor-id="selectedDoctor"
           :refresh-key="scheduleRefreshKey"
+          :inserted-visit="scheduleInsertedVisit"
+          :can-edit="canEditAppointments"
+          :view-mode="viewMode"
           @update:selected-date="selectedDate = $event"
           @update-status="handleStatusUpdate"
           @open-payment="handleSchedulePaymentAction"
@@ -304,6 +311,7 @@
       :is-admin="isAdmin"
       :default-doctor-id="doctorId"
       :day-visits="quickDayVisits"
+      :can-create-patient="canCreatePatients"
       @close="closeQuickModal"
       @saved="onQuickAppointmentSaved"
     />
@@ -605,9 +613,21 @@
               </div>
             </div>
             <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100 flex-shrink-0">
-              <button @click="closeRescheduleModal" class="px-4 py-2 text-sm border rounded-lg">{{ t('appointments.cancel') }}</button>
-              <button @click="applyReschedule" class="px-4 py-2 text-sm text-white bg-indigo-600 rounded-lg">
-                {{ t('appointments.save') }}
+              <button
+                type="button"
+                :disabled="rescheduleSaving"
+                @click="closeRescheduleModal"
+                class="px-4 py-2 text-sm border rounded-lg disabled:opacity-50"
+              >
+                {{ t('appointments.cancel') }}
+              </button>
+              <button
+                type="button"
+                :disabled="rescheduleSaving"
+                @click="applyReschedule"
+                class="px-4 py-2 text-sm text-white bg-indigo-600 rounded-lg disabled:opacity-60"
+              >
+                {{ rescheduleSaving ? '...' : t('appointments.save') }}
               </button>
             </div>
           </div>
@@ -712,6 +732,7 @@ import SoloOnlineBookingCard from '@/components/solo/SoloOnlineBookingCard.vue'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
+import { usePermission } from '@/composables/usePermission'
 import * as visitsApi from '@/api/visitsApi'
 import { enrichVisitsWithLeadInfo } from '@/lib/leadVisitEnrich'
 import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
@@ -749,9 +770,13 @@ const doctorsStore = useDoctorsStore()
 const patientsStore = usePatientsStore()
 const toast = useToast()
 const { t } = useI18n()
+const { can } = usePermission()
 
 const isAdmin = computed(() => isAdminLike(authStore))
 const isSolo = computed(() => hasSoloRole(authStore))
+const canCreateAppointments = computed(() => can('appointments', 'create'))
+const canEditAppointments = computed(() => can('appointments', 'edit'))
+const canCreatePatients = computed(() => can('patients', 'create'))
 
 const STORAGE_KEYS = {
   displayMode: 'shifocrm.appointments.displayMode',
@@ -860,6 +885,7 @@ const bulkDoctorId = ref('')
 const showCreateModal = ref(false)
 const showQuickModal = ref(false)
 const scheduleRefreshKey = ref(0)
+const scheduleInsertedVisit = ref(null)
 const quickSlotMeta = ref({
   doctorId: null,
   date: '',
@@ -918,6 +944,7 @@ const createConflictMessage = computed(() => {
 
 const showRescheduleModal = ref(false)
 const rescheduleError = ref('')
+const rescheduleSaving = ref(false)
 const rescheduleTargets = ref([])
 const rescheduleForm = ref({
   date: '',
@@ -956,13 +983,35 @@ const setActionMenuButtonRef = (visitId, el) => {
   delete actionMenuButtonRefs.value[visitId]
 }
 
+const resolveActionMenuButton = (visitId) => {
+  const nodes = document.querySelectorAll(`[data-action-menu-btn="${visitId}"]`)
+  for (const el of nodes) {
+    const rect = el.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) return el
+  }
+  return actionMenuButtonRefs.value[visitId] || null
+}
+
 const updateActionMenuPosition = (visitId) => {
-  const targetButton = actionMenuButtonRefs.value[visitId]
+  const targetButton = resolveActionMenuButton(visitId)
   if (!targetButton) return
 
   const rect = targetButton.getBoundingClientRect()
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
+
+  // Mobil: pastki sheet uslubida — ekrandan tashqariga chiqmasin
+  if (viewportWidth < 768) {
+    const width = Math.min(ACTION_MENU_WIDTH + 48, viewportWidth - ACTION_MENU_GAP * 2)
+    actionMenuStyle.value = {
+      left: `${Math.max(ACTION_MENU_GAP, (viewportWidth - width) / 2)}px`,
+      top: 'auto',
+      bottom: '24px',
+      width: `${width}px`,
+      maxHeight: '70vh',
+    }
+    return
+  }
 
   let left = rect.right - ACTION_MENU_WIDTH
   left = Math.max(ACTION_MENU_GAP, Math.min(left, viewportWidth - ACTION_MENU_WIDTH - ACTION_MENU_GAP))
@@ -976,7 +1025,9 @@ const updateActionMenuPosition = (visitId) => {
 
   actionMenuStyle.value = {
     left: `${left}px`,
-    top: `${top}px`
+    top: `${top}px`,
+    bottom: 'auto',
+    width: `${ACTION_MENU_WIDTH}px`,
   }
 }
 
@@ -1114,26 +1165,6 @@ const loadVisits = async () => {
   }
 }
 
-const openCreateModal = () => {
-  if (displayMode.value === 'schedule') {
-    openQuickModal({
-      date: selectedDate.value,
-      doctorId: isAdmin.value ? null : doctorId.value,
-    })
-    return
-  }
-  createError.value = ''
-  if (!isAdmin.value && doctorId.value) {
-    createForm.value.doctor_id = String(doctorId.value)
-  } else {
-    createForm.value.doctor_id = ''
-  }
-  if (!createForm.value.date) {
-    createForm.value.date = selectedDate.value || new Date().toISOString().split('T')[0]
-  }
-  showCreateModal.value = true
-}
-
 const closeCreateModal = () => {
   showCreateModal.value = false
   quickPatientOpen.value = false
@@ -1254,6 +1285,7 @@ const openCompleteModal = (visit) => {
 }
 
 const openQuickModal = (meta = {}) => {
+  if (!canCreateAppointments.value) return
   quickSlotMeta.value = {
     doctorId: meta.doctorId ?? null,
     date: meta.date || selectedDate.value || new Date().toISOString().split('T')[0],
@@ -1266,11 +1298,28 @@ const closeQuickModal = () => {
   showQuickModal.value = false
 }
 
-const onQuickAppointmentSaved = async () => {
+const onQuickAppointmentSaved = async (payload = {}) => {
+  const createdPatient = payload?.createdPatient
+  const createdVisit = payload?.createdVisit
+
+  if (createdPatient?.id != null) {
+    const exists = patientsStore.items.find(p => Number(p.id) === Number(createdPatient.id))
+    if (!exists) {
+      patientsStore.items.unshift(createdPatient)
+    }
+  }
+
   toast.success('Qabul muvaffaqiyatli qo\'shildi')
+
+  if (displayMode.value === 'schedule' && createdVisit?.id != null) {
+    scheduleInsertedVisit.value = createdVisit
+    await nextTick()
+    scheduleInsertedVisit.value = null
+    return
+  }
+
   scheduleRefreshKey.value += 1
   await loadVisits()
-  await patientsStore.fetchPatients()
 }
 
 const handleSchedulePaymentAction = (appointmentId, meta = null) => {
@@ -1327,6 +1376,7 @@ const applyStatusChange = async () => {
 }
 
 const createAppointment = async () => {
+  if (!canCreateAppointments.value) return
   createError.value = ''
   loading.value = true
 
@@ -1409,6 +1459,7 @@ const createAppointment = async () => {
 
 const applyReschedule = async () => {
   rescheduleError.value = ''
+  if (rescheduleSaving.value) return
   if (!rescheduleForm.value.date || !rescheduleForm.value.start_time) {
     rescheduleError.value = t('appointments.errorDateTimeRequired')
     return
@@ -1420,51 +1471,105 @@ const applyReschedule = async () => {
     return
   }
   const endTime = buildEndTime(rescheduleForm.value.start_time, durationMinutes)
-  for (const visit of rescheduleTargets.value) {
-    const overlap = await hasOverlap({
+  const targets = rescheduleTargets.value
+  if (!targets.length) {
+    rescheduleError.value = t('appointments.errorNotFound')
+    return
+  }
+
+  rescheduleSaving.value = true
+  try {
+    // Bir marta kun uchun overlap tekshiruvi (ketma-ket API emas)
+    const doctorIds = [...new Set(targets.map((v) => v.doctor_id).filter((id) => id != null))]
+    const dayCache = new Map()
+    for (const doctorIdValue of doctorIds) {
+      dayCache.set(String(doctorIdValue), await getVisitsForDate(rescheduleForm.value.date, doctorIdValue))
+    }
+    // doctor_id yo'q targetlar uchun umumiy kun
+    if (targets.some((v) => v.doctor_id == null)) {
+      dayCache.set('_all', await getVisitsForDate(rescheduleForm.value.date, null))
+    }
+
+    const startMin = timeToMinutes(rescheduleForm.value.start_time)
+    const endMin = timeToMinutes(endTime)
+    for (const visit of targets) {
+      const pool = dayCache.get(String(visit.doctor_id)) || dayCache.get('_all') || []
+      const overlap = pool.some((other) => {
+        if (Number(other.id) === Number(visit.id)) return false
+        if (other.date !== rescheduleForm.value.date) return false
+        const sameDoctor = visit.doctor_id && Number(other.doctor_id) === Number(visit.doctor_id)
+        const sameRoom = visit.room && other.room && other.room === visit.room
+        if (!sameDoctor && !sameRoom) return false
+        const otherStart = timeToMinutes(other.start_time || '00:00')
+        const otherEnd = timeToMinutes(other.end_time || other.start_time || '00:00')
+        return startMin < otherEnd && endMin > otherStart
+      })
+      if (overlap) {
+        rescheduleError.value = t('appointments.errorOverlapConflict')
+        return
+      }
+    }
+
+    const payloadBase = {
       date: rescheduleForm.value.date,
       start_time: rescheduleForm.value.start_time,
       end_time: endTime,
-      doctor_id: visit.doctor_id,
-      room: visit.room,
-      ignoreVisitId: visit.id
-    })
-    if (overlap) {
-      rescheduleError.value = t('appointments.errorOverlapConflict')
-      return
+      duration_minutes: durationMinutes,
+      channel: rescheduleForm.value.channel,
+      updated_by: getActorLabel(),
     }
-  }
 
-  try {
-    const newDateStr = formatDate(rescheduleForm.value.date)
-    const newTimeStr = rescheduleForm.value.start_time || ''
-    for (const visit of rescheduleTargets.value) {
-      await visitsApi.updateVisit(visit.id, {
-        date: rescheduleForm.value.date,
-        start_time: rescheduleForm.value.start_time,
-        end_time: endTime,
-        duration_minutes: durationMinutes,
-        channel: rescheduleForm.value.channel,
-        notes: visit.notes,
-        updated_by: getActorLabel()
-      })
-      // Avtomatik Telegram: qabul qayta belgilandi
-      const msg = `📅 Qabulingiz qayta belgilandi.\n\nSana: ${newDateStr}\nVaqt: ${newTimeStr}\n\nIltimos, yangi vaqtda keling.`
-      await sendTelegramNotification({
-        patientId: visit.patient_id,
-        message: msg
-      })
-    }
+    // Parallel update — UI ~1s ichida yopiladi
+    await Promise.all(
+      targets.map((visit) =>
+        visitsApi.updateVisit(visit.id, {
+          ...payloadBase,
+          notes: visit.notes,
+        }),
+      ),
+    )
+
+    // Lokal ro'yxatni darhol yangilash (to'liq reload kutmasdan)
+    const idSet = new Set(targets.map((v) => Number(v.id)))
+    visits.value = visits.value.map((v) => {
+      if (!idSet.has(Number(v.id))) return v
+      return {
+        ...v,
+        date: payloadBase.date,
+        start_time: payloadBase.start_time,
+        end_time: payloadBase.end_time,
+        duration_minutes: payloadBase.duration_minutes,
+        channel: payloadBase.channel,
+      }
+    })
+
     toast.success(t('appointments.toastRescheduled'))
     closeRescheduleModal()
-    await loadVisits()
+
+    // Telegram fonida — UI ni bloklamaydi
+    const newDateStr = formatDate(rescheduleForm.value.date)
+    const newTimeStr = rescheduleForm.value.start_time || ''
+    const msg = `📅 Qabulingiz qayta belgilandi.\n\nSana: ${newDateStr}\nVaqt: ${newTimeStr}\n\nIltimos, yangi vaqtda keling.`
+    Promise.allSettled(
+      targets.map((visit) =>
+        visit.patient_id
+          ? sendTelegramNotification({ patientId: visit.patient_id, message: msg })
+          : Promise.resolve(),
+      ),
+    ).catch(() => {})
+
+    // Soft refresh fonida
+    loadVisits().catch(() => {})
   } catch (error) {
     console.error('Failed to reschedule:', error)
     rescheduleError.value = t('appointments.errorReschedule')
+  } finally {
+    rescheduleSaving.value = false
   }
 }
 
 const updateStatus = async (visit, status) => {
+  if (!canEditAppointments.value) return
   try {
     await visitsApi.updateVisit(visit.id, { status, updated_by: getActorLabel() })
     if (status === 'completed_paid' || status === 'completed_debt') {

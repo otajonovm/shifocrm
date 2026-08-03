@@ -12,9 +12,10 @@
  * }
  */
 
-import { supabaseGet, supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
+import { supabaseGet, supabasePost, supabasePatchWhere, supabaseDeleteWhere, supabaseRpc } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback, mergeClinicQuery } from '@/lib/supabaseClinicFallback'
+import { cloneTeethOnly } from '@/domain/odontogram'
 
 const TABLE = 'odontograms'
 
@@ -84,6 +85,12 @@ export const createEmptyOdontogram = () => {
  * @param {Object} data - { teeth: { ... }, ... }
  * @returns {Object}
  */
+const normalizeToothStateForApi = (state) => {
+  const s = String(state || 'healthy').toLowerCase().trim()
+  if (s === 'filling' || s === 'filled') return 'filled'
+  return s || 'healthy'
+}
+
 export const normalizeOdontogramDataForApi = (data) => {
   if (!data || typeof data !== 'object') return data
   const out = { ...data }
@@ -91,7 +98,12 @@ export const normalizeOdontogramDataForApi = (data) => {
     const teethNormalized = {}
     Object.keys(out.teeth).forEach((k) => {
       const key = String(k)
-      teethNormalized[key] = { ...out.teeth[k], state: out.teeth[k].state || 'healthy' }
+      const tooth = out.teeth[k] || {}
+      const rawState = tooth.state ?? tooth.status
+      teethNormalized[key] = {
+        ...tooth,
+        state: normalizeToothStateForApi(rawState),
+      }
     })
     out.teeth = teethNormalized
   }
@@ -186,7 +198,7 @@ export const createOdontogramSnapshot = async ({ patient_id, visit_id, doctor_id
  * @param {Object} data - { teeth: { "11": { state, service_id?, note? }, ... } }
  * @returns {Promise<Object>}
  */
-export const updateOdontogramSnapshot = async (id, data) => {
+export const updateOdontogramSnapshot = async (id, data, options = {}) => {
   try {
     const numId = Number(id)
     if (!Number.isFinite(numId)) throw new Error('Invalid odontogram id')
@@ -194,8 +206,30 @@ export const updateOdontogramSnapshot = async (id, data) => {
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
 
     const normalized = normalizeOdontogramDataForApi(data)
-    const updateData = { data: normalized }
 
+    // RPC mavjud bo'lsa versioned update; aks holda oddiy PATCH (legacy)
+    if (options.expectedVersion != null) {
+      try {
+        const rpcData = normalizeOdontogramDataForApi({ teeth: normalized.teeth })
+        return await supabaseRpc('replace_odontogram_versioned', {
+          p_id: numId,
+          p_expected_version: Number(options.expectedVersion),
+          p_data: rpcData,
+          p_dentition_type: options.dentitionType ?? normalized.dentition_type ?? null,
+        })
+      } catch (rpcErr) {
+        const msg = String(rpcErr?.message || '')
+        if (msg.includes('Could not find the function') || rpcErr?.status === 404) {
+          console.warn("⚠️ replace_odontogram_versioned RPC yo'q — oddiy PATCH ishlatilmoqda")
+          // Fallback below
+        } else {
+          throw rpcErr
+        }
+      }
+    }
+
+    // Legacy PATCH fallback
+    const updateData = { data: normalized }
     const q = mergeClinicQuery(`id=eq.${numId}`, cid)
     const result = await supabasePatchWhere(TABLE, q, updateData)
     return result && result[0] ? result[0] : null
@@ -245,8 +279,7 @@ export const getOrCreateOdontogram = async ({ patient_id, visit_id, doctor_id })
     let initialData = null
 
     if (patientSnapshots.length > 0) {
-      // Oxirgi snapshot'dan data ni nusxalash
-      initialData = JSON.parse(JSON.stringify(patientSnapshots[0].data))
+      initialData = cloneTeethOnly(patientSnapshots[0].data)
     }
 
     return await createOdontogramSnapshot({ patient_id, visit_id, doctor_id, data: initialData })

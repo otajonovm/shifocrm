@@ -3,7 +3,7 @@
  * Tenant isolation; clinic_id yo'q bo'lsa filtersiz fallback.
  */
 
-import { supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
+import { supabasePost, supabaseGet, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
@@ -137,22 +137,48 @@ export const createInventoryConsumption = async (payload) => {
     throw new Error('Miqdor 0 dan katta bo\'lishi kerak.')
   }
 
-  const item = await getInventoryItemById(itemId)
-  if (!item) throw new Error('Material topilmadi.')
-  const currentStock = Number(item.current_stock) || 0
-  if (currentStock < quantity) {
-    throw new Error(`Omborda yetarli qoldiq yo'q. Mavjud: ${currentStock}, so'ralgan: ${quantity}.`)
+  try {
+    const { consumeLegacyInventoryItem } = await import('@/services/inventoryService')
+    return await consumeLegacyInventoryItem({
+      ...payload,
+      item_id: itemId,
+      quantity,
+      source_key: payload.source_key || `legacy:${payload.visit_id}:${itemId}:${Date.now()}`,
+    })
+  } catch (rpcErr) {
+    const msg = String(rpcErr?.message || '')
+    if (msg.includes('Could not find the function') || rpcErr?.status === 404) {
+      console.warn("⚠️ consume_legacy_inventory_item RPC yo'q — eski usulda sarflash")
+    } else {
+      throw rpcErr
+    }
   }
 
-  const data = { ...payload, clinic_id: cid }
-  const result = await supabasePost(CONSUMPTIONS_TABLE, data)
-  const created = result && result[0] ? result[0] : null
-  if (!created) throw new Error('Material sarfi yozuvi yaratilmadi.')
+  // Legacy fallback: inventory_consumptions + stock patch
+  const record = {
+    clinic_id: cid,
+    item_id: itemId,
+    visit_id: payload.visit_id || null,
+    patient_id: payload.patient_id || null,
+    doctor_id: payload.doctor_id || null,
+    quantity,
+    note: payload.note || null,
+    created_by: payload.created_by || null,
+  }
+  const inserted = await supabasePost('inventory_consumptions', record)
 
-  const newStock = currentStock - quantity
-  await updateInventoryItem(itemId, { current_stock: newStock })
-
-  return created
+  // Stock minus
+  const items = await supabaseGetWithClinicFallback('inventory', `id=eq.${itemId}`, cid)
+  const item = items?.[0]
+  if (item) {
+    const newStock = Math.max(0, (Number(item.current_stock) || 0) - quantity)
+    await supabasePatchWhere(
+      'inventory',
+      mergeClinicQuery(`id=eq.${itemId}`, cid),
+      { current_stock: newStock, updated_at: new Date().toISOString() },
+    )
+  }
+  return inserted
 }
 
 /**

@@ -8,6 +8,7 @@
           <p class="text-sm sm:text-base text-gray-500 mt-0.5">{{ t('inventory.subtitle') }}</p>
         </div>
         <button
+          v-if="canCreateWarehouse"
           type="button"
           class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-gradient-to-r from-primary-500 to-cyan-600 text-white font-medium rounded-xl transition-all touch-manipulation min-h-[44px]"
           @click="openAddModal"
@@ -125,6 +126,7 @@
                 <td class="px-4 py-3">
                   <div class="flex items-center justify-end gap-2">
                     <button
+                      v-if="canEditWarehouse"
                       type="button"
                       class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 text-xs font-medium hover:bg-emerald-100"
                       :title="t('inventory.stockIn')"
@@ -134,6 +136,7 @@
                       {{ t('inventory.inShort') }}
                     </button>
                     <button
+                      v-if="canEditWarehouse"
                       type="button"
                       class="inline-flex items-center gap-1 rounded-lg bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1.5 text-xs font-medium hover:bg-orange-100"
                       :title="t('inventory.stockOut')"
@@ -299,6 +302,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { useAuthStore } from '@/stores/auth'
+import { usePermission } from '@/composables/usePermission'
 import { getInventory, addInventoryItem, logTransaction } from '@/api/warehouseApi'
 import { getStockStatus, filterCriticalItems, STOCK_STATUS } from '@/lib/warehouseStock'
 import {
@@ -312,6 +316,9 @@ import {
 
 const { t } = useI18n()
 const authStore = useAuthStore()
+const { can } = usePermission()
+const canCreateWarehouse = computed(() => can('warehouse', 'create'))
+const canEditWarehouse = computed(() => can('warehouse', 'edit'))
 
 const items = ref([])
 const loading = ref(false)
@@ -440,6 +447,7 @@ function resetAddForm() {
 }
 
 function openAddModal() {
+  if (!canCreateWarehouse.value) return
   resetAddForm()
   modals.add = true
 }
@@ -449,6 +457,7 @@ function closeAddModal() {
 }
 
 async function saveNewItem() {
+  if (!canCreateWarehouse.value) return
   if (!addForm.name.trim()) {
     error.value = t('inventory.nameRequired')
     return
@@ -478,6 +487,7 @@ async function saveNewItem() {
 }
 
 function openTransactionModal(item, type) {
+  if (!canEditWarehouse.value) return
   txForm.itemId = item.id
   txForm.item = item
   txForm.itemName = item.name
@@ -494,6 +504,7 @@ function closeTransactionModal() {
 }
 
 async function saveTransaction() {
+  if (!canEditWarehouse.value) return
   const qty = Number(txForm.quantity)
   if (!Number.isFinite(qty) || qty <= 0) {
     error.value = t('inventory.quantityRequired')

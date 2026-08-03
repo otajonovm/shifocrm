@@ -1,22 +1,23 @@
 <template>
   <div>
     <!-- Header + Yangi xodim -->
-    <div v-if="canManageStaff" class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
         <h2 class="text-lg font-semibold text-gray-900">{{ t('staffWizard.listTitle') }}</h2>
         <p class="text-sm text-gray-500">{{ t('staffWizard.listSubtitle') }}</p>
       </div>
       <button
+        v-if="canCreateStaff"
         type="button"
         class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-cyan-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:shadow-lg transition-all"
-        @click="openCreate()"
+        @click="openCreateAllowed"
       >
         <PlusIcon class="h-5 w-5" />
         {{ t('staffWizard.addEmployee') }}
       </button>
     </div>
 
-    <div v-else class="bg-white rounded-2xl border border-gray-100 shadow-card p-6 mb-6">
+    <div v-if="!canManageStaff" class="bg-white rounded-2xl border border-gray-100 shadow-card p-6 mb-6">
       <p class="text-sm text-gray-600">
         {{ isClinicAdminOnly ? t('staffWizard.noPermissionSettings') : t('staffWizard.noPermission') }}
       </p>
@@ -57,9 +58,9 @@
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">{{ t('staffWizard.colPhone') }}</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">{{ t('staffWizard.colRole') }}</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">{{ t('staffWizard.colSpecialty') }}</th>
-              <th v-if="canManageStaff" class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">{{ t('staffWizard.colKpi') }}</th>
+              <th v-if="canEditStaff || canDeleteStaff" class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">{{ t('staffWizard.colKpi') }}</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">{{ t('staffWizard.colStatus') }}</th>
-              <th v-if="canManageStaff" class="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-500">{{ t('staffWizard.colActions') }}</th>
+              <th v-if="canEditStaff || canDeleteStaff" class="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-500">{{ t('staffWizard.colActions') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-50 bg-white">
@@ -87,7 +88,7 @@
                 </span>
               </td>
               <td class="px-4 py-3 text-gray-600">{{ employee.specialization || '—' }}</td>
-              <td v-if="canManageStaff" class="px-4 py-3 text-gray-600">{{ getKpiLabel(employee) }}</td>
+              <td v-if="canEditStaff || canDeleteStaff" class="px-4 py-3 text-gray-600">{{ getKpiLabel(employee) }}</td>
               <td class="px-4 py-3">
                 <span
                   class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold"
@@ -98,17 +99,19 @@
                   {{ employee.is_active !== false && employee.status !== 'inactive' ? t('staffWizard.statusActive') : t('staffWizard.statusInactive') }}
                 </span>
               </td>
-              <td v-if="canManageStaff" class="px-4 py-3 text-right">
+              <td v-if="canEditStaff || canDeleteStaff" class="px-4 py-3 text-right">
                 <div class="inline-flex items-center gap-2">
                   <button
+                    v-if="canEditStaff"
                     type="button"
                     class="p-2 rounded-lg text-slate-500 hover:bg-primary-50 hover:text-primary-600 transition-colors"
                     :title="t('staffWizard.edit')"
-                    @click="openEdit(employee)"
+                    @click="openEditAllowed(employee)"
                   >
                     <PencilSquareIcon class="h-4 w-4" />
                   </button>
                   <button
+                    v-if="canDeleteStaff"
                     type="button"
                     class="p-2 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
                     :title="t('staffWizard.delete')"
@@ -135,6 +138,7 @@
       :is-submitting="isSubmitting"
       :cash-registers="cashRegisters"
       :clinic-name="clinicName"
+      @update:permissions="setPermissions"
       @close="close()"
       @next="next()"
       @back="back()"
@@ -159,6 +163,7 @@ import { useDoctorsStore } from '@/stores/doctors'
 import { useEmployeePermissionsStore } from '@/stores/employeePermissions'
 import { useToast } from '@/composables/useToast'
 import { useStaffWizard } from '@/composables/useStaffWizard'
+import { usePermission } from '@/composables/usePermission'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import StaffWizardModal from '@/components/staff/wizard/StaffWizardModal.vue'
 import { formatPhoneUzDisplay } from '@/lib/phoneUz'
@@ -174,8 +179,15 @@ const doctorsStore = useDoctorsStore()
 const employeePermsStore = useEmployeePermissionsStore()
 const toast = useToast()
 const { t } = useI18n()
+const { can } = usePermission()
 
-const canManageStaff = computed(() => checkCanManageStaff(authStore))
+const hasOwnerStaffAccess = computed(() => checkCanManageStaff(authStore))
+const canCreateStaff = computed(() => hasOwnerStaffAccess.value || can('staff', 'create'))
+const canEditStaff = computed(() => hasOwnerStaffAccess.value || can('staff', 'edit'))
+const canDeleteStaff = computed(() => hasOwnerStaffAccess.value || can('staff', 'delete'))
+const canManageStaff = computed(() => (
+  canCreateStaff.value || canEditStaff.value || canDeleteStaff.value
+))
 const isClinicAdminOnly = computed(() => isClinicAdmin(authStore))
 
 const {
@@ -185,6 +197,7 @@ const {
   totalSteps,
   form,
   permissions,
+  setPermissions,
   formError,
   isSubmitting,
   cashRegisters,
@@ -241,8 +254,18 @@ const handleWizardSubmit = async () => {
   }
 }
 
+const openCreateAllowed = () => {
+  if (!canCreateStaff.value) return
+  openCreate()
+}
+
+const openEditAllowed = (employee) => {
+  if (!canEditStaff.value) return
+  openEdit(employee)
+}
+
 const handleDeleteEmployee = async (id) => {
-  if (!canManageStaff.value) return
+  if (!canDeleteStaff.value) return
   if (!confirm(t('staffWizard.deleteConfirm'))) return
 
   try {

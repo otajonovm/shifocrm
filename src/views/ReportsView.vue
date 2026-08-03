@@ -523,7 +523,10 @@ import { listExpenses, listInventoryMovements, listInventoryItems } from '@/api/
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
 import { useDataPermissionGuard, useDataPermission } from '@/composables/useDataPermission'
+import { usePermission } from '@/composables/usePermission'
 import { exportToCsv, exportToPdf } from '@/lib/exportData'
+import { buildDoctorRevenueRows, summarizeDoctorRevenueRows } from '@/lib/doctorRevenueKpi'
+import { canViewClinicProfit } from '@/lib/roles'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -534,7 +537,9 @@ useDataPermissionGuard('can_view_revenue', {
   message: "Hisobotlar bo'limiga kirish huquqingiz yo'q.",
 })
 
-const { allowed: canExport } = useDataPermission('can_export_data')
+const { allowed: legacyCanExport } = useDataPermission('can_export_data')
+const { can } = usePermission()
+const canExport = computed(() => legacyCanExport.value && can('reports', 'create'))
 
 const isSolo = computed(() => authStore.userRole === 'solo')
 
@@ -727,20 +732,26 @@ const applySummary = () => {
   const totals = payments.value.reduce(
     (acc, entry) => {
       const amount = Number(entry.amount) || 0
-      if (entry.payment_type === 'payment') acc.totalPayments += amount
-      if (entry.payment_type === 'refund') acc.totalRefunds += amount
-      if (entry.payment_type === 'expense') {
-        acc.totalAdditionalExpenses += amount
-        acc.netIncome -= amount // Xarajatlar daromaddan ayiriladi
-      } else if (entry.payment_type === 'refund') {
-        acc.netIncome -= amount
-      } else {
+      if (entry.payment_type === 'discount') return acc
+      if (entry.payment_type === 'payment') {
+        acc.totalPayments += amount
         acc.netIncome += amount
+      } else if (entry.payment_type === 'refund') {
+        acc.totalRefunds += Math.abs(amount)
+        acc.netIncome -= Math.abs(amount)
       }
       return acc
     },
     { totalPayments: 0, totalRefunds: 0, netIncome: 0, totalAdditionalExpenses: 0 }
   )
+  const expenseTotal = (expensesList.value || []).reduce(
+    (sum, e) => sum + (Number(e.amount) || 0),
+    0,
+  )
+  totals.totalAdditionalExpenses = expenseTotal
+  if (canViewClinicProfit(authStore)) {
+    totals.netIncome -= expenseTotal
+  }
   summary.value.totalPayments = totals.totalPayments
   summary.value.totalRefunds = totals.totalRefunds
   summary.value.netIncome = totals.netIncome
@@ -808,11 +819,6 @@ const formatDateShort = (value) => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleDateString('uz-UZ')
-}
-
-const patientLabel = (patientId) => {
-  const match = patients.value.find(item => Number(item.id) === Number(patientId))
-  return match ? `${match.full_name} (#${match.id})` : `#${patientId}`
 }
 
 // Daromad ma'lumotlarini yuklash (kun/hafta/oy bo'yicha)
@@ -912,67 +918,13 @@ const movementItemName = (itemId) => {
   return item ? item.name : `#${itemId}`
 }
 
-// ===== Shifokorlar kesimida tushum va KPI (maosh) hisoboti =====
-const doctorRevenueRows = computed(() => {
-  const map = new Map()
-
-  const ensureRow = (doctorId) => {
-    const key = doctorId != null ? Number(doctorId) : 'none'
-    if (!map.has(key)) {
-      const doctor = doctorId != null
-        ? doctors.value.find((d) => Number(d.id) === Number(doctorId))
-        : null
-      const pct = doctor && doctor.salary_percentage != null
-        ? Number(doctor.salary_percentage)
-        : 0
-      map.set(key, {
-        doctorId: doctorId != null ? Number(doctorId) : null,
-        name: doctor
-          ? (doctor.full_name || doctor.name || `#${doctorId}`)
-          : 'Biriktirilmagan',
-        salaryPercentage: Number.isFinite(pct) ? pct : 0,
-        gross: 0,
-        visitsCount: 0,
-      })
-    }
-    return map.get(key)
-  }
-
-  for (const p of payments.value) {
-    // Faqat bemor to'lovlari hisobga olinadi (qo'shimcha xarajatlar — adjustment emas)
-    if (p.payment_type !== 'payment' && p.payment_type !== 'refund') continue
-    const row = ensureRow(p.doctor_id)
-    const amount = Number(p.amount) || 0
-    if (p.payment_type === 'refund') {
-      row.gross -= amount
-    } else {
-      row.gross += amount
-      row.visitsCount += 1
-    }
-  }
-
-  return Array.from(map.values())
-    .map((row) => {
-      const gross = Math.max(0, row.gross)
-      const doctorShare = Math.round((gross * row.salaryPercentage) / 100)
-      const clinicShare = gross - doctorShare
-      return { ...row, gross, doctorShare, clinicShare }
-    })
-    .filter((row) => row.gross !== 0 || row.visitsCount > 0)
-    .sort((a, b) => b.gross - a.gross)
-})
+// ===== Shifokorlar kesimida tushum va KPI (distinct visit, net collected) =====
+const doctorRevenueRows = computed(() =>
+  buildDoctorRevenueRows({ payments: payments.value, doctors: doctors.value }),
+)
 
 const doctorRevenueTotals = computed(() =>
-  doctorRevenueRows.value.reduce(
-    (acc, row) => {
-      acc.gross += row.gross
-      acc.doctorShare += row.doctorShare
-      acc.clinicShare += row.clinicShare
-      acc.visitsCount += row.visitsCount
-      return acc
-    },
-    { gross: 0, doctorShare: 0, clinicShare: 0, visitsCount: 0 }
-  )
+  summarizeDoctorRevenueRows(doctorRevenueRows.value),
 )
 
 // ===== Eksport (Excel / PDF) — can_export_data huquqi bilan himoyalangan =====

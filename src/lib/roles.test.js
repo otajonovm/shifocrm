@@ -74,9 +74,14 @@ describe('roles', () => {
     expect(resolveClinicOwnerSessionRole({ slug: 'dental-pro', max_doctors: 4 })).toBe(ROLES.CLINIC_OWNER)
   })
 
-  it('employeeDbRoleToAuthRole maps administrator to admin session', () => {
+  it('employeeDbRoleToAuthRole maps staff DB roles to session roles', () => {
     expect(employeeDbRoleToAuthRole('administrator')).toBe(ROLES.ADMIN)
     expect(employeeDbRoleToAuthRole('doctor')).toBeNull()
+    expect(employeeDbRoleToAuthRole('cashier')).toBe(ROLES.CASHIER)
+    expect(employeeDbRoleToAuthRole('reception')).toBe(ROLES.RECEPTION)
+    expect(employeeDbRoleToAuthRole('chief_doctor')).toBe(ROLES.CHIEF_DOCTOR)
+    expect(employeeDbRoleToAuthRole('assistant')).toBe(ROLES.ASSISTANT)
+    expect(employeeDbRoleToAuthRole('unknown_role')).toBeNull()
   })
 
   it('canManageStaff allows clinic_owner and global super admin, not regular admin', () => {

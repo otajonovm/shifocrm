@@ -25,16 +25,12 @@ function getTelegramSendUrl() {
 export async function sendTelegramNotification({ patientId, message }) {
   const sendUrl = getTelegramSendUrl();
   if (!sendUrl) {
-    console.error('❌ TELEGRAM_API_URL sozlanmagan - .env VITE_TELEGRAM_API_URL kiriting');
     return { ok: false, error: 'NOT_CONFIGURED' };
   }
   if (!patientId || !message) {
-    console.error('❌ TELEGRAM: Patient ID yoki message mavjud emas');
     return { ok: false, error: 'PATIENT_ID_AND_MESSAGE_REQUIRED' };
   }
   try {
-    console.log(`📤 Telegram habar yuborilmoqda: patient_id=${patientId}`);
-
     const headers = {
       'Content-Type': 'application/json',
     };
@@ -55,39 +51,31 @@ export async function sendTelegramNotification({ patientId, message }) {
       const errorData = await response.json().catch(() => ({ error: 'UNKNOWN_ERROR' }));
       const errorCode = errorData.error || 'HTTP_ERROR';
 
-      // Xatolik kodlarini handle qilish
-      if (response.status === 401) {
-        console.error('❌ TELEGRAM: API key noto\'g\'ri. .env VITE_TELEGRAM_API_KEY soshing');
-        return { ok: false, error: 'UNAUTHORIZED' };
-      }
-      if (response.status === 404) {
+      // Bot ixtiyoriy — 502/unreachable da UI/console shovqinini kamaytiramiz
+      if (
+        response.status === 502
+        || response.status === 404
+        || errorCode === 'TELEGRAM_BOT_UNREACHABLE'
+        || errorCode === 'BOT_UNREACHABLE'
+      ) {
         if (errorCode === 'CHAT_ID_NOT_FOUND') {
-          console.warn('⚠️ TELEGRAM: Bemor telegram botda ro\'yxatdan o\'tmagan. /start kiriting');
           return { ok: false, error: 'CHAT_ID_NOT_FOUND' };
         }
-        console.warn(
-          '⚠️ TELEGRAM: Bot server topilmadi. telegram-bot papkasida `npm start` (port 3001) ishga tushiring.'
-        );
-        return { ok: false, error: errorCode === 'TELEGRAM_BOT_UNREACHABLE' ? errorCode : 'BOT_UNREACHABLE' };
-      }
-      if (response.status === 502 || errorCode === 'TELEGRAM_BOT_UNREACHABLE') {
-        console.warn('⚠️ TELEGRAM: Bot server ishlamayapti (localhost:3001)');
         return { ok: false, error: 'TELEGRAM_BOT_UNREACHABLE' };
       }
+      if (response.status === 401) {
+        return { ok: false, error: 'UNAUTHORIZED' };
+      }
       if (response.status === 500) {
-        console.error('❌ TELEGRAM SERVER ERROR:', errorData);
         return { ok: false, error: 'SERVER_ERROR' };
       }
 
-      console.error('❌ Telegram API error:', errorData);
       return { ok: false, error: errorCode };
     }
 
     const result = await response.json().catch(() => ({ ok: true }));
-    console.log('✅ Telegram habar yuborildi:', result);
     return result;
   } catch (error) {
-    console.error('❌ TELEGRAM NETWORK ERROR:', error.message);
     return { ok: false, error: error.message || 'NETWORK_ERROR' };
   }
 }

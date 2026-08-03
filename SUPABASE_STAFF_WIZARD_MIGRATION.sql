@@ -171,9 +171,67 @@ CREATE TRIGGER trigger_sync_employee_status
 -- -----------------------------------------------------------------------------
 ALTER TABLE IF EXISTS public.employee_permissions
   ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '{
-    "patients":   {"view": false, "create": false, "edit": false, "delete": false},
-    "finances":   {"view": false, "create": false, "edit": false, "delete": false},
-    "warehouse":  {"view": false, "create": false, "edit": false, "delete": false},
-    "analytics":  {"view": false, "create": false, "edit": false, "delete": false},
-    "settings":   {"view": false, "create": false, "edit": false, "delete": false}
+    "dashboard":       {"view": false, "create": false, "edit": false, "delete": false},
+    "patients":        {"view": false, "create": false, "edit": false, "delete": false},
+    "staff":           {"view": false, "create": false, "edit": false, "delete": false},
+    "appointments":    {"view": false, "create": false, "edit": false, "delete": false},
+    "leads":           {"view": false, "create": false, "edit": false, "delete": false},
+    "payments":        {"view": false, "create": false, "edit": false, "delete": false},
+    "services":        {"view": false, "create": false, "edit": false, "delete": false},
+    "warehouse":       {"view": false, "create": false, "edit": false, "delete": false},
+    "treatment_plans": {"view": false, "create": false, "edit": false, "delete": false},
+    "reports":         {"view": false, "create": false, "edit": false, "delete": false},
+    "settings":        {"view": false, "create": false, "edit": false, "delete": false}
   }'::jsonb;
+
+ALTER TABLE IF EXISTS public.employee_permissions
+  ALTER COLUMN permissions SET DEFAULT '{
+    "dashboard":       {"view": false, "create": false, "edit": false, "delete": false},
+    "patients":        {"view": false, "create": false, "edit": false, "delete": false},
+    "staff":           {"view": false, "create": false, "edit": false, "delete": false},
+    "appointments":    {"view": false, "create": false, "edit": false, "delete": false},
+    "leads":           {"view": false, "create": false, "edit": false, "delete": false},
+    "payments":        {"view": false, "create": false, "edit": false, "delete": false},
+    "services":        {"view": false, "create": false, "edit": false, "delete": false},
+    "warehouse":       {"view": false, "create": false, "edit": false, "delete": false},
+    "treatment_plans": {"view": false, "create": false, "edit": false, "delete": false},
+    "reports":         {"view": false, "create": false, "edit": false, "delete": false},
+    "settings":        {"view": false, "create": false, "edit": false, "delete": false}
+  }'::jsonb;
+
+-- Eski 5-bo'limli matritsalarni yangi canonical modelga xavfsiz backfill qilish.
+-- Mavjud qiymatlar defaultlardan ustun turadi; finances/analytics yangi
+-- payments/reports bo'limlariga ko'chiriladi.
+UPDATE public.employee_permissions
+SET permissions =
+  '{
+    "dashboard":       {"view": false, "create": false, "edit": false, "delete": false},
+    "patients":        {"view": false, "create": false, "edit": false, "delete": false},
+    "staff":           {"view": false, "create": false, "edit": false, "delete": false},
+    "appointments":    {"view": false, "create": false, "edit": false, "delete": false},
+    "leads":           {"view": false, "create": false, "edit": false, "delete": false},
+    "payments":        {"view": false, "create": false, "edit": false, "delete": false},
+    "services":        {"view": false, "create": false, "edit": false, "delete": false},
+    "warehouse":       {"view": false, "create": false, "edit": false, "delete": false},
+    "treatment_plans": {"view": false, "create": false, "edit": false, "delete": false},
+    "reports":         {"view": false, "create": false, "edit": false, "delete": false},
+    "settings":        {"view": false, "create": false, "edit": false, "delete": false}
+  }'::jsonb
+  || CASE
+       WHEN permissions ? 'finances'
+         THEN jsonb_build_object('payments', permissions->'finances')
+       ELSE '{}'::jsonb
+     END
+  || CASE
+       WHEN permissions ? 'analytics'
+         THEN jsonb_build_object('reports', permissions->'analytics')
+       ELSE '{}'::jsonb
+     END
+  || (permissions - 'finances' - 'analytics');
+
+ALTER TABLE IF EXISTS public.employee_permissions
+  DROP CONSTRAINT IF EXISTS employee_permissions_permissions_is_object;
+
+ALTER TABLE IF EXISTS public.employee_permissions
+  ADD CONSTRAINT employee_permissions_permissions_is_object
+  CHECK (jsonb_typeof(permissions) = 'object');

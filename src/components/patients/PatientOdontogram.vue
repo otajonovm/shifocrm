@@ -444,7 +444,7 @@ import {
   deleteVisitConsumption,
 } from '@/lib/inventoryBridge'
 import { consumeServiceMaterialsForVisit } from '@/api/serviceMaterialsApi'
-import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
+import { getPaymentsByVisitId } from '@/api/paymentsApi'
 import { sendVisitCompleted, schedulePatientFollowUps } from '@/api/telegramApi'
 import { useSubscriptionStore } from '@/stores/subscription'
 import { FEATURE_KEYS } from '@/lib/subscriptionFeatures'
@@ -634,8 +634,8 @@ const consumptionsTotal = computed(() =>
   consumptions.value.reduce((sum, entry) => sum + consumptionTotal(entry), 0)
 )
 
-// Jami hisob = xizmatlar + material sarfi
-const totalBill = computed(() => servicesTotal.value + consumptionsTotal.value)
+// Bemor hisobi = faqat xizmatlar (material tannarxi COGS, billga kirmaydi)
+const totalBill = computed(() => servicesTotal.value)
 
 const syncTeethFromOdontogram = () => {
   const raw = currentOdontogram.value?.data?.teeth
@@ -971,49 +971,67 @@ const completeCurrentVisit = async () => {
           _status: 'completed',
           _completed_at: new Date().toISOString()
         }
-        await odontogramApi.updateOdontogramSnapshot(currentOdontogram.value.id, completedData)
+        await odontogramApi.updateOdontogramSnapshot(
+          currentOdontogram.value.id,
+          completedData,
+          { expectedVersion: currentOdontogram.value.version },
+        )
         currentOdontogram.value.data = completedData
+        if (currentOdontogram.value.version != null) {
+          currentOdontogram.value.version = Number(currentOdontogram.value.version) + 1
+        }
       } catch (err) {
         console.warn('Failed to mark odontogram as completed:', err)
       }
     }
 
-    await visitsApi.updateVisit(currentVisit.value.id, {
-      status: 'completed_paid',
-      price: totalPrice,
-      paid_amount: totalPrice,
-      debt_amount: null
-    })
-    currentVisit.value.status = 'completed_paid'
-    currentVisit.value.price = totalPrice
-    currentVisit.value.paid_amount = totalPrice
-
-    if (totalPrice > 0) {
+    // Mavjud to‘lovlardan debt hisobla; avtomatik cash posting yo‘q
+    let netPaid = 0
+    let discountTotal = 0
+    try {
       const existingPayments = await getPaymentsByVisitId(currentVisit.value.id)
-      const netPaid = existingPayments.reduce((sum, entry) => {
+      for (const entry of existingPayments) {
         const amount = Number(entry.amount) || 0
-        return sum + (entry.payment_type === 'refund' ? -amount : amount)
-      }, 0)
-
-      if (netPaid < totalPrice) {
-        await createPayment({
-          visit_id: currentVisit.value.id,
-          patient_id: props.patient.id,
-          doctor_id: props.doctorId,
-          amount: totalPrice - netPaid,
-          payment_type: 'payment',
-          method: 'cash',
-          note: 'Odontogramma yakunlandi'
-        })
+        if (entry.payment_type === 'discount') {
+          discountTotal += Math.abs(amount)
+          continue
+        }
+        if (entry.payment_type === 'refund') {
+          if (String(entry.note || '').includes('[DISCOUNT]')) {
+            discountTotal += Math.abs(amount)
+          } else {
+            netPaid -= amount
+          }
+          continue
+        }
+        netPaid += amount
       }
+    } catch (err) {
+      console.warn('Failed to load payments for completion:', err)
     }
+
+    const effectiveDue = Math.max(0, totalPrice - discountTotal)
+    const remaining = Math.max(0, effectiveDue - netPaid)
+    const nextStatus = remaining > 0 ? 'completed_debt' : 'completed_paid'
+
+    await visitsApi.updateVisit(currentVisit.value.id, {
+      status: nextStatus,
+      price: totalPrice,
+      paid_amount: netPaid,
+      debt_amount: remaining > 0 ? remaining : null
+    })
+    currentVisit.value.status = nextStatus
+    currentVisit.value.price = totalPrice
+    currentVisit.value.paid_amount = netPaid
+    currentVisit.value.debt_amount = remaining > 0 ? remaining : null
 
     // Update in list
     const index = visits.value.findIndex(v => v.id === currentVisit.value.id)
     if (index !== -1) {
-      visits.value[index].status = 'completed_paid'
+      visits.value[index].status = nextStatus
       visits.value[index].price = totalPrice
-      visits.value[index].paid_amount = totalPrice
+      visits.value[index].paid_amount = netPaid
+      visits.value[index].debt_amount = remaining > 0 ? remaining : null
     }
 
     toast.success(t('odontogram.toastVisitCompleted'))

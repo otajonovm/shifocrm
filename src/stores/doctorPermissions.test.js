@@ -23,9 +23,9 @@ describe('doctorPermissions', () => {
     expect(parsePermissionsField(null)).toBeNull()
   })
 
-  it('DEFAULT_PERMISSIONS enables all module keys', () => {
+  it('DEFAULT_PERMISSIONS denies all module keys by default', () => {
     MODULE_PERMISSIONS.forEach((m) => {
-      expect(DEFAULT_PERMISSIONS[m.key]).toBe(true)
+      expect(DEFAULT_PERMISSIONS[m.key]).toBe(false)
     })
   })
 

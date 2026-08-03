@@ -4,9 +4,8 @@
 
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { updateEmployeePermissions } from '@/api/employeesApi'
+import { getEmployeeById, updateEmployeePermissions } from '@/api/employeesApi'
 import {
-  MODULE_PERMISSIONS,
   DEFAULT_PERMISSIONS,
   DEFAULT_DATA_PERMISSIONS,
   parsePermissionsField,
@@ -22,11 +21,7 @@ import {
 } from '@/lib/staffPermissions'
 
 function mergeModulePermissions(raw) {
-  const merged = { ...DEFAULT_PERMISSIONS, ...(raw || {}) }
-  MODULE_PERMISSIONS.forEach((m) => {
-    if (m.alwaysEnabled) merged[m.key] = true
-  })
-  return merged
+  return { ...DEFAULT_PERMISSIONS, ...(raw || {}) }
 }
 
 function mergeDataPermissions(raw) {
@@ -37,6 +32,8 @@ export const useEmployeePermissionsStore = defineStore('employeePermissions', ()
   const modulePermissionsMap = ref({})
   const dataPermissionsMap = ref({})
   const matrixPermissionsMap = ref({})
+  const loadedMap = ref({})
+  const loadingMap = ref({})
 
   const getPermissions = (employeeId) => {
     if (!employeeId) return { ...DEFAULT_PERMISSIONS }
@@ -56,7 +53,7 @@ export const useEmployeePermissionsStore = defineStore('employeePermissions', ()
   const loadFromEmployee = (employee) => {
     if (!employee?.id) return
     const id = String(employee.id)
-    const perms = employee.employee_permissions ?? unwrapRelation(employee.employee_permissions)
+    const perms = unwrapRelation(employee.employee_permissions)
     const {
       module_permissions: moduleField,
       permissions: permissionsField,
@@ -84,6 +81,53 @@ export const useEmployeePermissionsStore = defineStore('employeePermissions', ()
         permissions: permissionsRaw,
       }),
     }
+    loadedMap.value = { ...loadedMap.value, [id]: true }
+  }
+
+  const isLoaded = (employeeId) => {
+    if (!employeeId) return true
+    return loadedMap.value[String(employeeId)] === true
+  }
+
+  const ensureLoaded = async (employeeId) => {
+    if (!employeeId || isLoaded(employeeId)) return getMatrixPermissions(employeeId)
+    const id = String(employeeId)
+    if (loadingMap.value[id]) return loadingMap.value[id]
+
+    const promise = getEmployeeById(employeeId)
+      .then((employee) => {
+        if (employee) loadFromEmployee(employee)
+        else loadedMap.value = { ...loadedMap.value, [id]: true }
+        return getMatrixPermissions(employeeId)
+      })
+      .finally(() => {
+        const next = { ...loadingMap.value }
+        delete next[id]
+        loadingMap.value = next
+      })
+
+    loadingMap.value = { ...loadingMap.value, [id]: promise }
+    return promise
+  }
+
+  const can = (employeeId, section, action = 'view') => {
+    if (!employeeId || !section || !action) return false
+    const matrix = getMatrixPermissions(employeeId)
+    return matrix?.[section]?.[action] === true
+  }
+
+  const canAny = (employeeId, checks = []) =>
+    checks.some(({ section, action = 'view' }) => can(employeeId, section, action))
+
+  const canAll = (employeeId, checks = []) =>
+    checks.every(({ section, action = 'view' }) => can(employeeId, section, action))
+
+  const clear = () => {
+    modulePermissionsMap.value = {}
+    dataPermissionsMap.value = {}
+    matrixPermissionsMap.value = {}
+    loadedMap.value = {}
+    loadingMap.value = {}
   }
 
   const savePermissions = async (employeeId, modulePerms, dataPerms, matrix) => {
@@ -111,6 +155,7 @@ export const useEmployeePermissionsStore = defineStore('employeePermissions', ()
     modulePermissionsMap.value = { ...modulePermissionsMap.value, [id]: mergedModule }
     dataPermissionsMap.value = { ...dataPermissionsMap.value, [id]: mergedData }
     matrixPermissionsMap.value = { ...matrixPermissionsMap.value, [id]: synced.permissions }
+    loadedMap.value = { ...loadedMap.value, [id]: true }
 
     return {
       module_permissions: mergedModule,
@@ -120,7 +165,6 @@ export const useEmployeePermissionsStore = defineStore('employeePermissions', ()
   }
 
   const saveMatrixPermissions = async (employeeId, matrix) => {
-    const id = String(employeeId)
     const currentModule = getPermissions(employeeId)
     const currentData = getDataPermissions(employeeId)
     return savePermissions(employeeId, currentModule, currentData, matrix)
@@ -130,10 +174,17 @@ export const useEmployeePermissionsStore = defineStore('employeePermissions', ()
     modulePermissionsMap,
     dataPermissionsMap,
     matrixPermissionsMap,
+    loadedMap,
     getPermissions,
     getDataPermissions,
     getMatrixPermissions,
     loadFromEmployee,
+    isLoaded,
+    ensureLoaded,
+    can,
+    canAny,
+    canAll,
+    clear,
     savePermissions,
     saveMatrixPermissions,
   }

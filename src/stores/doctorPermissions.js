@@ -13,7 +13,6 @@ export const MODULE_PERMISSIONS = [
     key: 'can_view_dashboard',
     labelUz: 'Boshqaruv paneli',
     descUz: 'Asosiy dashboard sahifasiga kirish',
-    alwaysEnabled: true,
   },
   {
     key: 'can_view_patients',
@@ -47,8 +46,9 @@ export const MODULE_PERMISSIONS = [
   },
 ]
 
+/** Deny-by-default: ruxsat berilmaguncha barcha modullar yopiq. */
 export const DEFAULT_PERMISSIONS = Object.fromEntries(
-  MODULE_PERMISSIONS.map(m => [m.key, true])
+  MODULE_PERMISSIONS.map(m => [m.key, false])
 )
 
 export const DEFAULT_DATA_PERMISSIONS = {
@@ -102,11 +102,7 @@ export function parsePermissionsField(value) {
 }
 
 function mergeModulePermissions(raw) {
-  const merged = { ...DEFAULT_PERMISSIONS, ...(raw || {}) }
-  MODULE_PERMISSIONS.forEach(m => {
-    if (m.alwaysEnabled) merged[m.key] = true
-  })
-  return merged
+  return { ...DEFAULT_PERMISSIONS, ...(raw || {}) }
 }
 
 function mergeDataPermissions(raw) {
@@ -144,10 +140,8 @@ export const useDoctorPermissionsStore = defineStore('doctorPermissions', () => 
   }
 
   const hasPermission = (doctorId, key) => {
-    const moduleDef = MODULE_PERMISSIONS.find(m => m.key === key)
-    if (moduleDef?.alwaysEnabled) return true
     const perms = getPermissions(doctorId)
-    return perms[key] !== false
+    return perms[key] === true
   }
 
   const loadFromDoctor = (doctor, clinicId) => {

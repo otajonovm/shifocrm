@@ -20,6 +20,7 @@ export const summarizePaymentsByMethod = (payments = [], { fromIso, toIso } = {}
     transfer: 0,
     other: 0,
     refunds: 0,
+    cashRefunds: 0,
     paymentsCount: 0,
   }
 
@@ -33,9 +34,14 @@ export const summarizePaymentsByMethod = (payments = [], { fromIso, toIso } = {}
 
     if (type === 'refund') {
       totals.refunds += Math.abs(amount)
+      const bucket = normalizeMethod(entry.method)
+      if (bucket === 'cash') {
+        totals.cashRefunds = (totals.cashRefunds || 0) + Math.abs(amount)
+      }
       continue
     }
 
+    if (type === 'discount') continue
     if (type !== 'payment') continue
 
     totals.paymentsCount += 1
@@ -46,11 +52,15 @@ export const summarizePaymentsByMethod = (payments = [], { fromIso, toIso } = {}
   return totals
 }
 
+/** Fizik kassa kutilgan qoldiq — faqat naqd (card/transfer kassada yo‘q). */
 export const calcExpectedShiftBalance = (openingBalance, totals) => {
   const opening = Number(openingBalance) || 0
-  const income =
-    totals.cash + totals.card + totals.transfer + totals.other
-  return opening + income - totals.refunds
+  const cashIn = Number(totals.cash) || 0
+  // Refunds: faqat naqd refundlar kassa qoldig‘idan chiqadi; aniq usul yo‘q bo‘lsa taxminiy cash.
+  const refunds = Number(totals.refunds) || 0
+  const cashRefunds = Number(totals.cashRefunds)
+  const refundCash = Number.isFinite(cashRefunds) ? cashRefunds : refunds
+  return opening + cashIn - refundCash
 }
 
 export const buildShiftCloseReport = ({

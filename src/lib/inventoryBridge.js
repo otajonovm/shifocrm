@@ -38,11 +38,21 @@ export async function listClinicInventoryItems(authStore) {
 
 export async function listVisitConsumptions(authStore, visitId) {
   if (usesSmartWarehouse(authStore)) {
-    const rows = await warehouseApi.getVisitConsumptions(visitId)
-    return rows.map(mapConsumptionRow)
+    try {
+      const rows = await warehouseApi.getVisitConsumptions(visitId)
+      return rows.map(mapConsumptionRow)
+    } catch (error) {
+      // Schema/RPC muammosida legacy jadvalga fallback
+      console.warn('Smart warehouse consumptions failed, falling back:', error?.message || error)
+    }
   }
-  const rows = await inventoryApi.listInventoryConsumptionsByVisitId(visitId)
-  return rows.map(mapConsumptionRow)
+  try {
+    const rows = await inventoryApi.listInventoryConsumptionsByVisitId(visitId)
+    return rows.map(mapConsumptionRow)
+  } catch (error) {
+    console.warn('Legacy consumptions failed:', error?.message || error)
+    return []
+  }
 }
 
 export async function createVisitConsumption(authStore, payload) {

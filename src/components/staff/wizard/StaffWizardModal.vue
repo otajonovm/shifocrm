@@ -58,7 +58,8 @@
             />
             <StaffWizardStepPermissions
               v-else-if="activeStep === 4"
-              :permissions="permissions"
+              :model-value="permissions"
+              @update:model-value="$emit('update:permissions', $event)"
             />
 
             <div
@@ -140,7 +141,7 @@ const props = defineProps({
   clinicName: { type: String, default: '' },
 })
 
-defineEmits(['close', 'next', 'back', 'submit'])
+defineEmits(['close', 'next', 'back', 'submit', 'update:permissions'])
 
 const { t } = useI18n()
 

@@ -146,6 +146,7 @@
                 <td class="px-6 py-4" @click.stop>
                   <div class="flex items-center justify-end gap-1">
                     <button
+                      v-if="canEditPatients"
                       @click.stop="openEditModal(patient)"
                       class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       :title="t('patients.edit')"
@@ -153,7 +154,7 @@
                       <PencilIcon class="w-4 h-4" />
                     </button>
                     <button
-                      v-if="isAdmin"
+                      v-if="isAdmin && canDeletePatients"
                       @click.stop="confirmDelete(patient)"
                       class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       :title="t('patients.delete')"
@@ -212,7 +213,7 @@
                       <PhoneIcon class="w-5 h-5" />
                     </a>
                     <button
-                      v-if="isAdmin"
+                      v-if="isAdmin && canDeletePatients"
                       @click.stop="confirmDelete(patient)"
                       class="mobile-action-btn text-red-700 bg-red-50 hover:bg-red-100 active:scale-95 touch-manipulation flex items-center justify-center"
                       :title="t('patients.delete')"
@@ -236,7 +237,7 @@
             {{ t('patients.emptyHint') }}
           </p>
           <button
-            v-if="isAdmin"
+            v-if="isAdmin && canCreatePatients"
             @click="openAddModal"
             class="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-3 font-medium text-white shadow-md transition-all hover:bg-primary-700 hover:shadow-lg"
           >
@@ -497,6 +498,7 @@
 
     <!-- Mobile FAB -->
     <MobileFAB
+      v-if="canCreatePatients"
       :icon="PlusIcon"
       :label="t('patients.newPatient')"
       @click="openAddModal"
@@ -564,6 +566,7 @@ import { isAdminLike, isSolo as hasSoloRole, canAccessAdminRoutes } from '@/lib/
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
+import { usePermission } from '@/composables/usePermission'
 import * as visitsApi from '@/api/visitsApi'
 import { PATIENT_STATUSES, getPatientStatusLabel, normalizePatientStatus } from '@/constants/patientStatus'
 import { TASHKENT_OPTIONS, TASHKENT_CITY_DISTRICTS, TASHKENT_REGION_DISTRICTS } from '@/constants/regions'
@@ -587,10 +590,14 @@ const doctorsStore = useDoctorsStore()
 const patientsStore = usePatientsStore()
 const toast = useToast()
 const { t } = useI18n()
+const { can } = usePermission()
 
 const isAdmin = computed(() => isAdminLike(authStore) || hasSoloRole(authStore))
 const isSolo = computed(() => hasSoloRole(authStore))
 const canImport = computed(() => canAccessAdminRoutes(authStore))
+const canCreatePatients = computed(() => can('patients', 'create'))
+const canEditPatients = computed(() => can('patients', 'edit'))
+const canDeletePatients = computed(() => can('patients', 'delete'))
 
 // Doktor ID ni olish
 const getCurrentDoctorId = () => {
@@ -843,6 +850,7 @@ const handlePhoneInput = () => {
 
 // Modal Actions
 const openAddModal = () => {
+  if (!canCreatePatients.value) return
   isEditing.value = false
   editingPatientId.value = null
   patientForm.value = { ...initialFormState }
@@ -865,6 +873,7 @@ const openAddModal = () => {
 }
 
 const openEditModal = (patient) => {
+  if (!canEditPatients.value) return
   isEditing.value = true
   editingPatientId.value = patient.id
   const addr = (patient.address || '').trim()
@@ -923,6 +932,7 @@ const goToPatientDetail = (patientId) => {
 }
 
 const confirmDelete = (patient) => {
+  if (!canDeletePatients.value) return
   deletingPatient.value = patient
   showDeleteModal.value = true
 }
@@ -937,6 +947,8 @@ const buildAddress = () => {
 
 // CRUD Actions
 const savePatient = async () => {
+  const requiredAction = isEditing.value ? 'edit' : 'create'
+  if (!can('patients', requiredAction)) return
   if (!patientForm.value.full_name || !patientForm.value.phone) {
     toast.error('Iltimos, majburiy maydonlarni to\'ldiring')
     return

@@ -24,7 +24,7 @@
             {{ t('reports.exportPdf') }}
           </button>
           <button
-            v-if="isSolo"
+            v-if="isSolo && canCreatePayments"
             class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-primary-500 to-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:from-primary-600 hover:to-cyan-700 transition-all"
             @click="openAdditionalPaymentModal"
           >
@@ -46,7 +46,7 @@
           </div>
           <div class="flex flex-wrap gap-2">
             <button
-              v-if="!openShift"
+              v-if="!openShift && canCreatePayments"
               class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
               :disabled="shiftLoading"
               @click="showOpenShiftModal = true"
@@ -54,7 +54,7 @@
               Smenani ochish
             </button>
             <button
-              v-else
+              v-else-if="canEditPayments"
               class="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition-colors"
               :disabled="shiftLoading"
               @click="prepareCloseShift"
@@ -201,6 +201,7 @@
                 <td class="px-6 py-4 text-gray-700">
                   <div class="flex items-center gap-2">
                     <button
+                      v-if="canEditPayments"
                       type="button"
                       class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary-600 hover:bg-primary-50 hover:text-primary-700 transition-colors"
                       :title="t('payments.edit')"
@@ -210,6 +211,7 @@
                       <PencilSquareIcon class="h-4 w-4" />
                     </button>
                     <button
+                      v-if="canDeletePayments"
                       type="button"
                       class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors"
                       :title="t('payments.delete')"
@@ -257,6 +259,7 @@
               </div>
               <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
                 <button
+                  v-if="canEditPayments"
                   type="button"
                   @click="openEditModal(payment)"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100"
@@ -266,6 +269,7 @@
                   <PencilSquareIcon class="h-4 w-4" />
                 </button>
                 <button
+                  v-if="canDeletePayments"
                   type="button"
                   @click="confirmDelete(payment)"
                   class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-700 bg-red-50 hover:bg-red-100"
@@ -312,7 +316,7 @@
     <!-- Mobile FAB -->
     <div class="md:hidden fixed bottom-20 right-4 z-40 flex flex-col gap-2">
       <MobileFAB
-        v-if="isSolo"
+        v-if="isSolo && canCreatePayments"
         :icon="PlusIcon"
         label="Qo'shimcha to'lov"
         @click="openAdditionalPaymentModal"
@@ -370,8 +374,8 @@
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('payments.type') }}</label>
                   <select v-model="form.payment_type" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
                     <option value="payment">{{ t('payments.typePayment') }}</option>
+                    <option value="discount">{{ t('payments.typeDiscount') || 'Chegirma' }}</option>
                     <option value="refund">{{ t('payments.typeRefund') }}</option>
-                    <option value="adjustment">{{ t('payments.typeAdjustment') }}</option>
                   </select>
                 </div>
                 <div>
@@ -594,6 +598,7 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
 import { useDataPermissionGuard, useDataPermission } from '@/composables/useDataPermission'
+import { usePermission } from '@/composables/usePermission'
 import { exportToCsv, exportToPdf } from '@/lib/exportData'
 import { logActivity } from '@/lib/activityLog'
 import { getOpenCashShift, openCashShift, closeCashShift } from '@/api/cashShiftsApi'
@@ -611,6 +616,10 @@ useDataPermissionGuard('can_view_revenue', {
 })
 
 const { allowed: canExport } = useDataPermission('can_export_data')
+const { can } = usePermission()
+const canCreatePayments = computed(() => can('payments', 'create'))
+const canEditPayments = computed(() => can('payments', 'edit'))
+const canDeletePayments = computed(() => can('payments', 'delete'))
 
 const doctors = ref([])
 const patients = ref([])
@@ -781,6 +790,7 @@ const getPaymentCategory = (payment) => {
 
 const isDiscountEntry = (entry) => {
   if (!entry) return false
+  if (entry.payment_type === 'discount') return true
   if (entry.payment_type === 'refund' && entry.note && String(entry.note).includes(DISCOUNT_NOTE_PREFIX)) return true
   if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0 && entry.note && String(entry.note).includes('[DISCOUNT')) return true
   return false
@@ -924,6 +934,7 @@ const loadCashShift = async () => {
 }
 
 const handleOpenShift = async () => {
+  if (!canCreatePayments.value) return
   shiftLoading.value = true
   try {
     const openedBy = authStore.user?.full_name || authStore.user?.email || ''
@@ -949,6 +960,7 @@ const handleOpenShift = async () => {
 }
 
 const prepareCloseShift = () => {
+  if (!canEditPayments.value) return
   if (!openShift.value) return
   shiftCloseReport.value = buildShiftCloseReport({
     shift: openShift.value,
@@ -963,6 +975,7 @@ const prepareCloseShift = () => {
 }
 
 const handleCloseShift = async () => {
+  if (!canEditPayments.value) return
   if (!openShift.value || !shiftCloseReport.value) return
   const closingBalance = Number(closeShiftForm.value.closingBalance)
   if (!Number.isFinite(closingBalance)) {
@@ -1028,6 +1041,7 @@ const resetFilters = () => {
 }
 
 const openEditModal = (payment) => {
+  if (!canEditPayments.value) return
   isEditing.value = true
   // Agar qo'shimcha to'lov bo'lsa (adjustment type va [CATEGORY:...] bor), note dan category ni olib tashlaymiz
   const note = (payment.payment_type === 'adjustment' && payment.note && payment.note.includes('[CATEGORY:'))
@@ -1054,6 +1068,7 @@ const closeModal = () => {
 }
 
 const openAdditionalPaymentModal = () => {
+  if (!canCreatePayments.value) return
   additionalForm.value = {
     category: '',
     amount: '',
@@ -1069,6 +1084,7 @@ const closeAdditionalModal = () => {
 }
 
 const saveAdditionalPayment = async () => {
+  if (!canCreatePayments.value) return
   if (!additionalForm.value.category) {
     toast.error('Kategoriyani tanlang')
     return
@@ -1097,6 +1113,8 @@ const saveAdditionalPayment = async () => {
 }
 
 const savePayment = async () => {
+  const requiredAction = isEditing.value ? 'edit' : 'create'
+  if (!can('payments', requiredAction)) return
   const visitId = form.value.visit_id ? Number(form.value.visit_id) : null
   const patientId = form.value.patient_id ? Number(form.value.patient_id) : null
 
@@ -1186,6 +1204,7 @@ const syncVisitStatusIfFullyPaid = async (visitId) => {
 }
 
 const confirmDelete = async (payment) => {
+  if (!canDeletePayments.value) return
   const confirmed = window.confirm(t('payments.confirmDelete'))
   if (!confirmed) return
   try {

@@ -109,7 +109,7 @@ const normalizeVisitEntry = (visit = {}) => {
     treatments,
     service_name: serviceName,
     price,
-    paid_amount: paidAmount ?? (price != null ? price : null),
+    paid_amount: paidAmount,
     notes: visit.notes || null,
   }
 }

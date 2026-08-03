@@ -126,9 +126,9 @@ export async function logTransaction(itemId, type, quantity, reason = '', option
       stock_before: stockBefore,
       stock_after: stockAfter,
       created_by: options.createdBy ? String(options.createdBy) : null,
-      visit_id: options.visitId != null ? Number(options.visitId) : null,
-      patient_id: options.patientId != null ? Number(options.patientId) : null,
-      doctor_id: options.doctorId != null ? Number(options.doctorId) : null,
+      ...(options.visitId != null ? { visit_id: Number(options.visitId) } : {}),
+      ...(options.patientId != null ? { patient_id: Number(options.patientId) } : {}),
+      ...(options.doctorId != null ? { doctor_id: Number(options.doctorId) } : {}),
     }
 
     const logResult = await supabasePost(LOGS_TABLE, logPayload)
@@ -171,7 +171,7 @@ export async function getInventoryLogs(clinicId = null, limit = 50) {
 }
 
 /**
- * Bemor tashrifida material sarfi (chiqim + visit bog'lanishi).
+ * Bemor tashrifida material sarfi — atomic RPC (all-or-none when batched).
  */
 export async function logVisitConsumption({
   visitId,
@@ -182,7 +182,42 @@ export async function logVisitConsumption({
   note,
   createdBy,
   clinicId = null,
+  sourceKey = null,
 }) {
+  // Atomic RPC bilan urinish, yo'q bo'lsa eski usulga fallback
+  try {
+    const { consumeVisitMaterials } = await import('@/services/inventoryService')
+    const key = sourceKey || `visit:${visitId}:item:${itemId}:${quantity}:${Date.now()}`
+    await consumeVisitMaterials({
+      visitId,
+      sourceKey: key,
+      lines: [{
+        item_id: itemId,
+        quantity,
+        patient_id: patientId,
+        doctor_id: doctorId,
+      }],
+    })
+    const logs = await getVisitConsumptions(visitId, clinicId)
+    const log = logs.find((row) => Number(row.item_id) === Number(itemId)) || logs[0] || {
+      item_id: itemId,
+      quantity,
+      visit_id: visitId,
+      reason: note || null,
+      created_by: createdBy || null,
+    }
+    const item = await getInventoryItemById(itemId, clinicId)
+    return { log, item }
+  } catch (rpcErr) {
+    const msg = String(rpcErr?.message || '')
+    if (msg.includes('Could not find the function') || rpcErr?.status === 404) {
+      console.warn("⚠️ consume_visit_materials RPC yo'q — eski usul (logTransaction)")
+    } else {
+      throw rpcErr
+    }
+  }
+
+  // Legacy fallback: logTransaction (POST+PATCH)
   const noteText = note ? String(note).trim() : ''
   const reason = noteText || `Tashrif #${visitId} material sarfi`
   const { log, item } = await logTransaction(itemId, 'out', quantity, reason, {
@@ -197,6 +232,7 @@ export async function logVisitConsumption({
 
 /**
  * Tashrif bo'yicha material sarfi yozuvlari.
+ * Eski DBda visit_id bo'lmasa — bo'sh massiv (sahifa sindirmaydi).
  */
 export async function getVisitConsumptions(visitId, clinicId = null) {
   try {
@@ -210,6 +246,16 @@ export async function getVisitConsumptions(visitId, clinicId = null) {
     )
     return Array.isArray(rows) ? rows : []
   } catch (error) {
+    const msg = String(error?.message || error || '')
+    if (
+      msg.includes('visit_id')
+      && (msg.includes('does not exist') || error?.code === '42703')
+    ) {
+      console.warn(
+        '⚠️ inventory_logs.visit_id yo‘q. SUPABASE_WAREHOUSE_VISIT_INTEGRATION.sql ni ishga tushiring.',
+      )
+      return []
+    }
     console.error('❌ getVisitConsumptions failed:', error)
     throw error
   }
@@ -220,30 +266,32 @@ export async function getVisitConsumptions(visitId, clinicId = null) {
  */
 export async function deleteVisitConsumption(logId, clinicId = null) {
   try {
-    const cid = await resolveClinicId(clinicId)
-    const numId = Number(logId)
-    if (!Number.isFinite(numId)) throw new Error('Yozuv ID noto‘g‘ri')
-
-    const rows = await supabaseGetWithClinicFallback(LOGS_TABLE, `id=eq.${numId}`, cid)
-    const log = rows?.[0]
-    if (!log) throw new Error('Sarf yozuvi topilmadi')
-    if (log.type !== 'out') throw new Error('Faqat chiqim yozuvini o‘chirish mumkin')
-
-    const item = await getInventoryItemById(log.item_id, cid)
-    if (!item) throw new Error('Mahsulot topilmadi')
-
-    const stockBefore = Number(item.current_stock) || 0
-    const qty = Number(log.quantity) || 0
-    const stockAfter = stockBefore + qty
-
-    await supabasePatchWhere(
-      INVENTORY_TABLE,
-      mergeClinicQuery(`id=eq.${log.item_id}`, cid),
-      { current_stock: stockAfter, updated_at: new Date().toISOString() },
-    )
-    await supabaseDeleteWhere(LOGS_TABLE, mergeClinicQuery(`id=eq.${numId}`, cid))
+    const { reverseVisitConsumption } = await import('@/services/inventoryService')
+    await reverseVisitConsumption(logId)
     return true
   } catch (error) {
+    const msg = String(error?.message || '')
+    if (msg.includes('Could not find the function') || error?.status === 404) {
+      console.warn("⚠️ reverse_visit_consumption RPC yo'q — eski usulda o'chirish")
+      const cid = await resolveClinicId(clinicId)
+      const numId = Number(logId)
+      if (!Number.isFinite(numId)) throw new Error("Yozuv ID noto'g'ri")
+      const rows = await supabaseGetWithClinicFallback(LOGS_TABLE, `id=eq.${numId}`, cid)
+      const log = rows?.[0]
+      if (!log) throw new Error('Sarf yozuvi topilmadi')
+      if (log.type !== 'out') throw new Error("Faqat chiqim yozuvini o'chirish mumkin")
+      const item = await getInventoryItemById(log.item_id, cid)
+      if (item) {
+        const stockAfter = (Number(item.current_stock) || 0) + (Number(log.quantity) || 0)
+        await supabasePatchWhere(
+          INVENTORY_TABLE,
+          mergeClinicQuery(`id=eq.${log.item_id}`, cid),
+          { current_stock: stockAfter, updated_at: new Date().toISOString() },
+        )
+      }
+      await supabaseDeleteWhere(LOGS_TABLE, mergeClinicQuery(`id=eq.${numId}`, cid))
+      return true
+    }
     console.error('❌ deleteVisitConsumption failed:', error)
     throw error
   }

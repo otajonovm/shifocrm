@@ -35,19 +35,19 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, permissionSection: 'dashboard' },
     },
     {
       path: '/patients',
       name: 'patients',
       component: () => import('@/views/PatientsView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, permissionSection: 'patients' },
     },
     {
       path: '/patients/:id',
       name: 'patient-detail',
       component: () => import('@/views/PatientDetailView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, permissionSection: 'patients' },
     },
     {
       path: '/my-patients',
@@ -57,43 +57,43 @@ const router = createRouter({
       path: '/doctors',
       name: 'doctors',
       component: () => import('@/views/DoctorsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin' },
+      meta: { requiresAuth: true, requiresRole: 'admin', permissionSection: 'staff' },
     },
     {
       path: '/staff',
       name: 'staff',
       component: () => import('@/views/DoctorsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin' },
+      meta: { requiresAuth: true, requiresRole: 'admin', permissionSection: 'staff' },
     },
     {
       path: '/appointments',
       name: 'appointments',
       component: () => import('@/views/AppointmentsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin' },
+      meta: { requiresAuth: true, requiresRole: 'admin', permissionSection: 'appointments' },
     },
     {
       path: '/my-appointments',
       name: 'my-appointments',
       component: () => import('@/views/AppointmentsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'doctor' },
+      meta: { requiresAuth: true, requiresRole: 'doctor', permissionSection: 'appointments' },
     },
     {
       path: '/payments',
       name: 'payments',
       component: () => import('@/views/PaymentsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin', dataPermission: 'can_view_revenue', requiresFeature: FEATURE_KEYS.KPI_FINANCE },
+      meta: { requiresAuth: true, requiresRole: 'admin', permissionSection: 'payments', dataPermission: 'can_view_revenue', requiresFeature: FEATURE_KEYS.KPI_FINANCE },
     },
     {
       path: '/services',
       name: 'services',
       component: () => import('@/views/ServicesView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin' },
+      meta: { requiresAuth: true, requiresRole: 'admin', permissionSection: 'services' },
     },
     {
       path: '/reports',
       name: 'reports',
       component: () => import('@/views/ReportsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin', dataPermission: 'can_view_revenue', requiresFeature: FEATURE_KEYS.KPI_FINANCE },
+      meta: { requiresAuth: true, requiresRole: 'admin', permissionSection: 'reports', dataPermission: 'can_view_revenue', requiresFeature: FEATURE_KEYS.KPI_FINANCE },
     },
     {
       path: '/audit',
@@ -117,19 +117,19 @@ const router = createRouter({
       path: '/leads',
       name: 'leads',
       component: () => import('@/views/LeadsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin' },
+      meta: { requiresAuth: true, requiresRole: 'admin', permissionSection: 'leads' },
     },
     {
       path: '/my-leads',
       name: 'my-leads',
       component: () => import('@/views/LeadsView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'doctor' },
+      meta: { requiresAuth: true, requiresRole: 'doctor', permissionSection: 'leads' },
     },
     {
       path: '/inventory',
       name: 'inventory',
       component: () => import('@/views/WarehouseView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'admin', requiresWarehouse: true, requiresFeature: FEATURE_KEYS.WAREHOUSE },
+      meta: { requiresAuth: true, requiresRole: 'admin', permissionSection: 'warehouse', requiresWarehouse: true, requiresFeature: FEATURE_KEYS.WAREHOUSE },
     },
     {
       path: '/warehouse',
@@ -139,19 +139,25 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: () => import('@/views/SettingsView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, permissionSection: 'settings' },
     },
     {
       path: '/treatment-plans',
       name: 'treatment-plans',
       component: () => import('@/views/TreatmentPlansView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'doctor' },
+      meta: { requiresAuth: true, requiresRole: 'doctor', permissionSection: 'treatment_plans' },
+    },
+    {
+      path: '/forbidden',
+      name: 'forbidden',
+      component: () => import('@/views/AccessDeniedView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/doctor/profile',
       name: 'doctor-profile',
       component: () => import('@/views/DoctorProfileView.vue'),
-      meta: { requiresAuth: true, requiresRole: 'doctor' },
+      meta: { requiresAuth: true, requiresRole: 'doctor', permissionSection: 'settings' },
     },
     {
       path: '/admin',
@@ -222,6 +228,10 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const impersonatorRole = localStorage.getItem('impersonatorRole')
 
+  if (authStore.isAuthenticated) {
+    await authStore.validateSession().catch(() => false)
+  }
+
   // Redirect authenticated users away from login page
   if (to.name === 'login' && authStore.isAuthenticated) {
     if (authStore.userRole === ROLES.SOLO) {
@@ -243,6 +253,10 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'login', query: { redirect: to.fullPath } })
     return
+  }
+
+  if (authStore.isAuthenticated && authStore.userRole === ROLES.DOCTOR) {
+    await authStore.ensureDoctorEmployeeLink().catch(() => {})
   }
 
   // Global super admin uses /admin; redirect dashboard to clinics (not when impersonating)
@@ -277,7 +291,7 @@ router.beforeEach(async (to, from, next) => {
     (to.name === 'staff' || to.name === 'doctors')
     && authStore.userRole === ROLES.DOCTOR
   ) {
-    next({ name: 'dashboard' })
+    next({ name: 'forbidden' })
     return
   }
 
@@ -333,6 +347,28 @@ router.beforeEach(async (to, from, next) => {
       && authStore.userRole !== ROLES.SOLO
     ) {
       next({ name: 'dashboard' })
+      return
+    }
+  }
+
+  // Employee JSONB permission matritsasi: URL orqali bevosita kirishni ham bloklaydi.
+  const employeeId = authStore.user?.employee_id
+  if (to.meta.permissionSection && employeeId) {
+    const employeePermsStore = useEmployeePermissionsStore()
+    try {
+      await employeePermsStore.ensureLoaded(employeeId)
+    } catch {
+      next({ name: 'forbidden' })
+      return
+    }
+
+    const allowed = employeePermsStore.can(
+      employeeId,
+      to.meta.permissionSection,
+      to.meta.permissionAction || 'view',
+    )
+    if (!allowed) {
+      next({ name: 'forbidden' })
       return
     }
   }

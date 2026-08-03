@@ -1,22 +1,19 @@
 /**
- * Umumiy funksiya: bemorning barcha tashriflarini yakunlash
- * Xizmatlar va materiallar bo'yicha hisoblab, to'lov yozadi va tashriflarni yakunlaydi
+ * Bemorning barcha tashriflarini yakunlash.
+ * To‘lov yozmaydi — faqat xizmatlar asosida debt/paid holatini hisoblaydi.
+ * Material tannarxi (COGS) bemor hisobiga qo‘shilmaydi.
  */
 
-import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
+import { getPaymentsByVisitId } from '@/api/paymentsApi'
 import { getVisitServicesByVisitId, getVisitServicesByPatientId } from '@/api/visitServicesApi'
 import { updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
-import {
-  listClinicInventoryItems,
-  listVisitConsumptions,
-} from '@/lib/inventoryBridge'
 import { updatePatient } from '@/api/patientsApi'
-import { useAuthStore } from '@/stores/auth'
 
 const DISCOUNT_NOTE_PREFIX = '[DISCOUNT]'
 
 const isDiscountPayment = (entry) => {
   if (!entry) return false
+  if (entry.payment_type === 'discount') return true
   if (entry.payment_type === 'refund' && entry.note && String(entry.note).includes(DISCOUNT_NOTE_PREFIX)) return true
   if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0) return true
   return false
@@ -40,11 +37,6 @@ const parsePrice = (v) => {
   return Number.isFinite(n) ? n : 0
 }
 
-const getItemPrice = (itemId, inventoryItems) => {
-  const match = inventoryItems.find(item => Number(item.id) === Number(itemId))
-  return match ? (Number(match.cost_price) || 0) : 0
-}
-
 const getVisitServicesTotal = (visitId, services) => {
   const byVisit = services.filter(s => Number(s.visit_id) === Number(visitId))
   if (!byVisit.length) return 0
@@ -63,20 +55,6 @@ const getVisitServicesTotal = (visitId, services) => {
   return sum
 }
 
-const getVisitConsumptionsTotal = async (authStore, visitId, inventoryItems) => {
-  try {
-    const consumptions = await listVisitConsumptions(authStore, visitId)
-    return consumptions.reduce((sum, entry) => {
-      const qty = Number(entry.quantity) || 0
-      const price = getItemPrice(entry.item_id, inventoryItems)
-      return sum + qty * price
-    }, 0)
-  } catch (error) {
-    console.error('Failed to load consumptions for visit:', error)
-    return 0
-  }
-}
-
 /**
  * Bemorning barcha tashriflarini yakunlash
  * @param {number} patientId
@@ -85,11 +63,9 @@ const getVisitConsumptionsTotal = async (authStore, visitId, inventoryItems) => 
  */
 export const completeAllPatientVisits = async (patientId, doctorId = null) => {
   try {
-    const authStore = useAuthStore()
-    const [visits, services, inventoryItems] = await Promise.all([
+    const [visits, services] = await Promise.all([
       getVisitsByPatientId(patientId),
       getVisitServicesByPatientId(patientId),
-      listClinicInventoryItems(authStore),
     ])
 
     let visitsToComplete = visits.filter(v =>
@@ -152,9 +128,8 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
         })
       }
 
-      const consumptionsTotal = await getVisitConsumptionsTotal(authStore, visitId, inventoryItems)
-      const totalPrice = servicesTotal + consumptionsTotal
-      const targetPrice = totalPrice > 0 ? totalPrice : (Number(visit.price) || 0)
+      // Bemor bill = faqat xizmatlar; material COGS hisobga kirmaydi.
+      const targetPrice = servicesTotal > 0 ? servicesTotal : (Number(visit.price) || 0)
       totalBeforeDiscount += targetPrice
 
       let netPaid = 0
@@ -179,25 +154,7 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
       }
 
       const effectiveDue = Math.max(0, targetPrice - visitDiscountTotal)
-
-      if (effectiveDue > 0 && netPaid < effectiveDue) {
-        try {
-          const missingAmount = effectiveDue - netPaid
-          await createPayment({
-            visit_id: visitId,
-            patient_id: Number(patientId),
-            doctor_id: doctorId || visit.doctor_id || null,
-            amount: missingAmount,
-            payment_type: 'payment',
-            method: 'cash',
-            note: 'Yakunlash orqali avtomatik to\'lov'
-          })
-          netPaid += missingAmount
-        } catch (error) {
-          console.error('Failed to create auto payment for visit', visitId, error)
-        }
-      }
-
+      // Kassir to‘lovini alohida use-case; bu yerda avtomatik payment yaratilmaydi.
       totalPaid += netPaid
       const remainingForVisit = Math.max(0, effectiveDue - netPaid)
       totalRemaining += remainingForVisit

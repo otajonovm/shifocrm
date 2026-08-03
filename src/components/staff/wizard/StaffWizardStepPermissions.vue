@@ -1,7 +1,10 @@
 <template>
   <div class="space-y-4 animate-fade-in">
     <p class="text-sm text-slate-600">{{ t('staffWizard.permissionsIntro') }}</p>
-    <StaffPermissionsMatrix :model-value="permissions" @update:model-value="onPermissionsUpdate" />
+    <StaffPermissionsMatrix
+      :model-value="modelValue"
+      @update:model-value="$emit('update:modelValue', $event)"
+    />
   </div>
 </template>
 
@@ -9,15 +12,11 @@
 import { useI18n } from 'vue-i18n'
 import StaffPermissionsMatrix from './StaffPermissionsMatrix.vue'
 
-const props = defineProps({
-  permissions: { type: Object, required: true },
+defineProps({
+  modelValue: { type: Object, required: true },
 })
 
-const { t } = useI18n()
+defineEmits(['update:modelValue'])
 
-const onPermissionsUpdate = (value) => {
-  Object.keys(value).forEach((sectionKey) => {
-    props.permissions[sectionKey] = { ...value[sectionKey] }
-  })
-}
+const { t } = useI18n()
 </script>

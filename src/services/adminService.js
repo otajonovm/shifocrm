@@ -225,16 +225,20 @@ export async function authenticateClinicAdmin(login, password) {
   const p = (password || '').trim()
   if (!l || !p) return null
   try {
+    // Parol URL da ketmasin — faqat login bo‘yicha olib, JS da solishtiramiz
     const rows = await supabaseGet(
       CLINIC_ADMINS_TABLE,
-      `login=eq.${encodeURIComponent(l)}&password=eq.${encodeURIComponent(p)}`
+      `login=eq.${encodeURIComponent(l)}&select=id,login,password,clinic_id&limit=5`,
     )
-    const admin = Array.isArray(rows) && rows[0] ? rows[0] : null
+    const admin = (Array.isArray(rows) ? rows : []).find(
+      (row) => String(row?.password || '') === p,
+    )
     if (!admin) return null
     const clinic = await getClinic(admin.clinic_id)
     if (!clinic || clinic.is_active === false) return null
     return { id: admin.id, clinic_id: Number(admin.clinic_id), login: admin.login }
-  } catch {
+  } catch (error) {
+    if (error?.code === 'NETWORK_ERROR' || error?.code === 'ENV_MISSING') throw error
     return null
   }
 }
@@ -311,16 +315,20 @@ export async function authenticateClinicOwner(login, password) {
   const p = (password || '').trim()
   if (!l || !p) return null
   try {
+    // Parol URL da ketmasin — faqat login bo‘yicha olib, JS da solishtiramiz
     const rows = await supabaseGet(
       CLINIC_OWNERS_TABLE,
-      `login=eq.${encodeURIComponent(l)}&password=eq.${encodeURIComponent(p)}`
+      `login=eq.${encodeURIComponent(l)}&select=id,login,password,clinic_id&limit=5`,
     )
-    const owner = Array.isArray(rows) && rows[0] ? rows[0] : null
+    const owner = (Array.isArray(rows) ? rows : []).find(
+      (row) => String(row?.password || '') === p,
+    )
     if (!owner) return null
     const clinic = await getClinic(owner.clinic_id)
     if (!clinic || clinic.is_active === false) return null
     return { id: owner.id, clinic_id: Number(owner.clinic_id), login: owner.login }
-  } catch {
+  } catch (error) {
+    if (error?.code === 'NETWORK_ERROR' || error?.code === 'ENV_MISSING') throw error
     return null
   }
 }

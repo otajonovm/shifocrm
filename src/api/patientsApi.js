@@ -73,12 +73,25 @@ const normalizePatientPayload = (payload) => {
   return normalized
 }
 
-export const listPatients = async () => {
+export const listPatients = async (options = {}) => {
   try {
     const cid = await getCurrentClinicId()
     const scopeQuery = buildScopeQuery()
-    const q = scopeQuery ? `${scopeQuery}&order=created_at.desc` : 'order=created_at.desc'
-    return await supabaseGetWithClinicFallback(TABLE, q, cid)
+    const limit = Math.min(Math.max(Number(options.limit) || 500, 1), 1000)
+    const offset = Math.max(Number(options.offset) || 0, 0)
+    const select = options.select || 'id,full_name,phone,status,doctor_id,birth_date,created_at,last_visit,clinic_id'
+    const parts = [
+      `select=${select}`,
+      'order=created_at.desc',
+      `limit=${limit}`,
+      `offset=${offset}`,
+    ]
+    if (scopeQuery) parts.unshift(scopeQuery)
+    if (options.phone) {
+      const digits = String(options.phone).replace(/\D/g, '')
+      if (digits) parts.push(`phone=ilike.*${digits}*`)
+    }
+    return await supabaseGetWithClinicFallback(TABLE, parts.join('&'), cid)
   } catch (error) {
     console.error('❌ Failed to fetch patients:', error)
     throw error
@@ -111,25 +124,22 @@ export const getPatientsByDoctorId = async (doctorId) => {
   }
 }
 
-const listPatientsUnscoped = async () => {
-  const cid = await getCurrentClinicId()
-  return await supabaseGetWithClinicFallback(TABLE, 'order=created_at.desc', cid)
-}
-
 // 5 xonali unique ID generatsiya qilish (10000-99999)
 const generateId = async () => {
   try {
-    const patients = await listPatientsUnscoped()
-    const existingIds = patients.map(p => Number(p.id))
+    const cid = await getCurrentClinicId()
 
-    let newId
-    do {
-      newId = Math.floor(10000 + Math.random() * 90000)
-    } while (existingIds.includes(newId))
+    // Full ro'yxatni yuklamasdan, faqat candidate ID mavjudligini tekshiramiz.
+    // Bu kalendar bo'limida bemor qo'shishni tezlashtiradi.
+    for (let i = 0; i < 10; i++) {
+      const candidateId = Math.floor(10000 + Math.random() * 90000)
+      const q = `id=eq.${candidateId}&limit=1`
+      const rows = await supabaseGetWithClinicFallback(TABLE, q, cid)
+      if (!rows?.length) return candidateId
+    }
 
-    return newId
+    return Math.floor(10000 + Math.random() * 90000)
   } catch {
-    // Fallback: timestamp based ID
     return Math.floor(10000 + Math.random() * 90000)
   }
 }

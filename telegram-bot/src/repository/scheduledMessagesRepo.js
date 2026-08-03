@@ -46,7 +46,17 @@ async function scheduleFollowUpMessages({ patientId, messages }) {
 }
 
 async function getPendingMessages({ nowIso, limit = 50 }) {
-  const { data, error } = await supabase
+  // Atomic claim: pending → processing (FOR UPDATE SKIP LOCKED)
+  const { data, error } = await supabase.rpc('claim_scheduled_telegram_messages', {
+    p_limit: limit,
+  })
+
+  if (!error && Array.isArray(data)) {
+    return data
+  }
+
+  // Fallback for environments without the RPC yet
+  const fallback = await supabase
     .from('scheduled_messages')
     .select('*')
     .eq('status', 'pending')
@@ -55,11 +65,11 @@ async function getPendingMessages({ nowIso, limit = 50 }) {
     .order('scheduled_time', { ascending: true })
     .limit(limit)
 
-  if (error) {
-    throw new Error(`getPendingMessages failed: ${error.message}`)
+  if (fallback.error) {
+    throw new Error(`getPendingMessages failed: ${fallback.error.message || error?.message}`)
   }
 
-  return data || []
+  return fallback.data || []
 }
 
 async function updateMessageStatus({ id, status, failureReason = null, sentAt = null }) {

@@ -4,11 +4,33 @@
  */
 
 export const PERMISSION_SECTIONS = [
+  { key: 'dashboard', labelUz: 'Bosh sahifa', labelRu: 'Главная' },
   { key: 'patients', labelUz: 'Bemorlar', labelRu: 'Пациенты' },
-  { key: 'finances', labelUz: 'Moliya', labelRu: 'Финансы' },
+  { key: 'staff', labelUz: 'Xodimlar', labelRu: 'Сотрудники' },
+  { key: 'appointments', labelUz: 'Kalendar', labelRu: 'Календарь' },
+  { key: 'leads', labelUz: 'Lidlar', labelRu: 'Лиды' },
+  { key: 'payments', labelUz: "To'lovlar", labelRu: 'Платежи' },
+  { key: 'finance', labelUz: 'Moliya capability', labelRu: 'Финансы' },
+  { key: 'schedule', labelUz: 'Jadval capability', labelRu: 'Расписание' },
+  { key: 'services', labelUz: 'Xizmatlar', labelRu: 'Услуги' },
   { key: 'warehouse', labelUz: 'Ombor', labelRu: 'Склад' },
-  { key: 'analytics', labelUz: 'Analitika', labelRu: 'Аналитика' },
+  { key: 'treatment_plans', labelUz: 'Davolash rejalari', labelRu: 'Планы лечения' },
+  { key: 'reports', labelUz: 'Hisobotlar', labelRu: 'Отчёты' },
   { key: 'settings', labelUz: 'Sozlamalar', labelRu: 'Настройки' },
+]
+
+/** Finance/schedule capability action keys (CRUD emas) */
+export const FINANCE_CAPABILITY_ACTIONS = [
+  'view_own_kpi',
+  'view_team_kpi',
+  'view_clinic_profit',
+  'post_payment',
+  'open_shift',
+  'close_shift',
+]
+
+export const SCHEDULE_CAPABILITY_ACTIONS = [
+  'view_team_month',
 ]
 
 export const PERMISSION_ACTIONS = [
@@ -23,7 +45,19 @@ const EMPTY_ACTIONS = () => ({
   create: false,
   edit: false,
   delete: false,
+  view_own_kpi: false,
+  view_team_kpi: false,
+  view_clinic_profit: false,
+  post_payment: false,
+  open_shift: false,
+  close_shift: false,
+  view_team_month: false,
 })
+
+const LEGACY_SECTION_ALIASES = {
+  finances: 'payments',
+  analytics: 'reports',
+}
 
 /** Default bo'sh matritsa */
 export function createEmptyPermissionsMatrix() {
@@ -37,10 +71,18 @@ export function clonePermissionsMatrix(source) {
   const base = createEmptyPermissionsMatrix()
   if (!source || typeof source !== 'object') return base
 
+  Object.entries(LEGACY_SECTION_ALIASES).forEach(([legacyKey, currentKey]) => {
+    const legacySection = source[legacyKey]
+    if (!legacySection || typeof legacySection !== 'object') return
+    Object.keys(base[currentKey]).forEach((action) => {
+      base[currentKey][action] = legacySection[action] === true
+    })
+  })
+
   PERMISSION_SECTIONS.forEach(({ key }) => {
     const section = source[key]
     if (!section || typeof section !== 'object') return
-    PERMISSION_ACTIONS.forEach(({ key: action }) => {
+    Object.keys(base[key]).forEach((action) => {
       base[key][action] = section[action] === true
     })
   })
@@ -84,23 +126,66 @@ export function defaultMatrixForRole(role) {
   }
 
   switch (role) {
+    case 'super_admin':
+      PERMISSION_SECTIONS.forEach(({ key }) => {
+        set(key, PERMISSION_ACTIONS.map(({ key: action }) => action))
+      })
+      break
     case 'administrator':
+      set('dashboard', ['view'])
       set('patients', ['view', 'create', 'edit'])
-      set('finances', ['view', 'create', 'edit'])
+      set('staff', ['view'])
+      set('appointments', ['view', 'create', 'edit'])
+      set('leads', ['view', 'create', 'edit'])
+      set('payments', ['view', 'create', 'edit'])
+      set('finance', ['view_own_kpi', 'view_team_kpi', 'view_clinic_profit', 'post_payment', 'open_shift', 'close_shift'])
+      set('schedule', ['view_team_month'])
+      set('services', ['view', 'create', 'edit'])
       set('warehouse', ['view', 'create'])
-      set('analytics', ['view'])
+      set('treatment_plans', ['view', 'create', 'edit'])
+      set('reports', ['view'])
       set('settings', ['view'])
       break
-    case 'doctor':
+    case 'chief_doctor':
+      set('dashboard', ['view'])
       set('patients', ['view', 'create', 'edit'])
-      set('analytics', ['view'])
+      set('staff', ['view'])
+      set('appointments', ['view', 'create', 'edit'])
+      set('leads', ['view', 'edit'])
+      set('treatment_plans', ['view', 'create', 'edit'])
+      set('reports', ['view'])
+      set('finance', ['view_own_kpi', 'view_team_kpi'])
+      set('schedule', ['view_team_month'])
+      break
+    case 'doctor':
+      set('dashboard', ['view'])
+      set('patients', ['view', 'create', 'edit'])
+      set('appointments', ['view', 'create', 'edit'])
+      set('leads', ['view', 'edit'])
+      set('treatment_plans', ['view', 'create', 'edit'])
+      set('reports', ['view'])
+      set('finance', ['view_own_kpi'])
+      break
+    case 'reception':
+      set('dashboard', ['view'])
+      set('patients', ['view', 'create', 'edit'])
+      set('appointments', ['view', 'create', 'edit'])
+      set('leads', ['view', 'create', 'edit'])
+      set('payments', ['view'])
       break
     case 'assistant':
+      set('dashboard', ['view'])
       set('patients', ['view', 'create'])
+      set('appointments', ['view', 'create', 'edit'])
+      set('leads', ['view', 'create', 'edit'])
       break
     case 'cashier':
+      set('dashboard', ['view'])
       set('patients', ['view'])
-      set('finances', ['view', 'create'])
+      set('appointments', ['view'])
+      set('payments', ['view', 'create'])
+      set('finance', ['post_payment', 'open_shift', 'close_shift', 'view_own_kpi'])
+      set('reports', ['view'])
       break
     default:
       break

@@ -13,7 +13,8 @@ describe('staffPermissionsMatrix', () => {
   it('creates empty matrix with all false', () => {
     const m = createEmptyPermissionsMatrix()
     expect(m.patients.view).toBe(false)
-    expect(m.finances.delete).toBe(false)
+    expect(m.payments.delete).toBe(false)
+    expect(m.appointments.create).toBe(false)
   })
 
   it('toggleSection sets all actions', () => {
@@ -43,7 +44,18 @@ describe('staffPermissionsMatrix', () => {
   it('defaultMatrixForRole seeds administrator', () => {
     const m = defaultMatrixForRole('administrator')
     expect(m.patients.view).toBe(true)
-    expect(m.finances.create).toBe(true)
+    expect(m.payments.create).toBe(true)
+    expect(m.staff.view).toBe(true)
+  })
+
+  it('migrates legacy finances and analytics sections', () => {
+    const copy = clonePermissionsMatrix({
+      finances: { view: true, create: true },
+      analytics: { view: true },
+    })
+    expect(copy.payments.view).toBe(true)
+    expect(copy.payments.create).toBe(true)
+    expect(copy.reports.view).toBe(true)
   })
 })
 
@@ -51,10 +63,18 @@ describe('staffPermissions legacy adapter', () => {
   it('syncLegacyPermissionFlags maps patients view to module flags', () => {
     const m = createEmptyPermissionsMatrix()
     m.patients.view = true
-    m.finances.view = true
+    m.payments.view = true
     const legacy = syncLegacyPermissionFlags(m)
     expect(legacy.module_permissions.can_view_patients).toBe(true)
     expect(legacy.can_view_revenue).toBe(true)
+  })
+
+  it('syncLegacyPermissionFlags denies everything when matrix is empty', () => {
+    const legacy = syncLegacyPermissionFlags(createEmptyPermissionsMatrix())
+    expect(legacy.module_permissions.can_view_dashboard).toBe(false)
+    expect(legacy.module_permissions.can_view_patients).toBe(false)
+    expect(legacy.module_permissions.can_edit_profile).toBe(false)
+    expect(legacy.can_view_revenue).toBe(false)
   })
 
   it('matrixFromLegacyFlags roundtrips permissions json', () => {

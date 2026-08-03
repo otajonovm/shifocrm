@@ -44,16 +44,16 @@
     "managementCenter": "Центр управления",
     "appointments": "Календарь",
     "leads": "Онлайн-записи",
-    "myLeads": "Мои онлайн-записи",
+    "myLeads": "Онлайн-записи",
     "payments": "Платежи",
     "services": "Услуги",
     "inventory": "Склад",
     "reports": "Отчёты",
     "settings": "Настройки",
-    "myPatients": "Мои пациенты",
-    "myAppointments": "Мой календарь",
+    "myPatients": "Пациенты",
+    "myAppointments": "Календарь",
     "treatmentPlans": "Планы лечения",
-    "doctorProfile": "Мой профиль",
+    "doctorProfile": "Профиль",
     "manageUsers": "Пользователи"
   },
   "dashboard": {
@@ -1820,15 +1820,22 @@
     },
     "permissions": {
       "section": "Раздел",
+      "sectionMaster": "Главный",
       "view": "Просмотр",
       "create": "Добавление",
       "edit": "Редактирование",
       "delete": "Удаление",
       "sections": {
+        "dashboard": "Главная",
         "patients": "Пациенты",
-        "finances": "Финансы",
+        "staff": "Сотрудники",
+        "appointments": "Календарь",
+        "leads": "Лиды",
+        "payments": "Платежи",
+        "services": "Услуги",
         "warehouse": "Склад",
-        "analytics": "Аналитика",
+        "treatment_plans": "Планы лечения",
+        "reports": "Отчёты",
         "settings": "Настройки"
       }
     }

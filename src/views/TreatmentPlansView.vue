@@ -8,6 +8,7 @@
         </div>
         <!-- Desktop Button -->
         <button
+          v-if="canCreatePlans"
           @click="showForm = !showForm"
           class="hidden md:inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all touch-target-lg"
         >
@@ -231,7 +232,7 @@
                 </span>
               </td>
               <td class="px-4 py-3 text-right">
-                <div class="flex items-center justify-end gap-2">
+                <div v-if="canEditPlans" class="flex items-center justify-end gap-2">
                   <button
                     v-if="!plan.visit_id"
                     @click="convertToVisit(plan)"
@@ -375,6 +376,7 @@
 
     <!-- Mobile FAB -->
     <MobileFAB
+      v-if="canCreatePlans"
       :icon="PlusIcon"
       :label="t('treatmentPlansView.newPlan')"
       @click="showForm = !showForm"
@@ -392,6 +394,7 @@ import { PlusIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
+import { usePermission } from '@/composables/usePermission'
 import { getPlansByDoctorAndDateRange, createPlan, updatePlan, updatePlanStatus } from '@/api/treatmentPlansApi'
 import { createVisit } from '@/api/visitsApi'
 
@@ -399,6 +402,9 @@ const authStore = useAuthStore()
 const patientsStore = usePatientsStore()
 const toast = useToast()
 const { t } = useI18n()
+const { can } = usePermission()
+const canCreatePlans = computed(() => can('treatment_plans', 'create'))
+const canEditPlans = computed(() => can('treatment_plans', 'edit'))
 
 const plans = ref([])
 const loading = ref(false)
@@ -482,6 +488,7 @@ const loadPlans = async () => {
 }
 
 const savePlan = async () => {
+  if (!canCreatePlans.value) return
   formError.value = ''
   if (!form.value.title || !form.value.planned_date || !form.value.patient_id) {
     formError.value = t('treatmentPlansView.errorRequired')
@@ -516,6 +523,7 @@ const savePlan = async () => {
 }
 
 const setStatus = async (plan, status) => {
+  if (!canEditPlans.value) return
   try {
     const updated = await updatePlanStatus(plan.id, status)
     const idx = plans.value.findIndex(item => item.id === plan.id)
@@ -529,6 +537,7 @@ const setStatus = async (plan, status) => {
 }
 
 const convertToVisit = async (plan) => {
+  if (!canEditPlans.value) return
   try {
     if (plan.visit_id) {
       toast.info(t('treatmentPlans.toastVisitExists'))
@@ -559,6 +568,7 @@ const convertToVisit = async (plan) => {
 }
 
 const sendReminder = async (plan) => {
+  if (!canEditPlans.value) return
   try {
     const remindAt = plan.remind_at && new Date(plan.remind_at) > new Date()
       ? plan.remind_at
