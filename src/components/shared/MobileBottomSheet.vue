@@ -10,12 +10,15 @@
     >
       <div
         v-if="modelValue"
-        class="mobile-backdrop"
+        class="mobile-backdrop flex items-end md:hidden"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="title || 'Dialog'"
         @click.self="handleClose"
         @touchmove.prevent
       >
         <div
-          class="mobile-modal"
+          class="mobile-modal w-full"
           :class="{ 'animate-slide-up-mobile': modelValue }"
         >
           <!-- Handle bar for drag indication -->
@@ -61,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -128,13 +131,32 @@ const handleTouchEnd = (e) => {
   }
 }
 
-// Prevent body scroll when sheet is open
-watch(() => props.modelValue, (isOpen) => {
-  if (isOpen) {
+const syncBodyScroll = () => {
+  const isMobile = window.matchMedia('(max-width: 767px)').matches
+  if (props.modelValue && isMobile) {
     document.body.classList.add('modal-open')
   } else {
     document.body.classList.remove('modal-open')
   }
+}
+
+// Prevent body scroll when the mobile sheet is visible.
+watch(() => props.modelValue, syncBodyScroll)
+
+const handleKeydown = (event) => {
+  if (props.modelValue && event.key === 'Escape') handleClose()
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('resize', syncBodyScroll)
+  syncBodyScroll()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('resize', syncBodyScroll)
+  document.body.classList.remove('modal-open')
 })
 </script>
 

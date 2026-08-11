@@ -73,7 +73,7 @@ export function buildCalendarTimeSlots(startTime, endTime, intervalMinutes = 60)
     slots.push({
       key: `slot-${minute}`,
       time,
-      display: time,
+      display: String(Math.floor(minute / 60) % 24),
       isHalfHour: minute % 60 === 30,
     })
   }

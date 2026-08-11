@@ -7,6 +7,13 @@ export const PERMANENT_TEETH = Object.freeze([
   41, 42, 43, 44, 45, 46, 47, 48,
 ])
 
+export const PERMANENT_QUADRANTS = Object.freeze({
+  upperRight: Object.freeze([18, 17, 16, 15, 14, 13, 12, 11]),
+  upperLeft: Object.freeze([21, 22, 23, 24, 25, 26, 27, 28]),
+  lowerRight: Object.freeze([48, 47, 46, 45, 44, 43, 42, 41]),
+  lowerLeft: Object.freeze([31, 32, 33, 34, 35, 36, 37, 38]),
+})
+
 export const PRIMARY_TEETH = Object.freeze([
   55, 54, 53, 52, 51,
   61, 62, 63, 64, 65,
@@ -18,10 +25,9 @@ export const TOOTH_STATUSES = Object.freeze([
   'healthy',
   'caries',
   'filling',
-  'filled',
   'crown',
   'missing',
-  'root',
+  'root_canal',
   'implant',
   'bridge',
   'extraction',
@@ -30,8 +36,28 @@ export const TOOTH_STATUSES = Object.freeze([
 export function normalizeToothStatus(status) {
   const s = String(status || '').toLowerCase().trim()
   if (s === 'filled') return 'filling'
-  if (TOOTH_STATUSES.includes(s)) return s === 'filled' ? 'filling' : s
+  if (s === 'root' || s === 'rootcanal') return 'root_canal'
+  if (TOOTH_STATUSES.includes(s)) return s
   return 'healthy'
+}
+
+export function toStorageToothState(status) {
+  const normalized = normalizeToothStatus(status)
+  return normalized === 'filling' ? 'filled' : normalized
+}
+
+export function normalizeToothRecord(record = {}) {
+  const status = normalizeToothStatus(record.state ?? record.status)
+  const note = record.note ?? record.notes
+  const normalized = {
+    state: toStorageToothState(status),
+    note: typeof note === 'string' ? note : '',
+  }
+  const serviceId = record.service_id ?? record.serviceId
+  if (serviceId !== null && serviceId !== undefined && serviceId !== '') {
+    normalized.service_id = serviceId
+  }
+  return normalized
 }
 
 export function teethForDentition(dentitionType = 'permanent') {
@@ -43,21 +69,19 @@ export function teethForDentition(dentitionType = 'permanent') {
 export function createEmptyOdontogramData(dentitionType = 'permanent') {
   const teeth = {}
   for (const id of teethForDentition(dentitionType)) {
-    teeth[String(id)] = { status: 'healthy', notes: '' }
+    teeth[String(id)] = { state: 'healthy', note: '' }
   }
   return { teeth, dentition_type: dentitionType }
 }
 
-export function cloneTeethOnly(data) {
+export function cloneTeethOnly(data, dentitionType = 'permanent') {
   const src = data?.teeth && typeof data.teeth === 'object' ? data.teeth : {}
   const teeth = {}
   for (const [id, value] of Object.entries(src)) {
-    teeth[id] = {
-      status: normalizeToothStatus(value?.status),
-      notes: typeof value?.notes === 'string' ? value.notes : '',
-    }
+    if (!isValidToothId(id, dentitionType)) continue
+    teeth[String(id)] = normalizeToothRecord(value)
   }
-  return { teeth }
+  return { teeth, dentition_type: dentitionType }
 }
 
 export function isValidToothId(toothId, dentitionType = 'permanent') {

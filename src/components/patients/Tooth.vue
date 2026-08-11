@@ -1,19 +1,33 @@
 <template>
-  <div class="relative flex flex-col items-center gap-0.5 sm:gap-1 tooth-cell">
-    <span class="text-[9px] sm:text-[10px] text-slate-500 leading-none">{{ id }}</span>
+  <div class="tooth-cell relative flex min-w-0 flex-col items-center gap-1">
+    <span class="text-[10px] font-semibold leading-none text-slate-600 sm:text-xs">{{ id }}</span>
+    <span
+      v-if="serviceLabel"
+      class="max-w-full truncate rounded-full px-1 py-px text-[8px] font-semibold leading-tight text-white sm:text-[9px]"
+      :style="{ backgroundColor: serviceColor || '#0ea5e9' }"
+    >
+      {{ serviceLabel }}
+    </span>
     <button
       ref="buttonRef"
       type="button"
       :disabled="disabled"
-      class="transition-transform duration-150 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:opacity-60 touch-manipulation min-w-[40px] min-h-[48px] sm:min-w-0 sm:min-h-0 overflow-hidden"
-      :class="statusContainerClass"
+      :data-tooth-id="id"
+      :aria-label="ariaLabel"
+      :aria-pressed="selected"
+      class="relative flex min-h-[54px] w-full min-w-0 items-center justify-center overflow-hidden rounded-xl border-2 transition duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-60 sm:h-[88px] sm:w-[54px] md:h-[72px] md:w-[36px] lg:h-[80px] lg:w-[48px] xl:h-[88px] xl:w-[54px]"
+      :class="[
+        statusContainerClass,
+        selected ? 'ring-2 ring-primary-500 ring-offset-2' : '',
+        hasTreatment ? 'shadow-sm' : 'border-transparent',
+      ]"
       :style="toothStyle"
       @click="handleSelect"
     >
       <img
         v-if="svgLoaded"
         :src="toothSrc"
-        :alt="`Tooth ${id}`"
+        alt=""
         class="tooth-svg tooth-svg-responsive object-contain"
         :class="[{ 'tooth-svg--service': !!serviceColor }, statusSvgClass]"
         @error="onImgError"
@@ -65,6 +79,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   id: {
@@ -84,14 +99,44 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  selected: {
+    type: Boolean,
+    default: false,
+  },
+  serviceLabel: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits(['select'])
+const { t } = useI18n()
 
 const buttonRef = ref(null)
 const svgLoaded = ref(true)
 
 const toothSrc = computed(() => `/teeth/${props.id}.svg`)
+const hasTreatment = computed(() => (
+  !!props.serviceColor || (!!props.status && props.status !== 'healthy')
+))
+const ariaLabel = computed(() => t('odontogram.toothAria', {
+  id: props.id,
+  status: t(`odontogram.status${statusTranslationSuffix.value}`),
+}))
+
+const statusTranslationSuffix = computed(() => {
+  const suffixes = {
+    healthy: 'Healthy',
+    caries: 'Caries',
+    filled: 'Filling',
+    filling: 'Filling',
+    crown: 'Crown',
+    root: 'RootCanal',
+    root_canal: 'RootCanal',
+    missing: 'Missing',
+  }
+  return suffixes[props.status] || 'Healthy'
+})
 
 const statusSvgClass = computed(() => {
   if (props.status === 'missing') return 'opacity-25 grayscale'
@@ -187,8 +232,8 @@ watch(() => props.id, () => {
 
 <style scoped>
 .tooth-svg {
-  width: 56px;
-  height: 84px;
+  width: 52px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -197,9 +242,17 @@ watch(() => props.id, () => {
 
 @media (max-width: 768px) {
   .tooth-svg-responsive {
-    width: 40px;
-    height: 52px;
-    padding: 4px 3px;
+    width: 100%;
+    height: 50px;
+    padding: 3px 2px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1023px) {
+  .tooth-svg-responsive {
+    width: 36px;
+    height: 68px;
+    padding: 4px 2px;
   }
 }
 

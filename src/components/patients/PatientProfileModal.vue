@@ -71,10 +71,9 @@
 
             <!-- Odontogramma Tab -->
             <div v-else-if="activeTab === 'odontogram'" class="animate-fade-in">
-              <PatientOdontogram
+              <PatientOdontogramPlaceholder
                 :patient="patient"
-                :doctor-id="doctorId"
-                :doctor-name="doctorName"
+                :patient-id="patient.id"
               />
             </div>
 
@@ -107,7 +106,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import { getInitials } from '@/lib/patientHelpers'
 import PatientMedIdCard from './PatientMedIdCard.vue'
-import PatientOdontogram from './PatientOdontogram.vue'
+import PatientOdontogramPlaceholder from './PatientOdontogramPlaceholder.vue'
 import PatientVisits from './PatientVisits.vue'
 import PatientTreatmentPlans from './PatientTreatmentPlans.vue'
 

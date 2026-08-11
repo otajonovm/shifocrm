@@ -78,6 +78,17 @@ export const getPlansByDoctorAndDateRange = async (doctorId, startDate, endDate)
   }
 }
 
+export const getPlansByDateRange = async (startDate, endDate) => {
+  try {
+    const cid = await getCurrentClinicId()
+    const q = `planned_date=gte.${startDate}&planned_date=lte.${endDate}&order=planned_date.asc`
+    return await supabaseGetWithClinicFallback(TABLE, q, cid)
+  } catch (error) {
+    console.error('❌ Failed to fetch treatment plans by date range:', error)
+    throw error
+  }
+}
+
 export const createPlan = async ({
   patient_id,
   doctor_id = null,

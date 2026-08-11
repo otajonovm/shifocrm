@@ -10,7 +10,6 @@ import { getCurrentClinicId } from '@/lib/clinicContext'
 import { listPatients } from './patientsApi'
 import { logActivity, getCurrentActor } from '@/lib/activityLog'
 import { importPatientRow } from '@/services/dataImportService'
-import { uploadImportImage, deleteImportImage } from './importStorageApi'
 import {
   parseCsvText,
   parseExcelBuffer,
@@ -173,22 +172,12 @@ export const parseVisionImage = async (file) => {
   const { base64, mimeType } = await compressImageForVision(file)
   const clinicId = await getCurrentClinicId()
 
-  const uploaded = await uploadImportImage(file)
-
-  const payload = {
+  const data = await runVisionImport({
     image_base64: base64,
     mime_type: mimeType,
     clinic_id: clinicId,
-  }
-
-  try {
-    const data = await runVisionImport(payload)
-    return normalizeVisionRows(data.rows || [])
-  } finally {
-    if (uploaded?.path) {
-      await deleteImportImage(uploaded.path)
-    }
-  }
+  })
+  return normalizeVisionRows(data.rows || [])
 }
 
 export const prepareImportPreview = async (rawRows) => {

@@ -27,6 +27,90 @@
         </div>
       </section>
 
+      <!-- Moliyaviy ko'rsatkichlar: klinikalar + yakka stomlar -->
+      <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-5">
+          <h2 class="text-lg font-semibold text-slate-900">
+            {{ t('superadminDashboard.mrrTitle') }}
+          </h2>
+          <p class="mt-1 text-sm text-slate-500">
+            {{ t('superadminDashboard.mrrSubtitle') }}
+          </p>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <p class="text-xs text-slate-500">{{ t('superadminDashboard.mrrCurrent') }}</p>
+            <p class="mt-2 text-2xl font-black text-emerald-700">{{ formatSom(mrrPanel.currentMrr) }}</p>
+            <p class="mt-1 text-xs text-slate-500">{{ t('superadminDashboard.mrrUnitPrice', { price: formatSom(mrrPanel.unitPrice) }) }}</p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <p class="text-xs text-slate-500">{{ t('superadminDashboard.clinics') }}</p>
+            <p class="mt-2 text-2xl font-black text-indigo-700">{{ formatSom(mrrPanel.clinicsMrr) }}</p>
+            <p class="mt-1 text-xs text-slate-500">
+              {{ t('superadminDashboard.mrrClinicsHint', { paid: mrrPanel.paidClinicsCount, trial: mrrPanel.trialClinicsCount, seats: mrrPanel.paidClinicSeats }) }}
+            </p>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <p class="text-xs text-slate-500">{{ t('superadminDashboard.soloDoctors') }}</p>
+            <p class="mt-2 text-2xl font-black text-teal-700">{{ formatSom(mrrPanel.soloMrr) }}</p>
+            <p class="mt-1 text-xs text-slate-500">
+              {{ t('superadminDashboard.mrrSoloHint', { paid: mrrPanel.soloPaid, total: mrrPanel.soloTotal }) }}
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <ApexChart type="donut" height="280" :options="mrrChartOptions" :series="mrrChartSeries" />
+          </div>
+
+          <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('superadminDashboard.entity') }}</th>
+                  <th class="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('superadminDashboard.mrrSeats') }}</th>
+                  <th class="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('superadminDashboard.subscriptionStatus') }}</th>
+                  <th class="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('superadminDashboard.mrrAmount') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200 bg-white">
+                <tr v-for="row in mrrPanel.clinics" :key="row.id">
+                  <td class="px-3 py-2.5 font-medium text-slate-900">{{ row.name }}</td>
+                  <td class="px-3 py-2.5 text-slate-600">
+                    {{ row.status === 'paid' ? row.seats : '—' }}
+                  </td>
+                  <td class="px-3 py-2.5">
+                    <span
+                      class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                      :class="row.status === 'paid'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-amber-100 text-amber-800'"
+                    >
+                      {{ row.status === 'paid' ? t('superadminDashboard.statusActive') : t('superadminDashboard.mrrTrial') }}
+                    </span>
+                  </td>
+                  <td class="px-3 py-2.5 text-right font-semibold text-slate-900">
+                    {{ row.status === 'paid' ? formatSom(row.mrr) : '—' }}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2.5 font-medium text-slate-900">{{ t('superadminDashboard.soloDoctors') }}</td>
+                  <td class="px-3 py-2.5 text-slate-600">{{ mrrPanel.soloPaid }} / {{ mrrPanel.soloTotal }}</td>
+                  <td class="px-3 py-2.5">
+                    <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                      {{ t('superadminDashboard.statusActive') }}
+                    </span>
+                  </td>
+                  <td class="px-3 py-2.5 text-right font-semibold text-slate-900">{{ formatSom(mrrPanel.soloMrr) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <div v-if="loading" class="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
         {{ t('superadminDashboard.loading') }}
       </div>
@@ -215,6 +299,7 @@ import ApexChart from 'vue3-apexcharts'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { PREMIUM_FEATURE_KEYS } from '@/lib/subscriptionFeatures'
+import { buildMrrPanel, formatSom } from '@/lib/superadminMrrStatic'
 import { getSuperadminDashboardData } from '@/services/superadminService'
 
 const { t } = useI18n()
@@ -233,6 +318,33 @@ const dashboard = ref({
   systemHealth: { soloDoctors: 0, clinics: 0, activeEntities: 0 },
   recentSubscriptions: [],
 })
+
+const mrrPanel = computed(() => buildMrrPanel())
+
+const mrrChartSeries = computed(() => [
+  mrrPanel.value.clinicsMrr,
+  mrrPanel.value.soloMrr,
+])
+
+const mrrChartOptions = computed(() => ({
+  labels: [t('superadminDashboard.clinics'), t('superadminDashboard.soloDoctors')],
+  colors: ['#6366f1', '#14b8a6'],
+  legend: { position: 'bottom' },
+  chart: {
+    background: 'transparent',
+    foreColor: '#334155',
+  },
+  theme: { mode: 'light' },
+  dataLabels: {
+    formatter: (value) => `${Number(value).toFixed(0)}%`,
+  },
+  tooltip: {
+    theme: 'light',
+    y: {
+      formatter: (value) => formatSom(value),
+    },
+  },
+}))
 
 const formatDateTime = (value) => {
   if (!value) return t('superadminDashboard.noActivity')

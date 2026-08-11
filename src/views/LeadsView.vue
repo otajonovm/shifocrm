@@ -15,6 +15,8 @@
         </button>
       </div>
 
+      <SoloOnlineBookingCard v-if="isSoloUser" />
+
       <div class="bg-white rounded-2xl border border-gray-100 shadow-card overflow-hidden">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -84,13 +86,9 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { usePermission } from '@/composables/usePermission'
-import {
-  listLeadsByClinic,
-  listLeadsByDoctor,
-  updateLeadStatus,
-  convertLeadToBooked,
-  convertLeadToQabulda,
-} from '@/api/leadsApi'
+import { isSolo } from '@/lib/roles'
+import { listInboxLeads, changeLeadStatus } from '@/services/leadsService'
+import SoloOnlineBookingCard from '@/components/solo/SoloOnlineBookingCard.vue'
 import {
   LEAD_STATUS_DROPDOWN,
   LEAD_STATUSES,
@@ -104,6 +102,7 @@ const toast = useToast()
 const { t } = useI18n()
 const { can } = usePermission()
 const canEditLeads = computed(() => can('leads', 'edit'))
+const isSoloUser = computed(() => isSolo(authStore))
 
 const leads = ref([])
 const loading = ref(false)
@@ -128,13 +127,7 @@ const formatVisitDateTime = (date, time) => {
 const loadLeads = async () => {
   loading.value = true
   try {
-    if (authStore.userRole === 'doctor' || authStore.userRole === 'solo') {
-      const doctorId = Number(authStore.user?.id)
-      leads.value = Number.isFinite(doctorId) ? await listLeadsByDoctor(doctorId) : []
-    } else {
-      const clinicId = Number(authStore.userClinicId || authStore.user?.clinic_id)
-      leads.value = Number.isFinite(clinicId) ? await listLeadsByClinic(clinicId) : []
-    }
+    leads.value = await listInboxLeads(authStore)
   } catch (error) {
     console.error('Failed to load leads:', error)
     toast.error(t('leads.errorLoad'))
@@ -148,26 +141,18 @@ const onChangeStatus = async (lead, status) => {
   const leadId = Number(lead?.id)
   if (!Number.isFinite(leadId)) return
   try {
-    let updated = null
-    if (status === LEAD_STATUSES.BOOKED || status === 'booked') {
-      const result = await convertLeadToBooked(lead)
-      if (result?.duplicateResolved) {
-        toast.info(t('leads.toastDuplicateSlot'))
-        await loadLeads()
-        return
-      }
-      if (result?.alreadyBooked) {
-        toast.info(t('leads.toastAlreadyBooked'))
-        await loadLeads()
-        return
-      }
-      updated = result?.lead || null
-    } else if (status === LEAD_STATUSES.QABULDA) {
-      const result = await convertLeadToQabulda(lead)
-      updated = result?.lead || null
-    } else {
-      updated = await updateLeadStatus(leadId, status)
+    const result = await changeLeadStatus(lead, status)
+    if (result?.duplicateResolved) {
+      toast.info(t('leads.toastDuplicateSlot'))
+      await loadLeads()
+      return
     }
+    if (result?.alreadyBooked) {
+      toast.info(t('leads.toastAlreadyBooked'))
+      await loadLeads()
+      return
+    }
+    const updated = result?.lead || null
 
     const index = leads.value.findIndex((item) => Number(item.id) === leadId)
     if (index >= 0) {

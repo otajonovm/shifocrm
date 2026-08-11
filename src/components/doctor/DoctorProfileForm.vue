@@ -223,165 +223,112 @@
     </div>
 
     <!-- Ish jadvali -->
-    <div v-if="showSchedule" class="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-sm font-semibold text-gray-900">{{ t('doctorProfile.scheduleTitle') }}</p>
-          <p class="text-xs text-gray-500">{{ t('doctorProfile.scheduleSubtitle') }}</p>
-        </div>
+    <div v-if="showSchedule" class="space-y-4">
+      <div>
+        <h2 class="text-xl font-bold text-slate-900">{{ t('doctorProfile.scheduleTitle') }}</h2>
+        <p class="mt-1 text-sm text-slate-500">{{ t('doctorProfile.scheduleSubtitle') }}</p>
       </div>
 
-      <!-- Dushanba-Juma umumiy vaqt -->
-      <div v-if="compactSchedule" class="mt-4 rounded-xl border border-violet-200 bg-violet-50/50 p-4">
-        <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
-          <div>
-            <p class="text-sm font-semibold text-gray-900">{{ t('doctorProfile.weekdayBulkTitle') }}</p>
-            <p class="text-xs text-gray-500">{{ t('doctorProfile.weekdayBulkSubtitle') }}</p>
-          </div>
-          <label class="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              v-model="weekdayBulk.enabled"
-              type="checkbox"
-              class="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-            />
-            {{ t('doctorProfile.workday') }}
+      <section class="rounded-3xl border border-violet-100 bg-violet-50 p-4">
+        <p class="text-sm font-semibold text-violet-950">{{ t('doctorProfile.weekdayBulkTitle') }}</p>
+        <p class="mt-0.5 text-xs text-violet-700/80">{{ t('doctorProfile.applyWeekdaysHint') }}</p>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <label class="block">
+            <span class="mb-1 block text-xs font-medium text-violet-800">{{ t('doctorProfile.startTime') }}</span>
+            <input v-model="weekdayBulk.start" type="time" class="w-full rounded-xl border-0 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 shadow-sm" />
           </label>
-        </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div class="space-y-1">
-            <label class="text-xs font-medium text-gray-600">{{ t('doctorProfile.startTime') }}</label>
-            <input v-model="weekdayBulk.start" type="time" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div class="space-y-1">
-            <label class="text-xs font-medium text-gray-600">{{ t('doctorProfile.endTime') }}</label>
-            <input v-model="weekdayBulk.end" type="time" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div class="space-y-1">
-            <label class="text-xs font-medium text-gray-600">{{ t('doctorProfile.breakStart') }}</label>
-            <input v-model="weekdayBulk.break_start" type="time" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-          <div class="space-y-1">
-            <label class="text-xs font-medium text-gray-600">{{ t('doctorProfile.breakEnd') }}</label>
-            <input v-model="weekdayBulk.break_end" type="time" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" />
-          </div>
+          <label class="block">
+            <span class="mb-1 block text-xs font-medium text-violet-800">{{ t('doctorProfile.endTime') }}</span>
+            <input v-model="weekdayBulk.end" type="time" class="w-full rounded-xl border-0 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 shadow-sm" />
+          </label>
         </div>
         <button
           type="button"
-          class="mt-3 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
+          class="mt-3 w-full rounded-xl bg-violet-600 py-2.5 text-sm font-semibold text-white"
           @click="applyWeekdayBulk"
         >
           {{ t('doctorProfile.applyWeekdays') }}
         </button>
-      </div>
+      </section>
 
-      <div class="mt-4 space-y-2">
-        <div
+      <div class="space-y-2">
+        <article
           v-for="day in dayOptions"
           :key="day.key"
-          class="rounded-xl border transition-colors"
+          class="rounded-2xl border bg-white p-3.5"
           :class="profile.work_schedule.days[day.key].enabled
-            ? 'border-blue-200 bg-blue-50/30'
-            : 'border-gray-200 bg-gray-50/50'"
+            ? 'border-emerald-200'
+            : 'border-slate-200'"
         >
-          <!-- Ixcham qator -->
-          <div v-if="compactSchedule && !expandedDays[day.key]" class="flex items-center justify-between gap-3 p-3">
-            <div class="flex min-w-0 flex-1 items-center gap-3">
-              <input
-                :id="`day-${day.key}`"
-                v-model="profile.work_schedule.days[day.key].enabled"
-                type="checkbox"
-                class="h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label :for="`day-${day.key}`" class="text-sm font-semibold text-gray-800 shrink-0">
-                {{ day.label }}
-              </label>
-              <span class="truncate text-xs text-gray-500">
-                {{ getDaySummary(day.key) }}
-              </span>
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-base font-bold text-slate-900">{{ day.label }}</p>
+              <p class="text-xs text-slate-500">{{ getDaySummary(day.key) }}</p>
             </div>
             <button
               type="button"
-              class="shrink-0 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-white"
-              @click="expandedDays[day.key] = true"
+              role="switch"
+              :aria-checked="profile.work_schedule.days[day.key].enabled"
+              class="rounded-full px-3 py-1.5 text-xs font-semibold"
+              :class="profile.work_schedule.days[day.key].enabled
+                ? 'bg-emerald-600 text-white'
+                : 'bg-slate-200 text-slate-600'"
+              @click="toggleDay(day.key)"
             >
-              {{ t('doctorProfile.editDay') }}
+              {{ profile.work_schedule.days[day.key].enabled ? t('doctorProfile.workday') : t('doctorProfile.dayOff') }}
             </button>
           </div>
 
-          <!-- To'liq qator -->
-          <div v-else class="p-4">
-            <div class="mb-3 flex items-center justify-between gap-3">
-              <div class="flex items-center gap-2">
-                <input
-                  :id="`day-full-${day.key}`"
-                  v-model="profile.work_schedule.days[day.key].enabled"
-                  type="checkbox"
-                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label :for="`day-full-${day.key}`" class="text-sm font-semibold text-gray-800">
-                  {{ day.label }}
-                </label>
-              </div>
-              <div class="flex items-center gap-2">
-                <span
-                  class="rounded-full px-2.5 py-1 text-xs font-medium"
-                  :class="profile.work_schedule.days[day.key].enabled
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-gray-200 text-gray-600'"
-                >
-                  {{ profile.work_schedule.days[day.key].enabled ? t('doctorProfile.workday') : t('doctorProfile.dayOff') }}
-                </span>
-                <button
-                  v-if="compactSchedule"
-                  type="button"
-                  class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-white"
-                  @click="expandedDays[day.key] = false"
-                >
-                  {{ t('doctorProfile.collapseDay') }}
-                </button>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div class="space-y-1">
-                <label class="text-xs font-medium text-gray-600">{{ t('doctorProfile.startTime') }}</label>
+          <div v-if="profile.work_schedule.days[day.key].enabled" class="mt-3 space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <label class="block">
+                <span class="mb-1 block text-xs font-medium text-slate-500">{{ t('doctorProfile.startTime') }}</span>
                 <input
                   v-model="profile.work_schedule.days[day.key].start"
                   type="time"
-                  :disabled="!profile.work_schedule.days[day.key].enabled"
-                  class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold"
                 />
-              </div>
-              <div class="space-y-1">
-                <label class="text-xs font-medium text-gray-600">{{ t('doctorProfile.endTime') }}</label>
+              </label>
+              <label class="block">
+                <span class="mb-1 block text-xs font-medium text-slate-500">{{ t('doctorProfile.endTime') }}</span>
                 <input
                   v-model="profile.work_schedule.days[day.key].end"
                   type="time"
-                  :disabled="!profile.work_schedule.days[day.key].enabled"
-                  class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold"
                 />
+              </label>
+            </div>
+
+            <div v-if="hasLunch(day.key)" class="rounded-xl bg-amber-50 p-2.5">
+              <div class="mb-2 flex items-center justify-between">
+                <p class="text-xs font-semibold text-amber-800">{{ t('doctorProfile.lunch') }}</p>
+                <button type="button" class="text-xs font-medium text-amber-700" @click="clearLunch(day.key)">
+                  {{ t('doctorProfile.removeLunch') }}
+                </button>
               </div>
-              <div class="space-y-1">
-                <label class="text-xs font-medium text-gray-600">{{ t('doctorProfile.breakStart') }}</label>
+              <div class="grid grid-cols-2 gap-2">
                 <input
                   v-model="profile.work_schedule.days[day.key].break_start"
                   type="time"
-                  :disabled="!profile.work_schedule.days[day.key].enabled"
-                  class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+                  class="w-full rounded-xl border border-amber-100 bg-white px-3 py-2 text-sm"
                 />
-              </div>
-              <div class="space-y-1">
-                <label class="text-xs font-medium text-gray-600">{{ t('doctorProfile.breakEnd') }}</label>
                 <input
                   v-model="profile.work_schedule.days[day.key].break_end"
                   type="time"
-                  :disabled="!profile.work_schedule.days[day.key].enabled"
-                  class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+                  class="w-full rounded-xl border border-amber-100 bg-white px-3 py-2 text-sm"
                 />
               </div>
             </div>
+            <button
+              v-else
+              type="button"
+              class="w-full rounded-xl border border-dashed border-slate-200 py-2 text-xs font-semibold text-slate-500"
+              @click="addLunch(day.key)"
+            >
+              + {{ t('doctorProfile.addLunch') }}
+            </button>
           </div>
-        </div>
+        </article>
       </div>
     </div>
 
@@ -400,7 +347,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, reactive } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { resizeLogoFile } from '@/lib/logoResize'
 
@@ -468,7 +415,6 @@ const normalizeProfile = (data) => ({
 const profile = ref(normalizeProfile(props.initialData))
 const { t } = useI18n()
 const avatarUploadError = ref('')
-const expandedDays = reactive({})
 const weekdayBulk = ref({
   enabled: true,
   start: '09:00',
@@ -499,9 +445,31 @@ const getDaySummary = (dayKey) => {
   const day = profile.value.work_schedule.days[dayKey]
   if (!day.enabled) return t('doctorProfile.dayOff')
   const breakPart = day.break_start && day.break_end
-    ? ` · ${day.break_start}–${day.break_end}`
+    ? ` · ${t('doctorProfile.lunch')} ${day.break_start}–${day.break_end}`
     : ''
   return `${day.start} – ${day.end}${breakPart}`
+}
+
+const toggleDay = (dayKey) => {
+  const day = profile.value.work_schedule.days[dayKey]
+  day.enabled = !day.enabled
+}
+
+const hasLunch = (dayKey) => {
+  const day = profile.value.work_schedule.days[dayKey]
+  return Boolean(day.break_start && day.break_end)
+}
+
+const addLunch = (dayKey) => {
+  const day = profile.value.work_schedule.days[dayKey]
+  day.break_start = day.break_start || '13:00'
+  day.break_end = day.break_end || '14:00'
+}
+
+const clearLunch = (dayKey) => {
+  const day = profile.value.work_schedule.days[dayKey]
+  day.break_start = ''
+  day.break_end = ''
 }
 
 const applyWeekdayBulk = () => {

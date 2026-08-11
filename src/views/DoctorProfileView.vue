@@ -115,6 +115,33 @@
           </DoctorProfileForm>
 
           <div v-show="activeTab === 'personal'" class="border-t border-gray-200 pt-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-1">{{ t('doctorProfile.languageTitle') }}</h2>
+            <p class="text-sm text-gray-500 mb-4">{{ t('doctorProfile.languageHint') }}</p>
+            <div class="grid grid-cols-2 gap-2 max-w-sm">
+              <button
+                type="button"
+                class="rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors"
+                :class="currentLocale === 'uz'
+                  ? 'border-violet-300 bg-violet-50 text-violet-700 ring-1 ring-violet-100'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'"
+                @click="changeLocale('uz')"
+              >
+                🇺🇿 {{ t('language.uz') }}
+              </button>
+              <button
+                type="button"
+                class="rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors"
+                :class="currentLocale === 'ru'
+                  ? 'border-violet-300 bg-violet-50 text-violet-700 ring-1 ring-violet-100'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'"
+                @click="changeLocale('ru')"
+              >
+                🇷🇺 {{ t('language.ru') }}
+              </button>
+            </div>
+          </div>
+
+          <div v-show="activeTab === 'personal'" class="border-t border-gray-200 pt-6">
             <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('doctorProfile.changePassword') }}</h2>
             <PasswordChangeForm
               ref="passwordFormRef"
@@ -198,6 +225,7 @@ import { useToast } from 'vue-toastification'
 import QRCode from 'qrcode'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
+import { useI18nStore } from '@/stores/i18n'
 import { findDoctorForSoloClinic, getDoctorByClinicId } from '@/services/adminService'
 import { isSolo } from '@/lib/roles'
 import { phoneAuthLookupVariants } from '@/lib/phoneUz'
@@ -210,7 +238,8 @@ import SuccessMessage from '@/components/shared/SuccessMessage.vue'
 
 const authStore = useAuthStore()
 const doctorsStore = useDoctorsStore()
-const { t } = useI18n()
+const i18nStore = useI18nStore()
+const { t, locale } = useI18n()
 const toast = useToast()
 
 const profile = ref({
@@ -257,6 +286,12 @@ const publicProfileUrl = computed(() => {
   return `${window.location.origin}/d/${profile.value.public_slug}`
 })
 const canDownloadQr = computed(() => Boolean(profile.value.is_public && hasSlug.value))
+const currentLocale = computed(() => locale.value)
+
+const changeLocale = (nextLocale) => {
+  if (nextLocale !== 'uz' && nextLocale !== 'ru') return
+  i18nStore.setLocale(nextLocale)
+}
 const shareTitle = computed(() => {
   const fullName = String(profile.value.full_name || '').trim()
   return fullName ? `Dr. ${fullName}` : t('doctorProfile.shareTitleFallback')

@@ -67,6 +67,9 @@ export const createPayment = async ({
       type: normalizedType,
       method,
       note,
+      patientId: patient_id,
+      doctorId: doctor_id,
+      paidAt: paid_at,
     })
     if (created && created.visit_id && payment_type === 'payment') {
       tryAttributeVisitRevenue({

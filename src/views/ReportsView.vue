@@ -90,6 +90,8 @@
         </div>
       </div>
 
+      <ReportsWeekTable :rows="weekRows" :loading="loading.week" />
+
       <!-- Shifokorlar kesimida tushum va KPI (maosh) hisoboti -->
       <div class="mobile-card">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -509,6 +511,8 @@
 <script setup>
 import MainLayout from '@/layouts/MainLayout.vue'
 import ReportsSoloView from '@/views/ReportsSoloView.vue'
+import ReportsWeekTable from '@/components/reports/ReportsWeekTable.vue'
+import { getClinicWeekReport } from '@/services/reportsService'
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ApexChart from 'vue3-apexcharts'
@@ -555,8 +559,11 @@ const loading = ref({
   income: false,
   services: false,
   expenses: false,
-  movements: false
+  movements: false,
+  week: false,
 })
+
+const weekRows = ref([])
 
 const summary = ref({
   totalPayments: 0,
@@ -1001,6 +1008,7 @@ const loadReports = async () => {
   loading.value.services = true
   loading.value.expenses = true
   loading.value.movements = true
+  loading.value.week = true
 
   try {
     const { startDate, endDate } = filters.value
@@ -1011,7 +1019,8 @@ const loadReports = async () => {
       topServicesData,
       expensesData,
       movementsData,
-      itemsData
+      itemsData,
+      weekReport,
     ] = await Promise.all([
       paymentsApi.getPaymentsByDateRange(startDate, endDate),
       listDoctors(),
@@ -1019,8 +1028,11 @@ const loadReports = async () => {
       getTopServices(),
       listExpenses('order=paid_at.desc'),
       listInventoryMovements('order=created_at.desc'),
-      listInventoryItems('order=name.asc')
+      listInventoryItems('order=name.asc'),
+      getClinicWeekReport().catch(() => ({ dailyBreakdown: [] })),
     ])
+
+    weekRows.value = weekReport?.dailyBreakdown || []
 
     payments.value = paymentsData || []
     doctors.value = doctorsData || []
@@ -1066,6 +1078,7 @@ const loadReports = async () => {
     loading.value.services = false
     loading.value.expenses = false
     loading.value.movements = false
+    loading.value.week = false
   }
 }
 

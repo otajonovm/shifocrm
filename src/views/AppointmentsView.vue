@@ -6,8 +6,6 @@
         ? 'flex flex-col h-[calc(100dvh-4rem)] min-h-0 -m-4 sm:-m-6 lg:-m-8 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] max-w-none overflow-x-hidden'
         : 'space-y-4 animate-fade-in'"
     >
-      <SoloOnlineBookingCard v-if="isSolo && displayMode === 'list'" class="max-w-3xl" />
-
       <!-- Filtrlar paneli -->
       <AppointmentsHeader
         :class="displayMode === 'schedule' ? 'flex-shrink-0 rounded-none border-x-0 border-t-0 shadow-none' : 'relative z-20'"
@@ -727,8 +725,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
-import { isAdminLike, isSolo as hasSoloRole } from '@/lib/roles'
-import SoloOnlineBookingCard from '@/components/solo/SoloOnlineBookingCard.vue'
+import { isAdminLike } from '@/lib/roles'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
@@ -773,7 +770,6 @@ const { t } = useI18n()
 const { can } = usePermission()
 
 const isAdmin = computed(() => isAdminLike(authStore))
-const isSolo = computed(() => hasSoloRole(authStore))
 const canCreateAppointments = computed(() => can('appointments', 'create'))
 const canEditAppointments = computed(() => can('appointments', 'edit'))
 const canCreatePatients = computed(() => can('patients', 'create'))

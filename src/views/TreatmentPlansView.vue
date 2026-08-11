@@ -1,23 +1,128 @@
 <template>
   <MainLayout>
-    <div class="space-y-6 animate-fade-in">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="space-y-4 md:space-y-6 animate-fade-in pb-24 md:pb-0">
+      <!-- Desktop sarlavha -->
+      <div class="hidden md:flex items-center justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">{{ t('treatmentPlansView.title') }}</h1>
           <p class="text-gray-500">{{ t('treatmentPlansView.subtitle') }}</p>
         </div>
-        <!-- Desktop Button -->
         <button
           v-if="canCreatePlans"
           @click="showForm = !showForm"
-          class="hidden md:inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all touch-target-lg"
+          class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all"
         >
           <PlusIcon class="w-5 h-5" />
           {{ t('treatmentPlansView.newPlan') }}
         </button>
       </div>
 
-      <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-4">
+      <!-- Mobil: tushunarli hero + qidiruv -->
+      <section class="md:hidden overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-500 p-4 text-white shadow-lg">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">{{ t('treatmentPlansView.subtitle') }}</p>
+        <div class="mt-1 flex items-end justify-between gap-3">
+          <h1 class="text-2xl font-black leading-tight">{{ t('treatmentPlansView.title') }}</h1>
+          <span class="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
+            {{ t('treatmentPlansView.plansCount', { count: filteredPlans.length }) }}
+          </span>
+        </div>
+        <label class="mt-4 flex items-center gap-2 rounded-2xl bg-white/15 px-3 py-2.5 ring-1 ring-white/20">
+          <MagnifyingGlassIcon class="h-5 w-5 flex-shrink-0 text-white/80" />
+          <input
+            v-model="searchQuery"
+            type="search"
+            class="w-full bg-transparent text-sm text-white placeholder:text-white/60 focus:outline-none"
+            :placeholder="t('treatmentPlansView.searchPlaceholder')"
+          />
+        </label>
+      </section>
+
+      <!-- Mobil: status chiplari -->
+      <div class="md:hidden -mx-4 px-4">
+        <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <button
+            type="button"
+            class="flex-shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors"
+            :class="selectedStatus === ''
+              ? 'bg-violet-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 ring-1 ring-slate-200'"
+            @click="selectedStatus = ''"
+          >
+            {{ t('treatmentPlansView.allChip') }}
+          </button>
+          <button
+            v-for="option in statusOptions"
+            :key="option.value"
+            type="button"
+            class="flex-shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors"
+            :class="selectedStatus === option.value
+              ? 'bg-violet-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 ring-1 ring-slate-200'"
+            @click="selectedStatus = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobil: qo'shimcha filtrlar -->
+      <div class="md:hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+        <button
+          type="button"
+          class="flex w-full items-center justify-between gap-2 text-left"
+          @click="showMobileFilters = !showMobileFilters"
+        >
+          <span class="inline-flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <FunnelIcon class="h-4 w-4 text-violet-600" />
+            {{ t('treatmentPlansView.filters') }}
+          </span>
+          <span class="inline-flex items-center gap-2">
+            <span v-if="extraFilterCount" class="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700">
+              {{ extraFilterCount }}
+            </span>
+            <ChevronDownIcon
+              class="h-4 w-4 text-slate-400 transition-transform"
+              :class="showMobileFilters ? 'rotate-180' : ''"
+            />
+          </span>
+        </button>
+
+        <div v-if="showMobileFilters" class="mt-3 space-y-3 border-t border-slate-100 pt-3">
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-500">{{ t('treatmentPlansView.patient') }}</label>
+            <select
+              v-model="selectedPatient"
+              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            >
+              <option value="">{{ t('treatmentPlansView.allPatients') }}</option>
+              <option v-for="patient in patientsStore.items" :key="patient.id" :value="String(patient.id)">
+                {{ patient.full_name }}
+              </option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="mb-1 block text-xs font-medium text-slate-500">{{ t('treatmentPlansView.dateFrom') }}</label>
+              <input
+                v-model="startDate"
+                type="date"
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-xs font-medium text-slate-500">{{ t('treatmentPlansView.dateTo') }}</label>
+              <input
+                v-model="endDate"
+                type="date"
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop filtrlar -->
+      <div class="hidden md:block bg-white rounded-2xl shadow-card border border-gray-100 p-4">
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-5">
           <div class="lg:col-span-2">
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlansView.search') }}</label>
@@ -233,44 +338,27 @@
               </td>
               <td class="px-4 py-3 text-right">
                 <div v-if="canEditPlans" class="flex items-center justify-end gap-2">
+                  <select
+                    :value="plan.status"
+                    class="max-w-[160px] rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    @change="onStatusChange(plan, $event)"
+                  >
+                    <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </option>
+                  </select>
                   <button
                     v-if="!plan.visit_id"
+                    type="button"
+                    class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                     @click="convertToVisit(plan)"
-                    class="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded"
                   >
                     {{ t('treatmentPlans.toVisit') }}
                   </button>
                   <button
-                    v-if="plan.status !== 'scheduled'"
-                    @click="setStatus(plan, 'scheduled')"
-                    class="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded"
-                  >
-                    {{ t('treatmentPlans.statusScheduled') }}
-                  </button>
-                  <button
-                    v-if="plan.status !== 'in_progress'"
-                    @click="setStatus(plan, 'in_progress')"
-                    class="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 rounded"
-                  >
-                    {{ t('treatmentPlans.statusInProgress') }}
-                  </button>
-                  <button
-                    v-if="plan.status !== 'done'"
-                    @click="setStatus(plan, 'done')"
-                    class="px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 rounded"
-                  >
-                    {{ t('treatmentPlans.statusDone') }}
-                  </button>
-                  <button
-                    v-if="plan.status !== 'cancelled'"
-                    @click="setStatus(plan, 'cancelled')"
-                    class="px-2 py-1 text-xs font-medium text-rose-700 bg-rose-50 rounded"
-                  >
-                    {{ t('treatmentPlans.statusCancelled') }}
-                  </button>
-                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                     @click="sendReminder(plan)"
-                    class="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded"
                   >
                     {{ t('treatmentPlans.sendReminder') }}
                   </button>
@@ -283,94 +371,76 @@
 
       <!-- Mobile Cards -->
       <div class="md:hidden space-y-3">
-        <div v-if="loading" class="mobile-card text-sm text-slate-500">
+        <div v-if="loading" class="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm">
           {{ t('treatmentPlans.loading') }}
         </div>
-        <div v-else-if="filteredPlans.length === 0" class="mobile-card text-sm text-slate-500">
-          {{ t('treatmentPlans.noPlans') }}
+        <div v-else-if="filteredPlans.length === 0" class="rounded-2xl bg-white px-5 py-10 text-center shadow-sm">
+          <p class="text-base font-semibold text-slate-800">{{ t('treatmentPlans.noPlans') }}</p>
+          <p class="mt-1 text-sm text-slate-500">{{ t('treatmentPlansView.noPlansHint') }}</p>
         </div>
-        <div
+        <article
           v-for="plan in filteredPlans"
           v-else
           :key="plan.id"
-          class="mobile-list-item"
+          class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100"
         >
-          <div class="space-y-3">
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex-1 min-w-0">
-                <h3 class="text-base font-semibold text-gray-900 truncate">{{ plan.title }}</h3>
-                <p class="text-sm text-gray-600 mt-1">{{ plan.patientName || '-' }}</p>
+          <div class="flex">
+            <div class="w-1.5 flex-shrink-0" :class="statusBarClass(plan.status)" />
+            <div class="min-w-0 flex-1 p-3.5">
+              <div class="flex items-start gap-3">
+                <div class="flex h-12 w-11 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-slate-50 text-center">
+                  <span class="text-[10px] font-semibold uppercase text-slate-400">{{ formatDateMonth(plan.planned_date) }}</span>
+                  <span class="text-lg font-black leading-none text-slate-800">{{ formatDateDay(plan.planned_date) }}</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-start justify-between gap-2">
+                    <h3 class="truncate text-base font-bold text-slate-900">{{ plan.title }}</h3>
+                    <span :class="statusClass(plan.status)" class="flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                      {{ statusLabel(plan.status) }}
+                    </span>
+                  </div>
+                  <p class="mt-1 truncate text-sm text-slate-600">{{ plan.patientName || '-' }}</p>
+                  <div class="mt-2 flex flex-wrap gap-1.5 text-[11px] font-medium text-slate-500">
+                    <span v-if="plan.tooth_id" class="rounded-full bg-slate-100 px-2 py-0.5">#{{ plan.tooth_id }}</span>
+                    <span class="rounded-full bg-slate-100 px-2 py-0.5">{{ priorityLabel(plan.priority) }}</span>
+                    <span v-if="plan.estimated_cost" class="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+                      {{ formatCurrency(plan.estimated_cost) }}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <span :class="statusClass(plan.status)" class="mobile-badge flex-shrink-0">
-                {{ statusLabel(plan.status) }}
-              </span>
-            </div>
 
-            <div v-if="plan.notes" class="text-xs text-gray-500 bg-gray-50 rounded-lg p-2">
-              {{ plan.notes }}
-            </div>
-
-            <div class="grid grid-cols-2 gap-2 text-xs text-gray-600">
-              <div>
-                <span class="text-gray-500">{{ t('treatmentPlans.date') }}:</span>
-                <span class="font-medium ml-1">{{ formatDate(plan.planned_date) }}</span>
+              <div v-if="canEditPlans" class="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                <select
+                  :value="plan.status"
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  @change="onStatusChange(plan, $event)"
+                >
+                  <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    v-if="!plan.visit_id"
+                    type="button"
+                    class="rounded-xl bg-violet-50 px-3 py-2.5 text-xs font-semibold text-violet-700"
+                    @click="convertToVisit(plan)"
+                  >
+                    {{ t('treatmentPlans.toVisit') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-xl bg-slate-100 px-3 py-2.5 text-xs font-semibold text-slate-700"
+                    @click="sendReminder(plan)"
+                  >
+                    {{ t('treatmentPlans.remind') }}
+                  </button>
+                </div>
               </div>
-              <div>
-                <span class="text-gray-500">{{ t('treatmentPlans.priority') }}:</span>
-                <span class="font-medium ml-1">{{ priorityLabel(plan.priority) }}</span>
-              </div>
-              <div v-if="plan.tooth_id">
-                <span class="text-gray-500">{{ t('treatmentPlans.tooth') }}:</span>
-                <span class="font-medium ml-1">#{{ plan.tooth_id }}</span>
-              </div>
-              <div v-if="plan.estimated_cost">
-                <span class="text-gray-500">{{ t('treatmentPlans.price') }}:</span>
-                <span class="font-medium ml-1">{{ formatCurrency(plan.estimated_cost) }} so'm</span>
-              </div>
-            </div>
-
-            <div v-if="plan.remind_at" class="text-xs text-gray-500">
-              {{ t('treatmentPlans.remindAtShort') }}: {{ formatDateTime(plan.remind_at) }}
-            </div>
-
-            <div class="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
-              <button
-                v-if="!plan.visit_id"
-                @click="convertToVisit(plan)"
-                class="mobile-action-btn text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg"
-              >
-                {{ t('treatmentPlans.toVisit') }}
-              </button>
-              <button
-                v-if="plan.status !== 'done'"
-                @click="setStatus(plan, 'done')"
-                class="mobile-action-btn text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg"
-              >
-                {{ t('treatmentPlans.markDone') }}
-              </button>
-              <button
-                v-if="plan.status !== 'postponed'"
-                @click="setStatus(plan, 'postponed')"
-                class="mobile-action-btn text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-lg"
-              >
-                {{ t('treatmentPlans.postpone') }}
-              </button>
-              <button
-                v-if="plan.status !== 'cancelled'"
-                @click="setStatus(plan, 'cancelled')"
-                class="mobile-action-btn text-xs text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-2 rounded-lg"
-              >
-                {{ t('treatmentPlans.cancel') }}
-              </button>
-              <button
-                @click="sendReminder(plan)"
-                class="mobile-action-btn text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg"
-              >
-                {{ t('treatmentPlans.remind') }}
-              </button>
             </div>
           </div>
-        </div>
+        </article>
       </div>
     </div>
 
@@ -390,18 +460,19 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import MobileFAB from '@/components/shared/MobileFAB.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { PlusIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, MagnifyingGlassIcon, FunnelIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
 import { usePermission } from '@/composables/usePermission'
-import { getPlansByDoctorAndDateRange, createPlan, updatePlan, updatePlanStatus } from '@/api/treatmentPlansApi'
+import { isSolo } from '@/lib/roles'
+import { getPlansByDoctorAndDateRange, getPlansByDateRange, createPlan, updatePlan, updatePlanStatus } from '@/api/treatmentPlansApi'
 import { createVisit } from '@/api/visitsApi'
 
 const authStore = useAuthStore()
 const patientsStore = usePatientsStore()
 const toast = useToast()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { can } = usePermission()
 const canCreatePlans = computed(() => can('treatment_plans', 'create'))
 const canEditPlans = computed(() => can('treatment_plans', 'edit'))
@@ -415,6 +486,9 @@ const selectedStatus = ref('')
 const selectedPatient = ref('')
 const startDate = ref('')
 const endDate = ref('')
+const showMobileFilters = ref(false)
+
+const extraFilterCount = computed(() => Number(Boolean(selectedPatient.value)))
 
 const statusOptions = [
   { value: 'offered', label: t('treatmentPlans.statusOffered') },
@@ -469,11 +543,14 @@ const resetForm = () => {
 
 const loadPlans = async () => {
   if (!startDate.value || !endDate.value) return
-  if (!doctorId.value) return
+  const soloClinic = isSolo(authStore)
+  if (!soloClinic && !doctorId.value) return
 
   loading.value = true
   try {
-    const items = await getPlansByDoctorAndDateRange(doctorId.value, startDate.value, endDate.value)
+    const items = soloClinic
+      ? await getPlansByDateRange(startDate.value, endDate.value)
+      : await getPlansByDoctorAndDateRange(doctorId.value, startDate.value, endDate.value)
     const patientMap = new Map(patientsStore.items.map(patient => [Number(patient.id), patient]))
     plans.value = items.map(plan => ({
       ...plan,
@@ -520,6 +597,12 @@ const savePlan = async () => {
     console.error('Failed to save treatment plan:', error)
     formError.value = t('treatmentPlansView.errorSave')
   }
+}
+
+const onStatusChange = (plan, event) => {
+  const nextStatus = event?.target?.value
+  if (!nextStatus || nextStatus === plan.status) return
+  setStatus(plan, nextStatus)
 }
 
 const setStatus = async (plan, status) => {
@@ -614,6 +697,31 @@ const statusClass = (status) => {
   if (status === 'cancelled') return 'bg-rose-100 text-rose-700'
   if (status === 'scheduled') return 'bg-blue-100 text-blue-700'
   return 'bg-slate-100 text-slate-700'
+}
+
+const statusBarClass = (status) => {
+  if (status === 'done') return 'bg-emerald-500'
+  if (status === 'in_progress') return 'bg-amber-500'
+  if (status === 'cancelled') return 'bg-rose-500'
+  if (status === 'scheduled') return 'bg-blue-500'
+  return 'bg-violet-400'
+}
+
+const formatDateDay = (dateStr) => {
+  const date = parsePlanDate(dateStr)
+  return date ? String(date.getDate()).padStart(2, '0') : '--'
+}
+
+const formatDateMonth = (dateStr) => {
+  const date = parsePlanDate(dateStr)
+  if (!date) return ''
+  return date.toLocaleDateString(locale.value === 'ru' ? 'ru-RU' : 'uz-UZ', { month: 'short' })
+}
+
+const parsePlanDate = (dateStr) => {
+  if (!dateStr) return null
+  const date = new Date(dateStr)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
 const priorityLabel = (priority) => {

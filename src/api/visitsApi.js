@@ -3,7 +3,7 @@
  * Tenant isolation; clinic_id yo'q bo'lsa filtersiz fallback.
  */
 
-import { supabasePost, supabasePatchWhere, supabaseDeleteWhere, supabaseRpc } from './supabaseConfig'
+import { supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
@@ -261,29 +261,12 @@ export const createVisit = async ({
       clinic_id: cid
     }
 
-    if (start_time) {
-      const rpcResult = await supabaseRpc('create_visit_with_appointment', {
-        p_visit: newVisit,
-      })
-      const created = rpcResult?.visit ?? rpcResult
-      if (!created?.id) throw new Error('Tashrif yaratishda javob olinmadi.')
-
-      logActivity({
-        action: 'visit.create',
-        summary: `Qabul yaratildi #${created.id}`,
-        entity: 'visit',
-        entityId: created.id,
-        meta: { patient_id: created.patient_id, status: created.status },
-      }).catch(() => {})
-
-      return created
-    }
-
+    // Oddiy POST (RPC create_visit_with_appointment deploy qilinmagan — 404 chiqmasin)
     const result = await supabasePost(TABLE, newVisit)
     const created = result && result[0]
     if (!created) throw new Error('Tashrif yaratishda javob olinmadi.')
 
-    if (start_time && !created.appointment_id) {
+    if (start_time) {
       // Kalendar tezligi uchun fon rejimida sinxronlash — UI kutmaydi.
       syncAppointmentFromVisit(created).catch((syncErr) => {
         console.warn('Appointment sinxronlash (createVisit):', syncErr?.message)

@@ -15,7 +15,11 @@
 import { supabaseGet, supabasePost, supabasePatchWhere, supabaseDeleteWhere, supabaseRpc } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback, mergeClinicQuery } from '@/lib/supabaseClinicFallback'
-import { cloneTeethOnly } from '@/domain/odontogram'
+import {
+  cloneTeethOnly,
+  createEmptyOdontogramData,
+  normalizeToothRecord,
+} from '@/domain/odontogram'
 
 const TABLE = 'odontograms'
 
@@ -65,30 +69,7 @@ const generateId = async () => {
  * @returns {Object}
  */
 export const createEmptyOdontogram = () => {
-  const teeth = {}
-  const allTeeth = [
-    ...TOOTH_NUMBERS.upper_right,
-    ...TOOTH_NUMBERS.upper_left,
-    ...TOOTH_NUMBERS.lower_left,
-    ...TOOTH_NUMBERS.lower_right
-  ]
-
-  allTeeth.forEach(num => {
-    teeth[num] = { state: 'healthy', note: '' }
-  })
-
-  return { teeth }
-}
-
-/**
- * data.teeth kalitlarini string qilib normallashtiradi (Supabase JSONB bilan bir xil saqlanishi uchun)
- * @param {Object} data - { teeth: { ... }, ... }
- * @returns {Object}
- */
-const normalizeToothStateForApi = (state) => {
-  const s = String(state || 'healthy').toLowerCase().trim()
-  if (s === 'filling' || s === 'filled') return 'filled'
-  return s || 'healthy'
+  return createEmptyOdontogramData('permanent')
 }
 
 export const normalizeOdontogramDataForApi = (data) => {
@@ -99,11 +80,7 @@ export const normalizeOdontogramDataForApi = (data) => {
     Object.keys(out.teeth).forEach((k) => {
       const key = String(k)
       const tooth = out.teeth[k] || {}
-      const rawState = tooth.state ?? tooth.status
-      teethNormalized[key] = {
-        ...tooth,
-        state: normalizeToothStateForApi(rawState),
-      }
+      teethNormalized[key] = normalizeToothRecord(tooth)
     })
     out.teeth = teethNormalized
   }
@@ -210,7 +187,7 @@ export const updateOdontogramSnapshot = async (id, data, options = {}) => {
     // RPC mavjud bo'lsa versioned update; aks holda oddiy PATCH (legacy)
     if (options.expectedVersion != null) {
       try {
-        const rpcData = normalizeOdontogramDataForApi({ teeth: normalized.teeth })
+        const rpcData = normalizeOdontogramDataForApi(normalized)
         return await supabaseRpc('replace_odontogram_versioned', {
           p_id: numId,
           p_expected_version: Number(options.expectedVersion),
@@ -282,7 +259,17 @@ export const getOrCreateOdontogram = async ({ patient_id, visit_id, doctor_id })
       initialData = cloneTeethOnly(patientSnapshots[0].data)
     }
 
-    return await createOdontogramSnapshot({ patient_id, visit_id, doctor_id, data: initialData })
+    try {
+      return await createOdontogramSnapshot({ patient_id, visit_id, doctor_id, data: initialData })
+    } catch (createError) {
+      const message = String(createError?.message || '').toLowerCase()
+      const isVisitConflict = createError?.code === '23505' || message.includes('duplicate') || message.includes('unique')
+      if (isVisitConflict) {
+        const concurrentSnapshot = await getOdontogramByVisitId(visit_id)
+        if (concurrentSnapshot) return concurrentSnapshot
+      }
+      throw createError
+    }
   } catch (error) {
     console.error('❌ Failed to get or create odontogram:', error)
     throw error

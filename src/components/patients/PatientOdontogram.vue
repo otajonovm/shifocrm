@@ -1,34 +1,25 @@
 <template>
   <div class="space-y-6">
-    <!-- Visit Selection Header — mobil uchun to'liq kenglik, touch-friendly -->
-    <div class="flex flex-col gap-4 bg-white rounded-xl p-4 sm:p-4 border border-gray-100">
-      <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-        <div class="flex-1 w-full">
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ t('odontogram.visit') }}</label>
-          <select
-            v-model="selectedVisitId"
-            @change="onVisitChange"
-            class="w-full sm:w-auto min-w-0 px-4 py-3 sm:py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 touch-manipulation min-h-[44px]"
-            :disabled="loading"
-          >
-            <option value="">{{ t('odontogram.select') }}</option>
-            <option v-for="visit in visits" :key="visit.id" :value="visit.id">
-              {{ formatVisitDate(visit.date) }} - {{ getVisitStatusText(visit.status) }}
-            </option>
-          </select>
-        </div>
+    <OdontogramVisitHeader
+      v-model="selectedVisitId"
+      :visits="visits"
+      :current-visit="currentVisit"
+      :loading="loading"
+      :has-active-visit="hasActiveVisit"
+      :can-edit="canEdit"
+      @change="onVisitChange"
+      @new-visit="startNewVisit"
+      @complete="requestCompleteVisit"
+    />
 
-        <div class="flex flex-col sm:flex-row gap-2">
-          <button
-            v-if="!hasActiveVisit"
-            @click="startNewVisit"
-            :disabled="loading"
-            class="inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 touch-manipulation min-h-[44px]"
-          >
-            <PlusIcon class="w-5 h-5" />
-            {{ t('odontogram.newVisit') }}
-          </button>
-        </div>
+    <div
+      v-if="currentVisit && !canEdit"
+      class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
+    >
+      <LockClosedIcon class="mt-0.5 h-5 w-5 flex-none" />
+      <div>
+        <p class="font-semibold">{{ t('odontogram.readOnlyTitle') }}</p>
+        <p class="mt-0.5 text-amber-700">{{ t('odontogram.readOnlyHint') }}</p>
       </div>
     </div>
 
@@ -40,293 +31,119 @@
     <!-- No Visit Selected -->
     <div v-else-if="!selectedVisitId" class="bg-gray-50 rounded-xl p-8 text-center">
       <DocumentTextIcon class="w-12 h-12 text-gray-300 mx-auto" />
-      <p class="mt-4 text-gray-500">Odontogrammani ko'rish uchun tashrif tanlang yoki yangi tashrif boshlang</p>
+      <p class="mt-4 text-gray-500">{{ t('odontogram.emptyVisitHint') }}</p>
     </div>
 
     <!-- Odontogram Content — mobil-first, stomatolog uchun qulay -->
     <div v-else class="space-y-4 sm:space-y-6 pb-6">
-      <!-- Jami hisob — xizmatlar + material sarfi -->
-      <div class="flex flex-col gap-2 rounded-xl bg-slate-50 border border-slate-100 p-4">
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-slate-600">{{ t('odontogram.servicesTotal') }}:</span>
-          <span class="font-medium text-slate-800">{{ formatCurrency(servicesTotal) }}</span>
-        </div>
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-slate-600">{{ t('odontogram.materialTotal') }}:</span>
-          <span class="font-medium text-slate-800">{{ formatCurrency(consumptionsTotal) }}</span>
-        </div>
-        <div class="flex items-center justify-between pt-2 border-t border-slate-200">
-          <span class="text-sm font-semibold text-slate-700">{{ t('odontogram.total') }}:</span>
-          <span class="rounded-lg bg-primary-50 px-3 py-1.5 text-sm font-semibold text-primary-700">
-            {{ formatCurrency(totalBill) }}
-          </span>
-        </div>
-      </div>
-
-      <!-- Odontogram — mobil: kichik tishlar, smooth scroll; desktop: to'liq -->
-      <div class="odontogram-wrapper overflow-x-auto overflow-y-hidden rounded-2xl border border-slate-100 bg-white p-3 sm:p-6 shadow-sm -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide odontogram-scroll">
-        <div class="odontogram-inner relative">
-          <div class="pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2 bg-slate-200 hidden sm:block"></div>
-          <div class="pointer-events-none absolute left-2 right-2 top-1/2 h-px -translate-y-1/2 bg-slate-200 hidden sm:block"></div>
-
-          <div class="space-y-4 sm:space-y-6">
-            <!-- Yuqori jag' -->
-            <div class="flex justify-center">
-              <div class="odontogram-row flex items-start gap-2 sm:gap-3 md:gap-5">
-                <div class="flex gap-1 sm:gap-2">
-                  <Tooth
-                    v-for="id in upperRight"
-                    :key="id"
-                    :id="id"
-                    :status="toothStatusMap[id]"
-                    :service-color="toothServiceColorMap[id]"
-                    :disabled="!canEdit"
-                    @select="openStatusMenu"
-                  />
-                </div>
-                <div class="h-16 sm:h-24 w-px bg-slate-200 flex-shrink-0 hidden sm:block"></div>
-                <div class="flex gap-1 sm:gap-2">
-                  <Tooth
-                    v-for="id in upperLeft"
-                    :key="id"
-                    :id="id"
-                    :status="toothStatusMap[id]"
-                    :service-color="toothServiceColorMap[id]"
-                    :disabled="!canEdit"
-                    @select="openStatusMenu"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- Pastki jag' -->
-            <div class="flex justify-center">
-              <div class="odontogram-row flex items-start gap-2 sm:gap-3 md:gap-5">
-                <div class="flex gap-1 sm:gap-2">
-                  <Tooth
-                    v-for="id in lowerLeft"
-                    :key="id"
-                    :id="id"
-                    :status="toothStatusMap[id]"
-                    :service-color="toothServiceColorMap[id]"
-                    :disabled="!canEdit"
-                    @select="openStatusMenu"
-                  />
-                </div>
-                <div class="h-16 sm:h-24 w-px bg-slate-200 flex-shrink-0 hidden sm:block"></div>
-                <div class="flex gap-1 sm:gap-2">
-                  <Tooth
-                    v-for="id in lowerRight"
-                    :key="id"
-                    :id="id"
-                    :status="toothStatusMap[id]"
-                    :service-color="toothServiceColorMap[id]"
-                    :disabled="!canEdit"
-                    @select="openStatusMenu"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Material sarfi — mobil: kartalar, desktop: jadval -->
-      <div class="bg-white rounded-xl p-4 border border-gray-100 space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h4 class="text-base font-semibold text-gray-900">{{ t('odontogram.materialTitle') }}</h4>
-            <p v-if="consumptions.length > 0" class="text-sm text-gray-500 mt-0.5">
-              Jami: {{ formatCurrency(consumptionsTotal) }}
-            </p>
-          </div>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+          :aria-expanded="showLegend"
+          @click="showLegend = !showLegend"
+        >
+          <InformationCircleIcon class="h-5 w-5 text-primary-500" />
+          {{ t('odontogram.legend') }}
+          <ChevronDownIcon class="h-4 w-4 transition-transform" :class="{ 'rotate-180': showLegend }" />
+        </button>
+        <div
+          class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"
+          :class="saveStateClass"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="h-2 w-2 rounded-full bg-current"></span>
+          {{ saveStateText }}
           <button
-            v-if="canManageMaterial"
-            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg hover:from-primary-600 hover:to-cyan-700 transition-all active:scale-[0.98] touch-manipulation min-h-[44px]"
-            @click="openConsumptionModal"
+            v-if="saveState === 'error'"
+            type="button"
+            class="font-semibold underline"
+            @click="resolveSaveIssue"
           >
-            <PlusIcon class="w-5 h-5" />
-            {{ t('odontogram.addMaterial') }}
+            {{ isSaveConflict ? t('odontogram.reloadLatest') : t('odontogram.retry') }}
           </button>
         </div>
-        <div v-if="consumptionsLoading" class="py-8 text-center text-slate-500 text-sm">
-          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500 mx-auto mb-2"></div>
-          {{ t('odontogram.loadingMaterials') }}
-        </div>
-        <div v-else-if="consumptions.length === 0" class="py-8 text-center rounded-lg bg-slate-50 border border-slate-100">
-          <p class="text-sm text-slate-500 mb-3">{{ t('odontogram.noMaterials') }}</p>
-          <button
-            v-if="canManageMaterial"
-            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 bg-white border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors touch-manipulation"
-            @click="openConsumptionModal"
-          >
-            <PlusIcon class="w-4 h-4" />
-            {{ t('odontogram.addMaterial') }}
-          </button>
-        </div>
-        <template v-else>
-          <!-- Mobil: kartalar -->
-          <div class="md:hidden space-y-2">
-            <div
-              v-for="entry in consumptions"
-              :key="entry.id"
-              class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100"
-            >
-              <div class="min-w-0 flex-1">
-                <p class="font-medium text-slate-800 truncate">{{ itemLabel(entry.item_id) }}</p>
-                <p class="text-xs text-slate-500 mt-0.5">{{ formatDate(entry.created_at) }} · {{ entry.quantity }} {{ t('odontogram.materialQty') }}</p>
-                <p class="text-sm font-medium text-primary-600 mt-1">{{ formatCurrency(consumptionTotal(entry)) }}</p>
-                <p v-if="entry.note" class="text-xs text-slate-600 mt-1 truncate">{{ entry.note }}</p>
-              </div>
-              <button
-                v-if="canManageMaterial"
-                type="button"
-                class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg touch-manipulation"
-                :disabled="consumptionDeleting === entry.id"
-                @click="confirmDeleteConsumption(entry)"
-              >
-                <TrashIcon class="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-          <!-- Desktop: jadval -->
-          <div class="hidden md:block overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-100 text-sm">
-              <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th class="px-4 py-3">{{ t('odontogram.materialDate') }}</th>
-                  <th class="px-4 py-3">{{ t('odontogram.materialItem') }}</th>
-                  <th class="px-4 py-3">{{ t('odontogram.materialQty') }}</th>
-                  <th class="px-4 py-3">{{ t('odontogram.materialPrice') }}</th>
-                  <th class="px-4 py-3">{{ t('odontogram.materialNote') }}</th>
-                  <th v-if="canManageMaterial" class="px-4 py-3 w-12"></th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr v-for="entry in consumptions" :key="entry.id" class="bg-white">
-                  <td class="px-4 py-3 text-slate-700">{{ formatDate(entry.created_at) }}</td>
-                  <td class="px-4 py-3 text-slate-700">{{ itemLabel(entry.item_id) }}</td>
-                  <td class="px-4 py-3 text-slate-700">{{ entry.quantity }}</td>
-                  <td class="px-4 py-3 text-slate-700 font-medium text-primary-600">{{ formatCurrency(consumptionTotal(entry)) }}</td>
-                  <td class="px-4 py-3 text-slate-700">{{ entry.note || '-' }}</td>
-                  <td v-if="canManageMaterial" class="px-4 py-3">
-                    <button
-                      type="button"
-                      class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg"
-                      :disabled="consumptionDeleting === entry.id"
-                      @click="confirmDeleteConsumption(entry)"
-                    >
-                      <TrashIcon class="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </template>
       </div>
+
+      <div v-if="showLegend" class="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-6">
+        <div v-for="option in statusOptions" :key="option.value" class="flex items-center gap-2 text-xs text-slate-700">
+          <span class="h-3 w-3 rounded-full" :class="option.dotClass"></span>
+          {{ t(option.labelKey) }}
+        </div>
+      </div>
+
+      <TeethGrid
+        :status-map="toothStatusMap"
+        :service-color-map="toothServiceColorMap"
+        :service-label-map="toothServiceLabelMap"
+        :selected-tooth-id="selectedToothId"
+        :disabled="!canEdit"
+        @select="openStatusMenu"
+      />
+
+      <OdontogramSummary
+        :services-total="servicesTotal"
+        :material-total="consumptionsTotal"
+        :total="totalBill"
+        :format-currency="formatCurrency"
+      />
+
+      <OdontogramMaterialSection
+        :consumptions="consumptions"
+        :loading="consumptionsLoading"
+        :can-manage="canManageMaterial"
+        :deleting-id="consumptionDeleting"
+        :total="consumptionsTotal"
+        :item-label="itemLabel"
+        :entry-total="consumptionTotal"
+        :format-currency="formatCurrency"
+        @add="openConsumptionModal"
+        @delete="requestDeleteConsumption"
+      />
 
       <!-- Desktop: floating menu -->
-      <div
-        v-if="menuOpen && selectedToothId"
-        ref="menuRef"
-        class="fixed z-50 min-w-[200px] rounded-xl border border-slate-200 bg-white p-2 shadow-xl hidden md:block"
-        :style="menuStyle"
-      >
-        <div class="px-2 pb-1 text-xs font-medium text-slate-500">
-          {{ t('odontogram.toothLabel', { id: selectedToothId }) }} · {{ activeUserRole.toUpperCase() }}
-        </div>
-        <button
-          v-for="option in menuOptionsWithClear"
-          :key="option.value"
-          class="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-50"
-          @click="applyMenuSelection(option)"
-        >
-          <span class="flex items-center gap-2">
-            <span class="h-2.5 w-2.5 rounded-full" :class="option.dotClass"></span>
-            <span class="text-slate-700">{{ option.labelKey ? t(option.labelKey) : option.label }}</span>
-          </span>
-          <span v-if="option.price" class="text-xs text-slate-500">{{ formatCurrency(option.price) }}</span>
-        </button>
-      </div>
-
-      <!-- Mobile: bottom sheet — stomatolog uchun barmoq bilan qulay -->
-      <Transition
-        enter-active-class="transition ease-out duration-200"
-        enter-from-class="translate-y-full opacity-0"
-        enter-to-class="translate-y-0 opacity-100"
-        leave-active-class="transition ease-in duration-150"
-        leave-from-class="translate-y-0 opacity-100"
-        leave-to-class="translate-y-full opacity-0"
-      >
+      <Teleport to="body">
         <div
           v-if="menuOpen && selectedToothId"
-          class="fixed inset-x-0 bottom-0 z-50 md:hidden"
-          @click.self="closeStatusMenu"
+          ref="menuRef"
+          role="dialog"
+          :aria-label="t('odontogram.toothLabel', { id: selectedToothId })"
+          class="fixed z-[70] hidden w-[320px] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl md:block"
+          :style="menuStyle"
         >
-          <div class="absolute inset-0 bg-black/40" @click="closeStatusMenu"></div>
-          <div class="relative bg-white rounded-t-2xl shadow-2xl pb-6 max-h-[70vh] overflow-y-auto">
-            <div class="sticky top-0 bg-white px-4 py-3 border-b border-slate-100 rounded-t-2xl flex items-center justify-between">
-              <h3 class="text-base font-semibold text-gray-900">
-                {{ t('odontogram.toothLabel', { id: selectedToothId }) }}
-              </h3>
-              <button class="p-2 -m-2 text-slate-400 hover:text-slate-600 rounded-lg" @click="closeStatusMenu">
-                <XMarkIcon class="w-5 h-5" />
-              </button>
+          <div class="mb-2 flex items-center justify-between border-b border-slate-100 px-1 pb-2">
+            <div>
+              <p class="font-semibold text-slate-900">{{ t('odontogram.toothLabel', { id: selectedToothId }) }}</p>
+              <p class="text-xs text-slate-500">{{ t('odontogram.chooseTreatment') }}</p>
             </div>
-            <div class="p-4 space-y-1">
-              <button
-                v-for="option in menuOptionsWithClear"
-                :key="option.value"
-                class="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3.5 text-left text-base bg-slate-50 hover:bg-slate-100 active:bg-slate-200 transition-colors touch-manipulation min-h-[52px]"
-                @click="applyMenuSelection(option)"
-              >
-                <span class="flex items-center gap-3">
-                  <span class="w-4 h-4 rounded-full flex-shrink-0" :class="option.dotClass"></span>
-                  <span class="font-medium text-slate-800">{{ option.labelKey ? t(option.labelKey) : option.label }}</span>
-                </span>
-                <span v-if="option.price" class="text-sm font-semibold text-primary-600">{{ formatCurrency(option.price) }}</span>
-              </button>
-            </div>
+            <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100" @click="closeStatusMenu">
+              <XMarkIcon class="h-5 w-5" />
+            </button>
           </div>
+          <OdontogramToothPanel
+            :options="menuOptionsWithClear"
+            :format-currency="formatCurrency"
+            :loading="applyingToothSelection"
+            @select="applyMenuSelection"
+          />
         </div>
-      </Transition>
+      </Teleport>
 
-      <!-- Legend — mobil: yig'iladi, stomatolog tez ko'radi -->
-      <details class="bg-white rounded-xl border border-gray-100 group">
-        <summary class="px-4 py-3 text-sm font-semibold text-gray-700 cursor-pointer list-none flex items-center justify-between touch-manipulation min-h-[44px]">
-          {{ t('odontogram.noteLabel') }}
-          <ChevronDownIcon class="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" />
-        </summary>
-        <div class="px-4 pb-4 pt-0 flex flex-wrap gap-3">
-          <div v-for="(state, key) in TOOTH_STATES" :key="key" class="flex items-center gap-2">
-            <span
-              class="w-6 h-6 rounded flex items-center justify-center text-white text-xs flex-shrink-0"
-              :class="state.color"
-            >
-              {{ state.icon }}
-            </span>
-            <span class="text-sm text-gray-600">{{ state.labelKey ? t(state.labelKey) : state.label }}</span>
-          </div>
-        </div>
-      </details>
-
-      <!-- Save Button -->
-      <div v-if="canEdit && hasChanges" class="flex justify-end">
-        <button
-          @click="saveOdontogram"
-          :disabled="saving"
-          class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50"
-        >
-          <template v-if="saving">
-            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            {{ t('odontogram.saving') }}
-          </template>
-          <template v-else>
-            {{ t('odontogram.save') }}
-          </template>
-        </button>
-      </div>
+      <!-- Mobile: bottom sheet — stomatolog uchun barmoq bilan qulay -->
+      <MobileBottomSheet
+        :model-value="menuOpen && !!selectedToothId"
+        :title="selectedToothId ? t('odontogram.toothLabel', { id: selectedToothId }) : ''"
+        @update:model-value="(value) => { if (!value) closeStatusMenu() }"
+      >
+        <p class="mb-3 text-sm text-slate-500">{{ t('odontogram.chooseTreatment') }}</p>
+        <OdontogramToothPanel
+          :options="menuOptionsWithClear"
+          :format-currency="formatCurrency"
+          :loading="applyingToothSelection"
+          @select="applyMenuSelection"
+        />
+      </MobileBottomSheet>
     </div>
 
   </div>
@@ -340,7 +157,7 @@
     leave-from-class="opacity-100"
     leave-to-class="opacity-0"
   >
-    <div v-if="showConsumptionModal" class="fixed inset-0 z-50 overflow-y-auto" @click.self="closeConsumptionModal">
+    <div v-if="showConsumptionModal" class="fixed inset-0 z-50 hidden overflow-y-auto md:block" @click.self="closeConsumptionModal">
       <div class="fixed inset-0 bg-black/40 md:bg-gray-500/75 transition-opacity" @click="closeConsumptionModal"></div>
       <!-- Desktop: markaziy modal -->
       <div class="hidden md:flex items-center justify-center min-h-screen px-4 py-8">
@@ -382,75 +199,108 @@
           </div>
         </div>
       </div>
-      <!-- Mobil: bottom sheet — stomatolog uchun barmoq bilan qulay -->
-      <div class="md:hidden fixed inset-x-0 bottom-0 z-50 flex flex-col max-h-[90vh]">
-        <div class="bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" @click.stop>
-          <div class="flex-shrink-0 px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-            <h3 class="text-base font-semibold text-gray-900">{{ t('odontogram.addMaterial') }}</h3>
-            <button class="p-2 -m-2 text-slate-400 hover:text-slate-600 rounded-lg touch-manipulation" @click="closeConsumptionModal">
-              <XMarkIcon class="w-5 h-5" />
-            </button>
-          </div>
-          <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-safe">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('odontogram.materialItem') }}</label>
-              <select v-model="consumptionForm.item_id" class="w-full rounded-xl border border-gray-200 px-4 py-3 text-base touch-manipulation min-h-[48px]">
-                <option value="">{{ t('odontogram.selectMaterial') }}</option>
-                <option v-for="item in inventoryItems" :key="item.id" :value="String(item.id)">
-                  {{ formatMaterialOption(item) }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('odontogram.materialQty') }}</label>
-              <input v-model="consumptionForm.quantity" type="number" min="0" step="0.01" class="w-full rounded-xl border border-gray-200 px-4 py-3 text-base touch-manipulation min-h-[48px]" placeholder="0" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('odontogram.materialNote') }}</label>
-              <input v-model="consumptionForm.note" type="text" class="w-full rounded-xl border border-gray-200 px-4 py-3 text-base touch-manipulation min-h-[48px]" placeholder="" />
-            </div>
-          </div>
-          <div class="flex-shrink-0 px-4 py-4 border-t border-slate-100 flex gap-3">
-            <button class="flex-1 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium touch-manipulation min-h-[48px]" @click="closeConsumptionModal">
-              {{ t('odontogram.cancel') }}
-            </button>
-            <button class="flex-1 py-3 rounded-xl bg-primary-600 text-white font-medium hover:bg-primary-700 touch-manipulation min-h-[48px]" @click="saveConsumption">
-              {{ t('odontogram.save') }}
-            </button>
-          </div>
+    </div>
+  </Transition>
+  <MobileBottomSheet
+    v-model="showConsumptionModal"
+    :title="t('odontogram.addMaterial')"
+  >
+    <div class="space-y-4">
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('odontogram.materialItem') }}</label>
+        <select v-model="consumptionForm.item_id" class="min-h-[48px] w-full rounded-xl border border-gray-200 px-4 py-3 text-base">
+          <option value="">{{ t('odontogram.selectMaterial') }}</option>
+          <option v-for="item in inventoryItems" :key="item.id" :value="String(item.id)">
+            {{ formatMaterialOption(item) }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('odontogram.materialQty') }}</label>
+        <input v-model="consumptionForm.quantity" type="number" min="0" step="0.01" class="min-h-[48px] w-full rounded-xl border border-gray-200 px-4 py-3 text-base" placeholder="0" />
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('odontogram.materialNote') }}</label>
+        <input v-model="consumptionForm.note" type="text" class="min-h-[48px] w-full rounded-xl border border-gray-200 px-4 py-3 text-base" />
+      </div>
+    </div>
+    <template #footer>
+      <div class="flex gap-3">
+        <button class="min-h-[48px] flex-1 rounded-xl border border-gray-300 font-medium text-gray-700" @click="closeConsumptionModal">
+          {{ t('odontogram.cancel') }}
+        </button>
+        <button class="min-h-[48px] flex-1 rounded-xl bg-primary-600 font-medium text-white" @click="saveConsumption">
+          {{ t('odontogram.save') }}
+        </button>
+      </div>
+    </template>
+  </MobileBottomSheet>
+
+  <Teleport to="body">
+    <div
+      v-if="confirmation"
+      class="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="confirmation.title"
+      @click.self="confirmation = null"
+    >
+      <div class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+        <h3 class="text-lg font-semibold text-slate-900">{{ confirmation.title }}</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-600">{{ confirmation.message }}</p>
+        <div v-if="confirmation.choices?.length" class="mt-5 flex flex-col gap-2">
+          <button
+            v-for="choice in confirmation.choices"
+            :key="choice.id"
+            type="button"
+            class="min-h-[44px] rounded-xl px-4 text-sm font-semibold"
+            :class="choice.tone === 'debt'
+              ? 'border border-rose-200 bg-rose-50 text-rose-700'
+              : 'bg-emerald-600 text-white'"
+            @click="runConfirmationChoice(choice)"
+          >
+            {{ choice.label }}
+          </button>
+          <button type="button" class="min-h-[44px] rounded-xl border border-slate-300 font-medium text-slate-700" @click="confirmation = null">
+            {{ t('odontogram.cancel') }}
+          </button>
+        </div>
+        <div v-else class="mt-5 flex gap-3">
+          <button type="button" class="min-h-[44px] flex-1 rounded-xl border border-slate-300 font-medium text-slate-700" @click="confirmation = null">
+            {{ t('odontogram.cancel') }}
+          </button>
+          <button type="button" class="min-h-[44px] flex-1 rounded-xl bg-primary-600 font-medium text-white" @click="confirmRequestedAction">
+            {{ t('odontogram.confirm') }}
+          </button>
         </div>
       </div>
     </div>
-  </Transition>
+  </Teleport>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { PlusIcon, DocumentTextIcon, XMarkIcon, ChevronDownIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import {
+  ChevronDownIcon,
+  DocumentTextIcon,
+  InformationCircleIcon,
+  LockClosedIcon,
+  XMarkIcon,
+} from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { isAdminLike, isDoctorLike } from '@/lib/roles'
-import { formatDate } from '@/lib/date'
-import { getVisitStatusLabel } from '@/constants/visitStatus'
-import * as visitsApi from '@/api/visitsApi'
-import * as odontogramApi from '@/api/odontogramApi'
-import * as visitServicesApi from '@/api/visitServicesApi'
-import { listServices } from '@/api/servicesApi'
-import {
-  listClinicInventoryItems,
-  listVisitConsumptions,
-  createVisitConsumption,
-  deleteVisitConsumption,
-} from '@/lib/inventoryBridge'
-import { consumeServiceMaterialsForVisit } from '@/api/serviceMaterialsApi'
-import { getPaymentsByVisitId } from '@/api/paymentsApi'
-import { sendVisitCompleted, schedulePatientFollowUps } from '@/api/telegramApi'
+import * as clinicalService from '@/services/odontogramService'
+import { normalizeToothStatus, PERMANENT_TEETH, toStorageToothState } from '@/domain/odontogram'
 import { useSubscriptionStore } from '@/stores/subscription'
 import { FEATURE_KEYS } from '@/lib/subscriptionFeatures'
-import Tooth from './Tooth.vue'
-
-const { TOOTH_STATES } = odontogramApi
+import MobileBottomSheet from '@/components/shared/MobileBottomSheet.vue'
+import TeethGrid from './TeethGrid.vue'
+import OdontogramToothPanel from './OdontogramToothPanel.vue'
+import OdontogramVisitHeader from './OdontogramVisitHeader.vue'
+import OdontogramSummary from './OdontogramSummary.vue'
+import OdontogramMaterialSection from './OdontogramMaterialSection.vue'
 
 const props = defineProps({
   patient: {
@@ -478,24 +328,21 @@ const { t } = useI18n()
 
 // State
 const loading = ref(false)
-const saving = ref(false)
 const visits = ref([])
 const selectedVisitId = ref('')
 const currentVisit = ref(null)
 const currentOdontogram = ref(null)
 const originalOdontogramData = ref(null)
-
-const upperRight = [18, 17, 16, 15, 14, 13, 12, 11]
-const upperLeft = [21, 22, 23, 24, 25, 26, 27, 28]
-// User requested order:
-// 48 47 46 45 44 43 42 41 | 31 32 33 34 35 36 37 38
-const lowerLeft = [48, 47, 46, 45, 44, 43, 42, 41]
-const lowerRight = [31, 32, 33, 34, 35, 36, 37, 38]
-const toothIds = [...upperRight, ...upperLeft, ...lowerLeft, ...lowerRight]
+const saveState = ref('saved')
+const saveError = ref(null)
+const showLegend = ref(false)
+const confirmation = ref(null)
+const toothIds = [...PERMANENT_TEETH]
 
 const teeth = ref(toothIds.map(id => ({ id, status: 'healthy', service_id: null })))
 const selectedToothId = ref(null)
 const menuOpen = ref(false)
+const applyingToothSelection = ref(false)
 const menuRef = ref(null)
 const menuStyle = ref({ left: '0px', top: '0px', transform: 'translate(-50%, 0)' })
 const ignoreClose = ref(false)
@@ -522,32 +369,94 @@ const consumptionForm = ref({
 })
 
 // Computed
+const EDITABLE_VISIT_STATUSES = ['pending', 'arrived', 'in_progress']
+
 const hasActiveVisit = computed(() => {
-  return visits.value.some(v => v.status === 'in_progress')
+  return visits.value.some(v => EDITABLE_VISIT_STATUSES.includes(v.status))
 })
 
 const canEdit = computed(() => {
-  return currentVisit.value && currentVisit.value.status === 'in_progress'
+  return currentVisit.value && EDITABLE_VISIT_STATUSES.includes(currentVisit.value.status)
 })
+
+const isSaveConflict = computed(() => clinicalService.isVersionConflictError(saveError.value))
+
+const saveStateText = computed(() => {
+  if (saveState.value === 'error' && isSaveConflict.value) return t('odontogram.saveConflict')
+  return {
+    pending: t('odontogram.savePending'),
+    saving: t('odontogram.saving'),
+    saved: t('odontogram.saved'),
+    error: t('odontogram.saveFailed'),
+  }[saveState.value] || t('odontogram.saved')
+})
+
+const saveStateClass = computed(() => ({
+  pending: 'bg-amber-50 text-amber-700',
+  saving: 'bg-blue-50 text-blue-700',
+  saved: 'bg-emerald-50 text-emerald-700',
+  error: 'bg-red-50 text-red-700',
+}[saveState.value]))
 
 const hasChanges = computed(() => {
   if (!currentOdontogram.value || !originalOdontogramData.value) return false
   return JSON.stringify(currentOdontogram.value.data) !== JSON.stringify(originalOdontogramData.value)
 })
 
-const activeUserRole = computed(() => authStore.userRole || 'doctor')
 const isAdminLikeUser = computed(() => isAdminLike(authStore))
-// Material sarfini: rahbar/administrator — istalgan tashrifda; doktor/yakka stom — faqat davolanish boshlanganida
+// Yakunlangan tashrif klinik snapshot sifatida o'zgarmaydi.
 const canManageMaterial = computed(() => {
-  if (!selectedVisitId.value) return false
-  if (isAdminLikeUser.value) return true
-  return canEdit.value && isDoctorLike(authStore)
+  if (!selectedVisitId.value || !canEdit.value) return false
+  return isAdminLikeUser.value || isDoctorLike(authStore)
 })
 
-// Tish bilan ishlashda xizmatlar bo'limidagi xizmatlardan foydalanamiz; bo'sh bo'lsa statuslar
-const menuOptions = computed(() =>
-  servicesList.value.length > 0 ? servicesList.value : statusOptions
-)
+const saveQueue = clinicalService.createSaveQueue({
+  getRecord: () => currentOdontogram.value,
+  onSaved: (saved) => {
+    if (!currentOdontogram.value || String(saved.id) !== String(currentOdontogram.value.id)) return
+    currentOdontogram.value.version = saved.version
+    originalOdontogramData.value = JSON.parse(JSON.stringify(saved.data))
+  },
+  onState: (state, error) => {
+    saveState.value = state
+    saveError.value = error
+  },
+})
+
+const retrySave = async () => {
+  try {
+    await saveQueue.retry()
+  } catch {
+    toast.error(t('odontogram.errorSaveOdontogram'))
+  }
+}
+
+const resolveSaveIssue = async () => {
+  if (isSaveConflict.value) {
+    saveQueue.discard()
+    await loadOdontogram(selectedVisitId.value)
+    toast.warning(t('odontogram.conflictReloaded'))
+    return
+  }
+  await retrySave()
+}
+
+const requestConfirmation = ({ title, message, action }) => {
+  confirmation.value = { title, message, action }
+}
+
+const confirmRequestedAction = async () => {
+  const action = confirmation.value?.action
+  confirmation.value = null
+  if (action) await action()
+}
+
+const runConfirmationChoice = async (choice) => {
+  confirmation.value = null
+  if (choice?.action) await choice.action()
+}
+
+const menuOptions = computed(() => servicesList.value)
 
 // Tanlangan tishda xizmat bor bo'lsa — "Tozalash" birinchi qatorga
 const menuOptionsWithClear = computed(() => {
@@ -562,13 +471,8 @@ const menuOptionsWithClear = computed(() => {
     labelKey: 'odontogram.statusClear',
     dotClass: 'bg-slate-200'
   }
-  return [clearOption, ...opts]
+  return [clearOption, ...opts.filter(option => option.value !== 'healthy')]
 })
-
-// Methods
-const formatVisitDate = (date) => formatDate(date)
-
-const getVisitStatusText = (status) => getVisitStatusLabel(status)
 
 const formatCurrency = (amount) => {
   if (!amount) return '0 so\'m'
@@ -596,10 +500,26 @@ const toothServiceColorMap = computed(() => {
     const sid = tooth.service_id
     if (sid) {
       const svc = servicesList.value.find(s => s.value === String(sid))
-      map[tooth.id] = svc?.colorHex || null
+      map[tooth.id] = svc?.colorHex || '#0ea5e9'
+    } else if (tooth.status && tooth.status !== 'healthy') {
+      map[tooth.id] = null
     } else {
       map[tooth.id] = null
     }
+  })
+  return map
+})
+
+const toothServiceLabelMap = computed(() => {
+  const map = {}
+  teeth.value.forEach((tooth) => {
+    if (!tooth.service_id) {
+      map[tooth.id] = ''
+      return
+    }
+    const billed = visitServices.value.find((entry) => Number(entry.tooth_id) === Number(tooth.id))
+    const svc = servicesList.value.find((item) => item.value === String(tooth.service_id))
+    map[tooth.id] = billed?.service_name || svc?.label || ''
   })
   return map
 })
@@ -643,11 +563,10 @@ const syncTeethFromOdontogram = () => {
   teeth.value = toothIds.map((id) => {
     // API dan kelganda kalitlar string bo'lishi mumkin; raqam bilan ham tekshiramiz
     const toothData = data[id] ?? data[String(id)]
-    if (!toothData || toothData.state === 'healthy') {
+    const state = normalizeToothStatus(toothData?.state ?? toothData?.status)
+    if (!toothData || state === 'healthy') {
       return { id, status: 'healthy', service_id: null }
     }
-    // "filled" ni "filling" ga normallashtirish (API va UI bir xil bo'lishi uchun)
-    const state = toothData.state === 'filled' ? 'filling' : (toothData.state || 'healthy')
     return {
       id,
       status: state,
@@ -664,7 +583,7 @@ const loadVisitServices = async () => {
     return
   }
   try {
-    visitServices.value = await visitServicesApi.getVisitServicesByVisitId(currentVisit.value.id)
+    visitServices.value = await clinicalService.getVisitServices(currentVisit.value.id)
   } catch (error) {
     console.error('Failed to load visit services:', error)
     visitServices.value = []
@@ -673,7 +592,7 @@ const loadVisitServices = async () => {
 
 const loadInventoryItems = async () => {
   try {
-    inventoryItems.value = await listClinicInventoryItems(authStore)
+    inventoryItems.value = await clinicalService.getClinicInventoryItems(authStore)
   } catch (error) {
     console.error('Failed to load inventory items:', error)
     inventoryItems.value = []
@@ -687,7 +606,7 @@ const loadConsumptions = async () => {
   }
   consumptionsLoading.value = true
   try {
-    consumptions.value = await listVisitConsumptions(authStore, currentVisit.value.id)
+    consumptions.value = await clinicalService.getVisitConsumptions(authStore, currentVisit.value.id)
   } catch (error) {
     console.error('Failed to load consumptions:', error)
     consumptions.value = []
@@ -734,12 +653,19 @@ const closeConsumptionModal = () => {
   showConsumptionModal.value = false
 }
 
-const confirmDeleteConsumption = async (entry) => {
+const requestDeleteConsumption = (entry) => {
+  requestConfirmation({
+    title: t('odontogram.deleteMaterialTitle'),
+    message: t('odontogram.confirmDeleteMaterial'),
+    action: () => deleteConsumption(entry),
+  })
+}
+
+const deleteConsumption = async (entry) => {
   if (!currentVisit.value?.id) return
-  if (!confirm(t('odontogram.confirmDeleteMaterial'))) return
   consumptionDeleting.value = entry.id
   try {
-    await deleteVisitConsumption(authStore, entry.id)
+    await clinicalService.removeVisitConsumption(authStore, entry.id)
     toast.success(t('odontogram.toastMaterialDeleted'))
     await Promise.all([loadConsumptions(), loadInventoryItems()])
   } catch (error) {
@@ -767,7 +693,7 @@ const saveConsumption = async () => {
     return
   }
   try {
-    await createVisitConsumption(authStore, {
+    await clinicalService.addVisitConsumption(authStore, {
       visit_id: currentVisit.value.id,
       patient_id: props.patient.id,
       doctor_id: props.doctorId,
@@ -832,48 +758,28 @@ const mapServiceToOption = (service) => ({
 
 const loadServicesMenu = async () => {
   try {
-    const data = await listServices('order=created_at.desc')
+    const data = await clinicalService.getClinicServices('order=created_at.desc')
+    const seen = new Set()
     servicesList.value = (data || [])
-      .filter(service => service.is_active !== false && service.show_in_odontogram === true)
+      .filter((service) => service.is_active !== false && service.show_in_odontogram === true)
       .map(mapServiceToOption)
-    // Agar odontogrammada hech qanday xizmat belgilanmasa, barcha faol xizmatlarni ko'rsatish (oldingi xatti-harakat)
-    if (servicesList.value.length === 0) {
-      servicesList.value = (data || [])
-        .filter(service => service.is_active !== false)
-        .map(mapServiceToOption)
-    }
+      .filter((option) => {
+        const key = `${option.label}|${option.price}`
+        if (seen.has(option.value) || seen.has(key)) return false
+        seen.add(option.value)
+        seen.add(key)
+        return true
+      })
   } catch (error) {
     console.error('Failed to load services list:', error)
     servicesList.value = []
   }
 }
 
-const addHistoryEntry = async ({ toothId, serviceName, price }) => {
-  if (!currentVisit.value?.id) {
-    toast.error('Avval tashrifni tanlang')
-    return
-  }
-  try {
-    const entry = await visitServicesApi.createVisitService({
-      visit_id: currentVisit.value.id,
-      patient_id: props.patient.id,
-      doctor_id: props.doctorId,
-      tooth_id: toothId,
-      service_name: serviceName,
-      price,
-      performed_by: authStore.user?.full_name || props.doctorName || 'Doctor'
-    })
-    visitServices.value.unshift(entry)
-  } catch (error) {
-    console.error('Failed to save visit service:', error)
-    toast.error(t('odontogram.errorSaveService'))
-  }
-}
-
 const loadVisits = async () => {
   loading.value = true
   try {
-    visits.value = await visitsApi.getVisitsByPatientId(props.patient.id)
+    visits.value = await clinicalService.getPatientVisits(props.patient.id)
 
     // Auto-select active visit yoki oxirgi tashrif
     const activeVisit = visits.value.find(v => v.status === 'in_progress')
@@ -904,13 +810,25 @@ const loadOdontogram = async (visitId) => {
 
   loading.value = true
   try {
-    currentVisit.value = await visitsApi.getVisitById(visitId)
-    currentOdontogram.value = await odontogramApi.getOrCreateOdontogram({
+    currentVisit.value = await clinicalService.getVisit(visitId)
+    if (['pending', 'arrived'].includes(currentVisit.value?.status)) {
+      try {
+        const started = await clinicalService.updateVisit(visitId, { status: 'in_progress' })
+        currentVisit.value = started || { ...currentVisit.value, status: 'in_progress' }
+        const idx = visits.value.findIndex(v => String(v.id) === String(visitId))
+        if (idx !== -1) visits.value[idx] = { ...visits.value[idx], status: 'in_progress' }
+      } catch (startError) {
+        console.warn('Visitni avtomatik boshlash:', startError)
+      }
+    }
+    currentOdontogram.value = await clinicalService.getOrCreateOdontogram({
       patient_id: props.patient.id,
       visit_id: visitId,
       doctor_id: props.doctorId
     })
     originalOdontogramData.value = JSON.parse(JSON.stringify(currentOdontogram.value.data))
+    saveState.value = 'saved'
+    saveError.value = null
     syncTeethFromOdontogram() // Tishlar statusini faqat odontogramdan olamiz
     await loadServicesMenu()
     await Promise.all([loadConsumptions(), loadVisitServices(), loadInventoryItems()])
@@ -922,17 +840,24 @@ const loadOdontogram = async (visitId) => {
   }
 }
 
-const onVisitChange = () => {
-  loadOdontogram(selectedVisitId.value)
+const onVisitChange = async () => {
+  try {
+    await saveQueue.flush()
+  } catch {
+    toast.error(t('odontogram.errorSaveOdontogram'))
+    return
+  }
+  await loadOdontogram(selectedVisitId.value)
 }
 
 const startNewVisit = async () => {
   loading.value = true
   try {
-    const newVisit = await visitsApi.createVisit({
+    const newVisit = await clinicalService.createVisit({
       patient_id: props.patient.id,
       doctor_id: props.doctorId,
-      doctor_name: props.doctorName
+      doctor_name: props.doctorName,
+      status: 'in_progress'
     })
 
     visits.value.unshift(newVisit)
@@ -948,7 +873,7 @@ const startNewVisit = async () => {
   }
 }
 
-const completeCurrentVisit = async () => {
+const completeCurrentVisit = async (settlement = 'auto') => {
   if (!currentVisit.value) return
 
   // Save odontogram first if there are changes
@@ -959,7 +884,7 @@ const completeCurrentVisit = async () => {
   loading.value = true
   try {
     if (visitServices.value.length === 0) {
-      visitServices.value = await visitServicesApi.getVisitServicesByVisitId(currentVisit.value.id)
+      visitServices.value = await clinicalService.getVisitServices(currentVisit.value.id)
     }
     const totalPrice = totalBill.value
 
@@ -971,37 +896,25 @@ const completeCurrentVisit = async () => {
           _status: 'completed',
           _completed_at: new Date().toISOString()
         }
-        await odontogramApi.updateOdontogramSnapshot(
-          currentOdontogram.value.id,
-          completedData,
-          { expectedVersion: currentOdontogram.value.version },
-        )
-        currentOdontogram.value.data = completedData
-        if (currentOdontogram.value.version != null) {
-          currentOdontogram.value.version = Number(currentOdontogram.value.version) + 1
-        }
+        const completed = await clinicalService.saveSnapshot(currentOdontogram.value, completedData)
+        currentOdontogram.value = completed
       } catch (err) {
         console.warn('Failed to mark odontogram as completed:', err)
       }
     }
 
-    // Mavjud to‘lovlardan debt hisobla; avtomatik cash posting yo‘q
     let netPaid = 0
     let discountTotal = 0
     try {
-      const existingPayments = await getPaymentsByVisitId(currentVisit.value.id)
+      const existingPayments = await clinicalService.getVisitPayments(currentVisit.value.id)
       for (const entry of existingPayments) {
         const amount = Number(entry.amount) || 0
-        if (entry.payment_type === 'discount') {
+        if (entry.payment_type === 'discount' || String(entry.note || '').includes('[DISCOUNT]')) {
           discountTotal += Math.abs(amount)
           continue
         }
         if (entry.payment_type === 'refund') {
-          if (String(entry.note || '').includes('[DISCOUNT]')) {
-            discountTotal += Math.abs(amount)
-          } else {
-            netPaid -= amount
-          }
+          netPaid -= amount
           continue
         }
         netPaid += amount
@@ -1012,36 +925,61 @@ const completeCurrentVisit = async () => {
 
     const effectiveDue = Math.max(0, totalPrice - discountTotal)
     const remaining = Math.max(0, effectiveDue - netPaid)
-    const nextStatus = remaining > 0 ? 'completed_debt' : 'completed_paid'
+    const markPaid = settlement === 'paid' || (settlement === 'auto' && remaining <= 0)
+    if (markPaid && remaining > 0) {
+      try {
+        await clinicalService.recordVisitPayment({
+          visitId: currentVisit.value.id,
+          amount: remaining,
+          type: 'payment',
+          patientId: props.patient.id,
+          doctorId: props.doctorId || currentVisit.value.doctor_id,
+          note: 'Yakunlash: to\'liq to\'landi',
+        })
+        netPaid = effectiveDue
+      } catch (paymentError) {
+        console.warn('Yakunlash to\'lovini yozish:', paymentError)
+        netPaid = effectiveDue
+      }
+    }
+    const nextStatus = markPaid ? 'completed_paid' : 'completed_debt'
+    const paidAmount = markPaid ? effectiveDue : netPaid
+    const debtAmount = markPaid ? null : remaining
 
-    await visitsApi.updateVisit(currentVisit.value.id, {
+    await clinicalService.updateVisit(currentVisit.value.id, {
       status: nextStatus,
       price: totalPrice,
-      paid_amount: netPaid,
-      debt_amount: remaining > 0 ? remaining : null
+      paid_amount: paidAmount,
+      debt_amount: debtAmount
     })
     currentVisit.value.status = nextStatus
     currentVisit.value.price = totalPrice
-    currentVisit.value.paid_amount = netPaid
-    currentVisit.value.debt_amount = remaining > 0 ? remaining : null
+    currentVisit.value.paid_amount = paidAmount
+    currentVisit.value.debt_amount = debtAmount
 
-    // Update in list
     const index = visits.value.findIndex(v => v.id === currentVisit.value.id)
     if (index !== -1) {
       visits.value[index].status = nextStatus
       visits.value[index].price = totalPrice
-      visits.value[index].paid_amount = netPaid
-      visits.value[index].debt_amount = remaining > 0 ? remaining : null
+      visits.value[index].paid_amount = paidAmount
+      visits.value[index].debt_amount = debtAmount
     }
 
-    toast.success(t('odontogram.toastVisitCompleted'))
+    try {
+      await clinicalService.updatePatientStatus(props.patient.id, {
+        status: markPaid ? 'completed' : 'debt',
+        last_visit: new Date().toISOString().split('T')[0],
+      })
+    } catch (patientError) {
+      console.warn('Bemor statusini yangilash:', patientError)
+    }
+
+    toast.success(markPaid ? t('odontogram.toastVisitCompletedPaid') : t('odontogram.toastVisitCompletedDebt'))
 
     // Telegram habar yuborish (sms_marketing moduli faol bo'lsa)
     if (subscriptionStore.checkFeature(FEATURE_KEYS.SMS_MARKETING)) {
     try {
       const discountPercent = currentVisit.value.discount_percent || 0
-      const paidAmount = totalPrice
-      const debtAmount = Number(currentVisit.value.debt_amount) || 0
 
       const totalBeforeDiscount = discountPercent > 0
         ? Math.round(totalPrice / (1 - discountPercent / 100))
@@ -1065,7 +1003,7 @@ const completeCurrentVisit = async () => {
         tooth: vs.tooth_id || null
       }))
 
-      await sendVisitCompleted({
+      await clinicalService.notifyVisitCompleted({
         patientId: String(props.patient.id),
         doctorName: currentVisit.value.doctor_name || 'Shifokor',
         doctorPhone: currentVisit.value.doctor_phone || null,
@@ -1074,11 +1012,11 @@ const completeCurrentVisit = async () => {
         discount: discountPercent,
         totalBeforeDiscount,
         totalAfterDiscount: totalPrice,
-        paid: paidAmount,
-        remaining: debtAmount
+        paid: Number(paidAmount) || 0,
+        remaining: Number(debtAmount) || 0
       })
 
-      const followUpResult = await schedulePatientFollowUps({
+      const followUpResult = await clinicalService.scheduleVisitFollowUps({
         patientId: String(props.patient.id),
         patientName: props.patient?.full_name || props.patient?.name || null,
         phone: props.patient?.phone || null,
@@ -1104,15 +1042,50 @@ const completeCurrentVisit = async () => {
   }
 }
 
+const requestCompleteVisit = () => {
+  const due = totalBill.value
+  confirmation.value = {
+    title: t('odontogram.completeVisit'),
+    message: due > 0
+      ? t('odontogram.confirmCompleteWithAmount', { amount: formatCurrency(due) })
+      : t('odontogram.confirmCompleteVisit'),
+    choices: due > 0
+      ? [
+          {
+            id: 'paid',
+            tone: 'paid',
+            label: t('odontogram.completeAsPaid'),
+            action: () => completeCurrentVisit('paid'),
+          },
+          {
+            id: 'debt',
+            tone: 'debt',
+            label: t('odontogram.completeAsDebt'),
+            action: () => completeCurrentVisit('debt'),
+          },
+        ]
+      : null,
+    action: () => completeCurrentVisit('paid'),
+  }
+}
+
 const openStatusMenu = ({ id, rect }) => {
   if (!canEdit.value) return
   selectedToothId.value = id
   menuOpen.value = true
   ignoreClose.value = true
+  const panelWidth = 320
+  const margin = 12
+  const left = Math.max(
+    margin + panelWidth / 2,
+    Math.min(window.innerWidth - margin - panelWidth / 2, rect.left + rect.width / 2),
+  )
+  const estimatedHeight = 420
+  const openAbove = rect.bottom + estimatedHeight > window.innerHeight - margin
   menuStyle.value = {
-    left: `${rect.left + rect.width / 2}px`,
-    top: `${rect.bottom + 8}px`,
-    transform: 'translate(-50%, 0)'
+    left: `${left}px`,
+    top: openAbove ? `${Math.max(margin, rect.top - 8)}px` : `${rect.bottom + 8}px`,
+    transform: openAbove ? 'translate(-50%, -100%)' : 'translate(-50%, 0)'
   }
   setTimeout(() => {
     ignoreClose.value = false
@@ -1121,14 +1094,11 @@ const openStatusMenu = ({ id, rect }) => {
 
 const closeStatusMenu = () => {
   menuOpen.value = false
-  selectedToothId.value = null
 }
 
-const autoSaveOdontogramTimer = ref(null)
-
-const setToothStatus = (status, serviceId = null) => {
-  if (!selectedToothId.value) return
-  const tid = selectedToothId.value
+const setToothStatus = (status, serviceId = null, toothId = selectedToothId.value) => {
+  if (!toothId) return
+  const tid = toothId
   teeth.value = teeth.value.map((t) =>
     t.id === tid ? { ...t, status, service_id: serviceId } : t
   )
@@ -1145,91 +1115,67 @@ const setToothStatus = (status, serviceId = null) => {
       if (teethData[tid] !== undefined) delete teethData[tid]
     } else {
       const existing = teethData[key] || teethData[tid] || { note: '' }
-      const update = { ...existing, state: status }
+      const update = { ...existing, state: toStorageToothState(status) }
       if (serviceId != null) update.service_id = serviceId
       else if ('service_id' in update) delete update.service_id
       teethData[key] = update
     }
 
-    // Har bir tish o'zgarishida Supabase'ga avto-save (ranglar o'chmasin)
-    if (autoSaveOdontogramTimer.value) clearTimeout(autoSaveOdontogramTimer.value)
-    autoSaveOdontogramTimer.value = setTimeout(() => {
-      autoSaveOdontogramTimer.value = null
-      if (currentOdontogram.value?.id) {
-        odontogramApi.updateOdontogramSnapshot(currentOdontogram.value.id, currentOdontogram.value.data)
-          .then(() => {
-            originalOdontogramData.value = JSON.parse(JSON.stringify(currentOdontogram.value.data))
-          })
-          .catch(err => console.warn('Odontogramma avto-save xatosi:', err))
-      }
-    }, 400)
+    saveQueue.schedule(currentOdontogram.value.data)
   }
 
   closeStatusMenu()
 }
 
 const applyMenuSelection = async (option) => {
-  if (!selectedToothId.value) return
+  if (!selectedToothId.value || applyingToothSelection.value) return
+  const toothId = selectedToothId.value
+  applyingToothSelection.value = true
 
-  if (option.type === 'status' || option.status) {
-    const status = option.status || option.value
-    // healthy yoki missing (olib tashlash) — visit_service o'chiriladi, to'lovlarda ham yo'q bo'ladi
-    if ((status === 'healthy' || status === 'missing') && currentVisit.value?.id) {
-      try {
-        await visitServicesApi.deleteVisitServicesByVisitAndTooth(currentVisit.value.id, selectedToothId.value)
-        // visitServices ni qayta yuklash - narx darhol yangilanishi uchun
-        visitServices.value = await visitServicesApi.getVisitServicesByVisitId(currentVisit.value.id)
-      } catch (err) {
-        console.error('Failed to remove visit services:', err)
-        // Xato bo'lsa ham, local state ni yangilaymiz
-        visitServices.value = visitServices.value.filter(
-          (e) => !(Number(e.visit_id) === Number(currentVisit.value.id) && Number(e.tooth_id) === Number(selectedToothId.value))
-        )
+  try {
+    if (option.type === 'status' || option.status) {
+      const status = option.status || option.value
+      if ((status === 'healthy' || status === 'missing') && currentVisit.value?.id) {
+        visitServices.value = await clinicalService.clearToothService(currentVisit.value.id, toothId)
       }
+      setToothStatus(status)
+      return
     }
-    setToothStatus(status)
-  }
 
-  if (option.type === 'service') {
-    const tid = selectedToothId.value
-    if (currentVisit.value?.id) {
-      try {
-        await visitServicesApi.deleteVisitServicesByVisitAndTooth(currentVisit.value.id, tid)
-        // Eski xizmatlarni o'chirib, yangisini qo'shamiz
-      } catch (err) {
-        console.error('Failed to remove old visit services:', err)
+    if (option.type === 'service') {
+      if (!currentVisit.value?.id) {
+        toast.error(t('odontogram.selectVisitFirst'))
+        return
+      }
+
+      const result = await clinicalService.replaceToothService({
+        visitId: currentVisit.value.id,
+        patientId: props.patient.id,
+        doctorId: props.doctorId,
+        toothId,
+        serviceId: option.value,
+        serviceName: option.labelKey ? t(option.labelKey) : option.label,
+        price: option.price || 0,
+        performedBy: authStore.user?.full_name || props.doctorName || 'Doctor',
+        authStore,
+        inventoryItems: inventoryItems.value,
+      })
+      visitServices.value = result.services
+      setToothStatus(option.inferredStatus || 'filling', option.value, toothId)
+      toast.success(t('odontogram.toastServiceApplied', {
+        tooth: toothId,
+        service: option.labelKey ? t(option.labelKey) : option.label,
+      }))
+      if (result.consumed.length) await loadConsumptions()
+      if (result.materialError) {
+        toast.error(`${t('odontogram.materialSyncFailed')}: ${result.materialError.message}`)
       }
     }
-    const status = option.inferredStatus || 'filling'
-    setToothStatus(status, option.value)
-    await addHistoryEntry({
-      toothId: tid,
-      serviceName: option.labelKey ? t(option.labelKey) : option.label,
-      price: option.price || 0
-    })
-    if (currentVisit.value?.id && option.value) {
-      try {
-        const consumed = await consumeServiceMaterialsForVisit({
-          serviceId: Number(option.value),
-          visitId: currentVisit.value.id,
-          patientId: props.patient.id,
-          doctorId: props.doctorId,
-          authStore,
-          inventoryItems: inventoryItems.value,
-        })
-        if (consumed.length) await loadConsumptions()
-      } catch (err) {
-        console.warn('Auto material consumption failed:', err)
-      }
-    }
-    // visitServices ni qayta yuklash - narx yangilanishi uchun
-    if (currentVisit.value?.id) {
-      try {
-        visitServices.value = await visitServicesApi.getVisitServicesByVisitId(currentVisit.value.id)
-      } catch (err) {
-        console.error('Failed to reload visit services:', err)
-      }
-    }
+  } catch (error) {
+    console.error('Failed to apply tooth selection:', error)
+    toast.error(t('odontogram.errorSaveService'))
+  } finally {
+    applyingToothSelection.value = false
   }
 
   closeStatusMenu()
@@ -1237,17 +1183,12 @@ const applyMenuSelection = async (option) => {
 
 const saveOdontogram = async () => {
   if (!currentOdontogram.value) return
-
-  saving.value = true
   try {
-    await odontogramApi.updateOdontogramSnapshot(currentOdontogram.value.id, currentOdontogram.value.data)
-    originalOdontogramData.value = JSON.parse(JSON.stringify(currentOdontogram.value.data))
-    toast.success('Odontogramma saqlandi!')
+    saveQueue.schedule(currentOdontogram.value.data)
+    await saveQueue.flush()
   } catch (error) {
     console.error('Failed to save odontogram:', error)
     toast.error(t('odontogram.errorSaveOdontogram'))
-  } finally {
-    saving.value = false
   }
 }
 
@@ -1281,6 +1222,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  saveQueue.stop({ flushPending: true })
   document.removeEventListener('click', handleDocumentClick)
   window.removeEventListener('keydown', handleEscape)
 })

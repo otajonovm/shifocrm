@@ -1,19 +1,15 @@
 /**
- * Yakka stomatolog (solo) uchun minimal interfeys.
- * Asosiy oqim: kalendar, bemorlar, xizmatlar, hisobotlar va profil.
+ * Yakka stomatolog (solo) uchun soddalashtirilgan interfeys.
+ * Asosiy oqim: kalendar, onlayn qabullar, bemorlar, davolash rejalari, xizmatlar, hisobotlar, profil.
  */
 
 export const SOLO_BLOCKED_ROUTE_NAMES = Object.freeze([
-  'treatment-plans',
   'settings',
-  'my-leads',
   'payments',
-  'leads',
   'staff',
   'doctors',
   'inventory',
   'management-center',
-  'data-import',
   'audit',
   'my-appointments',
 ])

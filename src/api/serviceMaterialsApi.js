@@ -109,6 +109,7 @@ export async function consumeServiceMaterialsForVisit({
   visitId,
   patientId,
   doctorId,
+  toothId = null,
   authStore,
   inventoryItems = [],
 }) {
@@ -144,7 +145,7 @@ export async function consumeServiceMaterialsForVisit({
     await consumeVisitMaterials({
       visitId,
       lines,
-      sourceKey: `service:${serviceId}:visit:${visitId}`,
+      sourceKey: `service:${serviceId}:visit:${visitId}${toothId ? `:tooth:${toothId}` : ''}`,
     })
   } catch (rpcErr) {
     const msg = String(rpcErr?.message || '')

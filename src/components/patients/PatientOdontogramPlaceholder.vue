@@ -1,10 +1,14 @@
 <template>
   <PatientOdontogram
+    v-if="patient"
     :patient="patient"
     :doctor-id="doctorId"
     :doctor-name="doctorName"
     :initial-visit-id="visitId"
   />
+  <div v-else class="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+    {{ t('patientDetail.notFound') }}
+  </div>
 </template>
 
 <script setup>
@@ -19,7 +23,11 @@ import PatientOdontogram from './PatientOdontogram.vue'
 const props = defineProps({
   patientId: {
     type: [String, Number],
-    required: true,
+    default: null,
+  },
+  patient: {
+    type: Object,
+    default: null,
   },
   visitId: {
     type: [String, Number],
@@ -40,6 +48,7 @@ const { t } = useI18n()
 const isAdminLikeUser = computed(() => isAdminLike(authStore))
 
 const patient = computed(() => {
+  if (props.patient) return props.patient
   return patientsStore.items.find(p => p.id === Number(props.patientId)) ||
          patientsStore.currentPatient
 })

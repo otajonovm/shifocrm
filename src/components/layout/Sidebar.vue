@@ -250,7 +250,9 @@ const adminMenuItems = [
 
 const soloMenuItems = [
   { labelKey: 'nav.appointments', to: '/appointments', icon: CalendarDaysIcon },
+  { labelKey: 'nav.leads', to: '/leads', icon: InboxIcon },
   { labelKey: 'nav.patients', to: '/patients', icon: UsersIcon },
+  { labelKey: 'nav.treatmentPlans', to: '/treatment-plans', icon: DocumentTextIcon },
   { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
   { labelKey: 'nav.reports', to: '/reports', icon: ChartBarIcon },
   { labelKey: 'nav.doctorProfile', to: '/doctor/profile', icon: UserCircleIcon },
