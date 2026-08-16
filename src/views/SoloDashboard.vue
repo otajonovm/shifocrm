@@ -1,7 +1,5 @@
 <template>
   <div class="space-y-4 sm:space-y-6 animate-fade-in pb-6 pb-safe">
-    <SoloOnlineBookingCard />
-
     <!-- Tezkor amallar -->
     <div class="grid grid-cols-2 gap-3">
       <router-link
@@ -80,7 +78,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { getSoloDoctorStats } from '@/api/soloStatsApi'
-import SoloOnlineBookingCard from '@/components/solo/SoloOnlineBookingCard.vue'
 import SoloStatBars from '@/components/solo/SoloStatBars.vue'
 import { CalendarDaysIcon, UserPlusIcon } from '@heroicons/vue/24/outline'
 
