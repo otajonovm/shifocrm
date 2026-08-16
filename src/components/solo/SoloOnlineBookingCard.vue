@@ -1,7 +1,6 @@
 <template>
-  <!-- Onlayn qabul havolasi bloki olib tashlangan — kerak emas -->
+  <!-- Onlayn qabul havolasi bloki olib tashlangan -->
 </template>
 
 <script setup>
-// Reserved no-op: eski importlar qolgan bo'lsa ham UI chiqarmaydi.
 </script>
