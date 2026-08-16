@@ -102,6 +102,13 @@
         @delete="requestDeleteConsumption"
       />
 
+      <VisitExpensePanel
+        v-if="currentVisit?.id && showVisitExpenses"
+        :visit-id="currentVisit.id"
+        :doctor-id="doctorId || currentVisit.doctor_id"
+        :patient-id="patient.id"
+      />
+
       <!-- Desktop: floating menu -->
       <Teleport to="body">
         <div
@@ -290,7 +297,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import { isAdminLike, isDoctorLike } from '@/lib/roles'
+import { isAdminLike, isDoctorLike, isSolo } from '@/lib/roles'
 import * as clinicalService from '@/services/odontogramService'
 import { normalizeToothStatus, PERMANENT_TEETH, toStorageToothState } from '@/domain/odontogram'
 import { useSubscriptionStore } from '@/stores/subscription'
@@ -301,6 +308,7 @@ import OdontogramToothPanel from './OdontogramToothPanel.vue'
 import OdontogramVisitHeader from './OdontogramVisitHeader.vue'
 import OdontogramSummary from './OdontogramSummary.vue'
 import OdontogramMaterialSection from './OdontogramMaterialSection.vue'
+import VisitExpensePanel from './VisitExpensePanel.vue'
 
 const props = defineProps({
   patient: {
@@ -409,6 +417,7 @@ const canManageMaterial = computed(() => {
   if (!selectedVisitId.value || !canEdit.value) return false
   return isAdminLikeUser.value || isDoctorLike(authStore)
 })
+const showVisitExpenses = computed(() => isSolo(authStore) || isDoctorLike(authStore) || isAdminLikeUser.value)
 
 const saveQueue = clinicalService.createSaveQueue({
   getRecord: () => currentOdontogram.value,
