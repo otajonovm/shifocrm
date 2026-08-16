@@ -15,8 +15,6 @@
         </button>
       </div>
 
-      <SoloOnlineBookingCard v-if="isSoloUser" />
-
       <div class="bg-white rounded-2xl border border-gray-100 shadow-card overflow-hidden">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -86,9 +84,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { usePermission } from '@/composables/usePermission'
-import { isSolo } from '@/lib/roles'
 import { listInboxLeads, changeLeadStatus } from '@/services/leadsService'
-import SoloOnlineBookingCard from '@/components/solo/SoloOnlineBookingCard.vue'
 import {
   LEAD_STATUS_DROPDOWN,
   LEAD_STATUSES,
@@ -102,7 +98,6 @@ const toast = useToast()
 const { t } = useI18n()
 const { can } = usePermission()
 const canEditLeads = computed(() => can('leads', 'edit'))
-const isSoloUser = computed(() => isSolo(authStore))
 
 const leads = ref([])
 const loading = ref(false)
