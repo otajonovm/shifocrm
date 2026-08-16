@@ -100,9 +100,22 @@ export async function postVisitPayment({
     p_note: note || null,
   }
 
+  const afterPaymentSettlement = async () => {
+    try {
+      const { recalculateVisitSettlement } = await import('@/services/soloBillingService')
+      await recalculateVisitSettlement(visitId)
+    } catch (error) {
+      console.warn('Solo billing settlement:', error)
+    }
+  }
+
   try {
     const result = await supabaseRpc('post_visit_payment', payload)
-    return Array.isArray(result) ? result[0] : result
+    const created = Array.isArray(result) ? result[0] : result
+    if (type === 'payment' || type === 'refund' || type === 'discount') {
+      await afterPaymentSettlement()
+    }
+    return created
   } catch (error) {
     if (!isMissingRpc(error)) throw error
 
@@ -131,6 +144,7 @@ export async function postVisitPayment({
       cash_shift_id: payload.p_cash_shift_id,
     })
     await syncVisitAfterPayment(visitId)
+    await afterPaymentSettlement()
     return created
   }
 }

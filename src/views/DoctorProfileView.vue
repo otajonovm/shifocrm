@@ -97,8 +97,17 @@
           </div>
         </section>
 
+        <!-- Solo moliya sozlamalari -->
+        <DoctorBillingSettingsCard
+          v-if="showBillingTab && activeTab === 'billing' && resolvedDoctorId"
+          :doctor-id="resolvedDoctorId"
+        />
+
         <!-- Asosiy forma (bitta instance — tablar orasida ma'lumot saqlanadi) -->
-        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
+        <div
+          v-show="activeTab !== 'billing'"
+          class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-6"
+        >
           <DoctorProfileForm
             :section="activeTab"
             :compact-schedule="activeTab === 'schedule'"
@@ -231,6 +240,7 @@ import { isSolo } from '@/lib/roles'
 import { phoneAuthLookupVariants } from '@/lib/phoneUz'
 import MainLayout from '@/layouts/MainLayout.vue'
 import DoctorProfileForm from '@/components/doctor/DoctorProfileForm.vue'
+import DoctorBillingSettingsCard from '@/components/doctor/DoctorBillingSettingsCard.vue'
 import PasswordChangeForm from '@/components/doctor/PasswordChangeForm.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
@@ -274,11 +284,26 @@ const passwordSuccess = ref(false)
 const passwordResetTrigger = ref(0)
 const qrCanvasRef = ref(null)
 
-const profileTabs = computed(() => [
-  { id: 'personal', label: t('doctorProfile.tabPersonal') },
-  { id: 'online', label: t('doctorProfile.tabOnline') },
-  { id: 'schedule', label: t('doctorProfile.tabSchedule') },
-])
+const showBillingTab = computed(() => isSolo(authStore))
+const resolvedDoctorId = computed(() => {
+  const fromExisting = Number(existingDoctor.value?.id)
+  if (Number.isFinite(fromExisting) && fromExisting > 0) return fromExisting
+  const fromUser = Number(authStore.user?.id)
+  if (Number.isFinite(fromUser) && fromUser > 0) return fromUser
+  return null
+})
+
+const profileTabs = computed(() => {
+  const tabs = [
+    { id: 'personal', label: t('doctorProfile.tabPersonal') },
+    { id: 'online', label: t('doctorProfile.tabOnline') },
+    { id: 'schedule', label: t('doctorProfile.tabSchedule') },
+  ]
+  if (showBillingTab.value) {
+    tabs.push({ id: 'billing', label: t('soloBilling.tabBilling') })
+  }
+  return tabs
+})
 
 const hasSlug = computed(() => Boolean(String(profile.value.public_slug || '').trim()))
 const publicProfileUrl = computed(() => {

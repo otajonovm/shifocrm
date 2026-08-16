@@ -24,6 +24,7 @@ Apply in timestamp order under `supabase/migrations/`:
 5. `20260725194000_calendar_integrity.sql`
 6. `20260725195000_rbac_capabilities.sql`
 7. `20260725196000_telegram_platform.sql`
+8. `20260816120000_solo_doctor_billing.sql` (solo foiz/ijara/xarajat moduli)
 
 ## Data backfill notes
 

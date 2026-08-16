@@ -253,6 +253,14 @@
       </table>
     </div>
 
+    <VisitExpensePanel
+      v-if="showVisitExpenses && expenseVisitId"
+      class="mt-2"
+      :visit-id="expenseVisitId"
+      :doctor-id="expenseDoctorId"
+      :patient-id="patientId"
+    />
+
     <Transition
       enter-active-class="transition ease-out duration-200"
       enter-from-class="opacity-0"
@@ -365,7 +373,7 @@ import {
   ClipboardDocumentCheckIcon,
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
-import { canManagePatientBilling } from '@/lib/roles'
+import { canManagePatientBilling, isSolo } from '@/lib/roles'
 import { useClinicStore } from '@/stores/clinic'
 import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId, getPaymentsByVisitId } from '@/api/paymentsApi'
 import { getVisitServicesByPatientId, getVisitServicesByVisitId, deleteVisitServiceById } from '@/api/visitServicesApi'
@@ -381,6 +389,7 @@ import {
 } from '@/lib/patientPaymentPrint'
 import { useToast } from '@/composables/useToast'
 import { sendPatientCompletionSummary } from '@/api/telegramApi'
+import VisitExpensePanel from '@/components/patients/VisitExpensePanel.vue'
 
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()
@@ -455,6 +464,23 @@ const form = ref({
   method: 'cash',
   note: '',
   paid_at: ''
+})
+
+const showVisitExpenses = computed(() => isSolo(authStore) || canManagePayments.value)
+const expenseVisitId = computed(() => {
+  const fromForm = Number(form.value?.visit_id)
+  if (Number.isFinite(fromForm) && fromForm > 0) return fromForm
+  const fromPreview = Number(visitPreview.value?.id)
+  if (Number.isFinite(fromPreview) && fromPreview > 0) return fromPreview
+  const latestVisit = (visits.value || [])[0]
+  const fromLatest = Number(latestVisit?.id)
+  return Number.isFinite(fromLatest) && fromLatest > 0 ? fromLatest : null
+})
+const expenseDoctorId = computed(() => {
+  const fromVisit = Number(visitPreview.value?.doctor_id || visits.value?.[0]?.doctor_id)
+  if (Number.isFinite(fromVisit) && fromVisit > 0) return fromVisit
+  const fromUser = Number(authStore.user?.id)
+  return Number.isFinite(fromUser) && fromUser > 0 ? fromUser : null
 })
 
 const totalPayments = computed(() =>
