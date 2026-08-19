@@ -7,12 +7,34 @@ const TELEGRAM_API_URL = import.meta.env.VITE_TELEGRAM_API_URL;
 const TELEGRAM_API_KEY = import.meta.env.VITE_TELEGRAM_API_KEY;
 const isDev = import.meta.env.DEV;
 
+/**
+ * Telegram bot API base URL.
+ * Dev + localhost: Vite proxy `/api/telegram` → bot `/api/*`
+ * Prod: `VITE_TELEGRAM_API_URL` (oxiridagi `/` olib tashlanadi)
+ */
+export function getTelegramApiBaseUrl() {
+  // Dev da CORS dan qochish: Vite proxy `/api/telegram` → bot `/api/*`
+  if (isDev) return '/api/telegram';
+  if (!TELEGRAM_API_URL) return null;
+  return String(TELEGRAM_API_URL).replace(/\/$/, '');
+}
+
+export function getTelegramApiHeaders() {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (TELEGRAM_API_KEY) {
+    headers['X-API-KEY'] = TELEGRAM_API_KEY;
+  }
+  return headers;
+}
+
 /** Development da CORS dan qochish uchun proxy orqali so'rov (localhost:5173 -> 3001) */
 function getTelegramSendUrl() {
-  const useProxy = isDev && (!TELEGRAM_API_URL || TELEGRAM_API_URL.includes('localhost:3001'));
-  if (useProxy) return '/api/telegram/send';
-  if (!TELEGRAM_API_URL) return null;
-  return `${TELEGRAM_API_URL.replace(/\/$/, '')}/api/send`;
+  const base = getTelegramApiBaseUrl();
+  if (!base) return null;
+  if (base === '/api/telegram') return `${base}/send`;
+  return `${base}/api/send`;
 }
 
 /**

@@ -27,13 +27,16 @@ vi.mock('@/lib/inventoryBridge', () => ({
   deleteVisitConsumption: vi.fn(),
 }))
 vi.mock('@/api/serviceMaterialsApi', () => ({ consumeServiceMaterialsForVisit: vi.fn() }))
-vi.mock('@/api/paymentsApi', () => ({ getPaymentsByVisitId: vi.fn() }))
+vi.mock('@/api/paymentsApi', () => ({ getPaymentsByVisitId: vi.fn(), createPayment: vi.fn() }))
 vi.mock('@/api/telegramApi', () => ({
   sendVisitCompleted: vi.fn(),
   schedulePatientFollowUps: vi.fn(),
 }))
 
-import { createSaveQueue, isVersionConflictError, saveSnapshot } from './odontogramService'
+import * as visitServicesApi from '@/api/visitServicesApi'
+import { listVisitConsumptions, deleteVisitConsumption } from '@/lib/inventoryBridge'
+import { consumeServiceMaterialsForVisit } from '@/api/serviceMaterialsApi'
+import { createSaveQueue, isVersionConflictError, replaceToothService, saveSnapshot } from './odontogramService'
 
 describe('odontogramService save pipeline', () => {
   beforeEach(() => {
@@ -98,5 +101,37 @@ describe('odontogramService save pipeline', () => {
     queue.discard()
     await expect(queue.retry()).resolves.toEqual({ id: 10, version: 1 })
     expect(updateOdontogramSnapshot).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('replaceToothService', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    visitServicesApi.getVisitServicesByVisitId.mockResolvedValue([])
+    visitServicesApi.deleteVisitServicesByVisitAndTooth.mockResolvedValue(true)
+    visitServicesApi.createVisitService.mockResolvedValue({ id: 9, tooth_id: 21, price: 100 })
+    listVisitConsumptions.mockResolvedValue([])
+    consumeServiceMaterialsForVisit.mockResolvedValue([{ item_id: 1, quantity: 1 }])
+  })
+
+  it('rolls back the billed service when material consume fails', async () => {
+    consumeServiceMaterialsForVisit.mockRejectedValue(new Error('Omborda yetarli qoldiq yo‘q'))
+
+    await expect(replaceToothService({
+      visitId: 5,
+      patientId: 2,
+      doctorId: 3,
+      toothId: 21,
+      serviceId: 8,
+      serviceName: 'Plomba',
+      price: 100,
+      performedBy: 'Dr',
+      authStore: { user: {} },
+      inventoryItems: [],
+    })).rejects.toThrow('Omborda yetarli qoldiq yo‘q')
+
+    expect(visitServicesApi.createVisitService).toHaveBeenCalled()
+    expect(visitServicesApi.deleteVisitServicesByVisitAndTooth).toHaveBeenCalledTimes(2)
+    expect(deleteVisitConsumption).not.toHaveBeenCalled()
   })
 })

@@ -396,6 +396,47 @@
                 </div>
               </div>
 
+              <div
+                v-if="showCashback"
+                class="rounded-lg border border-amber-100 bg-amber-50/70 p-3 space-y-3"
+              >
+                <p v-if="cashbackLoading" class="text-sm text-gray-500">{{ t('payments.loadingVisit') }}</p>
+                <p v-else-if="cashbackError" class="text-sm text-gray-500">{{ t('payments.cashbackUnavailable') }}</p>
+                <template v-else>
+                  <p class="text-sm text-gray-700">
+                    {{ t('payments.cashbackBalance') }}:
+                    <span class="font-semibold text-amber-800">{{ formatCurrency(cashbackBalance) }}</span>
+                  </p>
+                  <div v-if="cashbackBalance > 0" class="flex items-center space-x-2">
+                    <input
+                      id="payments-use-cashback"
+                      v-model="useCashback"
+                      type="checkbox"
+                      class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label for="payments-use-cashback" class="text-sm font-medium text-gray-700">
+                      {{ t('payments.cashbackPayWith') }}
+                    </label>
+                  </div>
+                  <div v-if="useCashback">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('payments.cashbackAmount') }}</label>
+                    <input
+                      v-model="cashbackAmount"
+                      type="number"
+                      :min="0"
+                      :max="maxCashback"
+                      class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
+                    />
+                    <p class="mt-1 text-xs text-gray-600">
+                      {{ t('payments.cashbackRemaining') }}: {{ formatCurrency(remainingCash) }}
+                    </p>
+                  </div>
+                  <p class="text-xs text-gray-500">
+                    {{ t('payments.cashbackEarnHint', { percent: cashbackPercent }) }}
+                  </p>
+                </template>
+              </div>
+
               <div v-if="visitPreview" class="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">
                 <p class="font-medium text-gray-700">{{ t('payments.visitSummary') }}</p>
                 <div class="mt-1 flex flex-wrap gap-4">
@@ -590,11 +631,12 @@ import MobileFAB from '@/components/shared/MobileFAB.vue'
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon, AdjustmentsHorizontalIcon, PencilSquareIcon, TrashIcon, ArrowDownTrayIcon, DocumentArrowDownIcon } from '@heroicons/vue/24/outline'
-import { listPayments, createPayment, updatePayment, deletePayment, createAdditionalPayment, getPaymentsByVisitId, parseCategoryFromNote, removeCategoryFromNote } from '@/api/paymentsApi'
+import { listPayments, createPayment, updatePayment, deletePayment, createAdditionalPayment, parseCategoryFromNote, removeCategoryFromNote } from '@/api/paymentsApi'
 import { listDoctors } from '@/api/doctorsApi'
 import { listPatients } from '@/api/patientsApi'
-import { getVisitById, updateVisit } from '@/api/visitsApi'
+import { getVisitById } from '@/api/visitsApi'
 import { useToast } from '@/composables/useToast'
+import { usePaymentCashback } from '@/composables/usePaymentCashback'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
 import { useDataPermissionGuard, useDataPermission } from '@/composables/useDataPermission'
@@ -603,6 +645,8 @@ import { exportToCsv, exportToPdf } from '@/lib/exportData'
 import { logActivity } from '@/lib/activityLog'
 import { getOpenCashShift, openCashShift, closeCashShift } from '@/api/cashShiftsApi'
 import { summarizePaymentsByMethod, calcExpectedShiftBalance, buildShiftCloseReport } from '@/lib/cashShiftSummary'
+import { cashIncome, isDiscountEntry } from '@/lib/paymentTotals'
+import { syncVisitAfterPayment } from '@/services/paymentService'
 
 const payments = ref([])
 const { t } = useI18n()
@@ -639,7 +683,6 @@ const openShiftForm = ref({ openingBalance: 0 })
 const closeShiftForm = ref({ closingBalance: '', notes: '' })
 
 const isSolo = computed(() => authStore.userRole === 'solo')
-const DISCOUNT_NOTE_PREFIX = '[DISCOUNT]'
 
 const filters = ref({
   startDate: '',
@@ -659,6 +702,29 @@ const form = ref({
   paid_at: ''
 })
 
+const cashbackEnabled = computed(() =>
+  showPaymentModal.value
+  && !isEditing.value
+  && form.value.payment_type === 'payment'
+)
+
+const {
+  balance: cashbackBalance,
+  balanceLoading: cashbackLoading,
+  balanceError: cashbackError,
+  useCashback,
+  cashbackAmount,
+  cashbackPercent,
+  maxCashback,
+  cashbackUsed,
+  remainingCash,
+  showCashback,
+} = usePaymentCashback({
+  patientId: () => form.value.patient_id,
+  paymentAmount: () => form.value.amount,
+  enabled: cashbackEnabled,
+})
+
 const additionalForm = ref({
   category: '',
   amount: '',
@@ -675,12 +741,7 @@ const totalRefunds = computed(() =>
   filteredPayments.value.reduce((sum, entry) => sum + (entry.payment_type === 'refund' ? Number(entry.amount) || 0 : 0), 0)
 )
 
-const netIncome = computed(() =>
-  filteredPayments.value.reduce((sum, entry) => {
-    const amount = Number(entry.amount) || 0
-    return sum + (entry.payment_type === 'refund' ? -amount : amount)
-  }, 0)
-)
+const netIncome = computed(() => cashIncome(filteredPayments.value))
 
 const shiftLiveTotals = computed(() => {
   if (!openShift.value) return null
@@ -788,13 +849,6 @@ const getPaymentCategory = (payment) => {
   return null
 }
 
-const isDiscountEntry = (entry) => {
-  if (!entry) return false
-  if (entry.payment_type === 'discount') return true
-  if (entry.payment_type === 'refund' && entry.note && String(entry.note).includes(DISCOUNT_NOTE_PREFIX)) return true
-  if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0 && entry.note && String(entry.note).includes('[DISCOUNT')) return true
-  return false
-}
 
 const getDiscountPercent = (entry) => {
   if (!entry?.note) return ''
@@ -811,18 +865,6 @@ const getDisplayNote = (entry) => {
     .replace(/^\s*\[CATEGORY:[^\]]+\]\s*/i, '')
     .trim() || '-'
 }
-
-const getDiscountTotal = (entries = []) => entries
-  .filter(isDiscountEntry)
-  .reduce((sum, entry) => sum + Math.abs(Number(entry.amount) || 0), 0)
-
-const getPaidNetWithoutDiscounts = (entries = []) => entries
-  .reduce((sum, entry) => {
-    const amount = Number(entry.amount) || 0
-    if (isDiscountEntry(entry)) return sum
-    if (entry.payment_type === 'refund') return sum - amount
-    return sum + amount
-  }, 0)
 
 const formatCurrency = (amount) => {
   if (!amount && amount !== 0) return '0 so\'m'
@@ -1143,7 +1185,8 @@ const savePayment = async () => {
     payment_type: form.value.payment_type,
     method: form.value.method || null,
     note: form.value.note || null,
-    paid_at: form.value.paid_at ? new Date(form.value.paid_at).toISOString() : null
+    paid_at: form.value.paid_at ? new Date(form.value.paid_at).toISOString() : null,
+    cashback_used: form.value.payment_type === 'payment' ? cashbackUsed.value : 0,
   }
 
   try {
@@ -1160,6 +1203,9 @@ const savePayment = async () => {
     } else {
       const created = await createPayment(payload)
       toast.success(t('payments.toastCreated'))
+      if (created?.cashback && created.cashback.ok === false) {
+        toast.warning(t('payments.cashbackWarning'))
+      }
       await logActivity({
         action: 'payment.create',
         entity: 'payment',
@@ -1179,25 +1225,7 @@ const savePayment = async () => {
 
 const syncVisitStatusIfFullyPaid = async (visitId) => {
   try {
-    const visit = await getVisitById(visitId)
-    if (!visit) return
-    const price = Number(visit.price) || 0
-    const entries = await getPaymentsByVisitId(visitId)
-    const discountTotal = getDiscountTotal(entries)
-    const paidNet = getPaidNetWithoutDiscounts(entries)
-    const effectiveDue = Math.max(0, price - discountTotal)
-    const debtAmount = Math.max(0, effectiveDue - paidNet)
-
-    const payload = {
-      paid_amount: paidNet > 0 ? paidNet : null,
-      debt_amount: debtAmount > 0 ? debtAmount : null
-    }
-
-    if (visit.status === 'completed_debt' || visit.status === 'completed_paid') {
-      payload.status = debtAmount > 0 ? 'completed_debt' : 'completed_paid'
-    }
-
-    await updateVisit(visitId, payload)
+    await syncVisitAfterPayment(visitId)
   } catch (e) {
     console.warn('syncVisitStatusIfFullyPaid:', e)
   }

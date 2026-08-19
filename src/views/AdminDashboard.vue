@@ -209,6 +209,7 @@ import { findLowStockItems, buildConsumptionReport } from '@/lib/inventoryReport
 import { DEFAULT_CALENDAR_START, DEFAULT_CALENDAR_END, timeStringToMinutes } from '@/lib/clinicCalendarHours'
 import { getVisitStatusLabel, getVisitStatusColors, getCompletedStatuses } from '@/constants/visitStatus'
 import { getTodayISO } from '@/lib/date'
+import { cashIncome } from '@/lib/paymentTotals'
 import {
   CalendarDaysIcon,
   CurrencyDollarIcon,
@@ -485,12 +486,7 @@ const formatCurrency = (amount) => {
   }).format(amount || 0)
 }
 
-const getNetIncomeFromPayments = (payments) => {
-  return payments.reduce((sum, entry) => {
-    const amount = Number(entry.amount) || 0
-    return sum + (entry.payment_type === 'refund' ? -amount : amount)
-  }, 0)
-}
+const getNetIncomeFromPayments = (payments) => cashIncome(payments)
 
 const calculateGrowth = (current, previous) => {
   if (!previous || previous === 0) return current > 0 ? 100 : 0

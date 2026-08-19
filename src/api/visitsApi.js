@@ -404,10 +404,25 @@ export const completeVisitWithDebt = async (id, debtAmount = null) => {
   const visit = await getVisitById(id)
   if (!visit) throw new Error('Visit not found')
 
-  // Agar debtAmount berilmagan bo'lsa va price/paid_amount mavjud bo'lsa, avtomatik hisobla
   let finalDebtAmount = debtAmount
-  if (debtAmount === null && visit.price !== null) {
-    finalDebtAmount = calculateDebt(visit.price, visit.paid_amount)
+  if (debtAmount === null) {
+    try {
+      const { getPaymentsByVisitId } = await import('@/api/paymentsApi')
+      const { getVisitServicesByVisitId } = await import('@/api/visitServicesApi')
+      const { visitDueFrom } = await import('@/lib/paymentTotals')
+      const [entries, services] = await Promise.all([
+        getPaymentsByVisitId(id).catch(() => []),
+        getVisitServicesByVisitId(id).catch(() => []),
+      ])
+      const ledger = visitDueFrom({
+        services,
+        visitPrice: visit.price,
+        payments: entries,
+      })
+      finalDebtAmount = ledger.remaining > 0 ? ledger.remaining : null
+    } catch {
+      finalDebtAmount = calculateDebt(visit.price, visit.paid_amount)
+    }
   }
 
   const result = await updateVisit(id, {

@@ -250,14 +250,6 @@
               :placeholder="t('treatmentPlans.estimatedCostPlaceholder')"
             />
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.remindAt') }}</label>
-            <input
-              v-model="form.remind_at"
-              type="datetime-local"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
-          </div>
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.notes') }}</label>
             <textarea
@@ -299,23 +291,25 @@
               <th class="px-4 py-3">{{ t('treatmentPlans.priority') }}</th>
               <th class="px-4 py-3">{{ t('treatmentPlans.tooth') }}</th>
               <th class="px-4 py-3">{{ t('treatmentPlans.price') }}</th>
-              <th class="px-4 py-3">{{ t('treatmentPlans.remindAtShort') }}</th>
               <th class="px-4 py-3 text-right">{{ t('treatmentPlans.actions') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-if="loading">
-              <td class="px-4 py-4 text-slate-500" colspan="9">{{ t('treatmentPlans.loading') }}</td>
+              <td class="px-4 py-4 text-slate-500" colspan="8">{{ t('treatmentPlans.loading') }}</td>
             </tr>
             <tr v-else-if="filteredPlans.length === 0">
-              <td class="px-4 py-4 text-slate-500" colspan="9">{{ t('treatmentPlans.noPlans') }}</td>
+              <td class="px-4 py-4 text-slate-500" colspan="8">{{ t('treatmentPlans.noPlans') }}</td>
             </tr>
             <tr v-for="plan in filteredPlans" :key="plan.id" class="bg-white">
               <td class="px-4 py-3 text-slate-700">
                 <div class="font-medium text-slate-900">{{ plan.title }}</div>
                 <div class="text-xs text-slate-400">{{ plan.notes || '-' }}</div>
               </td>
-              <td class="px-4 py-3 text-slate-700">{{ plan.patientName || '-' }}</td>
+              <td class="px-4 py-3 text-slate-700">
+                <div>{{ plan.patientName || '-' }}</div>
+                <div v-if="plan.patientPhone" class="text-xs text-slate-400">{{ plan.patientPhone }}</div>
+              </td>
               <td class="px-4 py-3 text-slate-700">{{ formatDate(plan.planned_date) }}</td>
               <td class="px-4 py-3">
                 <span :class="statusClass(plan.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
@@ -325,17 +319,6 @@
               <td class="px-4 py-3 text-slate-700">{{ priorityLabel(plan.priority) }}</td>
               <td class="px-4 py-3 text-slate-700">{{ plan.tooth_id ? `#${plan.tooth_id}` : '-' }}</td>
               <td class="px-4 py-3 text-slate-700">{{ formatCurrency(plan.estimated_cost) }}</td>
-              <td class="px-4 py-3 text-slate-700">
-                <span v-if="plan.remind_at">{{ formatDateTime(plan.remind_at) }}</span>
-                <span v-else class="text-slate-400">-</span>
-                <span
-                  v-if="plan.remind_status"
-                  class="ml-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-                  :class="remindStatusClass(plan.remind_status)"
-                >
-                  {{ remindStatusLabel(plan.remind_status) }}
-                </span>
-              </td>
               <td class="px-4 py-3 text-right">
                 <div v-if="canEditPlans" class="flex items-center justify-end gap-2">
                   <select
@@ -357,10 +340,11 @@
                   </button>
                   <button
                     type="button"
-                    class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    :disabled="sendingReminderId === plan.id"
                     @click="sendReminder(plan)"
                   >
-                    {{ t('treatmentPlans.sendReminder') }}
+                    {{ sendingReminderId === plan.id ? t('treatmentPlans.sendingReminder') : t('treatmentPlans.sendReminder') }}
                   </button>
                 </div>
               </td>
@@ -400,6 +384,7 @@
                     </span>
                   </div>
                   <p class="mt-1 truncate text-sm text-slate-600">{{ plan.patientName || '-' }}</p>
+                  <p v-if="plan.patientPhone" class="truncate text-xs text-slate-400">{{ plan.patientPhone }}</p>
                   <div class="mt-2 flex flex-wrap gap-1.5 text-[11px] font-medium text-slate-500">
                     <span v-if="plan.tooth_id" class="rounded-full bg-slate-100 px-2 py-0.5">#{{ plan.tooth_id }}</span>
                     <span class="rounded-full bg-slate-100 px-2 py-0.5">{{ priorityLabel(plan.priority) }}</span>
@@ -431,10 +416,11 @@
                   </button>
                   <button
                     type="button"
-                    class="rounded-xl bg-slate-100 px-3 py-2.5 text-xs font-semibold text-slate-700"
+                    class="rounded-xl bg-slate-100 px-3 py-2.5 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                    :disabled="sendingReminderId === plan.id"
                     @click="sendReminder(plan)"
                   >
-                    {{ t('treatmentPlans.remind') }}
+                    {{ sendingReminderId === plan.id ? t('treatmentPlans.sendingReminder') : t('treatmentPlans.remind') }}
                   </button>
                 </div>
               </div>
@@ -468,6 +454,7 @@ import { usePermission } from '@/composables/usePermission'
 import { isSolo } from '@/lib/roles'
 import { getPlansByDoctorAndDateRange, getPlansByDateRange, createPlan, updatePlan, updatePlanStatus } from '@/api/treatmentPlansApi'
 import { createVisit } from '@/api/visitsApi'
+import { sendOrQueueTreatmentPlanReminder } from '@/services/treatmentPlanReminderService'
 
 const authStore = useAuthStore()
 const patientsStore = usePatientsStore()
@@ -487,6 +474,7 @@ const selectedPatient = ref('')
 const startDate = ref('')
 const endDate = ref('')
 const showMobileFilters = ref(false)
+const sendingReminderId = ref(null)
 
 const extraFilterCount = computed(() => Number(Boolean(selectedPatient.value)))
 
@@ -507,7 +495,6 @@ const form = ref({
   tooth_id: null,
   estimated_cost: null,
   notes: '',
-  remind_at: ''
 })
 
 const doctorId = computed(() => authStore.user?.id || null)
@@ -535,7 +522,6 @@ const resetForm = () => {
     tooth_id: null,
     estimated_cost: null,
     notes: '',
-    remind_at: ''
   }
   formError.value = ''
   showForm.value = false
@@ -554,7 +540,8 @@ const loadPlans = async () => {
     const patientMap = new Map(patientsStore.items.map(patient => [Number(patient.id), patient]))
     plans.value = items.map(plan => ({
       ...plan,
-      patientName: patientMap.get(Number(plan.patient_id))?.full_name || `#${plan.patient_id}`
+      patientName: patientMap.get(Number(plan.patient_id))?.full_name || `#${plan.patient_id}`,
+      patientPhone: patientMap.get(Number(plan.patient_id))?.phone || '',
     }))
   } catch (error) {
     console.error('Failed to load treatment plans:', error)
@@ -583,14 +570,14 @@ const savePlan = async () => {
       tooth_id: form.value.tooth_id,
       estimated_cost: form.value.estimated_cost,
       notes: form.value.notes,
-      remind_at: form.value.remind_at
-        ? new Date(form.value.remind_at).toISOString()
-        : null,
-      remind_status: form.value.remind_at ? 'pending' : null,
     }
     const created = await createPlan(payload)
     const patient = patientsStore.items.find(item => Number(item.id) === Number(created.patient_id))
-    plans.value.unshift({ ...created, patientName: patient?.full_name || `#${created.patient_id}` })
+    plans.value.unshift({
+      ...created,
+      patientName: patient?.full_name || `#${created.patient_id}`,
+      patientPhone: patient?.phone || '',
+    })
     resetForm()
     toast.success(t('treatmentPlans.toastSaved'))
   } catch (error) {
@@ -651,39 +638,40 @@ const convertToVisit = async (plan) => {
 }
 
 const sendReminder = async (plan) => {
-  if (!canEditPlans.value) return
+  if (!canEditPlans.value || sendingReminderId.value) return
+  sendingReminderId.value = plan.id
   try {
-    const remindAt = plan.remind_at && new Date(plan.remind_at) > new Date()
-      ? plan.remind_at
-      : new Date().toISOString()
-    const updated = await updatePlan(plan.id, {
-      remind_at: remindAt,
-      remind_status: 'pending',
+    const result = await sendOrQueueTreatmentPlanReminder(plan, {
+      phone: plan.patientPhone,
     })
-    const idx = plans.value.findIndex(item => item.id === plan.id)
-    if (idx !== -1) {
-      plans.value[idx] = { ...plans.value[idx], ...updated }
+    if (!result.ok) {
+      if (result.error === 'PHONE_REQUIRED') {
+        toast.error(t('treatmentPlans.errorReminderPhone'))
+      } else if (result.error === 'SMS_TEMPLATE_PENDING') {
+        toast.error(result.message || t('treatmentPlans.errorReminderTemplate'))
+      } else {
+        toast.error(result.message || t('treatmentPlans.errorReminder'))
+      }
+      return
     }
-    toast.success('Eslatma navbatga qo\'yildi — Telegram orqali yuboriladi')
+    if (result.plan) {
+      const idx = plans.value.findIndex(item => item.id === plan.id)
+      if (idx !== -1) {
+        plans.value[idx] = {
+          ...plans.value[idx],
+          ...result.plan,
+          patientName: plan.patientName,
+          patientPhone: plan.patientPhone,
+        }
+      }
+    }
+    toast.success(t('treatmentPlans.toastReminderSmsSent', { phone: result.phone || plan.patientPhone }))
   } catch (error) {
-    console.error('Failed to set reminder:', error)
+    console.error('Failed to send reminder:', error)
     toast.error(t('treatmentPlans.errorReminder'))
+  } finally {
+    sendingReminderId.value = null
   }
-}
-
-const remindStatusLabel = (status) => {
-  if (status === 'sent') return 'Yuborildi'
-  if (status === 'failed') return 'Xato'
-  if (status === 'pending') return 'Kutilmoqda'
-  if (status === 'cancelled') return 'Bekor'
-  return status
-}
-
-const remindStatusClass = (status) => {
-  if (status === 'sent') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'failed') return 'bg-rose-100 text-rose-700'
-  if (status === 'pending') return 'bg-amber-100 text-amber-700'
-  return 'bg-slate-100 text-slate-600'
 }
 
 const statusLabel = (status) => {
@@ -735,13 +723,6 @@ const formatDate = (dateStr) => {
   const date = new Date(dateStr)
   if (Number.isNaN(date.getTime())) return dateStr
   return date.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-const formatDateTime = (dateStr) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  if (Number.isNaN(date.getTime())) return dateStr
-  return date.toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 const formatCurrency = (amount) => {

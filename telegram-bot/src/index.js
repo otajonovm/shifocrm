@@ -14,6 +14,7 @@ const TelegramBot = require('node-telegram-bot-api')
 const express = require('express')
 const cors = require('cors')
 const patientCompletionApi = require('./api/patientCompletionApi')
+const treatmentPlanReminderApi = require('./api/treatmentPlanReminderApi')
 const { getTelegramChatId } = require('./repository/telegramChatRepo')
 
 // Handlers
@@ -166,6 +167,7 @@ app.post('/api/send', checkApiKey, async (req, res) => {
 })
 
 app.use('/api/patients', checkApiKey, patientCompletionApi)
+app.use('/api/treatment-plans', checkApiKey, treatmentPlanReminderApi)
 
 // Start server
 app.listen(PORT, () => {

@@ -2,6 +2,8 @@
  * Shifokor KPI: distinct visit, net collected (payment − refund), discount alohida.
  */
 
+import { earnBaseFromPayment, isDiscountEntry, isTrueRefund } from '@/lib/paymentTotals'
+
 export function buildDoctorRevenueRows({ payments = [], doctors = [] } = {}) {
   const map = new Map()
 
@@ -29,14 +31,14 @@ export function buildDoctorRevenueRows({ payments = [], doctors = [] } = {}) {
   }
 
   for (const p of payments) {
-    if (p.payment_type === 'discount') continue
-    if (p.payment_type !== 'payment' && p.payment_type !== 'refund') continue
+    if (isDiscountEntry(p)) continue
+    if (p.payment_type !== 'payment' && !isTrueRefund(p)) continue
     const row = ensureRow(p.doctor_id)
     const amount = Number(p.amount) || 0
-    if (p.payment_type === 'refund') {
+    if (isTrueRefund(p)) {
       row.gross -= Math.abs(amount)
     } else {
-      row.gross += amount
+      row.gross += earnBaseFromPayment(p)
       if (p.visit_id != null) {
         row.visitIds.add(Number(p.visit_id))
         const svc = String(p.service_name || p.note || '').toLowerCase()

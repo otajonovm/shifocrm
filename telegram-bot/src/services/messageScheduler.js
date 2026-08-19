@@ -9,6 +9,11 @@ const {
   buildTreatmentPlanReminderMessage,
 } = require('../repository/treatmentPlansRepo')
 const { getTelegramChatId } = require('../repository/telegramChatRepo')
+const { getPatientById } = require('../repository/patientsRepo')
+const {
+  sendTreatmentPlanReminderSms,
+  isSmsConfigured,
+} = require('./smsSender')
 
 let schedulerInterval = null
 let schedulerRunning = false
@@ -108,19 +113,51 @@ async function processTreatmentPlanReminders() {
 
   for (const plan of duePlans) {
     try {
+      const patient = await getPatientById(plan.patient_id).catch(() => null)
+      const phone = patient?.phone || null
       const chatId = await getTelegramChatId(plan.patient_id)
+      const telegramMessage = buildTreatmentPlanReminderMessage(plan)
 
-      if (!chatId) {
+      let smsOk = false
+      let telegramOk = false
+      let lastError = null
+
+      if (isSmsConfigured() && phone) {
+        const smsResult = await sendTreatmentPlanReminderSms({
+          phone,
+          plan: {
+            ...plan,
+            patientName: patient?.full_name,
+          },
+        })
+        smsOk = Boolean(smsResult?.success)
+        if (!smsOk) {
+          lastError = smsResult?.error || 'SMS_SEND_FAILED'
+          console.error(`❌ Treatment plan SMS xato: plan_id=${plan.id}`, lastError)
+        }
+      }
+
+      if (chatId) {
+        try {
+          await botInstance.sendMessage(chatId, telegramMessage)
+          telegramOk = true
+        } catch (sendError) {
+          lastError = sendError?.message || 'TELEGRAM_SEND_FAILED'
+        }
+      }
+
+      if (!smsOk && !telegramOk) {
         await updateTreatmentPlanReminderStatus({
           id: plan.id,
           status: 'failed',
         })
         failed += 1
+        console.warn(
+          `⚠️ Davolash rejasi eslatmasi yuborilmadi: plan_id=${plan.id}`,
+          lastError || (!phone ? 'PHONE_AND_CHAT_MISSING' : 'SEND_FAILED'),
+        )
         continue
       }
-
-      const message = buildTreatmentPlanReminderMessage(plan)
-      await botInstance.sendMessage(chatId, message)
 
       await updateTreatmentPlanReminderStatus({
         id: plan.id,
@@ -130,14 +167,15 @@ async function processTreatmentPlanReminders() {
 
       await insertNotificationEvent({
         patient_id: plan.patient_id,
-        clinic_id: plan.clinic_id || null,
+        clinic_id: plan.clinic_id || patient?.clinic_id || null,
         event_type: 'treatment_plan',
         source_table: 'treatment_plans',
         source_id: String(plan.id),
       })
 
       sent += 1
-      console.log(`✅ Davolash rejasi eslatmasi yuborildi: plan_id=${plan.id}, patient_id=${plan.patient_id}`)
+      const channels = [smsOk ? 'sms' : null, telegramOk ? 'telegram' : null].filter(Boolean).join('+')
+      console.log(`✅ Davolash rejasi eslatmasi yuborildi (${channels}): plan_id=${plan.id}, patient_id=${plan.patient_id}`)
     } catch (error) {
       const reason = error?.message ? String(error.message).slice(0, 300) : 'SEND_FAILED'
       await updateTreatmentPlanReminderStatus({

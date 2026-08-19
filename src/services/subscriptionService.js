@@ -20,7 +20,7 @@ export async function listClinicFeatures(clinicId) {
 }
 
 /**
- * Yangi klinika uchun 4 ta premium qator (default o'chiq).
+ * Yangi klinika uchun premium qatorlar (default o'chiq).
  * @param {number|string} clinicId
  */
 export async function seedDefaultFeatures(clinicId) {

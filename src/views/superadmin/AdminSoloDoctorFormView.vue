@@ -84,6 +84,43 @@
           />
         </div>
 
+        <div class="pt-4 border-t border-gray-200 space-y-4">
+          <h3 class="text-sm font-semibold text-gray-900">{{ t('subscription.adminModulesTitle') }}</h3>
+          <p class="text-xs text-gray-500">{{ t('subscription.adminModulesHint') }}</p>
+          <div
+            v-for="mod in featureModules"
+            :key="mod.feature_key"
+            class="rounded-xl border border-gray-100 bg-gray-50/80 p-4 space-y-3"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-sm font-medium text-gray-900">
+                  {{ t(`subscription.features.${mod.feature_key}`) }}
+                </p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input
+                  v-model="mod.is_active"
+                  type="checkbox"
+                  class="sr-only peer"
+                />
+                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-primary-600 peer-focus:ring-2 peer-focus:ring-primary-300 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+              </label>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1">
+                {{ t('subscription.expiresAtLabel') }}
+              </label>
+              <input
+                v-model="mod.expires_at_local"
+                type="datetime-local"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              />
+              <p class="mt-1 text-xs text-gray-400">{{ t('subscription.expiresAtHint') }}</p>
+            </div>
+          </div>
+        </div>
+
         <div class="flex gap-3 pt-2">
           <button
             type="submit"
@@ -160,6 +197,8 @@ import { useI18n } from 'vue-i18n'
 import { useToast } from '@/composables/useToast'
 import SuperAdminLayout from '@/layouts/SuperAdminLayout.vue'
 import { createSoloDoctor } from '@/services/adminService'
+import { saveClinicFeatures } from '@/services/subscriptionService'
+import { PREMIUM_FEATURE_KEYS } from '@/lib/subscriptionFeatures'
 import { ArrowLeftIcon, CheckCircleIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -176,9 +215,30 @@ const form = ref({
   phone: ''
 })
 
+const featureModules = ref(
+  PREMIUM_FEATURE_KEYS.map((feature_key) => ({
+    feature_key,
+    is_active: false,
+    expires_at_local: '',
+  }))
+)
+
 const saving = ref(false)
 const showSuccessModal = ref(false)
 const createdCredentials = ref({ login: '', password: '' })
+
+const fromLocalDatetime = (local) => {
+  if (!local) return null
+  const d = new Date(local)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+const featurePayload = () =>
+  featureModules.value.map((mod) => ({
+    feature_key: mod.feature_key,
+    is_active: Boolean(mod.is_active),
+    expires_at: fromLocalDatetime(mod.expires_at_local),
+  }))
 
 function copy(text) {
   navigator.clipboard.writeText(text).then(() => toast.success(t('superAdmin.copied'))).catch(() => {})
@@ -202,6 +262,10 @@ async function handleSubmit() {
       specialization: form.value.specialization || undefined,
       phone: form.value.phone || undefined
     })
+    const clinicId = Number(result?.clinic?.id ?? result?.clinic)
+    if (Number.isFinite(clinicId)) {
+      await saveClinicFeatures(clinicId, featurePayload())
+    }
     createdCredentials.value = { login: result.login, password: result.password }
     showSuccessModal.value = true
     toast.success(t('soloDoctor.created'))

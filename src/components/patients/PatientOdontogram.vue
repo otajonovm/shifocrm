@@ -302,6 +302,7 @@ import * as clinicalService from '@/services/odontogramService'
 import { normalizeToothStatus, PERMANENT_TEETH, toStorageToothState } from '@/domain/odontogram'
 import { useSubscriptionStore } from '@/stores/subscription'
 import { FEATURE_KEYS } from '@/lib/subscriptionFeatures'
+import { visitDueFrom } from '@/lib/paymentTotals'
 import MobileBottomSheet from '@/components/shared/MobileBottomSheet.vue'
 import TeethGrid from './TeethGrid.vue'
 import OdontogramToothPanel from './OdontogramToothPanel.vue'
@@ -912,47 +913,45 @@ const completeCurrentVisit = async (settlement = 'auto') => {
       }
     }
 
+    let remaining = Math.max(0, totalPrice)
     let netPaid = 0
-    let discountTotal = 0
     try {
       const existingPayments = await clinicalService.getVisitPayments(currentVisit.value.id)
-      for (const entry of existingPayments) {
-        const amount = Number(entry.amount) || 0
-        if (entry.payment_type === 'discount' || String(entry.note || '').includes('[DISCOUNT]')) {
-          discountTotal += Math.abs(amount)
-          continue
-        }
-        if (entry.payment_type === 'refund') {
-          netPaid -= amount
-          continue
-        }
-        netPaid += amount
-      }
+      const ledger = visitDueFrom({
+        services: visitServices.value,
+        visitPrice: totalPrice,
+        payments: existingPayments,
+      })
+      remaining = ledger.remaining
+      netPaid = ledger.paid
     } catch (err) {
       console.warn('Failed to load payments for completion:', err)
     }
 
-    const effectiveDue = Math.max(0, totalPrice - discountTotal)
-    const remaining = Math.max(0, effectiveDue - netPaid)
-    const markPaid = settlement === 'paid' || (settlement === 'auto' && remaining <= 0)
+    let markPaid = settlement === 'paid' || (settlement === 'auto' && remaining <= 0)
     if (markPaid && remaining > 0) {
       try {
-        await clinicalService.recordVisitPayment({
+        const recorded = await clinicalService.recordVisitPayment({
           visitId: currentVisit.value.id,
           amount: remaining,
           type: 'payment',
+          method: 'cash',
           patientId: props.patient.id,
           doctorId: props.doctorId || currentVisit.value.doctor_id,
           note: 'Yakunlash: to\'liq to\'landi',
         })
-        netPaid = effectiveDue
+        netPaid = remaining + netPaid
+        if (recorded?.cashback && recorded.cashback.ok === false) {
+          toast.warning(t('odontogram.cashbackWarning'))
+        }
       } catch (paymentError) {
         console.warn('Yakunlash to\'lovini yozish:', paymentError)
-        netPaid = effectiveDue
+        toast.error(t('odontogram.errorRecordPayment'))
+        markPaid = false
       }
     }
     const nextStatus = markPaid ? 'completed_paid' : 'completed_debt'
-    const paidAmount = markPaid ? effectiveDue : netPaid
+    const paidAmount = netPaid
     const debtAmount = markPaid ? null : remaining
 
     await clinicalService.updateVisit(currentVisit.value.id, {
@@ -1145,7 +1144,7 @@ const applyMenuSelection = async (option) => {
     if (option.type === 'status' || option.status) {
       const status = option.status || option.value
       if ((status === 'healthy' || status === 'missing') && currentVisit.value?.id) {
-        visitServices.value = await clinicalService.clearToothService(currentVisit.value.id, toothId)
+        visitServices.value = await clinicalService.clearToothService(currentVisit.value.id, toothId, authStore)
       }
       setToothStatus(status)
       return
@@ -1176,9 +1175,6 @@ const applyMenuSelection = async (option) => {
         service: option.labelKey ? t(option.labelKey) : option.label,
       }))
       if (result.consumed.length) await loadConsumptions()
-      if (result.materialError) {
-        toast.error(`${t('odontogram.materialSyncFailed')}: ${result.materialError.message}`)
-      }
     }
   } catch (error) {
     console.error('Failed to apply tooth selection:', error)

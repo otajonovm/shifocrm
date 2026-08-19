@@ -8,52 +8,11 @@ import { getPaymentsByVisitId } from '@/api/paymentsApi'
 import { getVisitServicesByVisitId, getVisitServicesByPatientId } from '@/api/visitServicesApi'
 import { updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
 import { updatePatient } from '@/api/patientsApi'
-
-const DISCOUNT_NOTE_PREFIX = '[DISCOUNT]'
-
-const isDiscountPayment = (entry) => {
-  if (!entry) return false
-  if (entry.payment_type === 'discount') return true
-  if (entry.payment_type === 'refund' && entry.note && String(entry.note).includes(DISCOUNT_NOTE_PREFIX)) return true
-  if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0) return true
-  return false
-}
-
-const getDiscountTotal = (payments = []) => payments
-  .filter(isDiscountPayment)
-  .reduce((sum, entry) => sum + Math.abs(Number(entry.amount) || 0), 0)
-
-const getPaidNetWithoutDiscounts = (payments = []) => payments
-  .reduce((sum, entry) => {
-    const amount = Number(entry.amount) || 0
-    if (isDiscountPayment(entry)) return sum
-    if (entry.payment_type === 'refund') return sum - amount
-    return sum + amount
-  }, 0)
-
-const parsePrice = (v) => {
-  if (v == null) return 0
-  const n = typeof v === 'string' ? parseFloat(String(v).replace(/\s|,/g, '')) : Number(v)
-  return Number.isFinite(n) ? n : 0
-}
-
-const getVisitServicesTotal = (visitId, services) => {
-  const byVisit = services.filter(s => Number(s.visit_id) === Number(visitId))
-  if (!byVisit.length) return 0
-
-  const seen = new Set()
-  let sum = 0
-  const sorted = [...byVisit].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
-  for (const entry of sorted) {
-    const toothId = entry.tooth_id
-    if (toothId == null) continue
-    const key = `t${toothId}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    sum += parsePrice(entry.price)
-  }
-  return sum
-}
+import {
+  isDiscountEntry,
+  parsePrice,
+  visitDueFrom,
+} from '@/lib/paymentTotals'
 
 /**
  * Bemorning barcha tashriflarini yakunlash
@@ -75,11 +34,6 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
     )
 
     if (visitsToComplete.length === 0) {
-      const visitIdsWithServices = [...new Set(services.map(s => Number(s.visit_id)).filter(Boolean))]
-      visitsToComplete = visits.filter(v => visitIdsWithServices.includes(Number(v.id)))
-    }
-
-    if (visitsToComplete.length === 0) {
       return { success: true, completed: 0, message: 'Yakunlash kerak bo\'lgan tashriflar topilmadi' }
     }
 
@@ -98,23 +52,22 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
       summaryDoctorName = summaryDoctorName || visit.doctor_name || ''
       summaryVisitDate = summaryVisitDate || visit.date || ''
 
-      let servicesTotal = getVisitServicesTotal(visitId, services)
-      if (!servicesTotal) {
+      let visitServices = services.filter(s => Number(s.visit_id) === Number(visitId))
+      if (!visitServices.length) {
         try {
           const freshServices = await getVisitServicesByVisitId(visitId)
           services.push(...freshServices)
-          servicesTotal = getVisitServicesTotal(visitId, services)
+          visitServices = freshServices
         } catch (error) {
           console.warn('Failed to refresh visit services for visit', visitId, error)
         }
       }
 
-      const byVisitServices = services
-        .filter(s => Number(s.visit_id) === Number(visitId))
-        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
-
       const seenTeeth = new Set()
-      for (const entry of byVisitServices) {
+      const sortedServices = [...visitServices].sort(
+        (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0),
+      )
+      for (const entry of sortedServices) {
         const toothId = entry.tooth_id
         if (toothId == null) continue
         const key = `t${toothId}`
@@ -128,42 +81,36 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
         })
       }
 
-      // Bemor bill = faqat xizmatlar; material COGS hisobga kirmaydi.
-      const targetPrice = servicesTotal > 0 ? servicesTotal : (Number(visit.price) || 0)
-      totalBeforeDiscount += targetPrice
-
-      let netPaid = 0
-      let visitDiscountTotal = 0
+      let existingPayments = []
       try {
-        const existingPayments = await getPaymentsByVisitId(visitId)
-        const visitDiscounts = existingPayments.filter(isDiscountPayment)
-        visitDiscountTotal = getDiscountTotal(existingPayments)
-        totalDiscount += visitDiscountTotal
-
-        for (const discountEntry of visitDiscounts) {
-          allDiscountsDetailed.push({
-            visitId,
-            amount: Math.abs(Number(discountEntry.amount) || 0),
-            note: discountEntry.note ? String(discountEntry.note).replace(/^\s*\[DISCOUNT\]\s*/i, '').trim() : ''
-          })
-        }
-
-        netPaid = getPaidNetWithoutDiscounts(existingPayments)
+        existingPayments = await getPaymentsByVisitId(visitId)
       } catch (error) {
         console.warn('Failed to load payments for visit', visitId, error)
       }
 
-      const effectiveDue = Math.max(0, targetPrice - visitDiscountTotal)
-      // Kassir to‘lovini alohida use-case; bu yerda avtomatik payment yaratilmaydi.
-      totalPaid += netPaid
-      const remainingForVisit = Math.max(0, effectiveDue - netPaid)
-      totalRemaining += remainingForVisit
+      const ledger = visitDueFrom({
+        services: visitServices,
+        visitPrice: visit.price,
+        payments: existingPayments,
+      })
+      totalBeforeDiscount += ledger.price
+      totalDiscount += ledger.discount
+      totalPaid += ledger.paid
+      totalRemaining += ledger.remaining
+
+      for (const discountEntry of existingPayments.filter(isDiscountEntry)) {
+        allDiscountsDetailed.push({
+          visitId,
+          amount: Math.abs(Number(discountEntry.amount) || 0),
+          note: discountEntry.note ? String(discountEntry.note).replace(/^\s*\[DISCOUNT\]\s*/i, '').trim() : ''
+        })
+      }
 
       await updateVisit(visitId, {
-        status: remainingForVisit > 0 ? 'completed_debt' : 'completed_paid',
-        price: targetPrice || null,
-        paid_amount: netPaid || null,
-        debt_amount: remainingForVisit > 0 ? remainingForVisit : null
+        status: ledger.remaining > 0 ? 'completed_debt' : 'completed_paid',
+        price: ledger.price || null,
+        paid_amount: ledger.paid || 0,
+        debt_amount: ledger.remaining > 0 ? ledger.remaining : null
       })
 
       completedCount++

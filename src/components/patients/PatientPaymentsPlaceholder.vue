@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- Summary cards + Actions: mobil — kartalar 2x2, tugmalar pastda; desktop — bir qatorda -->
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div class="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-3 flex-1 min-w-0">
+      <div class="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 flex-1 min-w-0">
         <div class="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
           <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('patientPayments.totalPayments') }}</p>
           <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold text-primary-600" :title="formatCurrency(totalPayments)">{{ formatCurrency(totalPayments) }}</p>
@@ -17,6 +17,27 @@
           <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('patientPayments.totalServices') }}</p>
           <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold text-gray-900" :title="formatCurrency(totalServices)">{{ formatCurrency(totalServices) }}</p>
         </div>
+        <div
+          v-if="summaryCashbackConfigured"
+          class="rounded-xl border border-amber-100 bg-amber-50/70 p-3 sm:p-4 shadow-sm"
+        >
+          <p class="text-xs font-medium text-amber-700 uppercase tracking-wide">{{ t('patientPayments.cashbackBalance') }}</p>
+          <p v-if="summaryCashbackLoading" class="mt-1 sm:mt-2 text-sm text-gray-400">{{ t('patientPayments.cashbackLoading') }}</p>
+          <p v-else-if="summaryCashbackError" class="mt-1 sm:mt-2 text-sm text-gray-400">
+            {{ t(summaryCashbackErrorCode === 'UNAUTHORIZED' ? 'patientPayments.cashbackUnauthorized' : 'patientPayments.cashbackUnavailable') }}
+          </p>
+          <p
+            v-else
+            class="mt-1 sm:mt-2 text-base sm:text-lg font-bold"
+            :class="summaryCashbackBalance > 0 ? 'text-amber-700' : 'text-gray-500'"
+            :title="formatCurrency(summaryCashbackBalance)"
+          >
+            {{ formatCurrency(summaryCashbackBalance) }}
+            <span v-if="summaryCashbackBalance <= 0" class="block text-xs font-medium text-gray-400 mt-0.5">
+              {{ t('patientPayments.cashbackNone') }}
+            </span>
+          </p>
+        </div>
       </div>
 
       <!-- Harakatlar: asosiy 2 tugma + «Boshqa» menyusi -->
@@ -25,10 +46,10 @@
           <button
             type="button"
             class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-cyan-600 px-4 py-3 sm:py-2.5 text-sm font-semibold text-white shadow-md hover:shadow-lg active:scale-[0.98] transition-all touch-manipulation min-h-[44px]"
-            @click="openCreateModal"
+            @click="openDiscountModal"
           >
-            <BanknotesIcon class="w-5 h-5 shrink-0" />
-            {{ t('patientPayments.addPayment') }}
+            <TagIcon class="w-5 h-5 shrink-0" />
+            {{ t('patientPayments.cashbackWithdraw') }}
           </button>
           <button
             v-if="hasIncompleteVisits"
@@ -67,15 +88,6 @@
               v-if="moreMenuOpen"
               class="absolute right-0 left-0 sm:left-auto sm:min-w-[220px] top-full mt-1.5 z-30 rounded-xl border border-gray-200 bg-white py-1.5 shadow-lg ring-1 ring-black/5"
             >
-              <button
-                type="button"
-                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-violet-50 hover:text-violet-800 transition-colors text-left"
-                @click="runMoreAction(openDiscountModal)"
-              >
-                <TagIcon class="w-5 h-5 text-violet-500 shrink-0" />
-                {{ t('patientPayments.addDiscount') }}
-              </button>
-              <div class="my-1 border-t border-gray-100" />
               <p class="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                 {{ t('patientPayments.printSection') }}
               </p>
@@ -189,6 +201,7 @@
       >
         <div class="flex justify-between"><span class="text-slate-600">Jami xizmatlar</span><span class="font-semibold">{{ formatCurrency(totalServices) }}</span></div>
         <div v-if="totalDiscountAmount > 0" class="flex justify-between text-violet-700"><span>Chegirma</span><span class="font-semibold">-{{ formatCurrency(totalDiscountAmount) }}</span></div>
+        <div v-if="totalCashbackUsed > 0" class="flex justify-between text-amber-800"><span>{{ t('patientPayments.cashback') }}</span><span class="font-semibold">-{{ formatCurrency(totalCashbackUsed) }}</span></div>
         <div class="flex justify-between"><span class="text-slate-600">To'langan</span><span class="font-semibold text-emerald-700">{{ formatCurrency(totalPaidNet) }}</span></div>
       </div>
     </div>
@@ -244,6 +257,11 @@
             <td class="px-4 py-2 text-violet-700">-{{ formatCurrency(totalDiscountAmount) }}</td>
             <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 2"></td>
           </tr>
+          <tr v-if="totalCashbackUsed > 0">
+            <td class="px-4 py-2 text-amber-800" :colspan="canManagePayments ? 3 : 3">{{ t('patientPayments.cashback') }}</td>
+            <td class="px-4 py-2 text-amber-800">-{{ formatCurrency(totalCashbackUsed) }}</td>
+            <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 2"></td>
+          </tr>
           <tr>
             <td class="px-4 py-2" :colspan="canManagePayments ? 3 : 3">To'langan</td>
             <td class="px-4 py-2 text-emerald-700">{{ formatCurrency(totalPaidNet) }}</td>
@@ -275,21 +293,65 @@
           <div class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 class="text-lg font-semibold text-gray-900">
-                {{ isDiscountMode ? t('patientPayments.addDiscount') : (isEditing ? t('patientPayments.editPayment') : t('patientPayments.addPayment')) }}
+                {{ isDiscountMode ? t('patientPayments.cashbackWithdraw') : t('patientPayments.editPayment') }}
               </h3>
               <button class="text-gray-400 hover:text-gray-600" @click="closeModal">×</button>
             </div>
             <div class="px-6 py-4 space-y-4">
-              <div class="grid gap-4 md:grid-cols-2">
-                <div v-if="!isDiscountMode">
+              <div v-if="isDiscountMode" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.visitId') }}</label>
+                  <select v-model="form.visit_id" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
+                    <option value="">{{ t('patientPayments.visitIdPlaceholder') }}</option>
+                    <option v-for="visit in visits" :key="visit.id" :value="String(visit.id)">
+                      #{{ visit.id }}{{ visit.visit_date ? ` · ${formatDate(visit.visit_date || visit.created_at)}` : '' }}
+                    </option>
+                  </select>
+                </div>
+                <div class="rounded-lg border border-amber-100 bg-amber-50/70 p-4 space-y-3">
+                  <p v-if="cashbackLoading" class="text-sm text-gray-500">{{ t('patientPayments.cashbackLoading') }}</p>
+                  <p v-else-if="cashbackError || !showCashback" class="text-sm text-gray-500">{{ t('patientPayments.cashbackUnavailable') }}</p>
+                  <template v-else>
+                    <div class="flex items-center space-x-2">
+                      <input
+                        id="patient-use-cashback"
+                        v-model="useCashback"
+                        type="checkbox"
+                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        :disabled="cashbackCapAmount <= 0 || cashbackBalance <= 0"
+                      />
+                      <label for="patient-use-cashback" class="text-sm font-medium text-gray-800">
+                        {{ t('patientPayments.cashbackWithdraw') }}
+                      </label>
+                    </div>
+                    <p class="text-xs text-gray-500">{{ t('patientPayments.cashbackWithdrawHint') }}</p>
+                    <div class="text-sm space-y-1.5">
+                      <div class="flex justify-between gap-3">
+                        <span class="text-gray-600">{{ t('patientPayments.cashbackLastPayment') }}</span>
+                        <span class="font-semibold text-gray-900">{{ formatCurrency(lastPaymentAmount) }}</span>
+                      </div>
+                      <div class="flex justify-between gap-3">
+                        <span class="text-gray-600">{{ t('patientPayments.cashback') }}</span>
+                        <span class="font-semibold text-amber-800">{{ formatCurrency(displayedCashback) }}</span>
+                      </div>
+                      <div class="flex justify-between gap-3 border-t border-amber-200/80 pt-1.5">
+                        <span class="text-gray-700 font-medium">{{ t('patientPayments.cashbackAfterLast') }}</span>
+                        <span class="font-bold text-emerald-700">{{ formatCurrency(lastPaymentRemaining) }}</span>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+              <div v-else class="grid gap-4 md:grid-cols-2">
+                <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.visitId') }}</label>
                   <input v-model="form.visit_id" type="number" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" :placeholder="t('patientPayments.visitIdPlaceholder')" />
                 </div>
-                <div v-if="!isDiscountMode">
+                <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.paidAt') }}</label>
                   <input v-model="form.paid_at" type="datetime-local" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
                 </div>
-                <div v-if="!isDiscountMode">
+                <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.type') }}</label>
                   <select v-model="form.payment_type" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
                     <option value="payment">{{ t('patientPayments.typePayment') }}</option>
@@ -298,7 +360,7 @@
                     <option value="discount">{{ t('patientPayments.typeDiscount') }}</option>
                   </select>
                 </div>
-                <div v-if="!isDiscountMode">
+                <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.method') }}</label>
                   <select v-model="form.method" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm">
                     <option value="cash">{{ t('patientPayments.methodCash') }}</option>
@@ -307,34 +369,22 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ isDiscountMode ? t('patientPayments.discountAmount') || 'Chegirma summasi' : t('patientPayments.amount') }}
-                  </label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.amount') }}</label>
                   <input
                     v-model="form.amount"
                     type="number"
                     :min="0"
                     class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                    :placeholder="isDiscountMode ? 'Ixtiyoriy (agar % kiritsangiz avtomatik hisoblanadi)' : t('patientPayments.amountPlaceholder')"
+                    :placeholder="t('patientPayments.amountPlaceholder')"
                   />
-                  <p v-if="isDiscountMode" class="mt-1 text-xs text-slate-500">
-                    % kiritilsa summa avtomatik hisoblanadi.
-                  </p>
                 </div>
-                <div v-if="isDiscountMode">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Chegirma (%)</label>
-                  <input v-model="form.discount_percent" type="number" min="0" max="100" step="0.01" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="Masalan: 10" />
-                  <p v-if="discountPreview.base > 0 && discountPreview.amount > 0" class="mt-1 text-xs font-medium text-violet-700">
-                    Avtomatik: {{ formatCurrency(discountPreview.amount) }} (bazaviy summa: {{ formatCurrency(discountPreview.base) }})
-                  </p>
-                </div>
-                <div v-if="!isDiscountMode">
+                <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.note') }}</label>
                   <input v-model="form.note" type="text" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" :placeholder="t('patientPayments.notePlaceholder')" />
                 </div>
               </div>
-              <p v-if="visitPreviewLoading" class="text-sm text-gray-500">{{ t('patientPayments.loadingVisit') }}</p>
-              <div v-if="visitPreview" class="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">
+              <p v-if="!isDiscountMode && visitPreviewLoading" class="text-sm text-gray-500">{{ t('patientPayments.loadingVisit') }}</p>
+              <div v-if="!isDiscountMode && visitPreview" class="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">
                 <p class="font-medium text-gray-700">{{ t('patientPayments.visitSummary') }}</p>
                 <div class="mt-1 flex flex-wrap gap-4">
                   <span>{{ t('patientPayments.visitPrice') }}: {{ formatCurrency(visitPreview.price || 0) }}</span>
@@ -346,7 +396,11 @@
               <button class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700" @click="closeModal">
                 {{ t('patientPayments.cancel') }}
               </button>
-              <button class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700" @click="savePayment">
+              <button
+                class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="savingPayment || (isDiscountMode && displayedCashback <= 0)"
+                @click="savePayment"
+              >
                 {{ t('patientPayments.save') }}
               </button>
             </div>
@@ -364,7 +418,6 @@ import { useI18n } from 'vue-i18n'
 import {
   TrashIcon,
   TagIcon,
-  BanknotesIcon,
   PrinterIcon,
   ChevronDownIcon,
   EllipsisHorizontalIcon,
@@ -375,9 +428,9 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { canManagePatientBilling, isSolo } from '@/lib/roles'
 import { useClinicStore } from '@/stores/clinic'
-import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId, getPaymentsByVisitId } from '@/api/paymentsApi'
+import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId } from '@/api/paymentsApi'
 import { getVisitServicesByPatientId, getVisitServicesByVisitId, deleteVisitServiceById } from '@/api/visitServicesApi'
-import { getVisitById, updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
+import { getVisitById, getVisitsByPatientId } from '@/api/visitsApi'
 import { listClinicInventoryItems } from '@/lib/inventoryBridge'
 import { updatePatient } from '@/api/patientsApi'
 import { completeAllPatientVisits } from '@/lib/completePatientVisits'
@@ -388,8 +441,26 @@ import {
   openReceiptPrint,
 } from '@/lib/patientPaymentPrint'
 import { useToast } from '@/composables/useToast'
+import { usePaymentCashback } from '@/composables/usePaymentCashback'
+import { useCashbackBalance } from '@/composables/useCashbackBalance'
 import { sendPatientCompletionSummary } from '@/api/telegramApi'
 import VisitExpensePanel from '@/components/patients/VisitExpensePanel.vue'
+import { syncVisitAfterPayment } from '@/services/paymentService'
+import { applyPaymentCashback } from '@/services/cashbackService'
+import {
+  DISCOUNT_NOTE_PREFIX,
+  DISCOUNT_PERCENT_PREFIX,
+  cashCollected,
+  cashbackUsedTotal,
+  discountTotal,
+  isDiscountEntry,
+  lastPaymentAfterCashback,
+  parseCashbackUsed,
+  parsePrice,
+  paymentDisplayAmount,
+  servicesTotalDeduped,
+  withCashbackUsedNote,
+} from '@/lib/paymentTotals'
 
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()
@@ -414,7 +485,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update-status'])
+const emit = defineEmits(['update-status', 'cashback-updated'])
 
 const payments = ref([])
 const loading = ref(false)
@@ -434,6 +505,7 @@ const visitPreviewLoading = ref(false)
 const lastCompletionSummary = ref(null)
 const moreMenuOpen = ref(false)
 const moreMenuRef = ref(null)
+const savingPayment = ref(false)
 
 const canPrintDocuments = computed(() => printServices.value.length > 0 || totalPaidNet.value > 0)
 
@@ -466,6 +538,80 @@ const form = ref({
   paid_at: ''
 })
 
+const cashbackEnabled = computed(() =>
+  showPaymentModal.value
+  && !isEditing.value
+  && isDiscountMode.value
+)
+
+/** Oxirgi haqiqiy to‘lov (chegirma/qaytarim emas), tanlangan tashrif bo‘yicha. */
+const lastRealPayment = computed(() => {
+  const visitId = Number(form.value.visit_id)
+  const scoped = Number.isFinite(visitId) && visitId > 0
+    ? payments.value.filter((entry) => Number(entry.visit_id) === visitId)
+    : payments.value
+  return scoped.find((entry) => entry.payment_type === 'payment' && !isDiscountEntry(entry)) || null
+})
+
+const lastPaymentAlreadyUsed = computed(() => parseCashbackUsed(lastRealPayment.value))
+
+const lastPaymentAmount = computed(() => {
+  const entry = lastRealPayment.value
+  if (entry) return Math.max(0, Number(entry.amount) || 0)
+  const visitId = Number(form.value.visit_id)
+  const fromServices = Number.isFinite(visitId) && visitId > 0
+    ? servicesTotalDeduped(
+        services.value.filter((item) => Number(item.visit_id) === visitId),
+      )
+    : 0
+  if (fromServices > 0) return fromServices
+  return Math.max(0, Number(visitPreview.value?.price) || 0)
+})
+
+const cashbackCapAmount = computed(() =>
+  Math.max(0, lastPaymentAmount.value - lastPaymentAlreadyUsed.value),
+)
+
+const {
+  balance: cashbackBalance,
+  balanceLoading: cashbackLoading,
+  balanceError: cashbackError,
+  useCashback,
+  cashbackUsed,
+  showCashback,
+  reset: resetCashbackForm,
+} = usePaymentCashback({
+  patientId: () => props.patientId,
+  paymentAmount: () => cashbackCapAmount.value,
+  enabled: cashbackEnabled,
+  autoFillMax: () => lastPaymentAlreadyUsed.value <= 0,
+})
+
+const displayedCashback = computed(() =>
+  lastPaymentAfterCashback({
+    amount: lastPaymentAmount.value,
+    alreadyUsed: lastPaymentAlreadyUsed.value,
+    additionalUsed: useCashback.value ? cashbackUsed.value : 0,
+  }).cashback,
+)
+
+const lastPaymentRemaining = computed(() =>
+  lastPaymentAfterCashback({
+    amount: lastPaymentAmount.value,
+    alreadyUsed: lastPaymentAlreadyUsed.value,
+    additionalUsed: useCashback.value ? cashbackUsed.value : 0,
+  }).remaining,
+)
+
+const {
+  balance: summaryCashbackBalance,
+  loading: summaryCashbackLoading,
+  error: summaryCashbackError,
+  errorCode: summaryCashbackErrorCode,
+  configured: summaryCashbackConfigured,
+  load: loadSummaryCashback,
+} = useCashbackBalance(() => props.patientId)
+
 const showVisitExpenses = computed(() => isSolo(authStore) || canManagePayments.value)
 const expenseVisitId = computed(() => {
   const fromForm = Number(form.value?.visit_id)
@@ -484,7 +630,10 @@ const expenseDoctorId = computed(() => {
 })
 
 const totalPayments = computed(() =>
-  payments.value.reduce((sum, entry) => sum + (entry.payment_type === 'payment' ? Number(entry.amount) || 0 : 0), 0)
+  payments.value.reduce((sum, entry) => {
+    if (entry.payment_type !== 'payment' || isDiscountEntry(entry)) return sum
+    return sum + Math.max(0, (Number(entry.amount) || 0) - parseCashbackUsed(entry))
+  }, 0)
 )
 
 const latestPaymentEntry = computed(() => payments.value[0] || null)
@@ -527,9 +676,9 @@ const paymentsForBilling = computed(() =>
   })
 )
 
-const totalDiscountAmount = computed(() => getDiscountTotal(paymentsForBilling.value))
-
-const totalPaidNet = computed(() => getPaidNetWithoutDiscounts(paymentsForBilling.value))
+const totalDiscountAmount = computed(() => discountTotal(paymentsForBilling.value))
+const totalCashbackUsed = computed(() => cashbackUsedTotal(paymentsForBilling.value))
+const totalPaidNet = computed(() => cashCollected(paymentsForBilling.value))
 
 const dedupeVisitToothServices = (items) => {
   const seen = new Set()
@@ -558,7 +707,7 @@ const printServices = computed(() => {
 })
 
 const remainingDebt = computed(() =>
-  Math.max(0, totalServices.value - totalDiscountAmount.value - totalPaidNet.value)
+  Math.max(0, totalServices.value - totalDiscountAmount.value - totalPaidNet.value - totalCashbackUsed.value)
 )
 
 const primaryDoctorName = computed(() => {
@@ -577,12 +726,6 @@ const printDocumentNumber = computed(() => {
   const pid = String(props.patientId || '').slice(-4).padStart(4, '0')
   return `CHK-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pid}`
 })
-
-const parsePrice = (v) => {
-  if (v == null) return 0
-  const n = typeof v === 'string' ? parseFloat(String(v).replace(/\s|,/g, '')) : Number(v)
-  return Number.isFinite(n) ? n : 0
-}
 
 const loadInventoryItems = async () => {
   try {
@@ -624,40 +767,13 @@ const formatCurrency = (amount) => {
   }).format(amount).replace('UZS', t('common.currencySuffix'))
 }
 
-const getFormattedAmount = (entry) => {
-  let amt = Number(entry.amount) || 0
-  if (isDiscountEntry(entry) || entry.payment_type === 'refund' || (entry.payment_type === 'adjustment' && amt < 0)) {
-    amt = -Math.abs(amt)
-  }
-  return formatCurrency(amt)
-}
+const getFormattedAmount = (entry) => formatCurrency(paymentDisplayAmount(entry))
 
 const getTypeLabel = (type) => {
   if (type === 'refund') return t('patientPayments.typeRefund')
   if (type === 'adjustment') return t('patientPayments.typeAdjustment')
   return t('patientPayments.typePayment')
 }
-
-const DISCOUNT_NOTE_PREFIX = '[DISCOUNT]'
-const DISCOUNT_PERCENT_PREFIX = '[DISCOUNT_PERCENT:'
-
-const isDiscountEntry = (entry) => {
-  if (entry.payment_type === 'refund' && entry.note && String(entry.note).includes(DISCOUNT_NOTE_PREFIX)) return true
-  if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0) return true // eski yozuvlar
-  return false
-}
-
-const getDiscountTotal = (entries = []) => entries
-  .filter(isDiscountEntry)
-  .reduce((sum, entry) => sum + Math.abs(Number(entry.amount) || 0), 0)
-
-const getPaidNetWithoutDiscounts = (entries = []) => entries
-  .reduce((sum, entry) => {
-    const amount = Number(entry.amount) || 0
-    if (isDiscountEntry(entry)) return sum
-    if (entry.payment_type === 'refund') return sum - amount
-    return sum + amount
-  }, 0)
 
 const normalizeNoteForPrint = (note) => {
   if (!note) return '-'
@@ -723,51 +839,17 @@ const getDisplayNote = (entry) => {
 const getVisitServicesTotal = (visitId) => {
   const targetVisitId = Number(visitId)
   if (!Number.isFinite(targetVisitId)) return 0
-  return services.value
-    .filter(item => Number(item.visit_id) === targetVisitId)
-    .reduce((sum, item) => {
-      const line = parsePrice(item.total_price ?? item.totalPrice ?? item.price)
-      return sum + line
-    }, 0)
+  return servicesTotalDeduped(
+    services.value.filter((item) => Number(item.visit_id) === targetVisitId),
+  )
 }
 
 const fetchVisitServicesTotal = async (visitId) => {
   const targetVisitId = Number(visitId)
   if (!Number.isFinite(targetVisitId)) return 0
   const rows = await getVisitServicesByVisitId(targetVisitId)
-  if (!Array.isArray(rows) || rows.length === 0) return 0
-  return rows.reduce((sum, item) => {
-    const line = parsePrice(item.total_price ?? item.totalPrice ?? item.price)
-    return sum + line
-  }, 0)
+  return servicesTotalDeduped(rows)
 }
-
-const discountPreview = computed(() => {
-  if (!isDiscountMode.value) return { base: 0, amount: 0 }
-  const percent = Number(form.value.discount_percent)
-  const visitId = Number(form.value.visit_id)
-  if (!Number.isFinite(percent) || percent <= 0 || !Number.isFinite(visitId)) return { base: 0, amount: 0 }
-  const fromServices = getVisitServicesTotal(visitId)
-  const fromVisit = Number(visitPreview.value?.price) || 0
-  const base = fromServices > 0 ? fromServices : fromVisit
-  if (base <= 0) return { base: 0, amount: 0 }
-  return {
-    base,
-    amount: Math.round((base * percent) / 100)
-  }
-})
-
-watch(
-  () => [form.value.discount_percent, form.value.visit_id, isDiscountMode.value, discountPreview.value.amount],
-  () => {
-    if (!isDiscountMode.value) return
-    const percent = Number(form.value.discount_percent)
-    if (!Number.isFinite(percent) || percent <= 0) return
-    if (discountPreview.value.amount > 0) {
-      form.value.amount = String(discountPreview.value.amount)
-    }
-  }
-)
 
 const formatDate = (value) => {
   if (!value) return '-'
@@ -925,6 +1007,7 @@ const buildPrintData = () =>
     printServices: printServices.value,
     totalServices: totalServices.value,
     totalDiscountAmount: totalDiscountAmount.value,
+    totalCashbackUsed: totalCashbackUsed.value,
     totalPaidNet: totalPaidNet.value,
     remainingDebt: remainingDebt.value,
     documentNumber: printDocumentNumber.value,
@@ -958,36 +1041,29 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick)
 })
 
-watch(() => props.patientId, loadAll)
-
-const openCreateModal = () => {
-  isEditing.value = false
-  isDiscountMode.value = false
-  form.value = {
-    id: null,
-    visit_id: '',
-    amount: '',
-    discount_percent: '',
-    payment_type: 'payment',
-    method: 'cash',
-    note: '',
-    paid_at: ''
-  }
-  visitPreview.value = null
-  showPaymentModal.value = true
-}
+watch(
+  () => [cashbackEnabled.value, lastPaymentAlreadyUsed.value],
+  ([enabled, already]) => {
+    if (enabled && already > 0 && !useCashback.value) {
+      useCashback.value = true
+    }
+  },
+)
 
 const openDiscountModal = () => {
   isEditing.value = false
   isDiscountMode.value = true
 
-  let autoVisitId = ''
-  if (visits.value && visits.value.length > 0) {
+  const lastPay = payments.value.find(
+    (entry) => entry.payment_type === 'payment' && !isDiscountEntry(entry),
+  )
+  let autoVisitId = lastPay?.visit_id ? String(lastPay.visit_id) : ''
+  if (!autoVisitId && visits.value && visits.value.length > 0) {
     const activeVisit = [...visits.value].sort((a, b) => b.id - a.id)[0]
-    autoVisitId = activeVisit.id
-  } else if (services.value && services.value.length > 0) {
+    autoVisitId = String(activeVisit.id)
+  } else if (!autoVisitId && services.value && services.value.length > 0) {
     const activeService = [...services.value].sort((a, b) => b.visit_id - a.visit_id)[0]
-    autoVisitId = activeService.visit_id
+    autoVisitId = String(activeService.visit_id)
   }
 
   form.value = {
@@ -995,12 +1071,13 @@ const openDiscountModal = () => {
     visit_id: autoVisitId,
     amount: '',
     discount_percent: '',
-    payment_type: 'discount',
+    payment_type: 'payment',
     method: 'cash',
     note: '',
     paid_at: new Date().toISOString().slice(0, 16)
   }
   visitPreview.value = null
+  resetCashbackForm()
   showPaymentModal.value = true
 }
 
@@ -1033,7 +1110,6 @@ const openEditModal = (payment) => {
     note: isDiscount ? stripDiscountNotePrefix(payment.note) : (payment.note || ''),
     paid_at: payment.paid_at ? payment.paid_at.slice(0, 16) : ''
   }
-  if (isDiscount) isDiscountMode.value = true
   showPaymentModal.value = true
 }
 
@@ -1041,12 +1117,89 @@ const closeModal = () => {
   showPaymentModal.value = false
   isDiscountMode.value = false
   visitPreview.value = null
+  resetCashbackForm()
 }
 
 const savePayment = async () => {
   const visitId = Number(form.value.visit_id)
   if (!Number.isFinite(visitId)) {
     toast.error(t('patientPayments.errorVisitRequired'))
+    return
+  }
+
+  const paidAt = form.value.paid_at ? new Date(form.value.paid_at).toISOString() : null
+  const patientId = Number(props.patientId)
+
+  if (isDiscountMode.value && !isEditing.value) {
+    const lastPay = lastRealPayment.value
+    const already = parseCashbackUsed(lastPay)
+    const additional = useCashback.value ? cashbackUsed.value : 0
+    if (already <= 0 && additional <= 0) {
+      toast.error(t('patientPayments.errorCashbackRequired'))
+      return
+    }
+    if (already > 0 && additional <= 0) {
+      toast.success(t('patientPayments.cashbackAlreadyApplied'))
+      closeModal()
+      return
+    }
+
+    savingPayment.value = true
+
+    try {
+      if (lastPay?.id) {
+        const spendResult = await applyPaymentCashback({
+          patientId,
+          paymentId: lastPay.id,
+          totalAmount: additional,
+          cashbackUsed: additional,
+        })
+        if (!spendResult.ok && !spendResult.duplicate) {
+          toast.warning(t('patientPayments.cashbackWarning'))
+          return
+        }
+        const applied = Math.min(
+          lastPaymentAmount.value,
+          spendResult.duplicate ? Math.max(already, additional) : already + additional,
+        )
+        const note = withCashbackUsedNote(lastPay.note, applied)
+        try {
+          await updatePayment(lastPay.id, {
+            cashback_used: applied,
+            note,
+          })
+        } catch (updateError) {
+          console.warn('cashback_used column update failed, note only:', updateError)
+          await updatePayment(lastPay.id, { note })
+        }
+      } else {
+        const created = await createPayment({
+          visit_id: visitId,
+          patient_id: patientId,
+          amount: additional,
+          payment_type: 'payment',
+          method: 'cash',
+          note: t('patientPayments.cashbackWithdrawNote'),
+          paid_at: paidAt,
+          cashback_used: additional,
+        })
+        if (created?.cashback?.ok === false) {
+          toast.warning(t('patientPayments.cashbackWarning'))
+        }
+      }
+      toast.success(t('patientPayments.toastCashbackWithdrawn'))
+      await loadPayments()
+      await loadSummaryCashback()
+      emit('cashback-updated')
+      await syncVisitPaymentState(visitId)
+      await loadVisits()
+      closeModal()
+    } catch (error) {
+      console.error('Failed to save payment:', error)
+      toast.error(t('patientPayments.errorSave'))
+    } finally {
+      savingPayment.value = false
+    }
     return
   }
 
@@ -1107,12 +1260,13 @@ const savePayment = async () => {
 
   const payload = {
     visit_id: visitId,
-    patient_id: Number(props.patientId),
+    patient_id: patientId,
     amount,
     payment_type: paymentType,
     method: form.value.method || null,
     note,
-    paid_at: form.value.paid_at ? new Date(form.value.paid_at).toISOString() : null
+    paid_at: paidAt,
+    cashback_used: 0,
   }
 
   try {
@@ -1120,12 +1274,16 @@ const savePayment = async () => {
       await updatePayment(form.value.id, payload)
       toast.success(t('patientPayments.toastUpdated'))
     } else {
-      await createPayment(payload)
+      const created = await createPayment(payload)
       toast.success(t('patientPayments.toastCreated'))
+      if (created?.cashback && created.cashback.ok === false) {
+        toast.warning(t('patientPayments.cashbackWarning'))
+      }
     }
     await loadPayments()
+    await loadSummaryCashback()
     await syncVisitPaymentState(visitId)
-    await loadVisits() // Visitlar refresh qilish — bemor statusini hisoblash uchun kerak
+    await loadVisits()
     closeModal()
   } catch (error) {
     console.error('Failed to save payment:', error)
@@ -1136,31 +1294,18 @@ const savePayment = async () => {
 // To'lov to'liq bo'lsa visitni "To'liq yakunlangan" qilish va bemor statusini yangilash
 const syncVisitPaymentState = async (visitId) => {
   try {
+    await syncVisitAfterPayment(visitId)
     const visit = await getVisitById(visitId)
     if (!visit) return
-    const price = Number(visit.price) || 0
-    const entries = await getPaymentsByVisitId(visitId)
-    const discountTotal = getDiscountTotal(entries)
-    const paidNet = getPaidNetWithoutDiscounts(entries)
-    const effectiveDue = Math.max(0, price - discountTotal)
-    const debtAmount = Math.max(0, effectiveDue - paidNet)
-
-    const updateData = {
-      paid_amount: paidNet > 0 ? paidNet : null,
-      debt_amount: debtAmount > 0 ? debtAmount : null
-    }
-
-    if (visit.status === 'completed_debt' || visit.status === 'completed_paid') {
-      updateData.status = debtAmount > 0 ? 'completed_debt' : 'completed_paid'
-    }
-
-    await updateVisit(visitId, updateData)
+    const debtAmount = Number(visit.debt_amount) || 0
 
     if (debtAmount <= 0) {
 
       // Bemor statusini yangilash — agar barcha tashriflar to'liq to'langan bo'lsa "completed"ga o'tkazish
       try {
-        const allVisits = visits.value.filter(v => Number(v.patient_id) === Number(props.patientId))
+        const allVisits = visits.value.map((v) =>
+          Number(v.id) === Number(visitId) ? visit : v,
+        )
         const hasRemainingDebt = allVisits.some(v =>
           v.status === 'completed_debt' ||
           (v.status !== 'completed_paid' && v.status !== 'cancelled' && v.status !== 'no_show')

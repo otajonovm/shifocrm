@@ -6,6 +6,7 @@ import { getVisitsByDoctorAndDate, getVisitsByDoctorAndDateRange } from './visit
 import { getPaymentsByDateRange, getPaymentsByDoctorAndDateRange } from './paymentsApi'
 import {
   buildDailyBreakdown,
+  buildDailyBreakdownRange,
   localDateStr,
   sumPayments,
   uniquePatients,
@@ -14,7 +15,7 @@ import {
 
 const ACTIVE_VISIT = (v) => !['cancelled', 'no_show'].includes(String(v?.status || ''))
 
-export async function getSoloDoctorStats(doctorId) {
+export async function getSoloDoctorStats(doctorId, { startDate, endDate } = {}) {
   const id = Number(doctorId)
   const empty = {
     dailyPatients: 0,
@@ -26,7 +27,10 @@ export async function getSoloDoctorStats(doctorId) {
   }
   if (!Number.isFinite(id)) return empty
 
-  const { startStr, endStr, todayStr } = weekDateRange()
+  const rolling = weekDateRange()
+  const startStr = String(startDate || rolling.startStr).slice(0, 10)
+  const endStr = String(endDate || rolling.endStr).slice(0, 10)
+  const todayStr = rolling.todayStr
 
   const [todayVisits, weekVisits, doctorPayments, clinicPayments] = await Promise.all([
     getVisitsByDoctorAndDate(id, todayStr).catch(() => []),
@@ -46,6 +50,8 @@ export async function getSoloDoctorStats(doctorId) {
     dailyRevenue: sumPayments(todayPays),
     weeklyRevenue: sumPayments(weekPayments),
     todayVisitsCount: activeToday.length,
-    dailyBreakdown: buildDailyBreakdown(weekVisits || [], weekPayments, 7),
+    dailyBreakdown: startDate && endDate
+      ? buildDailyBreakdownRange(weekVisits || [], weekPayments, startStr, endStr)
+      : buildDailyBreakdown(weekVisits || [], weekPayments, 7),
   }
 }

@@ -90,7 +90,12 @@
         </div>
       </div>
 
-      <ReportsWeekTable :rows="weekRows" :loading="loading.week" />
+      <ReportsWeekTable
+        :rows="weekRows"
+        :loading="loading.week"
+        :unique-patients="weekUniquePatients"
+        :total-revenue="weekTotalRevenue"
+      />
 
       <!-- Shifokorlar kesimida tushum va KPI (maosh) hisoboti -->
       <div class="mobile-card">
@@ -531,6 +536,7 @@ import { usePermission } from '@/composables/usePermission'
 import { exportToCsv, exportToPdf } from '@/lib/exportData'
 import { buildDoctorRevenueRows, summarizeDoctorRevenueRows } from '@/lib/doctorRevenueKpi'
 import { canViewClinicProfit } from '@/lib/roles'
+import { cashIncome, isDiscountEntry, isTrueRefund, paymentDisplayAmount } from '@/lib/paymentTotals'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -564,6 +570,8 @@ const loading = ref({
 })
 
 const weekRows = ref([])
+const weekUniquePatients = ref(0)
+const weekTotalRevenue = ref(0)
 
 const summary = ref({
   totalPayments: 0,
@@ -738,14 +746,15 @@ const paymentMethodsChartOptions = computed(() => ({
 const applySummary = () => {
   const totals = payments.value.reduce(
     (acc, entry) => {
-      const amount = Number(entry.amount) || 0
-      if (entry.payment_type === 'discount') return acc
+      if (isDiscountEntry(entry)) return acc
       if (entry.payment_type === 'payment') {
-        acc.totalPayments += amount
-        acc.netIncome += amount
-      } else if (entry.payment_type === 'refund') {
-        acc.totalRefunds += Math.abs(amount)
-        acc.netIncome -= Math.abs(amount)
+        const cash = cashIncome([entry])
+        acc.totalPayments += cash
+        acc.netIncome += cash
+      } else if (isTrueRefund(entry)) {
+        const amount = Math.abs(Number(entry.amount) || 0)
+        acc.totalRefunds += amount
+        acc.netIncome -= amount
       }
       return acc
     },
@@ -768,12 +777,13 @@ const applySummary = () => {
 const buildPaymentMethodStats = () => {
   const map = new Map()
   payments.value.forEach(entry => {
+    if (isDiscountEntry(entry) || isTrueRefund(entry)) return
     const method = entry.method || 'unknown'
     if (!map.has(method)) {
       map.set(method, { method, total: 0, count: 0 })
     }
     const row = map.get(method)
-    row.total += Number(entry.amount) || 0
+    row.total += paymentDisplayAmount(entry)
     row.count += 1
   })
   paymentMethods.value = Array.from(map.values()).map(row => ({
@@ -848,7 +858,7 @@ const loadRevenueData = async () => {
         if (isAdditionalExpense) {
           byDay.get(day).net_income -= amt // Xarajatlar ayiriladi
         } else {
-          byDay.get(day).net_income += p.payment_type === 'refund' ? -amt : amt
+          byDay.get(day).net_income += cashIncome([p])
         }
       })
       revenueData.value = Array.from(byDay.values())
@@ -872,7 +882,7 @@ const loadRevenueData = async () => {
         if (isAdditionalExpense) {
           byWeek.get(weekKey).net_income -= amt // Xarajatlar ayiriladi
         } else {
-          byWeek.get(weekKey).net_income += p.payment_type === 'refund' ? -amt : amt
+          byWeek.get(weekKey).net_income += cashIncome([p])
         }
       })
       revenueData.value = Array.from(byWeek.values())
@@ -891,7 +901,7 @@ const loadRevenueData = async () => {
         if (isAdditionalExpense) {
           byMonth.get(date).net_income -= amt // Xarajatlar ayiriladi
         } else {
-          byMonth.get(date).net_income += p.payment_type === 'refund' ? -amt : amt
+          byMonth.get(date).net_income += cashIncome([p])
         }
       })
       revenueData.value = Array.from(byMonth.values())
@@ -1029,10 +1039,15 @@ const loadReports = async () => {
       listExpenses('order=paid_at.desc'),
       listInventoryMovements('order=created_at.desc'),
       listInventoryItems('order=name.asc'),
-      getClinicWeekReport().catch(() => ({ dailyBreakdown: [] })),
+      getClinicWeekReport({
+        startDate,
+        endDate,
+      }).catch(() => ({ dailyBreakdown: [], uniquePatients: 0, totalRevenue: 0 })),
     ])
 
     weekRows.value = weekReport?.dailyBreakdown || []
+    weekUniquePatients.value = Number(weekReport?.uniquePatients) || 0
+    weekTotalRevenue.value = Number(weekReport?.totalRevenue) || 0
 
     payments.value = paymentsData || []
     doctors.value = doctorsData || []

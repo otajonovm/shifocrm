@@ -125,7 +125,11 @@
         </section>
       </div>
 
-      <ReportsWeekTable :rows="weekRows" />
+      <ReportsWeekTable
+        :rows="weekRows"
+        :unique-patients="stats.weeklyPatients"
+        :total-revenue="stats.weeklyRevenue"
+      />
 
       <!-- Settlement qatorlari -->
       <section class="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 overflow-hidden">
@@ -147,8 +151,8 @@
               <tr v-if="!(finance?.rows || []).length">
                 <td colspan="5" class="px-3 py-6 text-center text-slate-400">{{ t('soloBilling.noSettlements') }}</td>
               </tr>
-              <tr v-for="row in finance?.rows || []" :key="row.id || row.visit_id">
-                <td class="px-3 py-2 text-slate-700">#{{ row.visit_id }}</td>
+              <tr v-for="row in finance?.rows || []" :key="row.id || row.visit_id || row.calculated_at">
+                <td class="px-3 py-2 text-slate-700">{{ row.visit_id ? `#${row.visit_id}` : '—' }}</td>
                 <td class="px-3 py-2 text-right tabular-nums">{{ formatCurrency(row.gross_revenue) }}</td>
                 <td class="px-3 py-2 text-right tabular-nums text-amber-700">{{ formatCurrency(row.expenses_total) }}</td>
                 <td class="px-3 py-2 text-right tabular-nums text-sky-700">{{ formatCurrency(row.clinic_share) }}</td>
@@ -256,7 +260,10 @@ const loadAll = async () => {
     if (!doctorId.value) return
 
     const [weekStats, financeResult] = await Promise.all([
-      getSoloWeekReport(doctorId.value),
+      getSoloWeekReport(doctorId.value, {
+        startDate: range.start,
+        endDate: range.end,
+      }),
       getSoloFinanceReport({
         doctorId: doctorId.value,
         startDate: range.start,

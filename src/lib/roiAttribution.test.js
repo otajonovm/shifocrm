@@ -14,8 +14,12 @@ describe('roiAttribution', () => {
     { visit_id: 3, amount: 100000, payment_type: 'refund', doctor_id: 10 },
   ]
 
-  it('sumPaymentsForVisitIds excludes refunds', () => {
-    expect(sumPaymentsForVisitIds([1, 2, 3], payments)).toBe(800000)
+  it('sumPaymentsForVisitIds nets true refunds and skips discounts', () => {
+    expect(sumPaymentsForVisitIds([1, 2, 3], payments)).toBe(700000)
+    expect(sumPaymentsForVisitIds([1, 2, 3], [
+      ...payments,
+      { visit_id: 1, amount: 50000, payment_type: 'refund', note: '[DISCOUNT] aksiya' },
+    ])).toBe(700000)
   })
 
   it('attributes lead recall revenue for confirmed leads with reminders', () => {
@@ -60,6 +64,6 @@ describe('roiAttribution', () => {
   it('computeDoctorKpiTotal applies salary percentage', () => {
     const doctors = [{ id: 10, salary_percentage: 40 }]
     const total = computeDoctorKpiTotal(payments, doctors)
-    expect(total).toBe(Math.round((500000 + 300000) * 40 / 100))
+    expect(total).toBe(Math.round((500000 + 300000 - 100000) * 40 / 100))
   })
 })

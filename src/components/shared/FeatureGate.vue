@@ -49,7 +49,7 @@ import { useSubscriptionStore } from '@/stores/subscription'
 import UpgradeModal from '@/components/shared/UpgradeModal.vue'
 
 const props = defineProps({
-  /** feature_key: warehouse | sms_marketing | kpi_finance | shifo_ai */
+  /** feature_key: warehouse | sms_marketing | kpi_finance | shifo_ai | cashback */
   feature: { type: String, required: true },
   /** hide | block | modal */
   mode: { type: String, default: 'block' },

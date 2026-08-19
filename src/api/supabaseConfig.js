@@ -74,10 +74,11 @@ export const supabasePost = async (table, data) => {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}))
-    const e = new Error(body.message || `POST failed: ${response.status}`)
+    const e = new Error(body.message || body.hint || `POST failed: ${response.status}`)
     e.status = response.status
     e.code = body.code
     e.details = body.details
+    e.hint = body.hint
     throw e
   }
 

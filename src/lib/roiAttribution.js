@@ -2,6 +2,8 @@
  * ROI attribution — eslatmalar orqali keltirilgan daromad hisob-kitoblari.
  */
 
+import { cashIncome, isDiscountEntry, isTrueRefund } from '@/lib/paymentTotals'
+
 const COMPLETED_VISIT_STATUSES = new Set([
   'arrived',
   'in_progress',
@@ -13,16 +15,7 @@ const CONFIRMED_LEAD_STATUSES = new Set(['confirmed', 'booked', 'qabulda', 'conv
 
 export const sumPaymentsForVisitIds = (visitIds, payments = []) => {
   const idSet = new Set((visitIds || []).map((id) => Number(id)))
-  let total = 0
-
-  for (const payment of payments) {
-    if (payment?.payment_type === 'refund') continue
-    const vid = Number(payment?.visit_id)
-    if (!idSet.has(vid)) continue
-    total += Number(payment?.amount) || 0
-  }
-
-  return total
+  return cashIncome((payments || []).filter((payment) => idSet.has(Number(payment?.visit_id))))
 }
 
 export const attributeLeadRecallRevenue = (leads = [], visits = [], payments = []) => {
@@ -161,11 +154,13 @@ export const computeDoctorKpiTotal = (payments = [], doctors = []) => {
 
   let total = 0
   for (const payment of payments) {
-    if (payment?.payment_type === 'refund') continue
+    if (isDiscountEntry(payment)) continue
+    if (payment?.payment_type !== 'payment' && !isTrueRefund(payment)) continue
     const doctorId = Number(payment?.doctor_id)
     const pct = pctByDoctor.get(doctorId) || 0
     const amt = Number(payment?.amount) || 0
-    total += Math.round((amt * pct) / 100)
+    const signed = isTrueRefund(payment) ? -Math.abs(amt) : amt
+    total += Math.round((signed * pct) / 100)
   }
 
   return total
