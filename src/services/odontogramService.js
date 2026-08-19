@@ -9,8 +9,7 @@ import {
   deleteVisitConsumption,
 } from '@/lib/inventoryBridge'
 import { consumeServiceMaterialsForVisit } from '@/api/serviceMaterialsApi'
-import { getPaymentsByVisitId } from '@/api/paymentsApi'
-import { postVisitPayment } from '@/services/paymentService'
+import { getPaymentsByVisitId, createPayment } from '@/api/paymentsApi'
 import { updatePatient } from '@/api/patientsApi'
 import { sendVisitCompleted, schedulePatientFollowUps } from '@/api/telegramApi'
 
@@ -38,7 +37,27 @@ export const getVisitConsumptions = listVisitConsumptions
 export const addVisitConsumption = createVisitConsumption
 export const removeVisitConsumption = deleteVisitConsumption
 export const getVisitPayments = getPaymentsByVisitId
-export const recordVisitPayment = postVisitPayment
+export const recordVisitPayment = async ({
+  visitId,
+  amount,
+  type = 'payment',
+  method = 'cash',
+  note = null,
+  patientId = null,
+  doctorId = null,
+  paidAt = null,
+}) => {
+  return createPayment({
+    visit_id: visitId,
+    patient_id: patientId,
+    doctor_id: doctorId,
+    amount,
+    payment_type: type,
+    method: method || 'cash',
+    note,
+    paid_at: paidAt,
+  })
+}
 export const notifyVisitCompleted = sendVisitCompleted
 export const scheduleVisitFollowUps = schedulePatientFollowUps
 export const updatePatientStatus = updatePatient
@@ -143,7 +162,25 @@ export function createSaveQueue({
   return { schedule, flush, retry, discard, stop }
 }
 
-export async function clearToothService(visitId, toothId) {
+const toothSourceNeedle = (toothId) => `:tooth:${toothId}`
+
+async function reverseToothConsumptions(visitId, toothId, authStore) {
+  if (!authStore || visitId == null || toothId == null) return
+  const rows = await listVisitConsumptions(authStore, visitId).catch(() => [])
+  const needle = toothSourceNeedle(toothId)
+  const matches = (rows || []).filter((row) => String(row.source_key || '').includes(needle))
+  for (const row of matches) {
+    try {
+      await deleteVisitConsumption(authStore, row.id)
+    } catch (error) {
+      console.warn('Tish material sarfini qaytarish:', error)
+      throw error
+    }
+  }
+}
+
+export async function clearToothService(visitId, toothId, authStore = null) {
+  await reverseToothConsumptions(visitId, toothId, authStore)
   await visitServicesApi.deleteVisitServicesByVisitAndTooth(visitId, toothId)
   return getVisitServices(visitId)
 }
@@ -162,6 +199,7 @@ export async function replaceToothService({
 }) {
   const previousServices = ((await getVisitServices(visitId)) || [])
     .filter((entry) => Number(entry.tooth_id) === Number(toothId))
+  await reverseToothConsumptions(visitId, toothId, authStore)
   await visitServicesApi.deleteVisitServicesByVisitAndTooth(visitId, toothId)
   let entry
   try {
@@ -195,7 +233,6 @@ export async function replaceToothService({
   }
 
   let consumed = []
-  let materialError = null
   try {
     consumed = await consumeServiceMaterialsForVisit({
       serviceId: Number(serviceId),
@@ -207,13 +244,29 @@ export async function replaceToothService({
       inventoryItems,
     })
   } catch (error) {
-    materialError = error
+    try {
+      await visitServicesApi.deleteVisitServicesByVisitAndTooth(visitId, toothId)
+      const previous = previousServices[0]
+      if (previous) {
+        await visitServicesApi.createVisitService({
+          visit_id: visitId,
+          patient_id: previous.patient_id ?? patientId,
+          doctor_id: previous.doctor_id ?? doctorId,
+          tooth_id: toothId,
+          service_name: previous.service_name,
+          price: previous.price,
+          performed_by: previous.performed_by ?? performedBy,
+        })
+      }
+    } catch (rollbackError) {
+      error.rollbackError = rollbackError
+    }
+    throw error
   }
 
   return {
     entry,
     consumed,
-    materialError,
     services: await getVisitServices(visitId),
   }
 }

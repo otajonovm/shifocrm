@@ -1,11 +1,13 @@
 import { fileURLToPath, URL } from 'node:url'
 import { readFileSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
+import https from 'node:https'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { VitePWA } from 'vite-plugin-pwa'
 import { parseVisionImagePayload } from './src/lib/visionImportCore.js'
+import { sendTreatmentPlanReminderSms } from './services/treatmentPlanSms.js'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -143,22 +145,204 @@ export default defineConfig(({ mode }) => {
             })
           })
 
-          // Telegram bot API proxy (dev): /api/telegram/* -> localhost:3001/api/*
-          const telegramPort = Number(env.TELEGRAM_BOT_PORT || env.VITE_TELEGRAM_BOT_PORT || 3001)
-          const telegramHost = env.TELEGRAM_BOT_HOST || '127.0.0.1'
+          const fileEnv = {}
+          try {
+            const envText = readFileSync(fileURLToPath(new URL('./.env', import.meta.url)), 'utf8')
+            for (const rawLine of envText.split(/\r?\n/)) {
+              const line = rawLine.trim()
+              if (!line || line.startsWith('#')) continue
+              const eq = line.indexOf('=')
+              if (eq <= 0) continue
+              let value = line.slice(eq + 1).trim()
+              if (
+                (value.startsWith('"') && value.endsWith('"'))
+                || (value.startsWith("'") && value.endsWith("'"))
+              ) {
+                value = value.slice(1, -1)
+              }
+              fileEnv[line.slice(0, eq).trim()] = value
+            }
+          } catch {
+            /* .env yo'q bo'lsa loadEnv yetarli */
+          }
+
+          const textUpKeys = [
+            'TEXTUP_EMAIL',
+            'TEXTUP_PASSWORD',
+            'TEXTUP_USER_ID',
+            'TEXTUP_SEND_NAME',
+            'TEXTUP_TEMPLATE_ID',
+            'TEXTUP_TEST_MESSAGE',
+            'TEXTUP_API_KEY',
+            'TEXTUP_API_SECRET',
+          ]
+          for (const key of textUpKeys) {
+            const value = fileEnv[key] || env[key]
+            if (value) process.env[key] = value
+          }
+
+          // Dev: davolash rejasi SMS ni TextUp orqali yuborish (bot deploy qilinmasa ham)
+          server.middlewares.use('/api/telegram/treatment-plans/send-reminder', (req, res, next) => {
+            if (req.method === 'OPTIONS') {
+              res.writeHead(204, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'content-type, x-api-key',
+              })
+              res.end()
+              return
+            }
+
+            if (req.method !== 'POST') {
+              next()
+              return
+            }
+
+            let body = ''
+            req.on('data', (chunk) => {
+              body += chunk.toString()
+            })
+            req.on('end', async () => {
+              try {
+                if (!process.env.TEXTUP_EMAIL || !process.env.TEXTUP_PASSWORD) {
+                  res.writeHead(503, { 'Content-Type': 'application/json' })
+                  res.end(JSON.stringify({
+                    ok: false,
+                    error: 'SMS_NOT_CONFIGURED',
+                    message: 'TEXTUP_EMAIL va TEXTUP_PASSWORD .env da ko\'rsatilishi kerak.',
+                  }))
+                  return
+                }
+
+                const payload = JSON.parse(body || '{}')
+                const phone = payload.phone
+                if (!phone) {
+                  res.writeHead(400, { 'Content-Type': 'application/json' })
+                  res.end(JSON.stringify({
+                    ok: false,
+                    error: 'PHONE_REQUIRED',
+                    message: 'Bemor telefon raqami yo\'q. SMS yuborib bo\'lmaydi.',
+                  }))
+                  return
+                }
+
+                console.log('[treatment-plan-sms] so\'rov qabul qilindi')
+                const result = await sendTreatmentPlanReminderSms({
+                  phone,
+                })
+
+                if (!result.success) {
+                  console.error('[treatment-plan-sms]', result.error, result.data || '')
+                  const templatePending = /shablon|template/i.test(result.error || '')
+                  res.writeHead(200, { 'Content-Type': 'application/json' })
+                  res.end(JSON.stringify({
+                    ok: false,
+                    error: templatePending ? 'SMS_TEMPLATE_PENDING' : 'SMS_SEND_FAILED',
+                    message: result.error,
+                    data: result.data || null,
+                  }))
+                  return
+                }
+
+                console.log('[treatment-plan-sms] SMS yuborildi')
+                res.writeHead(200, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify({
+                  ok: true,
+                  channel: 'sms',
+                  phone,
+                  plan_id: payload.plan_id || null,
+                  message: result.data?.message || 'SMS yuborildi',
+                }))
+              } catch (error) {
+                console.error('[treatment-plan-sms]', error?.message || error)
+                res.writeHead(500, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify({
+                  ok: false,
+                  error: 'INTERNAL_ERROR',
+                  message: error?.message || 'SMS yuborishda xatolik',
+                }))
+              }
+            })
+          })
+
+          // Telegram bot API proxy (dev): /api/telegram/* -> remote bot yoki localhost:3001/api/*
+          const resolveTelegramProxyTarget = () => {
+            const raw = String(env.VITE_TELEGRAM_API_URL || env.TELEGRAM_BOT_API_URL || '').trim()
+            if (/^https?:\/\//i.test(raw) && !raw.includes('localhost')) {
+              try {
+                const remote = new URL(raw)
+                const isHttps = remote.protocol === 'https:'
+                return {
+                  client: isHttps ? https : http,
+                  hostname: remote.hostname,
+                  port: remote.port ? Number(remote.port) : (isHttps ? 443 : 80),
+                  label: `${remote.protocol}//${remote.host}`,
+                }
+              } catch {
+                // fall through to local bot
+              }
+            }
+            const port = Number(env.TELEGRAM_BOT_PORT || env.VITE_TELEGRAM_BOT_PORT || 3001)
+            const hostname = env.TELEGRAM_BOT_HOST || '127.0.0.1'
+            return {
+              client: http,
+              hostname,
+              port,
+              label: `${hostname}:${port}`,
+            }
+          }
+
+          const readDotEnvValue = (name) => {
+            try {
+              const envPath = `${process.cwd().replace(/\\/g, '/')}/.env`
+              const line = readFileSync(envPath, 'utf8')
+                .split(/\r?\n/)
+                .find((row) => {
+                  const trimmed = row.trim()
+                  return trimmed.startsWith(`${name}=`) && !trimmed.startsWith('#')
+                })
+              if (!line) return ''
+              return line.trim().slice(name.length + 1).trim().replace(/^['"]|['"]$/g, '')
+            } catch {
+              return ''
+            }
+          }
+          const telegramApiKey = String(
+            readDotEnvValue('VITE_TELEGRAM_API_KEY')
+            || env.VITE_TELEGRAM_API_KEY
+            || env.TELEGRAM_BOT_API_KEY
+            || env.BOT_API_KEY
+            || env.API_KEY
+            || ''
+          ).trim()
+          const telegramTarget = resolveTelegramProxyTarget()
+          console.log(
+            `[telegram-proxy] ${telegramTarget.label} | X-API-KEY: ${telegramApiKey ? `set (${telegramApiKey.length} chars)` : 'MISSING'}`
+          )
 
           server.middlewares.use('/api/telegram', (req, res) => {
+            const target = telegramTarget
             const targetPath = `/api${req.url || ''}`
-            const proxyReq = http.request(
+            const headers = {
+              accept: req.headers.accept || 'application/json',
+              'content-type': req.headers['content-type'] || 'application/json',
+              host: target.port === 443 || target.port === 80
+                ? target.hostname
+                : `${target.hostname}:${target.port}`,
+            }
+            if (telegramApiKey) headers['x-api-key'] = telegramApiKey
+            if (req.headers['content-length']) {
+              headers['content-length'] = req.headers['content-length']
+            }
+
+            const proxyReq = target.client.request(
               {
-                hostname: telegramHost,
-                port: telegramPort,
+                hostname: target.hostname,
+                port: target.port,
                 path: targetPath,
                 method: req.method,
-                headers: {
-                  ...req.headers,
-                  host: `${telegramHost}:${telegramPort}`,
-                },
+                headers,
+                servername: target.hostname,
               },
               (proxyRes) => {
                 res.writeHead(proxyRes.statusCode || 502, proxyRes.headers)
@@ -167,12 +351,11 @@ export default defineConfig(({ mode }) => {
             )
 
             proxyReq.on('error', (err) => {
-              // Bot ixtiyoriy: 502 o'rniga 200 + ok:false (browser Network'da qizil 502 chiqmasin)
               res.writeHead(200, { 'Content-Type': 'application/json' })
               res.end(JSON.stringify({
                 ok: false,
                 error: 'TELEGRAM_BOT_UNREACHABLE',
-                message: `Telegram bot ishlamayapti (${telegramHost}:${telegramPort}). telegram-bot papkasida: npm start`,
+                message: `Telegram bot ishlamayapti (${target.label}). .env da VITE_TELEGRAM_API_URL ni tekshiring.`,
                 detail: err.message,
               }))
             })

@@ -125,7 +125,7 @@
         </div>
 
 
-        <div v-if="isEdit" class="pt-4 border-t border-gray-200 space-y-4">
+        <div class="pt-4 border-t border-gray-200 space-y-4">
           <h3 class="text-sm font-semibold text-gray-900">{{ t('subscription.adminModulesTitle') }}</h3>
           <p class="text-xs text-gray-500">{{ t('subscription.adminModulesHint') }}</p>
           <div
@@ -282,7 +282,13 @@ const form = ref({
   owner_password: '',
 })
 
-const featureModules = ref([])
+const featureModules = ref(
+  PREMIUM_FEATURE_KEYS.map((feature_key) => ({
+    feature_key,
+    is_active: false,
+    expires_at_local: '',
+  }))
+)
 
 const toLocalDatetime = (iso) => {
   if (!iso) return ''
@@ -310,6 +316,13 @@ const buildFeatureModules = (rows = []) => {
   })
 }
 
+const featurePayload = () =>
+  featureModules.value.map((mod) => ({
+    feature_key: mod.feature_key,
+    is_active: Boolean(mod.is_active),
+    expires_at: fromLocalDatetime(mod.expires_at_local),
+  }))
+
 const isEdit = computed(() => !!route.params.id)
 
 function copyToClipboard(text) {
@@ -325,7 +338,10 @@ function closeCredentialsModal() {
 }
 
 onMounted(async () => {
-  if (!isEdit.value) return
+  if (!isEdit.value) {
+    buildFeatureModules([])
+    return
+  }
   const id = Number(route.params.id)
   if (!Number.isFinite(id)) return
   try {
@@ -377,14 +393,7 @@ async function handleSubmit() {
         if (!password) throw new Error("Boshliq paroli majburiy")
         await createClinicOwner(clinicId, { login, password })
       }
-      await saveClinicFeatures(
-        clinicId,
-        featureModules.value.map((mod) => ({
-          feature_key: mod.feature_key,
-          is_active: Boolean(mod.is_active),
-          expires_at: fromLocalDatetime(mod.expires_at_local),
-        }))
-      )
+      await saveClinicFeatures(clinicId, featurePayload())
       toast.success(t('superAdmin.saved'))
       router.push({ name: 'admin-clinics' })
       return
@@ -402,6 +411,7 @@ async function handleSubmit() {
       throw new Error("Boshliq login va paroli majburiy")
     }
     await createClinicOwner(clinicId, { login, password })
+    await saveClinicFeatures(clinicId, featurePayload())
     toast.success(t('superAdmin.saved'))
     createdCredentials.value = { clinicId, login, password }
     showCredentialsModal.value = true

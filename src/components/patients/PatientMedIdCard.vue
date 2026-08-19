@@ -86,6 +86,51 @@
         <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Oxirgi Tashrif</p>
         <p class="text-sm font-medium text-gray-900">{{ formattedLastVisit }}</p>
       </div>
+
+      <!-- Keshbek karta: balans + QR — bemor tashrifda ko'rsatadi -->
+      <div
+        v-if="cashbackConfigured"
+        class="bg-white rounded-xl p-4 border border-amber-100 sm:col-span-2"
+      >
+        <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+          <div class="flex-1 min-w-0">
+            <p class="text-xs text-amber-700 uppercase tracking-wider mb-1">{{ t('patientMedId.cashback') }}</p>
+            <p v-if="cashbackLoading" class="text-sm text-gray-400">{{ t('patientMedId.cashbackLoading') }}</p>
+            <p v-else-if="cashbackError" class="text-sm text-gray-400">
+              {{ t(cashbackErrorCode === 'UNAUTHORIZED' ? 'patientMedId.cashbackUnauthorized' : 'patientMedId.cashbackUnavailable') }}
+            </p>
+            <p
+              v-else
+              class="text-lg font-semibold"
+              :class="cashbackBalance > 0 ? 'text-amber-700' : 'text-gray-500'"
+            >
+              {{ formatCurrency(cashbackBalance) }}
+              <span v-if="cashbackBalance <= 0" class="ml-1 text-sm font-normal text-gray-400">
+                ({{ t('patientMedId.cashbackNone') }})
+              </span>
+            </p>
+            <p class="mt-2 text-xs text-gray-500 leading-relaxed">
+              {{ t('patientMedId.cashbackHint') }}
+            </p>
+            <button
+              type="button"
+              class="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100"
+              @click="printCashbackCard"
+            >
+              <PrinterIcon class="w-4 h-4" />
+              {{ t('patientMedId.cashbackPrint') }}
+            </button>
+          </div>
+          <div v-if="qrDataUrl" class="shrink-0 self-center sm:self-start">
+            <img
+              :src="qrDataUrl"
+              alt="MED-ID QR"
+              class="w-28 h-28 rounded-lg border border-gray-100 bg-white p-1"
+            />
+            <p class="mt-1 text-center font-mono text-xs font-semibold text-primary-600">{{ medId }}</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Notes -->
@@ -104,12 +149,16 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ClipboardDocumentIcon } from '@heroicons/vue/24/outline'
+import { ClipboardDocumentIcon, PrinterIcon } from '@heroicons/vue/24/outline'
 import { copyToClipboard } from '@/lib/clipboard'
 import { formatDate, formatDateTime, calculateAge } from '@/lib/date'
 import { getInitials, formatGender, formatPhone, formatMedId, getStatusBadge } from '@/lib/patientHelpers'
+import { useCashbackBalance } from '@/composables/useCashbackBalance'
+import { cashbackQrDataUrl, openCashbackCardPrint } from '@/lib/patientCashbackCardPrint'
+import { useClinicStore } from '@/stores/clinic'
+import { useToast } from '@/composables/useToast'
 
 const props = defineProps({
   patient: {
@@ -127,6 +176,9 @@ const props = defineProps({
 })
 
 const { t } = useI18n()
+const toast = useToast()
+const clinicStore = useClinicStore()
+const qrDataUrl = ref('')
 
 // Computed
 const initials = computed(() => getInitials(props.patient.full_name))
@@ -138,6 +190,60 @@ const age = computed(() => calculateAge(props.patient.birth_date))
 const formattedGender = computed(() => formatGender(props.patient.gender))
 const formattedLastVisit = computed(() => formatDate(props.patient.last_visit))
 const formattedCreatedAt = computed(() => formatDateTime(props.patient.created_at))
+
+const {
+  balance: cashbackBalance,
+  loading: cashbackLoading,
+  error: cashbackError,
+  errorCode: cashbackErrorCode,
+  configured: cashbackConfigured,
+} = useCashbackBalance(() => props.patient?.id)
+
+const formatCurrency = (amount) => {
+  const numeric = Number(amount)
+  const safe = Number.isFinite(numeric) ? numeric : 0
+  return new Intl.NumberFormat('uz-UZ', {
+    style: 'currency',
+    currency: 'UZS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(safe).replace('UZS', t('common.currencySuffix'))
+}
+
+watch(
+  () => [props.patient?.id, cashbackConfigured.value],
+  async ([patientId, configured]) => {
+    if (!configured || patientId == null || patientId === '') {
+      qrDataUrl.value = ''
+      return
+    }
+    try {
+      qrDataUrl.value = await cashbackQrDataUrl(patientId)
+    } catch {
+      qrDataUrl.value = ''
+    }
+  },
+  { immediate: true },
+)
+
+const printCashbackCard = async () => {
+  let qr = qrDataUrl.value
+  if (!qr && props.patient?.id) {
+    qr = await cashbackQrDataUrl(props.patient.id).catch(() => '')
+  }
+  const result = openCashbackCardPrint({
+    clinicName: clinicStore.displayName || 'SHIFOCRM',
+    patientName: props.patient?.full_name || '-',
+    medId: medId.value,
+    phone: formattedPhone.value === '-' ? '' : formattedPhone.value,
+    cashbackLabel: t('patientMedId.cashbackCardLabel', { amount: formatCurrency(cashbackBalance.value) }),
+    hint: t('patientMedId.cashbackHint'),
+    qrDataUrl: qr,
+  })
+  if (!result.ok) {
+    toast.error(t('patientMedId.cashbackPrintError'))
+  }
+}
 
 // Actions
 const copyMedId = () => {

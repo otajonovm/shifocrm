@@ -78,6 +78,32 @@ describe('calculateVisitSettlement', () => {
     expect(result.doctor_share).toBe(400_000)
     expect(result.clinic_share).toBe(500_000)
   })
+
+  it('ulushlar yig‘indisi sof tushumga teng (yaxlitlash)', () => {
+    const result = calculateVisitSettlement({
+      grossRevenue: 0.03,
+      expensesTotal: 0,
+      settings: {
+        model: BILLING_MODELS.PERCENTAGE,
+        doctor_percentage: 50,
+      },
+    })
+    expect(result.doctor_share + result.clinic_share).toBe(result.net_after_expenses)
+  })
+
+  it('keshbek ayirilgan tushumdan 40% ulushni hisoblaydi', () => {
+    const result = calculateVisitSettlement({
+      grossRevenue: 380_000,
+      expensesTotal: 0,
+      settings: {
+        model: BILLING_MODELS.PERCENTAGE,
+        doctor_percentage: 40,
+      },
+    })
+    expect(result.gross_revenue).toBe(380_000)
+    expect(result.doctor_share).toBe(152_000)
+    expect(result.clinic_share).toBe(228_000)
+  })
 })
 
 describe('summarizeSettlements', () => {

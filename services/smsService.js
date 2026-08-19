@@ -36,14 +36,35 @@ let authCache = {
  * @param {string} key
  * @returns {string|undefined}
  */
+function sanitizeEnvValue(value) {
+  if (value == null) return undefined
+  let text = String(value).replace(/^\uFEFF/, '').trim()
+  if (
+    (text.startsWith('"') && text.endsWith('"'))
+    || (text.startsWith("'") && text.endsWith("'"))
+  ) {
+    text = text.slice(1, -1).trim()
+  }
+  text = text.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '')
+  return text || undefined
+}
+
 function getEnv(key) {
+  let raw
   if (typeof globalThis.Deno !== 'undefined' && typeof globalThis.Deno.env?.get === 'function') {
-    return globalThis.Deno.env.get(key)
+    raw = globalThis.Deno.env.get(key)
+  } else if (typeof process !== 'undefined' && process.env) {
+    raw = process.env[key]
   }
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env[key]
+  return sanitizeEnvValue(raw)
+}
+
+function formatTextUpAuthError(body, status) {
+  const raw = body?.message || body?.error || `TextUp auth HTTP ${status}`
+  if (/additional_fields|validation failed/i.test(String(raw))) {
+    return 'TextUp login rad etildi. .env dagi TEXTUP_EMAIL va TEXTUP_PASSWORD ni TextUp kabinetidagi login/parol bilan solishtiring.'
   }
-  return undefined
+  return raw
 }
 
 /**
@@ -104,8 +125,12 @@ function formatTextUpSendError(rawError, templateId) {
     ].filter(Boolean).join(' ')
   }
 
-  if (/template validation failed/i.test(text) && !templateId) {
-    return `${text}. Yechim: .env ga TEXTUP_TEMPLATE_ID qo\'ying.`
+  if (/failed to get contacts from auth service|additional_fields|unauthorized/i.test(text)) {
+    return 'TextUp hisobini tasdiqlay olmadi. .env dagi TEXTUP_EMAIL va TEXTUP_PASSWORD ni https://textup.uz kabinetidagi login/parol bilan solishtiring. Parolda @, #, $ bo\'lsa, qiymatni qo\'shtirnoqqa oling: TEXTUP_PASSWORD="parol".'
+  }
+
+  if (/template .*not found|template validation failed|failed to check template|failed to get template/i.test(text)) {
+    return 'TextUp SMS shabloni hali tasdiqlanmagan. https://textup.uz/user/send-sms sahifasida shablon holati "Tekshiruvda" — moderator tasdiqlagach qayta yuboring.'
   }
 
   return text
@@ -171,20 +196,30 @@ export async function getTextUpAuth(forceRefresh = false) {
   }
 
   try {
-    const response = await fetch(TEXTUP_AUTH_URL, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    })
+    const loginBodies = [
+      { email, password },
+      { email, password, rememberMe: false },
+    ]
 
-    const body = await response.json().catch(() => ({}))
+    let body = {}
+    let response = null
 
-    if (!response.ok) {
-      const error = body?.message || body?.error || `TextUp auth HTTP ${response.status}`
-      console.error('[TextUp] Auth xatosi:', error, body)
+    for (const loginBody of loginBodies) {
+      response = await fetch(TEXTUP_AUTH_URL, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginBody),
+      })
+      body = await response.json().catch(() => ({}))
+      if (response.ok) break
+    }
+
+    if (!response?.ok) {
+      const error = formatTextUpAuthError(body, response?.status)
+      console.error('[TextUp] Auth xatosi:', error)
       return { success: false, error }
     }
 
@@ -277,11 +312,116 @@ export async function getTextUpSmsList({ page = 1, limit = 20 } = {}) {
   return textUpGet(TEXTUP_SMS_LIST_URL, { page, limit, userId: auth.userId })
 }
 
+function buildSendPayload(message, recipients, options = {}) {
+  const templateId = options.templateId || getEnv('TEXTUP_TEMPLATE_ID') || null
+  const nicknameId = options.nicknameId || getEnv('TEXTUP_NICKNAME_ID') || null
+  const userId = options.userId || getEnv('TEXTUP_USER_ID') || null
+  const isOtp = options.isOtp === true
+  const includeName = options.includeName === true
+
+  const payload = {
+    message,
+    recipients,
+  }
+  if (includeName) {
+    const name = options.name || getEnv('TEXTUP_SEND_NAME') || DEFAULT_SEND_NAME
+    if (name) payload.name = name
+  }
+  if (templateId && options.includeTemplate !== false) payload.templateId = templateId
+  if (nicknameId) payload.nicknameId = nicknameId
+  if (userId) payload.userId = userId
+  payload.isOtp = isOtp === true
+  return payload
+}
+
+function extractExpectedPattern(data, error) {
+  const raw = [
+    data?.error_message,
+    data?.error,
+    data?.message,
+    error,
+  ].filter(Boolean).join('\n')
+  const match = String(raw).match(/Expected pattern:\s*(.+)$/im)
+  return match ? match[1].trim() : null
+}
+
+function textUpErrorText(data, status) {
+  return data?.error_message || data?.message || data?.error || `TextUp SMS HTTP ${status}`
+}
+
+async function postTextUpSend(recipients, message, options = {}) {
+  const email = getEnv('TEXTUP_EMAIL')
+  const password = getEnv('TEXTUP_PASSWORD')
+  const accessToken = options.accessToken || null
+  if (!accessToken && (!email || !password)) {
+    return { success: false, error: 'TEXTUP_EMAIL va TEXTUP_PASSWORD .env da ko\'rsatilishi kerak.' }
+  }
+
+  const payload = buildSendPayload(message, recipients, options)
+  const headers = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  }
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`
+  if (email && password) {
+    headers['X-Email'] = email
+    headers['X-Password'] = password
+  }
+
+  const response = await fetch(TEXTUP_SEND_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const error = formatTextUpSendError(textUpErrorText(data, response.status), payload.templateId || null)
+    console.error('[TextUp] send xato:', response.status, error)
+    return { success: false, error, data, status: response.status }
+  }
+  console.log('[TextUp] SMS muvaffaqiyatli yuborildi:', recipients.join(', '))
+  return { success: true, data }
+}
+
+async function sendViaAuthenticatedSession(recipients, message, options = {}) {
+  const auth = await getTextUpAuth()
+  if (!auth.success) return auth
+
+  const isOtp = options.isOtp === true
+  const attempts = [
+    { ...options, isOtp, userId: auth.userId, accessToken: auth.accessToken },
+  ]
+
+  let last = { success: false, error: 'SMS yuborilmadi' }
+  let messageToSend = message
+  for (let i = 0; i < 2; i += 1) {
+    try {
+      last = await postTextUpSend(recipients, messageToSend, attempts[0])
+      if (last.success) return last
+      if (last.status === 401 || /failed to get contacts|hisobini tasdiqlay olmadi/i.test(last.error || '')) {
+        clearTextUpAuthCache()
+        return last
+      }
+      const expected = extractExpectedPattern(last.data, last.error)
+      if (expected && expected !== messageToSend) {
+        console.warn('[TextUp] shablon matniga moslab qayta yuboriladi')
+        messageToSend = expected
+        continue
+      }
+      return last
+    } catch (err) {
+      last = { success: false, error: err?.message || 'TextUp SMS ulanishi xatosi' }
+    }
+  }
+  return last
+}
+
 /**
  * Explicit recipients orqali SMS yuborish (TextUp).
+ * Avval JWT Bearer, kerak bo'lsa X-Email/X-Password.
  * @param {string|string[]} phoneNumbers — bitta raqam yoki massiv (+998... yoki 90...)
  * @param {string} text — SMS matni
- * @param {{ name?: string, templateId?: string }} [options]
+ * @param {{ name?: string, templateId?: string, isOtp?: boolean, nicknameId?: string }} [options]
  * @returns {Promise<{ success: true, data: object } | { success: false, error: string, data?: object }>}
  */
 export async function sendSMS(phoneNumbers, text, options = {}) {
@@ -303,60 +443,15 @@ export async function sendSMS(phoneNumbers, text, options = {}) {
     return { success: false, error }
   }
 
-  const name = options.name || getEnv('TEXTUP_SEND_NAME') || DEFAULT_SEND_NAME
   const templateId = options.templateId || getEnv('TEXTUP_TEMPLATE_ID') || null
 
-  const dispatch = async (accessToken, userId) => {
-    const payload = {
-      message,
-      userId,
-      name,
-      recipients,
-    }
-    if (templateId) {
-      payload.templateId = templateId
-    }
-
-    const response = await fetch(TEXTUP_SEND_URL, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(payload),
-    })
-
-    const data = await response.json().catch(() => ({}))
-    return { response, data }
-  }
-
   try {
-    let auth = await getTextUpAuth()
-    if (!auth.success) {
-      return auth
+    const headerResult = await sendViaAuthenticatedSession(recipients, message, { ...options, templateId })
+    if (headerResult.success) {
+      return headerResult
     }
-
-    let { response, data } = await dispatch(auth.accessToken, auth.userId)
-
-    if (response.status === 401) {
-      clearTextUpAuthCache()
-      auth = await getTextUpAuth(true)
-      if (!auth.success) {
-        return auth
-      }
-      ;({ response, data } = await dispatch(auth.accessToken, auth.userId))
-    }
-
-    if (!response.ok) {
-      const rawError = data?.message || data?.error || `TextUp SMS HTTP ${response.status}`
-      const error = formatTextUpSendError(rawError, templateId)
-      console.error('[TextUp] SMS yuborish xatosi:', error, { recipients, data })
-      return { success: false, error, data }
-    }
-
-    console.log('[TextUp] SMS muvaffaqiyatli yuborildi:', recipients.join(', '))
-    return { success: true, data }
+    console.warn('[TextUp] header orqali yuborilmadi:', headerResult.error)
+    return headerResult
   } catch (err) {
     const error = err?.message || 'SMS yuborishda kutilmagan xatolik'
     console.error('[TextUp] SMS ulanish xatosi:', error)

@@ -1,6 +1,4 @@
-/**
- * Kassa smenasi uchun to'lovlarni usul bo'yicha umumlashtirish
- */
+import { isDiscountEntry, parseCashbackUsed } from '@/lib/paymentTotals'
 
 const normalizeMethod = (method) => {
   const m = String(method || '').toLowerCase().trim()
@@ -32,6 +30,7 @@ export const summarizePaymentsByMethod = (payments = [], { fromIso, toIso } = {}
     const amount = Number(entry.amount) || 0
     const type = String(entry.payment_type || 'payment')
 
+    if (isDiscountEntry(entry) || type === 'discount') continue
     if (type === 'refund') {
       totals.refunds += Math.abs(amount)
       const bucket = normalizeMethod(entry.method)
@@ -46,7 +45,8 @@ export const summarizePaymentsByMethod = (payments = [], { fromIso, toIso } = {}
 
     totals.paymentsCount += 1
     const bucket = normalizeMethod(entry.method)
-    totals[bucket] += amount
+    const cashAmount = Math.max(0, amount - parseCashbackUsed(entry))
+    totals[bucket] += cashAmount
   }
 
   return totals

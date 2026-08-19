@@ -49,14 +49,6 @@
             <option value="high">{{ t('treatmentPlans.priorityHigh') }}</option>
           </select>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.remindAt') }}</label>
-          <input
-            v-model="form.remind_at"
-            type="datetime-local"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          />
-        </div>
         <div class="sm:col-span-3">
           <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.notes') }}</label>
           <textarea
@@ -207,16 +199,15 @@
             <th class="px-4 py-3">{{ t('treatmentPlans.priority') }}</th>
             <th class="px-4 py-3">{{ t('treatmentPlans.tooth') }}</th>
             <th class="px-4 py-3">{{ t('treatmentPlans.price') }}</th>
-            <th class="px-4 py-3">{{ t('treatmentPlans.remindAtShort') }}</th>
             <th class="px-4 py-3 text-right">{{ t('treatmentPlans.actions') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <tr v-if="loading">
-            <td class="px-4 py-4 text-slate-500" colspan="8">{{ t('treatmentPlans.loading') }}</td>
+            <td class="px-4 py-4 text-slate-500" colspan="7">{{ t('treatmentPlans.loading') }}</td>
           </tr>
           <tr v-else-if="plans.length === 0">
-            <td class="px-4 py-4 text-slate-500" colspan="8">{{ t('treatmentPlans.noPlans') }}</td>
+            <td class="px-4 py-4 text-slate-500" colspan="7">{{ t('treatmentPlans.noPlans') }}</td>
           </tr>
           <tr v-for="plan in plans" :key="plan.id" class="bg-white">
             <td class="px-4 py-3 text-slate-700">
@@ -232,7 +223,6 @@
             <td class="px-4 py-3 text-slate-700">{{ priorityLabel(plan.priority) }}</td>
             <td class="px-4 py-3 text-slate-700">{{ plan.first_tooth_id ? `#${plan.first_tooth_id}` : '-' }}</td>
             <td class="px-4 py-3 text-slate-700">{{ formatCurrency(plan.total_estimated_cost) }}</td>
-            <td class="px-4 py-3 text-slate-700">{{ plan.remind_at ? formatDateTime(plan.remind_at) : '-' }}</td>
             <td class="px-4 py-3 text-right">
               <div class="flex items-center justify-end gap-2">
                 <button
@@ -251,6 +241,14 @@
                     {{ option.label }}
                   </option>
                 </select>
+                <button
+                  type="button"
+                  class="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded disabled:opacity-50"
+                  :disabled="sendingReminderId === plan.id"
+                  @click="sendReminder(plan)"
+                >
+                  {{ sendingReminderId === plan.id ? t('treatmentPlans.sendingReminder') : t('treatmentPlans.remind') }}
+                </button>
               </div>
             </td>
           </tr>
@@ -263,7 +261,7 @@
             <td class="px-4 py-3 text-sm font-semibold text-slate-900">
               {{ formatCurrency(totalEstimatedCostAll) }}
             </td>
-            <td class="px-4 py-3" colspan="2"></td>
+            <td class="px-4 py-3" colspan="1"></td>
           </tr>
         </tfoot>
       </table>
@@ -328,6 +326,7 @@ import {
   createItem
 } from '@/api/treatmentPlansApi'
 import { createVisit } from '@/api/visitsApi'
+import { sendOrQueueTreatmentPlanReminder } from '@/services/treatmentPlanReminderService'
 import { useRoute } from 'vue-router'
 
 const props = defineProps({
@@ -336,6 +335,10 @@ const props = defineProps({
     required: true
   },
   patientName: {
+    type: String,
+    default: ''
+  },
+  patientPhone: {
     type: String,
     default: ''
   }
@@ -355,6 +358,7 @@ const selectedToothId = ref(null)
 const draftLoading = ref(false)
 const showDraftModal = ref(false)
 const draftResult = ref(null)
+const sendingReminderId = ref(null)
 
 const statusOptions = [
   { value: 'offered', label: t('treatmentPlans.statusOffered') },
@@ -368,7 +372,6 @@ const form = ref({
   status: 'offered',
   priority: 'medium',
   notes: '',
-  remind_at: '',
   stages: []
 })
 
@@ -400,7 +403,6 @@ const resetForm = () => {
     status: 'offered',
     priority: 'medium',
     notes: '',
-    remind_at: '',
     stages: [createEmptyStage()]
   }
   formError.value = ''
@@ -550,7 +552,6 @@ const savePlan = async () => {
       priority: form.value.priority,
       notes: form.value.notes,
       estimated_cost: totalCost,
-      remind_at: form.value.remind_at || null
     }
     const created = await createPlan(payload)
 
@@ -582,6 +583,36 @@ const savePlan = async () => {
   } catch (error) {
     console.error('Failed to save treatment plan:', error)
     formError.value = 'Saqlashda xatolik yuz berdi.'
+  }
+}
+
+const sendReminder = async (plan) => {
+  if (sendingReminderId.value) return
+  sendingReminderId.value = plan.id
+  try {
+    const result = await sendOrQueueTreatmentPlanReminder(plan, {
+      phone: props.patientPhone,
+    })
+    if (!result.ok) {
+      if (result.error === 'PHONE_REQUIRED') {
+        toast.error(t('treatmentPlans.errorReminderPhone'))
+      } else {
+        toast.error(result.message || t('treatmentPlans.errorReminder'))
+      }
+      return
+    }
+    if (result.plan) {
+      const idx = plans.value.findIndex(item => item.id === plan.id)
+      if (idx !== -1) {
+        plans.value[idx] = { ...plans.value[idx], ...result.plan }
+      }
+    }
+    toast.success(t('treatmentPlans.toastReminderSmsSent', { phone: result.phone || props.patientPhone }))
+  } catch (error) {
+    console.error('Failed to send reminder:', error)
+    toast.error(t('treatmentPlans.errorReminder'))
+  } finally {
+    sendingReminderId.value = null
   }
 }
 
@@ -652,13 +683,6 @@ const formatDate = (dateStr) => {
   const date = new Date(dateStr)
   if (Number.isNaN(date.getTime())) return dateStr
   return date.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-const formatDateTime = (dateStr) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  if (Number.isNaN(date.getTime())) return dateStr
-  return date.toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 const formatCurrency = (amount) => {

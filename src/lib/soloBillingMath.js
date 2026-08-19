@@ -89,11 +89,9 @@ export function calculateVisitSettlement({
 
   let rentAllocated = 0
   let doctorShare = 0
-  let clinicShare = 0
 
   if (model === BILLING_MODELS.PERCENTAGE) {
     doctorShare = (netAfterExpenses * doctorPct) / 100
-    clinicShare = netAfterExpenses - doctorShare
   } else if (model === BILLING_MODELS.RENT) {
     rentAllocated = allocateRentShare({
       rentAmount,
@@ -104,8 +102,7 @@ export function calculateVisitSettlement({
     // Ijara sof tushumdan chegiriladi; qolgani shifokorniki
     const afterRent = Math.max(0, netAfterExpenses - rentAllocated)
     doctorShare = afterRent
-    clinicShare = Math.min(rentAllocated, netAfterExpenses)
-    rentAllocated = clinicShare
+    rentAllocated = Math.min(rentAllocated, netAfterExpenses)
   } else {
     // hybrid: avval ijara, keyin qoldiqdan foiz
     rentAllocated = allocateRentShare({
@@ -117,17 +114,20 @@ export function calculateVisitSettlement({
     const cappedRent = Math.min(rentAllocated, netAfterExpenses)
     const afterRent = Math.max(0, netAfterExpenses - cappedRent)
     doctorShare = (afterRent * doctorPct) / 100
-    clinicShare = cappedRent + (afterRent - doctorShare)
     rentAllocated = cappedRent
   }
+
+  const netRounded = roundMoney(netAfterExpenses)
+  const doctorRounded = roundMoney(doctorShare)
+  const clinicRounded = roundMoney(netRounded - doctorRounded)
 
   return {
     model,
     gross_revenue: roundMoney(gross),
     expenses_total: roundMoney(expenses),
-    net_after_expenses: roundMoney(netAfterExpenses),
-    doctor_share: roundMoney(doctorShare),
-    clinic_share: roundMoney(clinicShare),
+    net_after_expenses: netRounded,
+    doctor_share: doctorRounded,
+    clinic_share: clinicRounded,
     rent_allocated: roundMoney(rentAllocated),
     doctor_percentage: doctorPct,
   }

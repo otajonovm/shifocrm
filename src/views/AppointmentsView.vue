@@ -733,6 +733,8 @@ import { usePermission } from '@/composables/usePermission'
 import * as visitsApi from '@/api/visitsApi'
 import { enrichVisitsWithLeadInfo } from '@/lib/leadVisitEnrich'
 import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
+import { getVisitServicesByVisitId } from '@/api/visitServicesApi'
+import { cashNetPaid, visitDueFrom } from '@/lib/paymentTotals'
 import {
   sendAppointmentConfirmed,
   sendAppointmentCanceled,
@@ -1603,7 +1605,22 @@ const completeVisit = async () => {
 
   const price = completeForm.value.price !== null ? Number(completeForm.value.price) : null
   const paidAmount = completeForm.value.paid_amount !== null ? Number(completeForm.value.paid_amount) : null
-  const debt = price !== null ? price - (paidAmount || 0) : null
+  let debt = price !== null ? Math.max(0, price - (paidAmount || 0)) : null
+
+  try {
+    const [existing, services] = await Promise.all([
+      getPaymentsByVisitId(completeTarget.value.id).catch(() => []),
+      getVisitServicesByVisitId(completeTarget.value.id).catch(() => []),
+    ])
+    const ledger = visitDueFrom({
+      services,
+      visitPrice: price,
+      payments: existing,
+    })
+    debt = Math.max(0, ledger.due - (paidAmount || 0))
+  } catch (error) {
+    console.warn('Yakunlash qarzini hisoblash:', error)
+  }
 
   try {
     const updateData = {
@@ -1632,10 +1649,7 @@ const completeVisit = async () => {
 const syncPayment = async (visit, paidAmount) => {
   try {
     const existing = await getPaymentsByVisitId(visit.id)
-    const netPaid = existing.reduce((sum, entry) => {
-      const amount = Number(entry.amount) || 0
-      return sum + (entry.payment_type === 'refund' ? -amount : amount)
-    }, 0)
+    const netPaid = cashNetPaid(existing)
     const diff = paidAmount - netPaid
     if (diff > 0) {
       await createPayment({

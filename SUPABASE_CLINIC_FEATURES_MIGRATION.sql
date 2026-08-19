@@ -20,7 +20,7 @@ CREATE INDEX IF NOT EXISTS idx_clinic_features_key ON public.clinic_features(fea
 ALTER TABLE public.clinic_features DROP CONSTRAINT IF EXISTS clinic_features_key_check;
 ALTER TABLE public.clinic_features
   ADD CONSTRAINT clinic_features_key_check
-  CHECK (feature_key IN ('warehouse', 'sms_marketing', 'kpi_finance', 'shifo_ai'));
+  CHECK (feature_key IN ('warehouse', 'sms_marketing', 'kpi_finance', 'shifo_ai', 'cashback'));
 
 -- -----------------------------------------------------------------------------
 -- updated_at trigger
@@ -79,7 +79,7 @@ AS $$
 $$;
 
 -- -----------------------------------------------------------------------------
--- Seed: mavjud klinikalar uchun 4 ta premium modul (default o'chiq)
+-- Seed: mavjud klinikalar uchun premium modullar (default o'chiq)
 -- -----------------------------------------------------------------------------
 INSERT INTO public.clinic_features (clinic_id, feature_key, is_active)
 SELECT c.id, fk.key, false
@@ -89,7 +89,8 @@ CROSS JOIN (
     ('warehouse'),
     ('sms_marketing'),
     ('kpi_finance'),
-    ('shifo_ai')
+    ('shifo_ai'),
+    ('cashback')
 ) AS fk(key)
 ON CONFLICT (clinic_id, feature_key) DO NOTHING;
 

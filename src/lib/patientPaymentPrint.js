@@ -56,6 +56,7 @@ export function buildReceiptPrintHtml(data = {}) {
     services = [],
     totalServices = 0,
     totalDiscount = 0,
+    totalCashback = 0,
     totalPaid = 0,
     remainingDebt = 0,
   } = data
@@ -72,6 +73,10 @@ export function buildReceiptPrintHtml(data = {}) {
   const discountRow =
     asNumber(totalDiscount) > 0
       ? `<tr><td>Chegirma</td><td class="num">-${formatMoney(totalDiscount)}</td></tr>`
+      : ''
+  const cashbackRow =
+    asNumber(totalCashback) > 0
+      ? `<tr><td>Keshbek</td><td class="num">-${formatMoney(totalCashback)}</td></tr>`
       : ''
 
   return `<!doctype html>
@@ -131,6 +136,7 @@ ${printScript}
       ${serviceRows}
       <tr class="total"><td>Jami xizmatlar</td><td class="num">${formatMoney(totalServices)}</td></tr>
       ${discountRow}
+      ${cashbackRow}
       <tr><td>To'langan</td><td class="num">${formatMoney(totalPaid)}</td></tr>
       <tr class="debt"><td>Qarzdorlik</td><td class="num">${formatMoney(remainingDebt)}</td></tr>
     </tbody>
@@ -156,6 +162,7 @@ export function buildA4PrintHtml(data = {}) {
     services = [],
     totalServices = 0,
     totalDiscount = 0,
+    totalCashback = 0,
     totalPaid = 0,
     remainingDebt = 0,
   } = data
@@ -176,6 +183,10 @@ export function buildA4PrintHtml(data = {}) {
   const discountFoot =
     asNumber(totalDiscount) > 0
       ? `<tr><td colspan="4" class="foot-label">Chegirma</td><td class="num foot-discount">-${formatMoney(totalDiscount)}</td></tr>`
+      : ''
+  const cashbackFoot =
+    asNumber(totalCashback) > 0
+      ? `<tr><td colspan="4" class="foot-label">Keshbek</td><td class="num foot-discount">-${formatMoney(totalCashback)}</td></tr>`
       : ''
 
   return `<!doctype html>
@@ -256,6 +267,7 @@ ${printScript}
           <td class="num">${formatMoney(totalServices)}</td>
         </tr>
         ${discountFoot}
+        ${cashbackFoot}
         <tr>
           <td colspan="4" class="foot-label">To'langan summa</td>
           <td class="num">${formatMoney(totalPaid)}</td>
@@ -296,6 +308,7 @@ export function buildPaymentPrintPayload({
   printServices,
   totalServices,
   totalDiscountAmount,
+  totalCashbackUsed = 0,
   totalPaidNet,
   remainingDebt,
   documentNumber,
@@ -319,6 +332,7 @@ export function buildPaymentPrintPayload({
     })),
     totalServices,
     totalDiscount: totalDiscountAmount,
+    totalCashback: totalCashbackUsed,
     totalPaid: totalPaidNet,
     remainingDebt,
   }

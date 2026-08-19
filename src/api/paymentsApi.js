@@ -5,10 +5,13 @@
 
 import { supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
-import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
-import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 import { tryAttributeVisitRevenue } from './notificationEventsApi'
-import { postVisitPayment } from '@/services/paymentService'
+import { postVisitPayment, syncVisitAfterPayment } from '@/services/paymentService'
+import { applyPaymentCashback } from '@/services/cashbackService'
+import { clinicHasActiveFeature } from '@/services/subscriptionService'
+import { FEATURE_KEYS } from '@/lib/subscriptionFeatures'
+import { cashIncome, isDiscountEntry, isTrueRefund } from '@/lib/paymentTotals'
+import { mergeClinicQuery, supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 
 const TABLE = 'payments'
 
@@ -52,7 +55,8 @@ export const createPayment = async ({
   payment_type = 'payment',
   method = null,
   note = null,
-  paid_at = null
+  paid_at = null,
+  cashback_used = 0,
 }) => {
   try {
     const cid = await getCurrentClinicId()
@@ -61,6 +65,8 @@ export const createPayment = async ({
     const normalizedType = payment_type === 'refund' && String(note || '').includes('[DISCOUNT]')
       ? 'discount'
       : payment_type
+    const cashbackOn = await clinicHasActiveFeature(cid, FEATURE_KEYS.CASHBACK)
+    const usedCashback = cashbackOn && normalizedType === 'payment' ? cashback_used : 0
     const created = await postVisitPayment({
       visitId: visit_id,
       amount,
@@ -70,6 +76,7 @@ export const createPayment = async ({
       patientId: patient_id,
       doctorId: doctor_id,
       paidAt: paid_at,
+      cashbackUsed: usedCashback,
     })
     if (created && created.visit_id && payment_type === 'payment') {
       tryAttributeVisitRevenue({
@@ -78,6 +85,26 @@ export const createPayment = async ({
         amount: created.amount,
         clinicId: cid,
       }).catch(() => {})
+    }
+    if (created && normalizedType === 'payment' && cashbackOn) {
+      let cashback = { ok: true, spent: 0, earned: 0, error: null }
+      try {
+        cashback = await applyPaymentCashback({
+          patientId: created.patient_id ?? patient_id,
+          paymentId: created.id,
+          totalAmount: created.amount ?? amount,
+          cashbackUsed: usedCashback,
+        })
+      } catch (cashbackError) {
+        console.warn('Cashback API failed:', cashbackError)
+        cashback = {
+          ok: false,
+          spent: 0,
+          earned: 0,
+          error: cashbackError?.message || 'CASHBACK_ERROR',
+        }
+      }
+      return { ...created, cashback }
     }
     return created
   } catch (error) {
@@ -135,8 +162,21 @@ export const deletePayment = async (paymentId) => {
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
     const numId = Number(paymentId)
     if (!Number.isFinite(numId)) throw new Error('Invalid payment ID')
+    const existingRows = await supabaseGetWithClinicFallback(TABLE, `id=eq.${numId}&select=*`, cid)
+    const existing = Array.isArray(existingRows) ? existingRows[0] : existingRows
     const q = mergeClinicQuery(`id=eq.${numId}`, cid)
     await supabaseDeleteWhere(TABLE, q)
+    if (existing?.payment_type === 'payment') {
+      try {
+        const { reverseLocalCashbackForPayment } = await import('@/services/cashbackLedgerService')
+        await reverseLocalCashbackForPayment(existing)
+      } catch (cashbackError) {
+        console.warn('Cashback reverse on delete:', cashbackError)
+      }
+    }
+    if (existing?.visit_id) {
+      await syncVisitAfterPayment(existing.visit_id)
+    }
     return true
   } catch (error) {
     console.error('❌ Failed to delete payment:', error)
@@ -167,18 +207,21 @@ export const updatePayment = async (paymentId, payload) => {
   }
 }
 
+function bumpIncomeBucket(row, p) {
+  const amt = Number(p.amount) || 0
+  if (p.payment_type === 'payment') row.total_payments += amt
+  else if (isTrueRefund(p)) row.total_refunds += amt
+  else if (p.payment_type === 'adjustment' && !isDiscountEntry(p)) row.total_adjustments += amt
+  row.net_income += cashIncome([p])
+}
+
 function aggregatePaymentsByDay (payments) {
   const byDay = new Map()
   for (const p of payments || []) {
     const day = (p.paid_at || '').slice(0, 10)
     if (!day) continue
     if (!byDay.has(day)) byDay.set(day, { day, total_payments: 0, total_refunds: 0, total_adjustments: 0, net_income: 0 })
-    const row = byDay.get(day)
-    const amt = Number(p.amount) || 0
-    if (p.payment_type === 'payment') row.total_payments += amt
-    else if (p.payment_type === 'refund') row.total_refunds += amt
-    else if (p.payment_type === 'adjustment') row.total_adjustments += amt
-    row.net_income += p.payment_type === 'refund' ? -amt : amt
+    bumpIncomeBucket(byDay.get(day), p)
   }
   return Array.from(byDay.values()).sort((a, b) => (a.day < b.day ? -1 : 1))
 }
@@ -190,12 +233,7 @@ function aggregatePaymentsByMonth (payments) {
     if (!d) continue
     const month = d.slice(0, 7) + '-01'
     if (!byMonth.has(month)) byMonth.set(month, { month, total_payments: 0, total_refunds: 0, total_adjustments: 0, net_income: 0 })
-    const row = byMonth.get(month)
-    const amt = Number(p.amount) || 0
-    if (p.payment_type === 'payment') row.total_payments += amt
-    else if (p.payment_type === 'refund') row.total_refunds += amt
-    else if (p.payment_type === 'adjustment') row.total_adjustments += amt
-    row.net_income += p.payment_type === 'refund' ? -amt : amt
+    bumpIncomeBucket(byMonth.get(month), p)
   }
   return Array.from(byMonth.values()).sort((a, b) => (a.month > b.month ? -1 : 1))
 }

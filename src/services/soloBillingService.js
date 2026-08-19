@@ -12,7 +12,12 @@ import {
 } from '@/api/supabaseConfig'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { getVisitById } from '@/api/visitsApi'
-import { getPaymentsByVisitId } from '@/api/paymentsApi'
+import {
+  getPaymentsByDateRange,
+  getPaymentsByDoctorAndDateRange,
+  getPaymentsByVisitId,
+} from '@/api/paymentsApi'
+import { cashIncome } from '@/lib/paymentTotals'
 import {
   BILLING_MODELS,
   DEFAULT_BILLING_SETTINGS,
@@ -30,13 +35,30 @@ const SETTLEMENTS_TABLE = 'visit_settlements'
 
 const toResult = (data = null, error = null) => ({ data, error })
 
-const isMissingRelation = (error) => {
-  const msg = String(error?.message || '').toLowerCase()
-  return error?.code === '42P01'
+const isMissingTable = (error) => {
+  const msg = String(error?.message || error?.hint || '').toLowerCase()
+  const code = String(error?.code || '')
+  return code === '42P01'
+    || code === 'PGRST205'
     || error?.status === 404
     || msg.includes('does not exist')
-    || msg.includes('schema cache')
+    || msg.includes('could not find the table')
 }
+
+const isMissingColumn = (error) => {
+  const msg = String(error?.message || error?.hint || '').toLowerCase()
+  const code = String(error?.code || '')
+  return code === 'PGRST204'
+    || msg.includes('could not find the')
+    || (msg.includes('schema cache') && msg.includes('column'))
+}
+
+const parsePercent = (value, fallback = 40) => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
+const netPaidFromPayments = (entries = []) => Math.max(0, cashIncome(entries))
 
 const requireClinicId = async () => {
   const cid = await getCurrentClinicId()
@@ -45,22 +67,6 @@ const requireClinicId = async () => {
     throw err
   }
   return Number(cid)
-}
-
-const netPaidFromPayments = (entries = []) => {
-  let net = 0
-  for (const entry of entries || []) {
-    const amount = Number(entry.amount) || 0
-    if (entry.payment_type === 'discount' || String(entry.note || '').includes('[DISCOUNT]')) {
-      continue
-    }
-    if (entry.payment_type === 'refund') {
-      net -= amount
-      continue
-    }
-    net += amount
-  }
-  return Math.max(0, net)
 }
 
 const normalizeSettings = (row) => {
@@ -72,7 +78,7 @@ const normalizeSettings = (row) => {
     clinic_id: row.clinic_id,
     doctor_id: row.doctor_id,
     model: row.model || BILLING_MODELS.PERCENTAGE,
-    doctor_percentage: Number(row.doctor_percentage) || 40,
+    doctor_percentage: parsePercent(row.doctor_percentage),
     rent_type: row.rent_type || 'monthly',
     rent_amount: Number(row.rent_amount) || 0,
     created_at: row.created_at,
@@ -95,7 +101,7 @@ export async function getDoctorBillingSettings(doctorId) {
     const row = Array.isArray(rows) && rows[0] ? rows[0] : null
     return toResult(normalizeSettings(row || { clinic_id: cid, doctor_id: id }), null)
   } catch (error) {
-    if (isMissingRelation(error)) {
+    if (isMissingTable(error)) {
       return toResult({ ...DEFAULT_BILLING_SETTINGS, doctor_id: Number(doctorId) }, null)
     }
     return toResult(null, {
@@ -160,7 +166,7 @@ export async function listVisitExpenses(visitId) {
     )
     return toResult(Array.isArray(rows) ? rows : [], null)
   } catch (error) {
-    if (isMissingRelation(error)) return toResult([], null)
+    if (isMissingTable(error)) return toResult([], null)
     return toResult([], {
       code: 'EXPENSES_LOAD_FAILED',
       message: error?.message || 'Xarajatlar yuklanmadi',
@@ -284,14 +290,22 @@ export async function recalculateVisitSettlement(visitId) {
     const doctorId = visit.doctor_id ? Number(visit.doctor_id) : null
     const { data: settings } = await getDoctorBillingSettings(doctorId)
 
-    const payments = await getPaymentsByVisitId(visitId).catch(() => [])
-    const grossFromPayments = netPaidFromPayments(payments)
-    const gross = grossFromPayments > 0
-      ? grossFromPayments
-      : Math.max(0, Number(visit.paid_amount) || Number(visit.price) || 0)
+    let payments = null
+    try {
+      payments = await getPaymentsByVisitId(visitId)
+    } catch {
+      payments = null
+    }
+    const gross = payments
+      ? netPaidFromPayments(payments)
+      : Math.max(0, Number(visit.paid_amount) || 0)
 
     const { data: expenses } = await listVisitExpenses(visitId)
     const expensesTotal = (expenses || []).reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
+    const labTechAmount = (expenses || []).reduce((sum, row) => {
+      return ['zubotexnik', 'lab'].includes(row.category) ? sum + (Number(row.amount) || 0) : sum
+    }, 0)
+    const otherExpenseAmount = Math.max(0, expensesTotal - labTechAmount)
 
     const visitDate = visit.visit_date || visit.start_at || visit.created_at || new Date()
     const rentType = settings?.rent_type || 'monthly'
@@ -312,11 +326,30 @@ export async function recalculateVisitSettlement(visitId) {
       daysInMonth: daysInMonthOf(visitDate),
     })
 
-    const payload = {
+    const nowIso = new Date().toISOString()
+    const livePayload = {
       clinic_id: cid,
       visit_id: Number(visitId),
       doctor_id: doctorId,
-      model: calc.model,
+      patient_id: visit.patient_id != null ? Number(visit.patient_id) : null,
+      work_type: calc.model || 'percentage',
+      percentage_rate: calc.doctor_percentage,
+      gross_amount: calc.gross_revenue,
+      expense_amount: calc.expenses_total,
+      lab_tech_amount: labTechAmount,
+      other_expense_amount: otherExpenseAmount,
+      net_amount: calc.net_after_expenses,
+      rent_allocated: calc.rent_allocated,
+      doctor_share: calc.doctor_share,
+      clinic_share: calc.clinic_share,
+      settled_at: nowIso,
+      updated_at: nowIso,
+    }
+    const migrationPayload = {
+      clinic_id: cid,
+      visit_id: Number(visitId),
+      doctor_id: doctorId,
+      model: calc.model || 'percentage',
       gross_revenue: calc.gross_revenue,
       expenses_total: calc.expenses_total,
       net_after_expenses: calc.net_after_expenses,
@@ -324,39 +357,45 @@ export async function recalculateVisitSettlement(visitId) {
       clinic_share: calc.clinic_share,
       rent_allocated: calc.rent_allocated,
       doctor_percentage: calc.doctor_percentage,
-      calculated_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      calculated_at: nowIso,
+      updated_at: nowIso,
     }
 
-    const existing = await supabaseGet(
-      SETTLEMENTS_TABLE,
-      `visit_id=eq.${Number(visitId)}&select=id&limit=1`,
-    ).catch(() => [])
+    const writeSettlement = async (payload) => {
+      const existing = await supabaseGet(
+        SETTLEMENTS_TABLE,
+        `visit_id=eq.${Number(visitId)}&select=id&limit=1`,
+      ).catch(() => [])
 
-    let row
-    if (Array.isArray(existing) && existing[0]?.id) {
-      row = await supabasePatch(SETTLEMENTS_TABLE, existing[0].id, payload)
-      row = Array.isArray(row) ? row[0] : row
-    } else {
+      if (Array.isArray(existing) && existing[0]?.id) {
+        const patched = await supabasePatch(SETTLEMENTS_TABLE, existing[0].id, payload)
+        return Array.isArray(patched) ? patched[0] : patched
+      }
       try {
-        row = await supabasePost(SETTLEMENTS_TABLE, payload)
-        row = Array.isArray(row) ? row[0] : row
+        const created = await supabasePost(SETTLEMENTS_TABLE, payload)
+        return Array.isArray(created) ? created[0] : created
       } catch (error) {
-        // race: unique visit_id
         if (String(error?.message || '').includes('duplicate') || error?.code === '23505') {
           await supabasePatchWhere(SETTLEMENTS_TABLE, `visit_id=eq.${Number(visitId)}`, payload)
           const again = await supabaseGet(SETTLEMENTS_TABLE, `visit_id=eq.${Number(visitId)}&limit=1`)
-          row = Array.isArray(again) ? again[0] : again
-        } else {
-          throw error
+          return Array.isArray(again) ? again[0] : again
         }
+        throw error
       }
+    }
+
+    let row
+    try {
+      row = await writeSettlement(livePayload)
+    } catch (error) {
+      if (!isMissingColumn(error)) throw error
+      row = await writeSettlement(migrationPayload)
     }
 
     return toResult(row, null)
   } catch (error) {
-    if (isMissingRelation(error)) {
-      return toResult(null, null)
+    if (isMissingTable(error)) {
+      return toResult(null, { code: 'SETTLEMENTS_TABLE_MISSING', message: 'visit_settlements jadvali yo‘q' })
     }
     console.warn('visit settlement recalc:', error)
     return toResult(null, {
@@ -396,42 +435,130 @@ export async function getSoloFinanceReport({
         `clinic_id=eq.${cid}&doctor_id=eq.${id}&calculated_at=gte.${start}T00:00:00&calculated_at=lte.${end}T23:59:59&order=calculated_at.desc`,
       )
     } catch (error) {
-      if (!isMissingRelation(error)) throw error
+      if (isMissingColumn(error)) {
+        try {
+          settlements = await supabaseGet(
+            SETTLEMENTS_TABLE,
+            `clinic_id=eq.${cid}&doctor_id=eq.${id}&settled_at=gte.${start}T00:00:00&settled_at=lte.${end}T23:59:59&order=settled_at.desc`,
+          )
+        } catch (retryError) {
+          if (!isMissingTable(retryError) && !isMissingColumn(retryError)) throw retryError
+          settlements = []
+        }
+      } else if (!isMissingTable(error)) {
+        throw error
+      }
+    }
+
+    const loadPeriodPayments = async () => {
+      const doctorPayments = await getPaymentsByDoctorAndDateRange(id, start, end).catch(() => [])
+      if (Array.isArray(doctorPayments) && doctorPayments.length) return doctorPayments
+      const clinicPayments = await getPaymentsByDateRange(start, end).catch(() => [])
+      if (Array.isArray(clinicPayments) && clinicPayments.length) return clinicPayments
+      try {
+        return await supabaseGet(
+          'payments',
+          `clinic_id=eq.${cid}&paid_at=gte.${start}T00:00:00&paid_at=lte.${end}T23:59:59`,
+        )
+      } catch {
+        return []
+      }
+    }
+
+    const payments = await loadPeriodPayments()
+    const visitIds = [...new Set((payments || []).map((p) => p.visit_id).filter(Boolean))]
+    const rebuilt = []
+    for (const visitId of visitIds) {
+      const visitPayments = (payments || []).filter((p) => Number(p.visit_id) === Number(visitId))
+      const gross = netPaidFromPayments(visitPayments)
+      const cached = (settlements || []).find((row) => Number(row.visit_id) === Number(visitId))
+      const { data: expenses } = await listVisitExpenses(visitId)
+      const expensesTotal = (expenses || []).reduce((s, r) => s + (Number(r.amount) || 0), 0)
+      const visitDate = visitPayments[0]?.paid_at || cached?.calculated_at || cached?.settled_at || start
+      const calc = calculateVisitSettlement({
+        grossRevenue: gross,
+        expensesTotal,
+        settings,
+        visitsInPeriod: Math.max(1, visitIds.length),
+        daysInMonth: daysInMonthOf(visitDate),
+      })
+      rebuilt.push({
+        ...(cached || {}),
+        visit_id: visitId,
+        ...calc,
+        gross_revenue: calc.gross_revenue,
+        expenses_total: calc.expenses_total,
+        doctor_share: calc.doctor_share,
+        clinic_share: calc.clinic_share,
+        calculated_at: visitDate,
+      })
+    }
+
+    const orphanPayments = (payments || []).filter((p) => p.visit_id == null || p.visit_id === '')
+    if (orphanPayments.length) {
+      const visitDate = orphanPayments[0]?.paid_at || start
+      const calc = calculateVisitSettlement({
+        grossRevenue: netPaidFromPayments(orphanPayments),
+        expensesTotal: 0,
+        settings,
+        visitsInPeriod: Math.max(1, visitIds.length + 1),
+        daysInMonth: daysInMonthOf(visitDate),
+      })
+      rebuilt.push({
+        visit_id: null,
+        ...calc,
+        calculated_at: visitDate,
+      })
+    }
+
+    if (rebuilt.length) {
+      settlements = rebuilt
+    } else if (Array.isArray(settlements) && settlements.length) {
+      settlements = await Promise.all(settlements.map(async (row) => {
+        let visitPayments = (payments || []).filter((p) => Number(p.visit_id) === Number(row.visit_id))
+        if (!visitPayments.length && row.visit_id != null) {
+          const allVisitPays = await getPaymentsByVisitId(row.visit_id).catch(() => [])
+          visitPayments = (allVisitPays || []).filter((p) => {
+            const day = String(p.paid_at || '').slice(0, 10)
+            return day >= start && day <= end
+          })
+        }
+        if (!visitPayments.length) return row
+        const expensesTotal = Number(row.expenses_total ?? row.expense_amount) || 0
+        const visitDate = row.calculated_at || row.settled_at || visitPayments[0]?.paid_at || start
+        const calc = calculateVisitSettlement({
+          grossRevenue: netPaidFromPayments(visitPayments),
+          expensesTotal,
+          settings,
+          visitsInPeriod: Math.max(1, settlements.length),
+          daysInMonth: daysInMonthOf(visitDate),
+        })
+        return {
+          ...row,
+          ...calc,
+          gross_revenue: calc.gross_revenue,
+          expenses_total: calc.expenses_total,
+          doctor_share: calc.doctor_share,
+          clinic_share: calc.clinic_share,
+        }
+      }))
+    } else {
       settlements = []
     }
 
-    // Agar settlement yo'q bo'lsa — to'lovlardan soddalashtirilgan hisobot
-    if (!Array.isArray(settlements) || settlements.length === 0) {
-      const payments = await supabaseGet(
-        'payments',
-        `clinic_id=eq.${cid}&doctor_id=eq.${id}&paid_at=gte.${start}T00:00:00&paid_at=lte.${end}T23:59:59&select=id,amount,payment_type,note,visit_id,paid_at`,
-      ).catch(() => [])
-
-      const visitIds = [...new Set((payments || []).map((p) => p.visit_id).filter(Boolean))]
-      const rebuilt = []
-      for (const visitId of visitIds) {
-        const visitPayments = (payments || []).filter((p) => Number(p.visit_id) === Number(visitId))
-        const gross = netPaidFromPayments(visitPayments)
-        const { data: expenses } = await listVisitExpenses(visitId)
-        const expensesTotal = (expenses || []).reduce((s, r) => s + (Number(r.amount) || 0), 0)
-        const visitDate = visitPayments[0]?.paid_at || start
-        const calc = calculateVisitSettlement({
-          grossRevenue: gross,
-          expensesTotal,
-          settings,
-          visitsInPeriod: Math.max(1, visitIds.length),
-          daysInMonth: daysInMonthOf(visitDate),
-        })
-        rebuilt.push({
-          visit_id: visitId,
-          ...calc,
-          calculated_at: visitDate,
-        })
-      }
-      settlements = rebuilt
-    }
-
     const summary = summarizeSettlements(settlements)
+    const liveGross = roundMoney(netPaidFromPayments(payments))
+    if (liveGross > 0 && roundMoney(summary.grossRevenue) <= 0) {
+      const calc = calculateVisitSettlement({
+        grossRevenue: liveGross,
+        expensesTotal: 0,
+        settings,
+        visitsInPeriod: 1,
+        daysInMonth: daysInMonthOf(end),
+      })
+      settlements = [{ ...calc, visit_id: null, calculated_at: end }]
+    }
+    const totals = summarizeSettlements(settlements)
     const expensesBreakdown = { zubotexnik: 0, lab: 0, material: 0, other: 0 }
     try {
       const expenseRows = await supabaseGet(
@@ -450,13 +577,13 @@ export async function getSoloFinanceReport({
       settings,
       range: { start, end },
       summary: {
-        grossRevenue: roundMoney(summary.grossRevenue),
-        expensesTotal: roundMoney(summary.expensesTotal),
-        clinicShare: roundMoney(summary.clinicShare),
-        rentAllocated: roundMoney(summary.rentAllocated),
-        doctorNet: roundMoney(summary.doctorNet),
-        visits: summary.visits,
-        paidRentOrClinicShare: roundMoney(summary.clinicShare),
+        grossRevenue: roundMoney(totals.grossRevenue),
+        expensesTotal: roundMoney(totals.expensesTotal),
+        clinicShare: roundMoney(totals.clinicShare),
+        rentAllocated: roundMoney(totals.rentAllocated),
+        doctorNet: roundMoney(totals.doctorNet),
+        visits: totals.visits,
+        paidRentOrClinicShare: roundMoney(totals.clinicShare),
       },
       expensesBreakdown,
       rows: settlements,

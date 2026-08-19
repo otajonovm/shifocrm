@@ -46,8 +46,14 @@ export async function logAuditAction({ userId = null, action, userRole = null, m
 const mapAuthError = (error) => {
   if (!error) return null
   const msg = String(error.message || '').toLowerCase()
-  if (msg.includes('already registered') || msg.includes('already exists')) {
+  if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
     return { code: 'EMAIL_TAKEN', message: 'Bu email allaqachon ro\'yxatdan o\'tgan' }
+  }
+  if (msg.includes('signups not allowed') || msg.includes('signup is disabled') || msg.includes('signup disabled')) {
+    return { code: 'SIGNUP_DISABLED', message: 'Supabase Auth signup o\'chiq' }
+  }
+  if (msg.includes('database error saving new user') || msg.includes('database error')) {
+    return { code: 'DATABASE_ERROR', message: 'Profil yozilmadi (Auth trigger)' }
   }
   if (msg.includes('invalid login credentials')) {
     return { code: 'INVALID_CREDENTIALS', message: 'Email yoki parol noto\'g\'ri' }
@@ -179,8 +185,10 @@ export async function registerIndividualSoloDoctor({
     clinicId,
   })
 
+  // Klinika + doctor allaqachon yaratilgan. Auth 400 ro'yxatdan o'tishni
+  // to'xtatmasin — yakka stom telefon + parol bilan kiradi.
   if (signUpError) {
-    return toResult(null, signUpError)
+    console.warn('Solo Auth signup skipped:', signUpError.code || signUpError.message)
   }
 
   return toResult(

@@ -63,6 +63,26 @@
               {{ formatBalance(balance) }}
             </p>
           </div>
+          <div
+            v-if="cashbackConfigured"
+            class="bg-amber-50/80 sm:bg-transparent rounded-xl sm:rounded-none p-3 sm:p-0 sm:py-1"
+          >
+            <span class="text-xs text-gray-500 block">{{ t('patientDetail.cashback') }}</span>
+            <p v-if="cashbackLoading" class="text-sm text-gray-400">{{ t('patientDetail.cashbackLoading') }}</p>
+            <p v-else-if="cashbackError" class="text-sm text-gray-400">
+              {{ t(cashbackErrorCode === 'UNAUTHORIZED' ? 'patientDetail.cashbackUnauthorized' : 'patientDetail.cashbackUnavailable') }}
+            </p>
+            <p
+              v-else
+              class="text-sm font-semibold"
+              :class="cashbackBalance > 0 ? 'text-amber-700' : 'text-gray-500'"
+            >
+              {{ formatBalance(cashbackBalance) }}
+              <span v-if="cashbackBalance <= 0" class="font-normal text-gray-400">
+                ({{ t('patientDetail.cashbackNone') }})
+              </span>
+            </p>
+          </div>
           <div v-if="patient.doctor_name && !isSolo" class="col-span-2 sm:col-span-1 bg-gray-50/80 sm:bg-transparent rounded-xl sm:rounded-none p-3 sm:p-0 sm:py-1">
             <span class="text-xs text-gray-500 block">{{ t('patientDetail.doctor') }}</span>
             <p class="text-sm font-semibold text-gray-900">{{ patient.doctor_name }}</p>
@@ -127,6 +147,7 @@
               :patient-med-id="patient.med_id || ''"
               :patient-phone="patient.phone || ''"
               @update-status="handlePaymentStatusUpdate"
+              @cashback-updated="loadCashbackBalance"
             />
           </div>
 
@@ -135,6 +156,7 @@
             <PatientTreatmentPlans
               :patient-id="patient.id"
               :patient-name="patient.full_name || ''"
+              :patient-phone="patient.phone || ''"
             />
           </div>
 
@@ -256,6 +278,7 @@ import { PATIENT_STATUSES, getPatientStatusLabel, normalizePatientStatus } from 
 import { ArrowLeftIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import * as visitsApi from '@/api/visitsApi'
 import { logActivity } from '@/lib/activityLog'
+import { useCashbackBalance } from '@/composables/useCashbackBalance'
 
 const toast = useToast()
 const { t } = useI18n()
@@ -367,6 +390,15 @@ const balance = computed(() => {
   const numeric = Number(raw)
   return Number.isFinite(numeric) ? numeric : 0
 })
+
+const {
+  balance: cashbackBalance,
+  loading: cashbackLoading,
+  error: cashbackError,
+  errorCode: cashbackErrorCode,
+  configured: cashbackConfigured,
+  load: loadCashbackBalance,
+} = useCashbackBalance(() => patient.value?.id)
 
 const formatBalance = (amount) => {
   const numeric = Number(amount)

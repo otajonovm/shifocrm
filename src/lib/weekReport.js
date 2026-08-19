@@ -1,3 +1,5 @@
+import { cashIncome } from './paymentTotals'
+
 const ACTIVE_VISIT = (v) => !['cancelled', 'no_show'].includes(String(v?.status || ''))
 
 export function localDateStr(value = new Date()) {
@@ -9,6 +11,12 @@ export function localDateStr(value = new Date()) {
   return `${y}-${m}-${day}`
 }
 
+export function parseLocalDate(value) {
+  const [year, month, day] = String(value || '').slice(0, 10).split('-').map(Number)
+  if (!year || !month || !day) return new Date(NaN)
+  return new Date(year, month - 1, day)
+}
+
 export function uniquePatients(visits = []) {
   const ids = new Set()
   for (const v of visits) {
@@ -18,12 +26,7 @@ export function uniquePatients(visits = []) {
 }
 
 export function sumPayments(rows = []) {
-  return rows.reduce((sum, p) => {
-    const amt = Number(p.amount) || 0
-    if (p.payment_type === 'refund') return sum - Math.abs(amt)
-    if (p.payment_type === 'discount') return sum
-    return sum + amt
-  }, 0)
+  return cashIncome(rows)
 }
 
 export function buildDailyBreakdown(visits = [], payments = [], days = 7, now = new Date()) {
@@ -59,6 +62,16 @@ export function buildDailyBreakdown(visits = [], payments = [], days = 7, now = 
     })
   }
   return breakdown
+}
+
+export function buildDailyBreakdownRange(visits = [], payments = [], startStr, endStr) {
+  const start = parseLocalDate(startStr)
+  const end = parseLocalDate(endStr)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+    return buildDailyBreakdown(visits, payments, 7)
+  }
+  const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1
+  return buildDailyBreakdown(visits, payments, days, end)
 }
 
 export function weekDateRange(now = new Date()) {

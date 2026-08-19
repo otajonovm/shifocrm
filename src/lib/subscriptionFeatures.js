@@ -7,6 +7,7 @@ export const FEATURE_KEYS = Object.freeze({
   SMS_MARKETING: 'sms_marketing',
   KPI_FINANCE: 'kpi_finance',
   SHIFO_AI: 'shifo_ai',
+  CASHBACK: 'cashback',
 })
 
 export const PREMIUM_FEATURE_KEYS = Object.freeze([
@@ -14,6 +15,7 @@ export const PREMIUM_FEATURE_KEYS = Object.freeze([
   FEATURE_KEYS.SMS_MARKETING,
   FEATURE_KEYS.KPI_FINANCE,
   FEATURE_KEYS.SHIFO_AI,
+  FEATURE_KEYS.CASHBACK,
 ])
 
 /** Route → feature_key */
@@ -22,6 +24,7 @@ export const FEATURE_ROUTE_MAP = Object.freeze({
   [FEATURE_KEYS.KPI_FINANCE]: '/reports',
   [FEATURE_KEYS.SMS_MARKETING]: null,
   [FEATURE_KEYS.SHIFO_AI]: null,
+  [FEATURE_KEYS.CASHBACK]: null,
 })
 
 /** Core — DB yozuvsiz, doim ochiq */

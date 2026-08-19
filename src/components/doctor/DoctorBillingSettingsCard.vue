@@ -133,7 +133,9 @@ const load = async () => {
   }
   if (data) {
     form.model = data.model || 'percentage'
-    form.doctor_percentage = Number(data.doctor_percentage) || 40
+    form.doctor_percentage = Number.isFinite(Number(data.doctor_percentage))
+      ? Number(data.doctor_percentage)
+      : 40
     form.rent_type = data.rent_type || 'monthly'
     form.rent_amount = Number(data.rent_amount) || 0
   }
