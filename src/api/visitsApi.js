@@ -25,6 +25,89 @@ import { tryAttributeVisitRevenue } from './notificationEventsApi'
 
 const TABLE = 'visits'
 
+/** Kalendar chizish uchun yetarli ustunlar — notes/odontogram bloblari yo'q. */
+export const CALENDAR_VISIT_COLUMNS = [
+  'id',
+  'patient_id',
+  'doctor_id',
+  'lead_id',
+  'date',
+  'start_time',
+  'end_time',
+  'duration_minutes',
+  'status',
+  'patient_name',
+  'phone',
+  'service_name',
+  'price',
+  'paid_amount',
+  'notes',
+  'room',
+  'channel',
+]
+
+const CALENDAR_VISIT_CORE_COLUMNS = ['id', 'patient_id', 'doctor_id', 'date', 'status']
+
+const normalizeRangeOptions = (optionsOrDoctorId) => {
+  if (optionsOrDoctorId == null || optionsOrDoctorId === '') return {}
+  if (typeof optionsOrDoctorId === 'object') return optionsOrDoctorId
+  return { doctorId: optionsOrDoctorId }
+}
+
+const isMissingSelectColumnError = (error) => {
+  const code = String(error?.code || '')
+  const message = String(error?.message || error?.details || error?.hint || '').toLowerCase()
+  return code === 'PGRST204'
+    || message.includes('schema cache')
+    || (message.includes('column') && (message.includes('does not exist') || message.includes('could not find')))
+}
+
+const findMissingSelectColumn = (error, columns) => {
+  const haystack = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`
+  return columns.find((col) => haystack.includes(col))
+}
+
+const buildVisitsRangeQuery = (startDate, endDate, { doctorId, columns } = {}) => {
+  const parts = []
+  if (Array.isArray(columns) && columns.length) {
+    parts.push(`select=${encodeURIComponent(columns.join(','))}`)
+  }
+  if (doctorId != null && Number.isFinite(Number(doctorId))) {
+    parts.push(`doctor_id=eq.${Number(doctorId)}`)
+  }
+  parts.push(`date=gte.${startDate}`)
+  parts.push(`date=lte.${endDate}`)
+  parts.push('order=date.asc,created_at.asc')
+  return parts.join('&')
+}
+
+async function fetchVisitsByDateRange(startDate, endDate, options = {}) {
+  const cid = await getCurrentClinicId()
+  let columns = Array.isArray(options.columns) ? [...options.columns] : null
+
+  while (true) {
+    try {
+      return await supabaseGetWithClinicFallback(
+        TABLE,
+        buildVisitsRangeQuery(startDate, endDate, { doctorId: options.doctorId, columns }),
+        cid,
+      )
+    } catch (error) {
+      if (!columns?.length || !isMissingSelectColumnError(error)) throw error
+      const missing = findMissingSelectColumn(error, columns)
+      if (missing && columns.length > CALENDAR_VISIT_CORE_COLUMNS.length) {
+        columns = columns.filter((col) => col !== missing)
+        continue
+      }
+      return supabaseGetWithClinicFallback(
+        TABLE,
+        buildVisitsRangeQuery(startDate, endDate, { doctorId: options.doctorId }),
+        cid,
+      )
+    }
+  }
+}
+
 export const listVisits = async (query = 'order=created_at.desc') => {
   try {
     const cid = await getCurrentClinicId()
@@ -68,26 +151,42 @@ export const getVisitsByDoctorAndDate = async (doctorId, date) => {
   }
 }
 
-export const getVisitsByDateRange = async (startDate, endDate) => {
+export const getVisitsByDateRange = async (startDate, endDate, optionsOrDoctorId) => {
   try {
-    const cid = await getCurrentClinicId()
-    const q = `date=gte.${startDate}&date=lte.${endDate}&order=date.asc,created_at.asc`
-    return await supabaseGetWithClinicFallback(TABLE, q, cid)
+    return await fetchVisitsByDateRange(startDate, endDate, normalizeRangeOptions(optionsOrDoctorId))
   } catch (error) {
     console.error('❌ Failed to fetch visits by date range:', error)
     throw error
   }
 }
 
-export const getVisitsByDoctorAndDateRange = async (doctorId, startDate, endDate) => {
+export const getVisitsByDoctorAndDateRange = async (doctorId, startDate, endDate, options = {}) => {
   try {
-    const cid = await getCurrentClinicId()
-    const q = `doctor_id=eq.${Number(doctorId)}&date=gte.${startDate}&date=lte.${endDate}&order=date.asc,created_at.asc`
-    return await supabaseGetWithClinicFallback(TABLE, q, cid)
+    return await fetchVisitsByDateRange(startDate, endDate, { ...options, doctorId })
   } catch (error) {
     console.error('❌ Failed to fetch visits by doctor and date range:', error)
     throw error
   }
+}
+
+const calendarInflight = new Map()
+
+/** Kalendar: faqat ko'rinadigan sana oralig'i + kerakli ustunlar. */
+export const fetchCalendarVisits = async ({ startDate, endDate, doctorId } = {}) => {
+  const key = `${startDate}|${endDate}|${doctorId || ''}`
+  const pending = calendarInflight.get(key)
+  if (pending) return pending
+
+  const request = getVisitsByDateRange(startDate, endDate, {
+    doctorId,
+    columns: CALENDAR_VISIT_COLUMNS,
+  }).finally(() => {
+    setTimeout(() => {
+      if (calendarInflight.get(key) === request) calendarInflight.delete(key)
+    }, 300)
+  })
+  calendarInflight.set(key, request)
+  return request
 }
 
 const generateId = async () => {
@@ -107,14 +206,51 @@ const generateId = async () => {
   }
 }
 
-export const getVisitsByPatientId = async (patientId) => {
+export const getVisitsByPatientId = async (patientId, options = {}) => {
   try {
     const cid = await getCurrentClinicId()
-    const q = `patient_id=eq.${Number(patientId)}&order=created_at.desc`
-    return await supabaseGetWithClinicFallback(TABLE, q, cid)
+    const parts = [`patient_id=eq.${Number(patientId)}`, 'order=created_at.desc']
+    if (options.select) parts.push(`select=${options.select}`)
+    const limit = Number(options.limit)
+    if (Number.isFinite(limit) && limit > 0) parts.push(`limit=${Math.min(limit, 200)}`)
+    return await supabaseGetWithClinicFallback(TABLE, parts.join('&'), cid)
   } catch (error) {
     console.error('❌ Failed to fetch visits:', error)
     throw error
+  }
+}
+
+/** Katalog sahifasi: 20 bemor uchun qarz yig'indisi va oxirgi tashrif. */
+export const getVisitsSummaryByPatientIds = async (patientIds = []) => {
+  const ids = [...new Set((patientIds || []).map(Number).filter(Number.isFinite))]
+  const empty = { latestByPatient: {}, balanceByPatient: {} }
+  if (!ids.length) return empty
+  try {
+    const cid = await getCurrentClinicId()
+    const q = `patient_id=in.(${ids.join(',')})&select=patient_id,debt_amount,paid_amount,status,completed_at,end_time,updated_at,created_at&order=created_at.desc`
+    let rows = []
+    try {
+      rows = await supabaseGetWithClinicFallback(TABLE, q, cid)
+    } catch {
+      const fallback = `patient_id=in.(${ids.join(',')})&select=patient_id,debt_amount,paid_amount,status,updated_at,created_at&order=created_at.desc`
+      rows = await supabaseGetWithClinicFallback(TABLE, fallback, cid)
+    }
+    const latestByPatient = {}
+    const debtSum = {}
+    for (const row of rows || []) {
+      const pid = Number(row.patient_id)
+      if (!Number.isFinite(pid)) continue
+      if (!latestByPatient[pid]) latestByPatient[pid] = row
+      debtSum[pid] = (debtSum[pid] || 0) + (Number(row.debt_amount) || 0)
+    }
+    const balanceByPatient = {}
+    for (const pid of ids) {
+      balanceByPatient[pid] = -(Number(debtSum[pid]) || 0)
+    }
+    return { latestByPatient, balanceByPatient }
+  } catch (error) {
+    console.warn('Visit summary for patients page failed:', error)
+    return empty
   }
 }
 

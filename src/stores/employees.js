@@ -1,18 +1,18 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as employeesApi from '@/api/employeesApi'
-import { hydrateEmployee } from '@/lib/staffHelpers'
 import {
   createStaffBridged,
   updateStaffBridged,
   deleteStaffBridged,
 } from '@/lib/staffBridge'
+import { createCachedListLoader, upsertById } from '@/lib/staleWhileRevalidate'
 import { useDoctorsStore } from '@/stores/doctors'
 
 async function refreshDoctorsForCalendar() {
   try {
     const doctorsStore = useDoctorsStore()
-    await doctorsStore.fetchAll()
+    await doctorsStore.fetchAll({ force: true })
   } catch (error) {
     console.warn('[employees] Kalendar ro\'yxatini yangilashda xatolik:', error?.message)
   }
@@ -22,19 +22,10 @@ export const useEmployeesStore = defineStore('employees', () => {
   const items = ref([])
   const isLoading = ref(false)
   const error = ref(null)
+  const cache = createCachedListLoader({ items, loading: isLoading, error })
 
-  const fetchAll = async () => {
-    isLoading.value = true
-    error.value = null
-    try {
-      items.value = await employeesApi.getAllEmployees()
-    } catch (err) {
-      error.value = err.message || 'Xodimlarni yuklashda xatolik'
-      console.error('Error fetching employees:', err)
-      throw err
-    } finally {
-      isLoading.value = false
-    }
+  const fetchAll = async (options = {}) => {
+    return cache.fetchCached(() => employeesApi.getAllEmployees(), { ...options, scope: 'all' })
   }
 
   const create = async (employeeData, permissionsData, scheduleData) => {
@@ -45,7 +36,8 @@ export const useEmployeesStore = defineStore('employees', () => {
         permissionsData,
         scheduleData,
       })
-      if (created) items.value.unshift(created)
+      cache.bumpEpoch()
+      if (created) upsertById(items, created)
       await refreshDoctorsForCalendar()
       return created
     } catch (err) {
@@ -64,6 +56,7 @@ export const useEmployeesStore = defineStore('employees', () => {
         employeeData,
         scheduleData,
       })
+      cache.bumpEpoch()
       const index = items.value.findIndex((e) => e.id === id)
       if (index !== -1 && updated) {
         items.value[index] = updated
@@ -84,6 +77,7 @@ export const useEmployeesStore = defineStore('employees', () => {
         throw new Error('Xodim topilmadi')
       }
       await deleteStaffBridged(employee)
+      cache.bumpEpoch()
       items.value = items.value.filter((e) => e.id !== id)
       await refreshDoctorsForCalendar()
     } catch (err) {
@@ -95,6 +89,8 @@ export const useEmployeesStore = defineStore('employees', () => {
   const getById = async (id) => {
     error.value = null
     try {
+      const cached = items.value.find((e) => Number(e.id) === Number(id))
+      if (cached) return cached
       return await employeesApi.getEmployeeById(id)
     } catch (err) {
       error.value = err.message || 'Xodimni olishda xatolik'
@@ -102,5 +98,7 @@ export const useEmployeesStore = defineStore('employees', () => {
     }
   }
 
-  return { items, isLoading, error, fetchAll, create, update, remove, getById }
+  const reset = () => cache.reset()
+
+  return { items, isLoading, error, fetchAll, create, update, remove, getById, reset }
 })

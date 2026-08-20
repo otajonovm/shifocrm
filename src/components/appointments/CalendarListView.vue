@@ -219,7 +219,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, shallowRef, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { isAdminLike } from '@/lib/roles'
@@ -241,8 +241,9 @@ const isAdmin = computed(() => isAdminLike(authStore))
 
 const viewMode = ref('month') // 'day', 'week', 'month'
 const currentDate = ref(props.selectedDate)
-const appointments = ref([])
+const appointments = shallowRef([])
 const loading = ref(false)
+let listLoadToken = 0
 
 const viewModeLabels = {
   day: t('appointments.viewDay'),
@@ -399,6 +400,7 @@ const getAppointmentsForTimeSlot = (dateStr, timeStr) => {
 }
 
 const loadAppointments = async () => {
+  const token = ++listLoadToken
   loading.value = true
   try {
     let startDate, endDate
@@ -419,20 +421,20 @@ const loadAppointments = async () => {
       endDate = lastDay.toISOString().split('T')[0]
     }
 
-    if (isAdmin.value) {
-      appointments.value = await visitsApi.getVisitsByDateRange(startDate, endDate)
-    } else if (authStore.user?.id) {
-      appointments.value = await visitsApi.getVisitsByDoctorAndDateRange(
-        authStore.user.id,
-        startDate,
-        endDate
-      )
-    }
+    const doctorId = isAdmin.value ? undefined : authStore.user?.id
+    const rows = await visitsApi.fetchCalendarVisits({
+      startDate,
+      endDate,
+      doctorId,
+    })
+    if (token !== listLoadToken) return
+    appointments.value = rows
   } catch (error) {
+    if (token !== listLoadToken) return
     console.error('Failed to load appointments:', error)
     appointments.value = []
   } finally {
-    loading.value = false
+    if (token === listLoadToken) loading.value = false
   }
 }
 

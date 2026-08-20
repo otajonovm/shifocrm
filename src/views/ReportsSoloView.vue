@@ -179,6 +179,8 @@ import { exportToCsv, exportToPdf } from '@/lib/exportData'
 import ReportsWeekTable from '@/components/reports/ReportsWeekTable.vue'
 import { useToast } from '@/composables/useToast'
 
+defineOptions({ name: 'ReportsSoloView' })
+
 const { t } = useI18n()
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()

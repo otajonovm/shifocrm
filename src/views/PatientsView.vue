@@ -58,11 +58,104 @@
         </div>
       </div>
 
-      <div v-if="patientsStore.loading" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      <div v-if="directoryLoading && !pagePatients.length" class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full">
+            <thead class="sticky top-0 bg-gray-50">
+              <tr>
+                <th v-if="!isSolo" class="px-6 py-4">
+                  <div class="h-3 w-10 rounded bg-gray-200 animate-pulse" />
+                </th>
+                <th class="px-6 py-4">
+                  <div class="h-3 w-24 rounded bg-gray-200 animate-pulse" />
+                </th>
+                <th class="px-6 py-4">
+                  <div class="h-3 w-20 rounded bg-gray-200 animate-pulse" />
+                </th>
+                <th v-if="isAdmin && !isSolo" class="px-6 py-4">
+                  <div class="h-3 w-16 rounded bg-gray-200 animate-pulse" />
+                </th>
+                <th class="px-6 py-4">
+                  <div class="h-3 w-20 rounded bg-gray-200 animate-pulse" />
+                </th>
+                <th class="px-6 py-4">
+                  <div class="h-3 w-16 rounded bg-gray-200 animate-pulse" />
+                </th>
+                <th class="px-6 py-4">
+                  <div class="h-3 w-16 rounded bg-gray-200 animate-pulse" />
+                </th>
+                <th v-if="isAdmin && !isSolo" class="px-6 py-4">
+                  <div class="h-3 w-20 rounded bg-gray-200 animate-pulse" />
+                </th>
+                <th v-if="isAdmin && !isSolo" class="px-6 py-4">
+                  <div class="h-3 w-20 rounded bg-gray-200 animate-pulse" />
+                </th>
+                <th class="px-6 py-4">
+                  <div class="ml-auto h-3 w-14 rounded bg-gray-200 animate-pulse" />
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr v-for="n in 8" :key="n">
+                <td v-if="!isSolo" class="px-6 py-4">
+                  <div class="h-4 w-12 rounded bg-gray-100 animate-pulse" />
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-full bg-gray-200 animate-pulse" />
+                    <div class="space-y-2">
+                      <div class="h-4 w-36 rounded bg-gray-200 animate-pulse" />
+                      <div class="h-3 w-24 rounded bg-gray-100 animate-pulse" />
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="h-4 w-28 rounded bg-gray-100 animate-pulse" />
+                </td>
+                <td v-if="isAdmin && !isSolo" class="px-6 py-4">
+                  <div class="h-4 w-24 rounded bg-gray-100 animate-pulse" />
+                </td>
+                <td class="px-6 py-4">
+                  <div class="h-4 w-20 rounded bg-gray-100 animate-pulse" />
+                </td>
+                <td class="px-6 py-4">
+                  <div class="h-5 w-16 rounded-full bg-gray-100 animate-pulse" />
+                </td>
+                <td class="px-6 py-4">
+                  <div class="h-4 w-20 rounded bg-gray-100 animate-pulse" />
+                </td>
+                <td v-if="isAdmin && !isSolo" class="px-6 py-4">
+                  <div class="h-4 w-24 rounded bg-gray-100 animate-pulse" />
+                </td>
+                <td v-if="isAdmin && !isSolo" class="px-6 py-4">
+                  <div class="h-4 w-20 rounded bg-gray-100 animate-pulse" />
+                </td>
+                <td class="px-6 py-4">
+                  <div class="ml-auto h-8 w-16 rounded-lg bg-gray-100 animate-pulse" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="md:hidden space-y-3 p-4">
+          <div v-for="n in 5" :key="n" class="rounded-xl border border-gray-100 p-4">
+            <div class="flex items-start gap-3">
+              <div class="h-14 w-14 rounded-full bg-gray-200 animate-pulse" />
+              <div class="flex-1 space-y-2">
+                <div class="h-4 w-40 rounded bg-gray-200 animate-pulse" />
+                <div class="h-3 w-28 rounded bg-gray-100 animate-pulse" />
+                <div class="h-3 w-24 rounded bg-gray-100 animate-pulse" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div v-else class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div
+        v-else
+        class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm"
+        :class="{ 'opacity-60 pointer-events-none': directoryLoading }"
+      >
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full">
             <thead class="sticky top-0 bg-gray-50">
@@ -87,6 +180,9 @@
                 <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   {{ t('patients.status') }}
                 </th>
+                <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  {{ t('patients.balance') }}
+                </th>
                 <th v-if="isAdmin && !isSolo" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   {{ t('patients.lastVisit') }}
                 </th>
@@ -100,7 +196,7 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
               <tr
-                v-for="patient in paginatedPatients"
+                v-for="patient in pagePatients"
                 :key="patient.id"
                 @click="goToPatientDetail(patient.id)"
                 class="hover:bg-gray-50 transition-colors cursor-pointer"
@@ -130,6 +226,14 @@
                 </td>
                 <td class="px-6 py-4">
                   <PatientStatusBadge :status="getPatientRealStatus(patient)" />
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <span
+                    class="text-sm font-semibold tabular-nums"
+                    :class="balanceClass(patient.balance)"
+                  >
+                    {{ formatBalance(patient.balance) }}
+                  </span>
                 </td>
                 <td v-if="isAdmin && !isSolo" class="px-6 py-4">
                   <span v-if="getLastVisitCompletedTime(patient.id)" class="text-xs text-gray-600">
@@ -171,7 +275,7 @@
         <!-- Mobile: Optimized Card Layout -->
         <div class="md:hidden space-y-3 pb-20">
           <div
-            v-for="patient in paginatedPatients"
+            v-for="patient in pagePatients"
             :key="patient.id"
             class="mobile-list-item"
             @click="goToPatientDetail(patient.id)"
@@ -202,6 +306,12 @@
                     <span class="text-xs sm:text-sm text-gray-500">
                       {{ t('patients.last') }}: {{ formatDate(patient.last_visit) || '-' }}
                     </span>
+                    <span
+                      class="text-xs sm:text-sm font-semibold tabular-nums"
+                      :class="balanceClass(patient.balance)"
+                    >
+                      {{ formatBalance(patient.balance) }}
+                    </span>
                   </div>
                   <!-- Mobile Actions - Larger touch targets -->
                   <div class="flex items-center gap-2" @click.stop>
@@ -228,7 +338,7 @@
         </div>
 
         <!-- Empty state: solo uchun chiroyli va tushunarli -->
-        <div v-if="filteredPatients.length === 0 && !patientsStore.loading" class="flex flex-col items-center justify-center py-16 px-6">
+        <div v-if="totalCount === 0 && !directoryLoading" class="flex flex-col items-center justify-center py-16 px-6">
           <div class="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
             <UsersIcon class="h-12 w-12 text-gray-400" />
           </div>
@@ -250,7 +360,7 @@
         <div class="flex flex-col gap-4 border-t border-gray-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex items-center gap-3">
             <p class="text-sm text-gray-500">
-              {{ t('patients.total') }}: <span class="font-semibold text-gray-900">{{ filteredPatients.length }}</span> {{ t('patients.patientsCount') }}
+              {{ t('patients.total') }}: <span class="font-semibold text-gray-900">{{ totalCount }}</span> {{ t('patients.patientsCount') }}
             </p>
             <select
               v-model.number="pageSize"
@@ -262,7 +372,7 @@
             </select>
           </div>
 
-          <div v-if="totalPages > 1" class="flex items-center justify-between gap-2 sm:justify-end">
+          <div v-if="totalPages > 1 || totalCount > pageSize" class="flex items-center justify-between gap-2 sm:justify-end">
             <button
               @click="goToPage(currentPage - 1)"
               :disabled="currentPage === 1"
@@ -555,7 +665,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onActivated, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
@@ -568,6 +678,7 @@ import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
 import { usePermission } from '@/composables/usePermission'
 import * as visitsApi from '@/api/visitsApi'
+import { loadPatientsDirectory } from '@/services/patientDirectoryService'
 import { PATIENT_STATUSES, getPatientStatusLabel, normalizePatientStatus } from '@/constants/patientStatus'
 import { TASHKENT_OPTIONS, TASHKENT_CITY_DISTRICTS, TASHKENT_REGION_DISTRICTS } from '@/constants/regions'
 import {
@@ -582,6 +693,8 @@ import {
   ArrowUpTrayIcon,
 } from '@heroicons/vue/24/outline'
 import { useRouter, useRoute } from 'vue-router'
+
+defineOptions({ name: 'PatientsView' })
 
 const router = useRouter()
 const route = useRoute()
@@ -624,8 +737,13 @@ const currentDoctorName = computed(() => {
 const searchQuery = ref('')
 const selectedDoctor = ref('')
 const selectedStatus = ref('')
-const pageSize = ref(10)
+const pageSize = ref(20)
 const currentPage = ref(1)
+const pagePatients = ref([])
+const totalCount = ref(0)
+const directoryLoading = ref(false)
+let directoryToken = 0
+let searchTimer = null
 
 // Modals
 const showModal = ref(false)
@@ -679,52 +797,61 @@ const statusOptions = computed(() => {
   }))
 })
 
-// Filtered patients
-const filteredPatients = computed(() => {
-  let result = patientsStore.items
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(p =>
-      p.full_name.toLowerCase().includes(query) ||
-      p.phone.includes(query)
-    )
-  }
-
-  if (selectedDoctor.value) {
-    result = result.filter(p => p.doctor_id === selectedDoctor.value || p.doctor_id === Number(selectedDoctor.value))
-  }
-
-  if (selectedStatus.value) {
-    result = result.filter(p => normalizePatientStatus(p.status) === selectedStatus.value)
-  }
-
-  if (isSolo.value && authStore.user?.id) {
-    const did = Number(authStore.user.id)
-    if (Number.isFinite(did)) {
-      result = result.filter((p) => !p.doctor_id || Number(p.doctor_id) === did)
-    }
-  }
-
-  return result
-})
-
 const totalPages = computed(() => {
-  return Math.max(1, Math.ceil(filteredPatients.value.length / pageSize.value))
-})
-
-const paginatedPatients = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return filteredPatients.value.slice(start, start + pageSize.value)
+  return Math.max(1, Math.ceil(totalCount.value / pageSize.value))
 })
 
 const paginationPages = computed(() => {
-  return Array.from({ length: totalPages.value }, (_, index) => index + 1)
+  const total = totalPages.value
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, index) => index + 1)
+  }
+  const current = currentPage.value
+  const pages = new Set([1, total, current, current - 1, current + 1])
+  return [...pages].filter((page) => page >= 1 && page <= total).sort((a, b) => a - b)
 })
+
+const loadDirectory = async ({ silent = false } = {}) => {
+  const token = ++directoryToken
+  const showSpinner = !silent || !pagePatients.value.length
+  if (showSpinner) directoryLoading.value = true
+  try {
+    const doctorFilter = selectedDoctor.value || (isSolo.value ? authStore.user?.id : getCurrentDoctorId())
+    const result = await loadPatientsDirectory({
+      search: searchQuery.value,
+      doctorId: doctorFilter || null,
+      status: selectedStatus.value || null,
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      includeUnassigned: Boolean(isSolo.value && doctorFilter),
+    })
+    if (token !== directoryToken) return
+    pagePatients.value = result.data || []
+    totalCount.value = Number(result.total) || 0
+    patientVisits.value = result.latestByPatient || {}
+    const maxPage = Math.max(1, Math.ceil(totalCount.value / pageSize.value) || 1)
+    if (currentPage.value > maxPage) {
+      currentPage.value = maxPage
+      return loadDirectory()
+    }
+  } catch (error) {
+    if (token !== directoryToken) return
+    console.error('Failed to load patients directory:', error)
+    if (!pagePatients.value.length) {
+      pagePatients.value = []
+      totalCount.value = 0
+      toast.error(t('patients.errorLoad') || 'Bemorlarni yuklashda xatolik')
+    }
+  } finally {
+    if (token === directoryToken) directoryLoading.value = false
+  }
+}
 
 const goToPage = (page) => {
   const nextPage = Math.min(Math.max(1, page), totalPages.value)
+  if (nextPage === currentPage.value) return
   currentPage.value = nextPage
+  loadDirectory({ silent: pagePatients.value.length > 0 })
 }
 
 // Helpers
@@ -738,6 +865,18 @@ const formatDate = (dateStr) => {
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return dateStr
   return date.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+const formatBalance = (amount) => {
+  const numeric = Number(amount)
+  const safe = Number.isFinite(numeric) ? numeric : 0
+  return `${safe.toLocaleString('uz-UZ')} so'm`
+}
+
+const balanceClass = (amount) => {
+  const numeric = Number(amount)
+  if (!Number.isFinite(numeric) || numeric === 0) return 'text-gray-500'
+  return numeric < 0 ? 'text-red-600' : 'text-emerald-600'
 }
 
 // Bemorning haqiqiy statusini oxirgi visitdan olish
@@ -780,27 +919,6 @@ const getLastPaymentAmount = (patientId) => {
   return visit.paid_amount || 0
 }
 
-// Bemorlar uchun visit ma'lumotlarini yuklash (batch)
-const loadPatientVisits = async (doctorId = null) => {
-  try {
-    const visitsMap = {}
-    const visits = doctorId
-      ? await visitsApi.getVisitsByDoctorId(doctorId)
-      : await visitsApi.listVisits('order=created_at.desc')
-
-    visits.forEach((visit) => {
-      const patientId = Number(visit.patient_id)
-      if (!visitsMap[patientId]) {
-        visitsMap[patientId] = visit
-      }
-    })
-
-    patientVisits.value = visitsMap
-  } catch (error) {
-    console.error('Failed to load patient visits:', error)
-  }
-}
-
 const updateDoctorName = () => {
   const doctor = doctors.value.find(d => d.id === patientForm.value.doctor_id || d.id === Number(patientForm.value.doctor_id))
   patientForm.value.doctor_name = doctor?.full_name || ''
@@ -823,8 +941,17 @@ const normalizeUzPhone = (value) => {
   return `${PHONE_PREFIX}${localDigits}`
 }
 
-watch([searchQuery, selectedDoctor, selectedStatus, pageSize], () => {
+watch(searchQuery, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    currentPage.value = 1
+    loadDirectory({ silent: pagePatients.value.length > 0 })
+  }, 300)
+})
+
+watch([selectedDoctor, selectedStatus, pageSize], () => {
   currentPage.value = 1
+  loadDirectory({ silent: pagePatients.value.length > 0 })
 })
 
 const formatUzPhone = (value) => {
@@ -968,14 +1095,19 @@ const savePatient = async () => {
 
   try {
     if (isEditing.value && editingPatientId.value) {
-      await patientsStore.editPatient(editingPatientId.value, payload)
+      const updated = await patientsStore.editPatient(editingPatientId.value, payload)
       toast.success(t('patients.toastUpdated'))
+      const idx = pagePatients.value.findIndex((row) => Number(row.id) === Number(editingPatientId.value))
+      if (idx !== -1) {
+        pagePatients.value[idx] = { ...pagePatients.value[idx], ...(updated || payload) }
+      }
     } else {
       const newPatient = await patientsStore.addPatient(payload)
       toast.success(t('patients.toastCreated'))
 
-      // Yangi bemor uchun visit ma'lumotlarini yuklash
       if (newPatient && newPatient.id) {
+        pagePatients.value = [{ ...newPatient, balance: 0 }, ...pagePatients.value]
+        totalCount.value += 1
         const visits = await visitsApi.getVisitsByPatientId(newPatient.id)
         if (visits && visits.length > 0) {
           patientVisits.value[newPatient.id] = visits[0]
@@ -994,32 +1126,55 @@ const deletePatientConfirmed = async () => {
 
   try {
     await patientsStore.removePatient(deletingPatient.value.id)
+    const removedId = deletingPatient.value.id
+    pagePatients.value = pagePatients.value.filter((row) => Number(row.id) !== Number(removedId))
+    totalCount.value = Math.max(0, totalCount.value - 1)
     showDeleteModal.value = false
     deletingPatient.value = null
+    if (!pagePatients.value.length && totalCount.value > 0) {
+      loadDirectory({ silent: true })
+    }
   } catch (err) {
     console.error('Delete error:', err)
   }
 }
 
 // Lifecycle
-onMounted(async () => {
-  await doctorsStore.fetchAll()
-
-  // Check if we should open the modal from query parameter
+const openAddFromRoute = () => {
   if (route.query.action === 'add') {
     openAddModal()
-    // Remove query parameter from URL
     router.replace({ query: {} })
   }
+}
 
-  await patientsStore.fetchPatients()
-  await loadPatientVisits()
+onMounted(async () => {
+  doctorsStore.fetchAll()
+  openAddFromRoute()
 
-  // Tolovlar bo'limida bemor statusi o'zgarsa jadvalda refresh bo'lishi uchun
-  window.addEventListener('patient-status-updated', async () => {
-    await loadPatientVisits()
-  })
+  if (pagePatients.value.length) {
+    loadDirectory({ silent: true })
+  } else {
+    await loadDirectory()
+  }
 
+  window.addEventListener('patient-status-updated', onPatientStatusUpdated)
+})
+
+onActivated(() => {
+  openAddFromRoute()
+  doctorsStore.fetchAll()
+  if (pagePatients.value.length) {
+    loadDirectory({ silent: true })
+  }
+})
+
+const onPatientStatusUpdated = () => {
+  loadDirectory()
+}
+
+onUnmounted(() => {
+  if (searchTimer) clearTimeout(searchTimer)
+  window.removeEventListener('patient-status-updated', onPatientStatusUpdated)
 })
 </script>
 

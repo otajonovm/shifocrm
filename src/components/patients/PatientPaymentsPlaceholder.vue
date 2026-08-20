@@ -1188,12 +1188,14 @@ const savePayment = async () => {
         }
       }
       toast.success(t('patientPayments.toastCashbackWithdrawn'))
-      await loadPayments()
-      await loadSummaryCashback()
-      emit('cashback-updated')
-      await syncVisitPaymentState(visitId)
-      await loadVisits()
       closeModal()
+      await Promise.all([
+        loadPayments(),
+        loadSummaryCashback(),
+        loadVisits(),
+        syncVisitPaymentState(visitId),
+      ])
+      emit('cashback-updated')
     } catch (error) {
       console.error('Failed to save payment:', error)
       toast.error(t('patientPayments.errorSave'))
@@ -1280,10 +1282,12 @@ const savePayment = async () => {
         toast.warning(t('patientPayments.cashbackWarning'))
       }
     }
-    await loadPayments()
-    await loadSummaryCashback()
-    await syncVisitPaymentState(visitId)
-    await loadVisits()
+    await Promise.all([
+      loadPayments(),
+      loadSummaryCashback(),
+      loadVisits(),
+      syncVisitPaymentState(visitId),
+    ])
     closeModal()
   } catch (error) {
     console.error('Failed to save payment:', error)

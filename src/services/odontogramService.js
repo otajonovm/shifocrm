@@ -25,7 +25,18 @@ const unwrapRpcRow = (value) => {
   return value || null
 }
 
-export const getPatientVisits = visitsApi.getVisitsByPatientId
+const ODONTOGRAM_VISIT_SELECT = 'id,status,date,doctor_id,doctor_name,price,paid_amount,debt_amount,created_at,discount_percent'
+
+export const getPatientVisits = async (patientId) => {
+  try {
+    return await visitsApi.getVisitsByPatientId(patientId, {
+      select: ODONTOGRAM_VISIT_SELECT,
+      limit: 50,
+    })
+  } catch {
+    return visitsApi.getVisitsByPatientId(patientId, { limit: 50 })
+  }
+}
 export const getVisit = visitsApi.getVisitById
 export const createVisit = visitsApi.createVisit
 export const updateVisit = visitsApi.updateVisit

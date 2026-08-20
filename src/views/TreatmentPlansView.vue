@@ -4,13 +4,13 @@
       <!-- Desktop sarlavha -->
       <div class="hidden md:flex items-center justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">{{ t('treatmentPlansView.title') }}</h1>
-          <p class="text-gray-500">{{ t('treatmentPlansView.subtitle') }}</p>
+          <h1 class="text-2xl font-semibold text-gray-900">{{ t('treatmentPlansView.title') }}</h1>
+          <p class="mt-1 text-sm text-gray-500">{{ t('treatmentPlansView.subtitle') }}</p>
         </div>
         <button
           v-if="canCreatePlans"
           @click="showForm = !showForm"
-          class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-500 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all"
+          class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
         >
           <PlusIcon class="w-5 h-5" />
           {{ t('treatmentPlansView.newPlan') }}
@@ -18,20 +18,20 @@
       </div>
 
       <!-- Mobil: tushunarli hero + qidiruv -->
-      <section class="md:hidden overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-500 p-4 text-white shadow-lg">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">{{ t('treatmentPlansView.subtitle') }}</p>
+      <section class="md:hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <p class="text-sm text-gray-500">{{ t('treatmentPlansView.subtitle') }}</p>
         <div class="mt-1 flex items-end justify-between gap-3">
-          <h1 class="text-2xl font-black leading-tight">{{ t('treatmentPlansView.title') }}</h1>
-          <span class="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
+          <h1 class="text-xl font-semibold leading-tight text-gray-900">{{ t('treatmentPlansView.title') }}</h1>
+          <span class="rounded-full bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200">
             {{ t('treatmentPlansView.plansCount', { count: filteredPlans.length }) }}
           </span>
         </div>
-        <label class="mt-4 flex items-center gap-2 rounded-2xl bg-white/15 px-3 py-2.5 ring-1 ring-white/20">
-          <MagnifyingGlassIcon class="h-5 w-5 flex-shrink-0 text-white/80" />
+        <label class="mt-4 flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5">
+          <MagnifyingGlassIcon class="h-5 w-5 flex-shrink-0 text-gray-400" />
           <input
             v-model="searchQuery"
             type="search"
-            class="w-full bg-transparent text-sm text-white placeholder:text-white/60 focus:outline-none"
+            class="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
             :placeholder="t('treatmentPlansView.searchPlaceholder')"
           />
         </label>
@@ -42,10 +42,10 @@
         <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <button
             type="button"
-            class="flex-shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors"
+            class="flex-shrink-0 rounded-full px-3.5 py-2 text-xs font-medium transition-colors"
             :class="selectedStatus === ''
-              ? 'bg-violet-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 ring-1 ring-slate-200'"
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50'"
             @click="selectedStatus = ''"
           >
             {{ t('treatmentPlansView.allChip') }}
@@ -54,10 +54,10 @@
             v-for="option in statusOptions"
             :key="option.value"
             type="button"
-            class="flex-shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors"
+            class="flex-shrink-0 rounded-full px-3.5 py-2 text-xs font-medium transition-colors"
             :class="selectedStatus === option.value
-              ? 'bg-violet-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 ring-1 ring-slate-200'"
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50'"
             @click="selectedStatus = option.value"
           >
             {{ option.label }}
@@ -66,33 +66,33 @@
       </div>
 
       <!-- Mobil: qo'shimcha filtrlar -->
-      <div class="md:hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+      <div class="md:hidden rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
         <button
           type="button"
           class="flex w-full items-center justify-between gap-2 text-left"
           @click="showMobileFilters = !showMobileFilters"
         >
-          <span class="inline-flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <FunnelIcon class="h-4 w-4 text-violet-600" />
+          <span class="inline-flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <FunnelIcon class="h-4 w-4 text-gray-400" />
             {{ t('treatmentPlansView.filters') }}
           </span>
           <span class="inline-flex items-center gap-2">
-            <span v-if="extraFilterCount" class="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700">
+            <span v-if="extraFilterCount" class="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 ring-1 ring-blue-700/10">
               {{ extraFilterCount }}
             </span>
             <ChevronDownIcon
-              class="h-4 w-4 text-slate-400 transition-transform"
+              class="h-4 w-4 text-gray-400 transition-transform"
               :class="showMobileFilters ? 'rotate-180' : ''"
             />
           </span>
         </button>
 
-        <div v-if="showMobileFilters" class="mt-3 space-y-3 border-t border-slate-100 pt-3">
+        <div v-if="showMobileFilters" class="mt-3 space-y-3 border-t border-gray-100 pt-3">
           <div>
-            <label class="mb-1 block text-xs font-medium text-slate-500">{{ t('treatmentPlansView.patient') }}</label>
+            <label class="mb-1 block text-xs font-medium text-gray-500">{{ t('treatmentPlansView.patient') }}</label>
             <select
               v-model="selectedPatient"
-              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
             >
               <option value="">{{ t('treatmentPlansView.allPatients') }}</option>
               <option v-for="patient in patientsStore.items" :key="patient.id" :value="String(patient.id)">
@@ -102,19 +102,19 @@
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="mb-1 block text-xs font-medium text-slate-500">{{ t('treatmentPlansView.dateFrom') }}</label>
+              <label class="mb-1 block text-xs font-medium text-gray-500">{{ t('treatmentPlansView.dateFrom') }}</label>
               <input
                 v-model="startDate"
                 type="date"
-                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
               />
             </div>
             <div>
-              <label class="mb-1 block text-xs font-medium text-slate-500">{{ t('treatmentPlansView.dateTo') }}</label>
+              <label class="mb-1 block text-xs font-medium text-gray-500">{{ t('treatmentPlansView.dateTo') }}</label>
               <input
                 v-model="endDate"
                 type="date"
-                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
               />
             </div>
           </div>
@@ -122,22 +122,22 @@
       </div>
 
       <!-- Desktop filtrlar -->
-      <div class="hidden md:block bg-white rounded-2xl shadow-card border border-gray-100 p-4">
+      <div class="hidden md:block rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-5">
           <div class="lg:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlansView.search') }}</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlansView.search') }}</label>
             <input
               v-model="searchQuery"
               type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
               :placeholder="t('treatmentPlansView.searchPlaceholder')"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlansView.patient') }}</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlansView.patient') }}</label>
             <select
               v-model="selectedPatient"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
             >
               <option value="">{{ t('treatmentPlansView.allPatients') }}</option>
               <option v-for="patient in patientsStore.items" :key="patient.id" :value="String(patient.id)">
@@ -146,10 +146,10 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.status') }}</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.status') }}</label>
             <select
               v-model="selectedStatus"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
             >
               <option value="">{{ t('treatmentPlansView.allStatuses') }}</option>
               <option v-for="option in statusOptions" :key="option.value" :value="option.value">
@@ -158,39 +158,39 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlansView.dateRange') }}</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlansView.dateRange') }}</label>
             <div class="flex gap-2">
               <input
                 v-model="startDate"
                 type="date"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
               />
               <input
                 v-model="endDate"
                 type="date"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <div v-if="showForm" class="bg-white rounded-2xl shadow-card border border-gray-100 p-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div v-if="showForm" class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.planTitle') }} *</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.planTitle') }} *</label>
             <input
               v-model="form.title"
               type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
               :placeholder="t('treatmentPlans.planTitlePlaceholder')"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlansView.patient') }} *</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlansView.patient') }} *</label>
             <select
               v-model="form.patient_id"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
             >
               <option value="">{{ t('treatmentPlansView.selectPatient') }}</option>
               <option v-for="patient in patientsStore.items" :key="patient.id" :value="String(patient.id)">
@@ -199,18 +199,18 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.planDate') }} *</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.planDate') }} *</label>
             <input
               v-model="form.planned_date"
               type="date"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.status') }}</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.status') }}</label>
             <select
               v-model="form.status"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
             >
               <option v-for="option in statusOptions" :key="option.value" :value="option.value">
                 {{ option.label }}
@@ -218,10 +218,10 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.priority') }}</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.priority') }}</label>
             <select
               v-model="form.priority"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
             >
               <option value="low">{{ t('treatmentPlans.priorityLow') }}</option>
               <option value="medium">{{ t('treatmentPlans.priorityMedium') }}</option>
@@ -229,50 +229,50 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.tooth') }}</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.tooth') }}</label>
             <input
               v-model.number="form.tooth_id"
               type="number"
               min="11"
               max="48"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
               :placeholder="t('treatmentPlans.toothPlaceholder')"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.estimatedCost') }}</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.estimatedCost') }}</label>
             <input
               v-model.number="form.estimated_cost"
               type="number"
               min="0"
               step="1000"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
               :placeholder="t('treatmentPlans.estimatedCostPlaceholder')"
             />
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.notes') }}</label>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.notes') }}</label>
             <textarea
               v-model="form.notes"
               rows="3"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
               :placeholder="t('treatmentPlans.notesPlaceholder')"
             ></textarea>
           </div>
         </div>
-        <div v-if="formError" class="mt-3 text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2">
+        <div v-if="formError" class="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700">
           {{ formError }}
         </div>
         <div class="mt-4 flex items-center justify-end gap-3">
           <button
             @click="resetForm"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            class="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
           >
             {{ t('treatmentPlans.cancel') }}
           </button>
           <button
             @click="savePlan"
-            class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+            class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
           >
             {{ t('treatmentPlans.save') }}
           </button>
@@ -280,9 +280,9 @@
       </div>
 
       <!-- Desktop Table -->
-      <div class="hidden md:block overflow-x-auto rounded-2xl border border-slate-200">
-        <table class="min-w-full divide-y divide-slate-200 text-sm">
-          <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div class="hidden overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm md:block">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
             <tr>
               <th class="px-4 py-3">{{ t('treatmentPlans.plan') }}</th>
               <th class="px-4 py-3">{{ t('treatmentPlansView.patient') }}</th>
@@ -294,36 +294,40 @@
               <th class="px-4 py-3 text-right">{{ t('treatmentPlans.actions') }}</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
+          <tbody class="divide-y divide-gray-100">
             <tr v-if="loading">
-              <td class="px-4 py-4 text-slate-500" colspan="8">{{ t('treatmentPlans.loading') }}</td>
+              <td class="px-4 py-4 text-sm text-gray-500" colspan="8">{{ t('treatmentPlans.loading') }}</td>
             </tr>
             <tr v-else-if="filteredPlans.length === 0">
-              <td class="px-4 py-4 text-slate-500" colspan="8">{{ t('treatmentPlans.noPlans') }}</td>
+              <td class="px-4 py-4 text-sm text-gray-500" colspan="8">{{ t('treatmentPlans.noPlans') }}</td>
             </tr>
-            <tr v-for="plan in filteredPlans" :key="plan.id" class="bg-white">
-              <td class="px-4 py-3 text-slate-700">
-                <div class="font-medium text-slate-900">{{ plan.title }}</div>
-                <div class="text-xs text-slate-400">{{ plan.notes || '-' }}</div>
-              </td>
-              <td class="px-4 py-3 text-slate-700">
-                <div>{{ plan.patientName || '-' }}</div>
-                <div v-if="plan.patientPhone" class="text-xs text-slate-400">{{ plan.patientPhone }}</div>
-              </td>
-              <td class="px-4 py-3 text-slate-700">{{ formatDate(plan.planned_date) }}</td>
+            <tr
+              v-for="plan in filteredPlans"
+              :key="plan.id"
+              class="bg-white transition-colors hover:bg-gray-50"
+            >
               <td class="px-4 py-3">
-                <span :class="statusClass(plan.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                <div class="font-semibold text-gray-900">{{ plan.title }}</div>
+                <div class="text-sm text-gray-500">{{ plan.notes || '-' }}</div>
+              </td>
+              <td class="px-4 py-3 text-gray-700">
+                <div>{{ plan.patientName || '-' }}</div>
+                <div v-if="plan.patientPhone" class="text-sm text-gray-500">{{ plan.patientPhone }}</div>
+              </td>
+              <td class="px-4 py-3 text-sm text-gray-500">{{ formatDate(plan.planned_date) }}</td>
+              <td class="px-4 py-3">
+                <span :class="statusClass(plan.status)" class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
                   {{ statusLabel(plan.status) }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-slate-700">{{ priorityLabel(plan.priority) }}</td>
-              <td class="px-4 py-3 text-slate-700">{{ plan.tooth_id ? `#${plan.tooth_id}` : '-' }}</td>
-              <td class="px-4 py-3 text-slate-700">{{ formatCurrency(plan.estimated_cost) }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ priorityLabel(plan.priority) }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ plan.tooth_id ? `#${plan.tooth_id}` : '-' }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ formatCurrency(plan.estimated_cost) }}</td>
               <td class="px-4 py-3 text-right">
                 <div v-if="canEditPlans" class="flex items-center justify-end gap-2">
                   <select
                     :value="plan.status"
-                    class="max-w-[160px] rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    class="max-w-[160px] rounded-xl border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                     @change="onStatusChange(plan, $event)"
                   >
                     <option v-for="option in statusOptions" :key="option.value" :value="option.value">
@@ -333,14 +337,14 @@
                   <button
                     v-if="!plan.visit_id"
                     type="button"
-                    class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    class="rounded-xl border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
                     @click="convertToVisit(plan)"
                   >
                     {{ t('treatmentPlans.toVisit') }}
                   </button>
                   <button
                     type="button"
-                    class="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    class="rounded-xl border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
                     :disabled="sendingReminderId === plan.id"
                     @click="sendReminder(plan)"
                   >
@@ -354,51 +358,51 @@
       </div>
 
       <!-- Mobile Cards -->
-      <div class="md:hidden space-y-3">
-        <div v-if="loading" class="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm">
+      <div class="space-y-3 md:hidden">
+        <div v-if="loading" class="rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-500 shadow-sm">
           {{ t('treatmentPlans.loading') }}
         </div>
-        <div v-else-if="filteredPlans.length === 0" class="rounded-2xl bg-white px-5 py-10 text-center shadow-sm">
-          <p class="text-base font-semibold text-slate-800">{{ t('treatmentPlans.noPlans') }}</p>
-          <p class="mt-1 text-sm text-slate-500">{{ t('treatmentPlansView.noPlansHint') }}</p>
+        <div v-else-if="filteredPlans.length === 0" class="rounded-xl border border-gray-200 bg-white px-5 py-10 text-center shadow-sm">
+          <p class="text-base font-semibold text-gray-900">{{ t('treatmentPlans.noPlans') }}</p>
+          <p class="mt-1 text-sm text-gray-500">{{ t('treatmentPlansView.noPlansHint') }}</p>
         </div>
         <article
           v-for="plan in filteredPlans"
           v-else
           :key="plan.id"
-          class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100"
+          class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
         >
           <div class="flex">
             <div class="w-1.5 flex-shrink-0" :class="statusBarClass(plan.status)" />
             <div class="min-w-0 flex-1 p-3.5">
               <div class="flex items-start gap-3">
-                <div class="flex h-12 w-11 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-slate-50 text-center">
-                  <span class="text-[10px] font-semibold uppercase text-slate-400">{{ formatDateMonth(plan.planned_date) }}</span>
-                  <span class="text-lg font-black leading-none text-slate-800">{{ formatDateDay(plan.planned_date) }}</span>
+                <div class="flex h-12 w-11 flex-shrink-0 flex-col items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-center">
+                  <span class="text-[10px] font-medium uppercase text-gray-500">{{ formatDateMonth(plan.planned_date) }}</span>
+                  <span class="text-lg font-semibold leading-none text-gray-900">{{ formatDateDay(plan.planned_date) }}</span>
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="flex items-start justify-between gap-2">
-                    <h3 class="truncate text-base font-bold text-slate-900">{{ plan.title }}</h3>
-                    <span :class="statusClass(plan.status)" class="flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                    <h3 class="truncate text-base font-semibold text-gray-900">{{ plan.title }}</h3>
+                    <span :class="statusClass(plan.status)" class="flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium">
                       {{ statusLabel(plan.status) }}
                     </span>
                   </div>
-                  <p class="mt-1 truncate text-sm text-slate-600">{{ plan.patientName || '-' }}</p>
-                  <p v-if="plan.patientPhone" class="truncate text-xs text-slate-400">{{ plan.patientPhone }}</p>
-                  <div class="mt-2 flex flex-wrap gap-1.5 text-[11px] font-medium text-slate-500">
-                    <span v-if="plan.tooth_id" class="rounded-full bg-slate-100 px-2 py-0.5">#{{ plan.tooth_id }}</span>
-                    <span class="rounded-full bg-slate-100 px-2 py-0.5">{{ priorityLabel(plan.priority) }}</span>
-                    <span v-if="plan.estimated_cost" class="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+                  <p class="mt-1 truncate text-sm text-gray-500">{{ plan.patientName || '-' }}</p>
+                  <p v-if="plan.patientPhone" class="truncate text-sm text-gray-500">{{ plan.patientPhone }}</p>
+                  <div class="mt-2 flex flex-wrap gap-1.5 text-[11px] font-medium text-gray-500">
+                    <span v-if="plan.tooth_id" class="rounded-full bg-gray-50 px-2 py-0.5 ring-1 ring-gray-200">#{{ plan.tooth_id }}</span>
+                    <span class="rounded-full bg-gray-50 px-2 py-0.5 ring-1 ring-gray-200">{{ priorityLabel(plan.priority) }}</span>
+                    <span v-if="plan.estimated_cost" class="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 ring-1 ring-emerald-600/20">
                       {{ formatCurrency(plan.estimated_cost) }}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div v-if="canEditPlans" class="mt-3 space-y-2 border-t border-slate-100 pt-3">
+              <div v-if="canEditPlans" class="mt-3 space-y-2 border-t border-gray-100 pt-3">
                 <select
                   :value="plan.status"
-                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-800 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                   @change="onStatusChange(plan, $event)"
                 >
                   <option v-for="option in statusOptions" :key="option.value" :value="option.value">
@@ -409,14 +413,14 @@
                   <button
                     v-if="!plan.visit_id"
                     type="button"
-                    class="rounded-xl bg-violet-50 px-3 py-2.5 text-xs font-semibold text-violet-700"
+                    class="rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
                     @click="convertToVisit(plan)"
                   >
                     {{ t('treatmentPlans.toVisit') }}
                   </button>
                   <button
                     type="button"
-                    class="rounded-xl bg-slate-100 px-3 py-2.5 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                    class="rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
                     :disabled="sendingReminderId === plan.id"
                     @click="sendReminder(plan)"
                   >
@@ -455,6 +459,8 @@ import { isSolo } from '@/lib/roles'
 import { getPlansByDoctorAndDateRange, getPlansByDateRange, createPlan, updatePlan, updatePlanStatus } from '@/api/treatmentPlansApi'
 import { createVisit } from '@/api/visitsApi'
 import { sendOrQueueTreatmentPlanReminder } from '@/services/treatmentPlanReminderService'
+
+defineOptions({ name: 'TreatmentPlansView' })
 
 const authStore = useAuthStore()
 const patientsStore = usePatientsStore()
@@ -680,19 +686,19 @@ const statusLabel = (status) => {
 }
 
 const statusClass = (status) => {
-  if (status === 'done') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'in_progress') return 'bg-amber-100 text-amber-700'
-  if (status === 'cancelled') return 'bg-rose-100 text-rose-700'
-  if (status === 'scheduled') return 'bg-blue-100 text-blue-700'
-  return 'bg-slate-100 text-slate-700'
+  if (status === 'done') return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20'
+  if (status === 'in_progress') return 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/10'
+  if (status === 'cancelled') return 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/10'
+  if (status === 'scheduled') return 'bg-blue-50 text-blue-700 ring-1 ring-blue-700/10'
+  return 'bg-gray-50 text-gray-600 ring-1 ring-gray-600/10'
 }
 
 const statusBarClass = (status) => {
-  if (status === 'done') return 'bg-emerald-500'
-  if (status === 'in_progress') return 'bg-amber-500'
-  if (status === 'cancelled') return 'bg-rose-500'
-  if (status === 'scheduled') return 'bg-blue-500'
-  return 'bg-violet-400'
+  if (status === 'done') return 'bg-emerald-200'
+  if (status === 'in_progress') return 'bg-amber-200'
+  if (status === 'cancelled') return 'bg-rose-200'
+  if (status === 'scheduled') return 'bg-blue-200'
+  return 'bg-gray-200'
 }
 
 const formatDateDay = (dateStr) => {

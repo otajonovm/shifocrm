@@ -41,24 +41,19 @@ export const TOOTH_STATES = {
   root_canal: { label: 'Kanal', color: 'bg-purple-500', icon: '◉' }
 }
 
-// 5 xonali unique ID generatsiya qilish (10000-99999)
+// 5 xonali unique ID (to'liq jadvalni yuklamasdan)
 const generateId = async () => {
   try {
-    const odontograms = await supabaseGet(TABLE, 'select=id&order=id.desc&limit=1000')
-    const existingIds = odontograms.map(o => Number(o.id))
-
-    let newId
-    let attempts = 0
-    do {
-      newId = Math.floor(10000 + Math.random() * 90000)
-      attempts++
-      if (attempts > 100) {
-        newId = Math.floor(10000 + Date.now() % 90000)
-        break
-      }
-    } while (existingIds.includes(newId))
-
-    return newId
+    const cid = await getCurrentClinicId()
+    for (let i = 0; i < 10; i++) {
+      const candidateId = Math.floor(10000 + Math.random() * 90000)
+      const q = `id=eq.${candidateId}&select=id&limit=1`
+      const rows = cid
+        ? await supabaseGetWithClinicFallback(TABLE, q, cid)
+        : await supabaseGet(TABLE, q)
+      if (!rows?.length) return candidateId
+    }
+    return Math.floor(10000 + Date.now() % 90000)
   } catch {
     return Math.floor(10000 + Date.now() % 90000)
   }
@@ -118,6 +113,23 @@ export const getOdontogramsByPatientId = async (patientId) => {
   } catch (error) {
     console.error('❌ Failed to fetch odontograms:', error)
     throw error
+  }
+}
+
+export const getLatestOdontogramByPatientId = async (patientId) => {
+  try {
+    const numId = Number(patientId)
+    if (!Number.isFinite(numId)) return null
+    const cid = await getCurrentClinicId()
+    const rows = await supabaseGetWithClinicFallback(
+      TABLE,
+      `patient_id=eq.${numId}&select=id,data,created_at&order=created_at.desc&limit=1`,
+      cid,
+    )
+    return rows?.[0] || null
+  } catch (error) {
+    console.error('❌ Failed to fetch latest odontogram:', error)
+    return null
   }
 }
 
@@ -250,14 +262,8 @@ export const getOrCreateOdontogram = async ({ patient_id, visit_id, doctor_id })
       return existing
     }
 
-    // Agar mavjud bo'lmasa, yangi yaratish
-    // Oxirgi odontogrammadan nusxa olish (agar mavjud bo'lsa)
-    const patientSnapshots = await getOdontogramsByPatientId(patient_id)
-    let initialData = null
-
-    if (patientSnapshots.length > 0) {
-      initialData = cloneTeethOnly(patientSnapshots[0].data)
-    }
+    const latest = await getLatestOdontogramByPatientId(patient_id)
+    const initialData = latest?.data ? cloneTeethOnly(latest.data) : null
 
     try {
       return await createOdontogramSnapshot({ patient_id, visit_id, doctor_id, data: initialData })

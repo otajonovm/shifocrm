@@ -721,7 +721,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, onActivated, shallowRef, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -762,6 +762,8 @@ import {
   CalendarDaysIcon,
   Cog6ToothIcon,
 } from '@heroicons/vue/24/outline'
+
+defineOptions({ name: 'AppointmentsView' })
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -847,7 +849,8 @@ const doctorId = computed(() => {
 })
 
 const loading = ref(false)
-const visits = ref([])
+const visits = shallowRef([])
+let visitsLoadToken = 0
 
 // Kunlik/Haftalik/Oylik filtrlash
 const viewMode = ref(getInitialViewMode())
@@ -1142,24 +1145,30 @@ const filteredVisits = computed(() => {
 const allSelected = computed(() => filteredVisits.value.length > 0 && selectedIds.value.length === filteredVisits.value.length)
 
 const loadVisits = async () => {
+  const token = ++visitsLoadToken
   loading.value = true
   try {
     const { start, end } = dateRange.value
+    const doctorIdValue = doctorId.value
+    let rows = []
     if (isAdmin.value) {
-      visits.value = await enrichVisitsWithLeadInfo(await visitsApi.getVisitsByDateRange(start, end))
-    } else if (doctorId.value) {
-      visits.value = await enrichVisitsWithLeadInfo(
-        await visitsApi.getVisitsByDoctorAndDateRange(doctorId.value, start, end),
-      )
-    } else {
-      visits.value = []
+      rows = await visitsApi.fetchCalendarVisits({ startDate: start, endDate: end })
+    } else if (doctorIdValue) {
+      rows = await visitsApi.fetchCalendarVisits({
+        startDate: start,
+        endDate: end,
+        doctorId: doctorIdValue,
+      })
     }
+    if (token !== visitsLoadToken) return
+    visits.value = await enrichVisitsWithLeadInfo(rows)
   } catch (error) {
+    if (token !== visitsLoadToken) return
     console.error('Failed to load visits:', error)
     visits.value = []
     toast.error(t('appointments.errorLoad') || 'Uchrashuvlarni yuklashda xatolik')
   } finally {
-    loading.value = false
+    if (token === visitsLoadToken) loading.value = false
   }
 }
 
@@ -1854,9 +1863,13 @@ const getVisitsForDate = async (date, doctorIdValue) => {
 
   try {
     if (doctorIdValue) {
-      return await visitsApi.getVisitsByDoctorAndDateRange(doctorIdValue, date, date)
+      return await visitsApi.fetchCalendarVisits({
+        startDate: date,
+        endDate: date,
+        doctorId: doctorIdValue,
+      })
     }
-    return await visitsApi.getVisitsByDateRange(date, date)
+    return await visitsApi.fetchCalendarVisits({ startDate: date, endDate: date })
   } catch (error) {
     console.error('Failed to load visits for overlap:', error)
     return visits.value
@@ -1879,14 +1892,26 @@ onMounted(async () => {
   window.addEventListener('resize', onMenuViewportChange)
   window.addEventListener('scroll', onMenuViewportChange, true)
 
-  await doctorsStore.fetchAll()
+  await Promise.all([
+    doctorsStore.fetchAll(),
+    isAdmin.value
+      ? patientsStore.fetchPatients()
+      : (doctorId.value
+        ? patientsStore.fetchPatientsByDoctor(doctorId.value)
+        : patientsStore.fetchPatients()),
+    loadVisits(),
+  ])
+})
 
-  const patientLoad = isAdmin.value
-    ? patientsStore.fetchPatients()
-    : (doctorId.value ? patientsStore.fetchPatientsByDoctor(doctorId.value) : patientsStore.fetchPatients())
-
-  await Promise.all([patientLoad])
-  await loadVisits()
+onActivated(() => {
+  doctorsStore.fetchAll()
+  if (isAdmin.value) {
+    patientsStore.fetchPatients()
+  } else if (doctorId.value) {
+    patientsStore.fetchPatientsByDoctor(doctorId.value)
+  } else {
+    patientsStore.fetchPatients()
+  }
 })
 
 onUnmounted(() => {
@@ -1895,9 +1920,12 @@ onUnmounted(() => {
   window.removeEventListener('scroll', onMenuViewportChange, true)
 })
 
-watch([viewMode, selectedDate], () => {
-  loadVisits()
-}, { deep: false })
+watch(
+  () => `${dateRange.value.start}|${dateRange.value.end}`,
+  () => {
+    loadVisits()
+  },
+)
 
 const handleLayoutChange = async (mode) => {
   if (displayMode.value === mode) return

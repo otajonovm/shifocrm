@@ -81,6 +81,8 @@ import RoiCharts from '@/components/adminCenter/RoiCharts.vue'
 import { getStaffEngagementReport } from '@/api/staffEngagementApi'
 import { getRoiImpactReport } from '@/api/roiImpactApi'
 
+defineOptions({ name: 'ManagementCenterView' })
+
 const { t } = useI18n()
 const authStore = useAuthStore()
 

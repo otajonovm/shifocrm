@@ -1,30 +1,24 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as doctorsApi from '@/api/doctorsApi'
+import { createCachedListLoader, upsertById } from '@/lib/staleWhileRevalidate'
 
 export const useDoctorsStore = defineStore('doctors', () => {
   const items = ref([])
   const isLoading = ref(false)
   const error = ref(null)
+  const cache = createCachedListLoader({ items, loading: isLoading, error })
 
-  const fetchAll = async () => {
-    isLoading.value = true
-    error.value = null
-    try {
-      items.value = await doctorsApi.listDoctors()
-    } catch (err) {
-      error.value = err.message || 'Failed to fetch doctors'
-      console.error('Error fetching doctors:', err)
-    } finally {
-      isLoading.value = false
-    }
+  const fetchAll = async (options = {}) => {
+    return cache.fetchCached(() => doctorsApi.listDoctors(), { ...options, scope: 'all' })
   }
 
   const create = async (payload) => {
     error.value = null
     try {
       const newDoctor = await doctorsApi.createDoctor(payload)
-      items.value.unshift(newDoctor)
+      cache.bumpEpoch()
+      if (newDoctor) upsertById(items, newDoctor)
       return newDoctor
     } catch (err) {
       error.value = err.message || 'Failed to create doctor'
@@ -36,10 +30,8 @@ export const useDoctorsStore = defineStore('doctors', () => {
     error.value = null
     try {
       const updated = await doctorsApi.updateDoctor(id, payload)
-      const index = items.value.findIndex(d => d.id === id)
-      if (index !== -1) {
-        items.value[index] = updated
-      }
+      cache.bumpEpoch()
+      if (updated) upsertById(items, updated)
       return updated
     } catch (err) {
       error.value = err.message || 'Failed to update doctor'
@@ -50,8 +42,13 @@ export const useDoctorsStore = defineStore('doctors', () => {
   const getById = async (id) => {
     error.value = null
     try {
-      if (!id) {
-        return null
+      if (!id) return null
+      const cached = items.value.find((d) => Number(d.id) === Number(id))
+      if (cached) {
+        doctorsApi.getDoctorById(id).then((fresh) => {
+          if (fresh) upsertById(items, fresh)
+        }).catch(() => {})
+        return cached
       }
       return await doctorsApi.getDoctorById(id)
     } catch (err) {
@@ -64,12 +61,15 @@ export const useDoctorsStore = defineStore('doctors', () => {
     error.value = null
     try {
       await doctorsApi.deleteDoctor(id)
-      items.value = items.value.filter(d => d.id !== id)
+      cache.bumpEpoch()
+      items.value = items.value.filter(d => Number(d.id) !== Number(id))
     } catch (err) {
       error.value = err.message || 'Failed to delete doctor'
       throw err
     }
   }
 
-  return { items, isLoading, error, fetchAll, create, update, remove, getById }
+  const reset = () => cache.reset()
+
+  return { items, isLoading, error, fetchAll, create, update, remove, getById, reset }
 })

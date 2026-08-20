@@ -15,13 +15,14 @@ function merge(base, cid) {
  * @param {number|null} cid
  * @returns {Promise<Array>}
  */
-export async function supabaseGetWithClinicFallback(table, baseQuery, cid) {
+export async function supabaseGetWithClinicFallback(table, baseQuery, cid, options) {
   const clinicId = Number(cid)
   if (!Number.isFinite(clinicId) || clinicId <= 0) {
     throw new Error(`Tenant context required for ${table}`)
   }
   const q = merge(baseQuery, clinicId)
-  const rows = await supabaseGet(table, q)
+  const rows = await supabaseGet(table, q, options)
+  if (options?.withMeta) return rows
   return Array.isArray(rows) ? rows : []
 }
 

@@ -8,7 +8,7 @@ import {
   findDoctorForSoloClinic,
 } from '@/services/adminService'
 import { authenticateEmployee } from '@/api/employeesApi'
-import { logSessionLoginOnce } from '@/lib/activityLog'
+import { resetAppCaches } from '@/lib/resetAppCaches'
 import { logAuditAction } from '@/services/authService'
 import {
   migrateLegacyClinicOwnerSession,
@@ -344,6 +344,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(USER_CLINIC_KEY)
     localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
     localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
+    resetAppCaches()
   }
 
   const loginDoctor = async ({ phone, password }) => {
@@ -432,6 +433,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     userClinicId.value = id
     localStorage.setItem(USER_CLINIC_KEY, String(id))
+    resetAppCaches()
   }
 
   /**
@@ -449,6 +451,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     userRole.value = ROLES.SUPERADMIN
     localStorage.setItem('userRole', ROLES.SUPERADMIN)
+    resetAppCaches()
   }
 
   const isImpersonating = ref(normalizeRole(impersonatorRole.value) === ROLES.SUPERADMIN)

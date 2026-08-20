@@ -93,6 +93,8 @@ import {
   getLeadStatusBadgeClass,
 } from '@/constants/leadStatus'
 
+defineOptions({ name: 'LeadsView' })
+
 const authStore = useAuthStore()
 const toast = useToast()
 const { t } = useI18n()

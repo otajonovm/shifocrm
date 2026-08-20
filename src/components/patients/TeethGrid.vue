@@ -16,7 +16,7 @@
     </div>
 
     <div class="p-3 sm:p-5">
-      <div class="md:hidden">
+      <div v-if="!isDesktop" class="md:hidden">
         <div class="grid grid-cols-2 gap-2" role="tablist" :aria-label="t('odontogram.quadrants')">
           <button
             v-for="quadrant in quadrants"
@@ -59,7 +59,7 @@
         </div>
       </div>
 
-      <div class="hidden md:block">
+      <div v-else class="hidden md:block">
         <div class="mb-3 flex items-center justify-between text-xs font-medium text-slate-500">
           <span>{{ t('odontogram.patientRight') }}</span>
           <span>{{ t('odontogram.patientLeft') }}</span>
@@ -103,7 +103,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PERMANENT_QUADRANTS } from '@/domain/odontogram'
 import Tooth from './Tooth.vue'
@@ -136,6 +136,24 @@ defineEmits(['select'])
 const { t } = useI18n()
 const gridRef = ref(null)
 const activeQuadrant = ref('upper-right')
+const isDesktop = ref(
+  typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : false,
+)
+
+let desktopMedia = null
+const onDesktopMediaChange = (event) => {
+  isDesktop.value = event.matches
+}
+
+onMounted(() => {
+  desktopMedia = window.matchMedia('(min-width: 768px)')
+  isDesktop.value = desktopMedia.matches
+  desktopMedia.addEventListener('change', onDesktopMediaChange)
+})
+
+onBeforeUnmount(() => {
+  desktopMedia?.removeEventListener('change', onDesktopMediaChange)
+})
 
 const quadrants = [
   {

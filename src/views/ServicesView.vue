@@ -333,6 +333,8 @@ import {
 } from '@/api/servicesApi'
 import { getServiceMaterials, setServiceMaterials, getAllServiceMaterialCosts } from '@/api/serviceMaterialsApi'
 
+defineOptions({ name: 'ServicesView' })
+
 const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
