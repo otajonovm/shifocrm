@@ -678,6 +678,7 @@
     "toastUpdated": "Bemor muvaffaqiyatli yangilandi!",
     "toastCreated": "Bemor muvaffaqiyatli qo'shildi! Avtomatik birinchi tashrif yaratildi.",
     "toastLoaded": "Bemorlar ro'yxati yuklandi!",
+    "errorLoad": "Bemorlarni yuklashda xatolik",
     "statusWaiting": "Kutmoqda",
     "statusWaitingDesc": "Bemor klinikada navbat kutmoqda",
     "statusInConsultation": "Qabulda",

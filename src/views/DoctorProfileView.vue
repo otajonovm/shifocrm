@@ -246,6 +246,8 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 import SuccessMessage from '@/components/shared/SuccessMessage.vue'
 
+defineOptions({ name: 'DoctorProfileView' })
+
 const authStore = useAuthStore()
 const doctorsStore = useDoctorsStore()
 const i18nStore = useI18nStore()

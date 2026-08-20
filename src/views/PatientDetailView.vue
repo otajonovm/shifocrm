@@ -256,7 +256,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
@@ -279,6 +279,9 @@ import { ArrowLeftIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import * as visitsApi from '@/api/visitsApi'
 import { logActivity } from '@/lib/activityLog'
 import { useCashbackBalance } from '@/composables/useCashbackBalance'
+import { preloadToothSvgs } from '@/lib/preloadToothSvgs'
+
+defineOptions({ name: 'PatientDetailView' })
 
 const toast = useToast()
 const { t } = useI18n()
@@ -294,7 +297,6 @@ const canEditMedicalRecords = computed(() => canManageMedicalRecords.value && ca
 
 const patient = ref(null)
 const loading = ref(true)
-const activeTab = ref('visits')
 const lastVisitStatus = ref(null)
 const visits = ref([])
 const selectedVisitId = ref(null)
@@ -310,6 +312,40 @@ const tabs = [
   { id: 'plans', labelKey: 'patientDetail.tabPlans', count: null },
   { id: 'documents', labelKey: 'patientDetail.tabDocuments', count: null },
 ]
+
+const DEFAULT_PATIENT_TAB = 'visits'
+const isKnownPatientTab = (tab) => tabs.some((item) => item.id === tab)
+
+const patientTabStorageKey = (patientId) => `shifocrm.patientTab.${patientId}`
+
+const readStoredPatientTab = (patientId) => {
+  if (patientId == null || patientId === '') return null
+  try {
+    const stored = sessionStorage.getItem(patientTabStorageKey(patientId))
+    return isKnownPatientTab(stored) ? stored : null
+  } catch {
+    return null
+  }
+}
+
+const writeStoredPatientTab = (patientId, tab) => {
+  if (patientId == null || patientId === '' || !isKnownPatientTab(tab)) return
+  try {
+    sessionStorage.setItem(patientTabStorageKey(patientId), tab)
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+const resolvePatientTab = () => {
+  const fromQuery = String(route.query.tab || '')
+  if (isKnownPatientTab(fromQuery)) return fromQuery
+  const fromStorage = readStoredPatientTab(route.params.id)
+  if (fromStorage) return fromStorage
+  return DEFAULT_PATIENT_TAB
+}
+
+const activeTab = ref(resolvePatientTab())
 
 const isAdmin = computed(() => isAdminLike(authStore) || hasSoloRole(authStore))
 const isSolo = computed(() => hasSoloRole(authStore))
@@ -411,12 +447,24 @@ const formatBalance = (amount) => {
 }
 
 const applyRouteTab = () => {
-  if (route.query.tab && tabs.find(t => t.id === route.query.tab)) {
-    activeTab.value = route.query.tab
+  const nextTab = resolvePatientTab()
+  if (activeTab.value !== nextTab) {
+    activeTab.value = nextTab
   }
   if (route.query.visit) {
     selectedVisitId.value = Number(route.query.visit) || null
   }
+}
+
+const syncTabToRoute = (tab) => {
+  const nextTab = isKnownPatientTab(tab) ? tab : DEFAULT_PATIENT_TAB
+  if (String(route.query.tab || '') === nextTab) return
+  router.replace({
+    query: {
+      ...route.query,
+      tab: nextTab,
+    },
+  }).catch(() => {})
 }
 
 const openOdontogramTab = (visitId) => {
@@ -424,9 +472,19 @@ const openOdontogramTab = (visitId) => {
   activeTab.value = 'odontogram'
 }
 
-watch(() => [route.query.tab, route.query.visit], applyRouteTab)
+watch(activeTab, (tab) => {
+  writeStoredPatientTab(route.params.id, tab)
+  syncTabToRoute(tab)
+}, { immediate: true })
+
+watch(() => [route.query.tab, route.query.visit, route.params.id], applyRouteTab)
+
+onActivated(() => {
+  applyRouteTab()
+})
 
 onMounted(async () => {
+  preloadToothSvgs()
   applyRouteTab()
 
   // Route params har doim string bo'ladi, shuning uchun number formatga o'tkazamiz
@@ -444,18 +502,7 @@ onMounted(async () => {
     return
   }
 
-  // Avval store'dan bemorlarni yuklash (agar bo'sh bo'lsa)
-  if (patientsStore.items.length === 0) {
-    console.log('?? Store is empty, fetching patients...')
-    try {
-      await patientsStore.fetchPatients()
-      console.log('? Patients fetched:', patientsStore.items.length)
-    } catch (err) {
-      console.warn('?? Failed to fetch patients list:', err)
-    }
-  } else {
-    console.log('?? Store already has', patientsStore.items.length, 'patients')
-  }
+  await patientsStore.fetchPatients()
 
   try {
     console.log('?? Calling getPatientById with number ID:', patientId)
@@ -482,7 +529,7 @@ onMounted(async () => {
     if (!patient.value) {
       console.log('?? Patient still not found, refreshing store...')
       try {
-        await patientsStore.fetchPatients()
+        await patientsStore.fetchPatients({ force: true })
         console.log('?? Store refreshed, now has', patientsStore.items.length, 'patients')
         patient.value = await patientsStore.getPatientById(patientId)
         console.log('?? Patient result after refresh:', patient.value)

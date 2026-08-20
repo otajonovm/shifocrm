@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { applyPaymentCashback } from './cashbackApi'
-import { hasLocalCashbackTxn } from '@/services/cashbackLedgerService'
-import { hasLocalCashbackTxn } from '@/services/cashbackLedgerService'
+import { applyPaymentCashback, getCashbackBalance } from './cashbackApi'
+import {
+  hasLocalCashbackTxn,
+  getLocalCashbackBalanceRow,
+  spendLocalCashback,
+  syncLocalCashbackFromPayments,
+} from '@/services/cashbackLedgerService'
 
 vi.mock('./telegramApi', () => ({
   getTelegramApiBaseUrl: () => '/api/telegram',
@@ -10,6 +14,7 @@ vi.mock('./telegramApi', () => ({
 
 vi.mock('@/services/cashbackLedgerService', () => ({
   getLocalCashbackBalance: vi.fn(async () => 0),
+  getLocalCashbackBalanceRow: vi.fn(async () => null),
   earnLocalCashback: vi.fn(async () => ({ ok: false, earned: 0, error: 'LEDGER_SKIPPED' })),
   spendLocalCashback: vi.fn(async () => ({ ok: false, spent: 0, error: 'LEDGER_SKIPPED' })),
   syncLocalCashbackFromPayments: vi.fn(async () => ({ ok: true, earned: 0 })),
@@ -21,6 +26,8 @@ describe('applyPaymentCashback', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
     hasLocalCashbackTxn.mockResolvedValue(false)
+    getLocalCashbackBalanceRow.mockResolvedValue(null)
+    spendLocalCashback.mockResolvedValue({ ok: false, spent: 0, error: 'LEDGER_SKIPPED' })
   })
 
   afterEach(() => {
@@ -152,5 +159,50 @@ describe('applyPaymentCashback', () => {
     expect(result.duplicate).toBe(true)
     expect(result.spent).toBe(20000)
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('spends from the local ledger when a balance row already exists', async () => {
+    getLocalCashbackBalanceRow.mockResolvedValue({ balance: 50000 })
+    spendLocalCashback.mockResolvedValue({ ok: true, spent: 20000 })
+
+    const result = await applyPaymentCashback({
+      patientId: 10,
+      paymentId: 99,
+      totalAmount: 20000,
+      cashbackUsed: 20000,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.spent).toBe(20000)
+    expect(fetch).not.toHaveBeenCalled()
+    expect(spendLocalCashback).toHaveBeenCalledWith({
+      patientId: 10,
+      amount: 20000,
+      paymentId: 99,
+    })
+  })
+})
+
+describe('getCashbackBalance', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    getLocalCashbackBalanceRow.mockResolvedValue(null)
+    syncLocalCashbackFromPayments.mockResolvedValue({ ok: true, earned: 0 })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('returns local ledger balance without waiting on the bot', async () => {
+    getLocalCashbackBalanceRow.mockResolvedValue({ balance: 180000 })
+
+    const result = await getCashbackBalance(42)
+
+    expect(result.ok).toBe(true)
+    expect(result.data.balance).toBe(180000)
+    expect(result.data.source).toBe('ledger')
+    expect(fetch).not.toHaveBeenCalled()
+    expect(syncLocalCashbackFromPayments).not.toHaveBeenCalled()
   })
 })

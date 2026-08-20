@@ -32,7 +32,7 @@ const toNetworkError = (error) => {
 }
 
 // Helper: GET request
-export const supabaseGet = async (table, query = '') => {
+export const supabaseGet = async (table, query = '', options = {}) => {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     const e = new Error('VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY sozlanmagan')
     e.status = 503
@@ -45,13 +45,21 @@ export const supabaseGet = async (table, query = '') => {
   try {
     response = await fetch(url, {
       method: 'GET',
-      headers: getHeaders(),
+      headers: { ...getHeaders(), ...(options.headers || {}) },
     })
   } catch (error) {
     throw toNetworkError(error)
   }
 
-  if (!response.ok) {
+  // PostgREST Range: 206 Partial Content; diapazon tashqarida bo'lsa 416
+  if (response.status === 416 && options.withMeta) {
+    return {
+      data: [],
+      total: parseContentRangeTotal(response.headers.get('content-range')),
+    }
+  }
+
+  if (!response.ok && response.status !== 206) {
     const body = await response.json().catch(() => ({}))
     const e = new Error(body.message || `GET failed: ${response.status}`)
     e.status = response.status
@@ -60,7 +68,21 @@ export const supabaseGet = async (table, query = '') => {
     throw e
   }
 
-  return response.json()
+  const data = await response.json()
+  if (options.withMeta) {
+    return {
+      data: Array.isArray(data) ? data : [],
+      total: parseContentRangeTotal(response.headers.get('content-range')),
+    }
+  }
+  return data
+}
+
+function parseContentRangeTotal(header) {
+  const match = String(header || '').match(/\/(\d+|\*)$/)
+  if (!match || match[1] === '*') return 0
+  const n = Number(match[1])
+  return Number.isFinite(n) ? n : 0
 }
 
 // Helper: POST request (insert)

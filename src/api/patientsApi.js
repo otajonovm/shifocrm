@@ -98,6 +98,85 @@ export const listPatients = async (options = {}) => {
   }
 }
 
+const sanitizeIlike = (value) => String(value || '')
+  .replace(/[%*,()]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+
+/**
+ * Bemorlar katalogi: sana oralig'i Range + ilike qidiruv + jami son.
+ */
+export const listPatientsPage = async ({
+  search = '',
+  doctorId = null,
+  status = null,
+  page = 1,
+  pageSize = 20,
+  includeUnassigned = false,
+} = {}) => {
+  const cid = await getCurrentClinicId()
+  const safePageSize = Math.min(Math.max(Number(pageSize) || 20, 1), 50)
+  const safePage = Math.max(Number(page) || 1, 1)
+  const from = (safePage - 1) * safePageSize
+  const to = from + safePageSize - 1
+  const scopeQuery = buildScopeQuery()
+  const select = 'id,full_name,phone,status,doctor_id,doctor_name,birth_date,created_at,last_visit,clinic_id'
+  const parts = [`select=${select}`, 'order=created_at.desc']
+  if (scopeQuery) parts.unshift(scopeQuery)
+
+  const extraAnd = []
+  const q = sanitizeIlike(search)
+  if (q) {
+    const pattern = encodeURIComponent(`*${q}*`)
+    const orParts = [`full_name.ilike.${pattern}`, `phone.ilike.${pattern}`]
+    const digits = q.replace(/\D/g, '')
+    if (digits.length >= 3) orParts.push(`phone.ilike.${encodeURIComponent(`*${digits}*`)}`)
+    extraAnd.push(`or(${orParts.join(',')})`)
+  }
+
+  const doctorNum = Number(doctorId)
+  if (Number.isFinite(doctorNum) && doctorNum > 0) {
+    extraAnd.push(includeUnassigned
+      ? `or(doctor_id.eq.${doctorNum},doctor_id.is.null)`
+      : `doctor_id.eq.${doctorNum}`)
+  }
+
+  if (status) {
+    extraAnd.push(`status.eq.${String(status)}`)
+  }
+
+  if (extraAnd.length === 1) {
+    const only = extraAnd[0]
+    if (only.startsWith('or(')) parts.push(`or=${only.slice(2)}`)
+    else parts.push(only.replace('.eq.', '=eq.'))
+  } else if (extraAnd.length > 1) {
+    parts.push(`and=(${extraAnd.join(',')})`)
+  }
+
+  const query = parts.join('&')
+  const options = {
+    withMeta: true,
+    headers: {
+      Prefer: 'count=exact,return=representation',
+      Range: `${from}-${to}`,
+      'Range-Unit': 'items',
+    },
+  }
+
+  try {
+    const result = await supabaseGetWithClinicFallback(TABLE, query, cid, options)
+    return {
+      data: Array.isArray(result?.data) ? result.data : [],
+      total: Number(result?.total) || 0,
+      page: safePage,
+      pageSize: safePageSize,
+    }
+  } catch (error) {
+    console.error('❌ Failed to fetch patients page:', error)
+    throw error
+  }
+}
+
 export const getPatientById = async (id) => {
   try {
     const numId = Number(id)

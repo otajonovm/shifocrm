@@ -12,6 +12,8 @@ import { canAccessAdminRoutes } from '@/lib/roles'
 import MainLayout from '@/layouts/MainLayout.vue'
 import EmployeeManagement from '@/components/staff/EmployeeManagement.vue'
 
+defineOptions({ name: 'DoctorsView' })
+
 const authStore = useAuthStore()
 const router = useRouter()
 

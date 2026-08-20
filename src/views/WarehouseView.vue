@@ -314,6 +314,8 @@ import {
   ArrowUpTrayIcon,
 } from '@heroicons/vue/24/outline'
 
+defineOptions({ name: 'WarehouseView' })
+
 const { t } = useI18n()
 const authStore = useAuthStore()
 const { can } = usePermission()

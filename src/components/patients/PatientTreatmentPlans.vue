@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h3 class="text-lg font-semibold text-gray-900">{{ t('treatmentPlans.title') }}</h3>
         <p class="text-sm text-gray-500">{{ t('treatmentPlans.subtitle') }}</p>
@@ -10,28 +10,28 @@
           type="button"
           @click="generateAiDraft"
           :disabled="draftLoading"
-          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-lg hover:bg-violet-100 transition-all disabled:opacity-50"
+          class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
         >
-          <SparklesIcon class="w-4 h-4" />
+          <SparklesIcon class="h-4 w-4" />
           {{ draftLoading ? t('treatmentPlans.aiDraftLoading') : t('treatmentPlans.aiDraft') }}
         </button>
         <button
           @click="showForm = !showForm"
-          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all"
+          class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
         >
-          <PlusIcon class="w-4 h-4" />
+          <PlusIcon class="h-4 w-4" />
           {{ t('treatmentPlans.newPlan') }}
         </button>
       </div>
     </div>
 
-    <div v-if="showForm" class="bg-white rounded-xl border border-gray-100 p-4">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div v-if="showForm" class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.status') }}</label>
+          <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.status') }}</label>
           <select
             v-model="form.status"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
           >
             <option v-for="option in statusOptions" :key="option.value" :value="option.value">
               {{ option.label }}
@@ -39,10 +39,10 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.priority') }}</label>
+          <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.priority') }}</label>
           <select
             v-model="form.priority"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
           >
             <option value="low">{{ t('treatmentPlans.priorityLow') }}</option>
             <option value="medium">{{ t('treatmentPlans.priorityMedium') }}</option>
@@ -50,11 +50,11 @@
           </select>
         </div>
         <div class="sm:col-span-3">
-          <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.notes') }}</label>
+          <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.notes') }}</label>
           <textarea
             v-model="form.notes"
             rows="2"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
             :placeholder="t('treatmentPlans.notesPlaceholder')"
           ></textarea>
         </div>
@@ -66,37 +66,37 @@
           <button
             type="button"
             @click="addStage"
-            class="text-xs font-semibold text-primary-600 hover:text-primary-700"
+            class="text-xs font-medium text-blue-600 hover:text-blue-700"
           >
             {{ t('treatmentPlans.addStage') }}
           </button>
         </div>
 
-        <div v-for="(stage, stageIdx) in form.stages" :key="stage.key" class="rounded-xl border border-slate-200 p-4 space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div v-for="(stage, stageIdx) in form.stages" :key="stage.key" class="space-y-4 rounded-xl border border-gray-200 p-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.stageName') }} *</label>
+              <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.stageName') }} *</label>
               <input
                 v-model="stage.stage_name"
                 type="text"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                 :placeholder="t('treatmentPlans.stageNamePlaceholder')"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.planDate') }} *</label>
+              <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.planDate') }} *</label>
               <input
                 v-model="stage.planned_date"
                 type="date"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
               />
             </div>
             <div class="sm:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('treatmentPlans.notes') }}</label>
+              <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('treatmentPlans.notes') }}</label>
               <textarea
                 v-model="stage.notes"
                 rows="2"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                 :placeholder="t('treatmentPlans.notesPlaceholder')"
               ></textarea>
             </div>
@@ -104,23 +104,23 @@
 
           <div class="space-y-3">
             <div class="flex items-center justify-between">
-              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('treatmentPlans.services') }}</p>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-500">{{ t('treatmentPlans.services') }}</p>
               <button
                 type="button"
                 @click="addItem(stageIdx)"
-                class="text-xs font-semibold text-primary-600 hover:text-primary-700"
+                class="text-xs font-medium text-blue-600 hover:text-blue-700"
               >
                 {{ t('treatmentPlans.addService') }}
               </button>
             </div>
 
-            <div v-for="(item, itemIdx) in stage.items" :key="item.key" class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+            <div v-for="(item, itemIdx) in stage.items" :key="item.key" class="grid grid-cols-1 gap-3 sm:grid-cols-5">
               <div class="sm:col-span-2">
-                <label class="block text-xs font-medium text-gray-600 mb-1">{{ t('treatmentPlans.service') }} *</label>
+                <label class="mb-1 block text-xs font-medium text-gray-500">{{ t('treatmentPlans.service') }} *</label>
                 <select
                   v-model="item.service_id"
                   @change="handleServiceChange(stageIdx, itemIdx)"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                 >
                   <option value="">{{ t('treatmentPlans.selectService') }}</option>
                   <option v-for="service in services" :key="service.id" :value="service.id">
@@ -129,69 +129,69 @@
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">{{ t('treatmentPlans.estimatedCost') }}</label>
+                <label class="mb-1 block text-xs font-medium text-gray-500">{{ t('treatmentPlans.estimatedCost') }}</label>
                 <input
                   v-model.number="item.estimated_cost"
                   type="number"
                   min="0"
                   step="1000"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                 />
               </div>
               <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">{{ t('treatmentPlans.tooth') }}</label>
+                <label class="mb-1 block text-xs font-medium text-gray-500">{{ t('treatmentPlans.tooth') }}</label>
                 <input
                   v-model.number="item.tooth_id"
                   type="number"
                   min="11"
                   max="48"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                   :placeholder="t('treatmentPlans.toothPlaceholder')"
                 />
               </div>
-              <div class="sm:col-span-1 flex items-end">
+              <div class="flex items-end sm:col-span-1">
                 <button
                   type="button"
                   @click="removeItem(stageIdx, itemIdx)"
-                  class="w-full px-3 py-2 text-xs font-semibold text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50"
+                  class="w-full rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-50"
                 >
                   {{ t('treatmentPlans.remove') }}
                 </button>
               </div>
               <div class="sm:col-span-5">
-                <label class="block text-xs font-medium text-gray-600 mb-1">{{ t('treatmentPlans.notes') }}</label>
+                <label class="mb-1 block text-xs font-medium text-gray-500">{{ t('treatmentPlans.notes') }}</label>
                 <textarea
                   v-model="item.notes"
                   rows="2"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                 ></textarea>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div v-if="formError" class="mt-3 text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2">
+      <div v-if="formError" class="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-2 text-sm text-rose-700">
         {{ formError }}
       </div>
       <div class="mt-4 flex items-center justify-end gap-3">
         <button
           @click="resetForm"
-          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          class="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
         >
           {{ t('treatmentPlans.cancel') }}
         </button>
         <button
           @click="savePlan"
-          class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+          class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
         >
           {{ t('treatmentPlans.save') }}
         </button>
       </div>
     </div>
 
-    <div class="overflow-x-auto rounded-xl border border-slate-200">
-      <table class="min-w-full divide-y divide-slate-200 text-sm">
-        <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
           <tr>
             <th class="px-4 py-3">{{ t('treatmentPlans.plan') }}</th>
             <th class="px-4 py-3">{{ t('treatmentPlans.date') }}</th>
@@ -202,40 +202,44 @@
             <th class="px-4 py-3 text-right">{{ t('treatmentPlans.actions') }}</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <tbody class="divide-y divide-gray-100">
           <tr v-if="loading">
-            <td class="px-4 py-4 text-slate-500" colspan="7">{{ t('treatmentPlans.loading') }}</td>
+            <td class="px-4 py-4 text-sm text-gray-500" colspan="7">{{ t('treatmentPlans.loading') }}</td>
           </tr>
           <tr v-else-if="plans.length === 0">
-            <td class="px-4 py-4 text-slate-500" colspan="7">{{ t('treatmentPlans.noPlans') }}</td>
+            <td class="px-4 py-4 text-sm text-gray-500" colspan="7">{{ t('treatmentPlans.noPlans') }}</td>
           </tr>
-          <tr v-for="plan in plans" :key="plan.id" class="bg-white">
-            <td class="px-4 py-3 text-slate-700">
-              <div class="font-medium text-slate-900">{{ plan.title }}</div>
-              <div class="text-xs text-slate-400">{{ plan.stage_summary || '-' }}</div>
-            </td>
-            <td class="px-4 py-3 text-slate-700">{{ formatDate(plan.first_stage_date || plan.planned_date) }}</td>
+          <tr
+            v-for="plan in plans"
+            :key="plan.id"
+            class="bg-white transition-colors hover:bg-gray-50"
+          >
             <td class="px-4 py-3">
-              <span :class="statusClass(plan.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+              <div class="font-semibold text-gray-900">{{ plan.title }}</div>
+              <div class="text-sm text-gray-500">{{ plan.stage_summary || '-' }}</div>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-500">{{ formatDate(plan.first_stage_date || plan.planned_date) }}</td>
+            <td class="px-4 py-3">
+              <span :class="statusClass(plan.status)" class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
                 {{ statusLabel(plan.status) }}
               </span>
             </td>
-            <td class="px-4 py-3 text-slate-700">{{ priorityLabel(plan.priority) }}</td>
-            <td class="px-4 py-3 text-slate-700">{{ plan.first_tooth_id ? `#${plan.first_tooth_id}` : '-' }}</td>
-            <td class="px-4 py-3 text-slate-700">{{ formatCurrency(plan.total_estimated_cost) }}</td>
+            <td class="px-4 py-3 text-gray-700">{{ priorityLabel(plan.priority) }}</td>
+            <td class="px-4 py-3 text-gray-700">{{ plan.first_tooth_id ? `#${plan.first_tooth_id}` : '-' }}</td>
+            <td class="px-4 py-3 text-gray-700">{{ formatCurrency(plan.total_estimated_cost) }}</td>
             <td class="px-4 py-3 text-right">
               <div class="flex items-center justify-end gap-2">
                 <button
                   v-if="!plan.visit_id"
                   @click="convertToVisit(plan)"
-                  class="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded"
+                  class="rounded-xl border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   {{ t('treatmentPlans.toVisit') }}
                 </button>
                 <select
                   :value="plan.status"
                   @change="setStatus(plan, $event.target.value)"
-                  class="px-2 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded"
+                  class="rounded-xl border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                 >
                   <option v-for="option in statusOptions" :key="option.value" :value="option.value">
                     {{ option.label }}
@@ -243,7 +247,7 @@
                 </select>
                 <button
                   type="button"
-                  class="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded disabled:opacity-50"
+                  class="rounded-xl border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
                   :disabled="sendingReminderId === plan.id"
                   @click="sendReminder(plan)"
                 >
@@ -253,12 +257,12 @@
             </td>
           </tr>
         </tbody>
-        <tfoot class="bg-slate-50">
+        <tfoot class="bg-gray-50">
           <tr>
-            <td class="px-4 py-3 text-sm font-semibold text-slate-700" colspan="5">
+            <td class="px-4 py-3 text-sm font-semibold text-gray-900" colspan="5">
               {{ t('treatmentPlans.totalEstimatedCost') }}
             </td>
-            <td class="px-4 py-3 text-sm font-semibold text-slate-900">
+            <td class="px-4 py-3 text-sm font-semibold text-gray-900">
               {{ formatCurrency(totalEstimatedCostAll) }}
             </td>
             <td class="px-4 py-3" colspan="1"></td>
@@ -268,18 +272,18 @@
     </div>
 
     <div class="grid gap-4 md:grid-cols-5">
-      <div v-for="column in kanbanColumns" :key="column.status" class="rounded-xl border border-slate-200 bg-white">
-        <div class="px-4 py-3 border-b border-slate-100">
-          <h4 class="text-sm font-semibold text-slate-700">{{ column.label }}</h4>
-          <p class="text-xs text-slate-400">{{ column.items.length }} ta</p>
+      <div v-for="column in kanbanColumns" :key="column.status" class="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="border-b border-gray-100 px-4 py-3">
+          <h4 class="text-sm font-semibold text-gray-900">{{ column.label }}</h4>
+          <p class="text-sm text-gray-500">{{ column.items.length }} ta</p>
         </div>
-        <div class="p-3 space-y-2">
-          <div v-for="plan in column.items" :key="plan.id" class="rounded-lg border border-slate-200 p-3">
-            <div class="text-sm font-semibold text-slate-900">{{ plan.title }}</div>
-            <div class="text-xs text-slate-500">{{ formatDate(plan.first_stage_date || plan.planned_date) }}</div>
-            <div class="mt-1 text-xs text-slate-600">{{ formatCurrency(plan.total_estimated_cost) }} so'm</div>
+        <div class="space-y-2 p-3">
+          <div v-for="plan in column.items" :key="plan.id" class="rounded-xl border border-gray-200 bg-white p-3 transition-colors hover:bg-gray-50">
+            <div class="text-sm font-semibold text-gray-900">{{ plan.title }}</div>
+            <div class="text-sm text-gray-500">{{ formatDate(plan.first_stage_date || plan.planned_date) }}</div>
+            <div class="mt-1 text-sm text-gray-500">{{ formatCurrency(plan.total_estimated_cost) }} so'm</div>
           </div>
-          <div v-if="column.items.length === 0" class="text-xs text-slate-400">—</div>
+          <div v-if="column.items.length === 0" class="text-sm text-gray-500">—</div>
         </div>
       </div>
     </div>
@@ -289,15 +293,23 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       @click.self="showDraftModal = false"
     >
-      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+      <div class="w-full max-w-lg rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <h4 class="text-lg font-semibold text-gray-900">{{ t('treatmentPlans.aiDraftTitle') }}</h4>
-        <p class="mt-1 text-xs text-amber-700">{{ draftResult?.disclaimer || t('treatmentPlans.aiDraftDisclaimer') }}</p>
-        <pre class="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl bg-gray-50 p-4 text-sm text-gray-800">{{ draftResult?.draft }}</pre>
+        <p class="mt-1 text-sm text-gray-500">{{ draftResult?.disclaimer || t('treatmentPlans.aiDraftDisclaimer') }}</p>
+        <pre class="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">{{ draftResult?.draft }}</pre>
         <div class="mt-4 flex justify-end gap-2">
-          <button type="button" class="rounded-lg border border-gray-200 px-4 py-2 text-sm" @click="showDraftModal = false">
+          <button
+            type="button"
+            class="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            @click="showDraftModal = false"
+          >
             {{ t('treatmentPlans.aiDraftClose') }}
           </button>
-          <button type="button" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white" @click="applyDraft">
+          <button
+            type="button"
+            class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
+            @click="applyDraft"
+          >
             {{ t('treatmentPlans.aiDraftApply') }}
           </button>
         </div>
@@ -665,11 +677,11 @@ const statusLabel = (status) => {
 }
 
 const statusClass = (status) => {
-  if (status === 'done') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'in_progress') return 'bg-amber-100 text-amber-700'
-  if (status === 'cancelled') return 'bg-rose-100 text-rose-700'
-  if (status === 'scheduled') return 'bg-blue-100 text-blue-700'
-  return 'bg-slate-100 text-slate-700'
+  if (status === 'done') return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20'
+  if (status === 'in_progress') return 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/10'
+  if (status === 'cancelled') return 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/10'
+  if (status === 'scheduled') return 'bg-blue-50 text-blue-700 ring-1 ring-blue-700/10'
+  return 'bg-gray-50 text-gray-600 ring-1 ring-gray-600/10'
 }
 
 const priorityLabel = (priority) => {

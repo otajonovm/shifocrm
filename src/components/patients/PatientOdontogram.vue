@@ -300,6 +300,7 @@ import { useAuthStore } from '@/stores/auth'
 import { isAdminLike, isDoctorLike, isSolo } from '@/lib/roles'
 import * as clinicalService from '@/services/odontogramService'
 import { normalizeToothStatus, PERMANENT_TEETH, toStorageToothState } from '@/domain/odontogram'
+import { preloadToothSvgs } from '@/lib/preloadToothSvgs'
 import { useSubscriptionStore } from '@/stores/subscription'
 import { FEATURE_KEYS } from '@/lib/subscriptionFeatures'
 import { visitDueFrom } from '@/lib/paymentTotals'
@@ -587,16 +588,18 @@ const syncTeethFromOdontogram = () => {
 
 // visit_services dan faqat odontogramda yo'q tishlarni qo'shamiz — mavjud tishlarni overwrite qilmaymiz
 // Bu funksiya faqat yangi tashrif yaratilganda chaqiriladi
-const loadVisitServices = async () => {
-  if (!currentVisit.value?.id) {
+const loadVisitServices = async (visitId = currentVisit.value?.id) => {
+  if (!visitId) {
     visitServices.value = []
     return
   }
   try {
-    visitServices.value = await clinicalService.getVisitServices(currentVisit.value.id)
+    const rows = await clinicalService.getVisitServices(visitId)
+    if (String(currentVisit.value?.id) !== String(visitId)) return
+    visitServices.value = rows
   } catch (error) {
     console.error('Failed to load visit services:', error)
-    visitServices.value = []
+    if (String(currentVisit.value?.id) === String(visitId)) visitServices.value = []
   }
 }
 
@@ -609,19 +612,21 @@ const loadInventoryItems = async () => {
   }
 }
 
-const loadConsumptions = async () => {
-  if (!currentVisit.value?.id) {
+const loadConsumptions = async (visitId = currentVisit.value?.id) => {
+  if (!visitId) {
     consumptions.value = []
     return
   }
   consumptionsLoading.value = true
   try {
-    consumptions.value = await clinicalService.getVisitConsumptions(authStore, currentVisit.value.id)
+    const rows = await clinicalService.getVisitConsumptions(authStore, visitId)
+    if (String(currentVisit.value?.id) !== String(visitId)) return
+    consumptions.value = rows
   } catch (error) {
     console.error('Failed to load consumptions:', error)
-    consumptions.value = []
+    if (String(currentVisit.value?.id) === String(visitId)) consumptions.value = []
   } finally {
-    consumptionsLoading.value = false
+    if (String(currentVisit.value?.id) === String(visitId)) consumptionsLoading.value = false
   }
 }
 
@@ -768,7 +773,13 @@ const mapServiceToOption = (service) => ({
 
 const loadServicesMenu = async () => {
   try {
-    const data = await clinicalService.getClinicServices('order=created_at.desc')
+    const query = 'show_in_odontogram=eq.true&select=id,name,base_price,odontogram_color,is_active,show_in_odontogram&order=created_at.desc'
+    let data
+    try {
+      data = await clinicalService.getClinicServices(query)
+    } catch {
+      data = await clinicalService.getClinicServices('order=created_at.desc')
+    }
     const seen = new Set()
     servicesList.value = (data || [])
       .filter((service) => service.is_active !== false && service.show_in_odontogram === true)
@@ -786,21 +797,34 @@ const loadServicesMenu = async () => {
   }
 }
 
+const loadChartExtras = (token, visitId) => Promise.all([
+  loadServicesMenu(),
+  loadConsumptions(visitId),
+  loadVisitServices(visitId),
+  loadInventoryItems(),
+]).catch((error) => {
+  if (token !== odontogramLoadToken) return
+  console.error('Failed to load odontogram extras:', error)
+})
+
+let odontogramLoadToken = 0
+
 const loadVisits = async () => {
   loading.value = true
   try {
     visits.value = await clinicalService.getPatientVisits(props.patient.id)
 
-    // Auto-select active visit yoki oxirgi tashrif
+    const preferredId = props.initialVisitId
+      ? visits.value.find((v) => String(v.id) === String(props.initialVisitId))?.id
+      : null
     const activeVisit = visits.value.find(v => v.status === 'in_progress')
-    if (activeVisit) {
-      selectedVisitId.value = activeVisit.id
-      await loadOdontogram(activeVisit.id)
-    } else if (visits.value.length > 0 && !selectedVisitId.value) {
-      // Agar faol tashrif bo'lmasa va tashrif tanlanmagan bo'lsa, oxirgi tashrifni tanlaymiz
-      const lastVisit = visits.value[0] // created_at.desc bo'yicha tartiblangan
-      selectedVisitId.value = lastVisit.id
-      await loadOdontogram(lastVisit.id)
+    const visitToLoad = preferredId
+      ? visits.value.find((v) => String(v.id) === String(preferredId))
+      : (activeVisit || (visits.value.length > 0 && !selectedVisitId.value ? visits.value[0] : null))
+
+    if (visitToLoad) {
+      selectedVisitId.value = visitToLoad.id
+      await loadOdontogram(visitToLoad.id)
     }
   } catch (error) {
     console.error('Failed to load visits:', error)
@@ -818,35 +842,42 @@ const loadOdontogram = async (visitId) => {
     return
   }
 
+  const token = ++odontogramLoadToken
   loading.value = true
   try {
-    currentVisit.value = await clinicalService.getVisit(visitId)
+    const fromList = visits.value.find((v) => String(v.id) === String(visitId))
+    currentVisit.value = fromList || await clinicalService.getVisit(visitId)
+    if (token !== odontogramLoadToken) return
+
     if (['pending', 'arrived'].includes(currentVisit.value?.status)) {
-      try {
-        const started = await clinicalService.updateVisit(visitId, { status: 'in_progress' })
+      clinicalService.updateVisit(visitId, { status: 'in_progress' }).then((started) => {
+        if (token !== odontogramLoadToken) return
         currentVisit.value = started || { ...currentVisit.value, status: 'in_progress' }
         const idx = visits.value.findIndex(v => String(v.id) === String(visitId))
         if (idx !== -1) visits.value[idx] = { ...visits.value[idx], status: 'in_progress' }
-      } catch (startError) {
+      }).catch((startError) => {
         console.warn('Visitni avtomatik boshlash:', startError)
-      }
+      })
     }
+
     currentOdontogram.value = await clinicalService.getOrCreateOdontogram({
       patient_id: props.patient.id,
       visit_id: visitId,
       doctor_id: props.doctorId
     })
+    if (token !== odontogramLoadToken) return
     originalOdontogramData.value = JSON.parse(JSON.stringify(currentOdontogram.value.data))
     saveState.value = 'saved'
     saveError.value = null
-    syncTeethFromOdontogram() // Tishlar statusini faqat odontogramdan olamiz
-    await loadServicesMenu()
-    await Promise.all([loadConsumptions(), loadVisitServices(), loadInventoryItems()])
+    syncTeethFromOdontogram()
+    loading.value = false
+    loadChartExtras(token, visitId)
   } catch (error) {
+    if (token !== odontogramLoadToken) return
     console.error('Failed to load odontogram:', error)
     toast.error(t('odontogram.errorLoadOdontogram'))
   } finally {
-    loading.value = false
+    if (token === odontogramLoadToken) loading.value = false
   }
 }
 
@@ -1211,17 +1242,8 @@ const handleEscape = (event) => {
 
 // Lifecycle
 onMounted(async () => {
+  preloadToothSvgs()
   await loadVisits()
-  // Agar initialVisitId berilgan bo'lsa, uni tanlash
-  if (props.initialVisitId) {
-    const visitId = String(props.initialVisitId)
-    if (visits.value.find(v => String(v.id) === visitId)) {
-      selectedVisitId.value = visitId
-      await onVisitChange()
-    }
-  }
-  syncTeethFromOdontogram()
-  await Promise.all([loadVisitServices(), loadServicesMenu(), loadInventoryItems()])
   document.addEventListener('click', handleDocumentClick)
   window.addEventListener('keydown', handleEscape)
 })

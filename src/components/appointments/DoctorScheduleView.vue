@@ -226,7 +226,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, shallowRef, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { isAdminLike, isStaffOps } from '@/lib/roles'
@@ -290,7 +290,9 @@ const patientsStore = usePatientsStore()
 const clinicStore = useClinicStore()
 
 const loading = ref(false)
-const appointments = ref([])
+const appointments = shallowRef([])
+let appointmentsLoadToken = 0
+let appointmentsLoadTimer = null
 const patientModalOpen = ref(false)
 const selectedPatientAppointment = ref(null)
 const scheduleCanvasRef = ref(null)
@@ -575,13 +577,16 @@ const upsertAppointmentFromVisit = (visit) => {
   if (visitDate && (visitDate < start || visitDate > end)) return
 
   const enriched = enrichVisitRow(visit)
-  const index = appointments.value.findIndex((item) => Number(item.id) === Number(visit.id))
+  const current = appointments.value
+  const index = current.findIndex((item) => Number(item.id) === Number(visit.id))
   if (index >= 0) {
-    appointments.value[index] = enriched
+    const next = current.slice()
+    next[index] = enriched
+    appointments.value = next
     return
   }
 
-  appointments.value = [...appointments.value, enriched]
+  appointments.value = [...current, enriched]
 }
 
 const addDaysIso = (iso, days) => {
@@ -658,32 +663,34 @@ const selectPeriodDate = (date) => {
 
 // Appointmentlarni yuklash
 const loadAppointments = async () => {
+  const token = ++appointmentsLoadToken
   loading.value = true
   try {
     const { start: startDate, end: endDate } = periodRange.value
-
-    let visits = []
-    if (isAdmin.value || isStaffOps(authStore)) {
-      visits = await visitsApi.getVisitsByDateRange(startDate, endDate)
-    } else if (authStore.user?.id) {
-      visits = await visitsApi.getVisitsByDoctorAndDateRange(
-        authStore.user.id,
-        startDate,
-        endDate
-      )
-    }
-
-    visits = await enrichVisitsWithLeadInfo(visits)
-
-    // Shifokor va bemor ma'lumotlarini qo'shish
-    // TEMP: start_time va end_time database'da yo'q bo'lgani uchun placeholder qo'shamiz
-    appointments.value = visits.map((visit) => enrichVisitRow(visit))
+    const doctorIdValue = !isAdmin.value && !isStaffOps(authStore) ? authStore.user?.id : null
+    const visits = await visitsApi.fetchCalendarVisits({
+      startDate,
+      endDate,
+      doctorId: doctorIdValue || undefined,
+    })
+    if (token !== appointmentsLoadToken) return
+    const enrichedLeads = await enrichVisitsWithLeadInfo(visits)
+    if (token !== appointmentsLoadToken) return
+    appointments.value = enrichedLeads.map((visit) => enrichVisitRow(visit))
   } catch (error) {
+    if (token !== appointmentsLoadToken) return
     console.error('Failed to load appointments:', error)
     appointments.value = []
   } finally {
-    loading.value = false
+    if (token === appointmentsLoadToken) loading.value = false
   }
+}
+
+const scheduleLoadAppointments = () => {
+  if (appointmentsLoadTimer) clearTimeout(appointmentsLoadTimer)
+  appointmentsLoadTimer = setTimeout(() => {
+    loadAppointments()
+  }, 50)
 }
 
 // Status o'zgartirish
@@ -760,13 +767,16 @@ const addMinutesToTime = (timeStr, minutes) => {
 }
 
 const patchAppointmentInList = (appointmentId, patch) => {
-  const index = appointments.value.findIndex((a) => Number(a.id) === Number(appointmentId))
+  const current = appointments.value
+  const index = current.findIndex((a) => Number(a.id) === Number(appointmentId))
   if (index === -1) return null
-  appointments.value[index] = {
-    ...appointments.value[index],
+  const next = current.slice()
+  next[index] = {
+    ...next[index],
     ...patch,
   }
-  return appointments.value[index]
+  appointments.value = next
+  return next[index]
 }
 
 const syncLinkedAppointment = async ({
@@ -1081,18 +1091,20 @@ const getAppointmentStyle = (appt) => {
 }
 
 // Watch current date va view mode
-watch(() => currentDate.value, () => {
-  loadAppointments()
-  setupRealtime()
-})
-
-watch(viewMode, () => {
-  loadAppointments()
-})
+watch(
+  () => `${periodRange.value.start}|${periodRange.value.end}`,
+  () => {
+    scheduleLoadAppointments()
+    setupRealtime()
+  },
+)
 
 watch(
   () => [clinicStore.calendarStartTime, clinicStore.calendarEndTime],
-  () => loadAppointments()
+  () => {
+    if (!appointments.value.length) return
+    appointments.value = appointments.value.map((visit) => enrichVisitRow(visit))
+  }
 )
 
 const remeasureCanvas = () => {
@@ -1151,17 +1163,18 @@ const handleWindowResize = () => {
 }
 
 onMounted(async () => {
-  if (authStore.userClinicId != null) {
-    await clinicStore.loadFromClinicId(authStore.userClinicId)
-  }
+  const clinicLoad = authStore.userClinicId != null
+    ? clinicStore.loadFromClinicId(authStore.userClinicId)
+    : Promise.resolve()
 
-  loadAppointments()
+  const patientLoad = isAdmin.value
+    ? patientsStore.fetchPatients()
+    : (authStore.user?.id
+      ? patientsStore.fetchPatientsByDoctor(authStore.user.id)
+      : Promise.resolve())
+
+  await Promise.all([clinicLoad, patientLoad, loadAppointments()])
   setupRealtime()
-  if (isAdmin.value) {
-    patientsStore.fetchPatients()
-  } else if (authStore.user?.id) {
-    patientsStore.fetchPatientsByDoctor(authStore.user.id)
-  }
   window.addEventListener('resize', handleWindowResize)
   scheduleNow.value = new Date()
   scheduleNowInterval = setInterval(() => {
@@ -1197,6 +1210,7 @@ onUnmounted(() => {
   canvasResizeObserver?.disconnect()
   if (scheduleNowInterval) clearInterval(scheduleNowInterval)
   if (realtimeReloadTimer) clearTimeout(realtimeReloadTimer)
+  if (appointmentsLoadTimer) clearTimeout(appointmentsLoadTimer)
   teardownRealtime()
 })
 </script>

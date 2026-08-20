@@ -517,31 +517,26 @@
 import MainLayout from '@/layouts/MainLayout.vue'
 import ReportsSoloView from '@/views/ReportsSoloView.vue'
 import ReportsWeekTable from '@/components/reports/ReportsWeekTable.vue'
-import { getClinicWeekReport } from '@/services/reportsService'
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import ApexChart from 'vue3-apexcharts'
 import { ArrowDownTrayIcon, DocumentArrowDownIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
-import { listDoctors } from '@/api/doctorsApi'
-import { listPatients } from '@/api/patientsApi'
-import * as paymentsApi from '@/api/paymentsApi'
-import { parseCategoryFromNote, removeCategoryFromNote } from '@/api/paymentsApi'
-import { getTopServices } from '@/api/servicesApi'
-import { listExpenses, listInventoryMovements, listInventoryItems } from '@/api/inventoryApi'
+import { removeCategoryFromNote } from '@/api/paymentsApi'
 import { useAuthStore } from '@/stores/auth'
-import { useDoctorsStore } from '@/stores/doctors'
+import { useReportsStore } from '@/stores/reports'
 import { useDataPermissionGuard, useDataPermission } from '@/composables/useDataPermission'
 import { usePermission } from '@/composables/usePermission'
 import { exportToCsv, exportToPdf } from '@/lib/exportData'
 import { buildDoctorRevenueRows, summarizeDoctorRevenueRows } from '@/lib/doctorRevenueKpi'
-import { canViewClinicProfit } from '@/lib/roles'
-import { cashIncome, isDiscountEntry, isTrueRefund, paymentDisplayAmount } from '@/lib/paymentTotals'
+
+defineOptions({ name: 'ReportsView' })
 
 const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
-const doctorsStore = useDoctorsStore()
+const reportsStore = useReportsStore()
 
 useDataPermissionGuard('can_view_revenue', {
   message: "Hisobotlar bo'limiga kirish huquqingiz yo'q.",
@@ -553,45 +548,24 @@ const canExport = computed(() => legacyCanExport.value && can('reports', 'create
 
 const isSolo = computed(() => authStore.userRole === 'solo')
 
-const filters = ref({
-  startDate: '',
-  endDate: ''
-})
-
-const revenuePeriod = ref('day') // 'day', 'week', 'month'
-
-const loading = ref({
-  payments: false,
-  income: false,
-  services: false,
-  expenses: false,
-  movements: false,
-  week: false,
-})
-
-const weekRows = ref([])
-const weekUniquePatients = ref(0)
-const weekTotalRevenue = ref(0)
-
-const summary = ref({
-  totalPayments: 0,
-  totalRefunds: 0,
-  netIncome: 0,
-  totalAdditionalExpenses: 0,
-  totalExpenses: 0,
-  totalMovementsOut: 0
-})
-
-const payments = ref([])
-const paymentMethods = ref([])
-const topServices = ref([])
-const revenueData = ref([])
-const doctors = ref([])
-const patients = ref([])
-const additionalExpenses = ref([])
-const expensesList = ref([])
-const movementsList = ref([])
-const inventoryItems = ref([])
+const {
+  filters,
+  revenuePeriod,
+  loading,
+  summary,
+  payments,
+  paymentMethods,
+  topServices,
+  revenueData,
+  doctors,
+  additionalExpenses,
+  expensesList,
+  movementsList,
+  inventoryItems,
+  weekRows,
+  weekUniquePatients,
+  weekTotalRevenue,
+} = storeToRefs(reportsStore)
 
 const formatCurrency = (amount) => {
   if (amount === null || amount === undefined) return '-'
@@ -602,14 +576,7 @@ const formatCurrency = (amount) => {
 }
 
 const resetFilters = () => {
-  const today = new Date()
-  const end = today.toISOString().slice(0, 10)
-  const start = new Date(today)
-  start.setDate(today.getDate() - 30)
-  filters.value = {
-    startDate: start.toISOString().slice(0, 10),
-    endDate: end
-  }
+  reportsStore.resetFilters()
 }
 
 // Daromad dinamikasi chart
@@ -743,55 +710,6 @@ const paymentMethodsChartOptions = computed(() => ({
   colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 }))
 
-const applySummary = () => {
-  const totals = payments.value.reduce(
-    (acc, entry) => {
-      if (isDiscountEntry(entry)) return acc
-      if (entry.payment_type === 'payment') {
-        const cash = cashIncome([entry])
-        acc.totalPayments += cash
-        acc.netIncome += cash
-      } else if (isTrueRefund(entry)) {
-        const amount = Math.abs(Number(entry.amount) || 0)
-        acc.totalRefunds += amount
-        acc.netIncome -= amount
-      }
-      return acc
-    },
-    { totalPayments: 0, totalRefunds: 0, netIncome: 0, totalAdditionalExpenses: 0 }
-  )
-  const expenseTotal = (expensesList.value || []).reduce(
-    (sum, e) => sum + (Number(e.amount) || 0),
-    0,
-  )
-  totals.totalAdditionalExpenses = expenseTotal
-  if (canViewClinicProfit(authStore)) {
-    totals.netIncome -= expenseTotal
-  }
-  summary.value.totalPayments = totals.totalPayments
-  summary.value.totalRefunds = totals.totalRefunds
-  summary.value.netIncome = totals.netIncome
-  summary.value.totalAdditionalExpenses = totals.totalAdditionalExpenses
-}
-
-const buildPaymentMethodStats = () => {
-  const map = new Map()
-  payments.value.forEach(entry => {
-    if (isDiscountEntry(entry) || isTrueRefund(entry)) return
-    const method = entry.method || 'unknown'
-    if (!map.has(method)) {
-      map.set(method, { method, total: 0, count: 0 })
-    }
-    const row = map.get(method)
-    row.total += paymentDisplayAmount(entry)
-    row.count += 1
-  })
-  paymentMethods.value = Array.from(map.values()).map(row => ({
-    ...row,
-    label: resolveMethodLabel(row.method)
-  }))
-}
-
 const resolveMethodLabel = (method) => {
   const labels = {
     cash: 'Naqd',
@@ -838,97 +756,9 @@ const formatDateShort = (value) => {
   return date.toLocaleDateString('uz-UZ')
 }
 
-// Daromad ma'lumotlarini yuklash (kun/hafta/oy bo'yicha)
-const loadRevenueData = async () => {
-  try {
-    const { startDate, endDate } = filters.value
-    const allPayments = await paymentsApi.getPaymentsByDateRange(startDate, endDate)
-    
-    if (revenuePeriod.value === 'day') {
-      // Kunlik
-      const byDay = new Map()
-      allPayments.forEach(p => {
-        const day = (p.paid_at || '').slice(0, 10)
-        if (!day) return
-        if (!byDay.has(day)) {
-          byDay.set(day, { day, net_income: 0 })
-        }
-        const amt = Number(p.amount) || 0
-        const isAdditionalExpense = p.payment_type === 'adjustment' && p.note && p.note.includes('[CATEGORY:')
-        if (isAdditionalExpense) {
-          byDay.get(day).net_income -= amt // Xarajatlar ayiriladi
-        } else {
-          byDay.get(day).net_income += cashIncome([p])
-        }
-      })
-      revenueData.value = Array.from(byDay.values())
-        .sort((a, b) => a.day.localeCompare(b.day))
-    } else if (revenuePeriod.value === 'week') {
-      // Haftalik
-      const byWeek = new Map()
-      allPayments.forEach(p => {
-        const date = new Date(p.paid_at || '')
-        if (isNaN(date.getTime())) return
-        const weekStart = getWeekStart(date)
-        const weekKey = weekStart.toISOString().slice(0, 10)
-        if (!byWeek.has(weekKey)) {
-          byWeek.set(weekKey, { 
-            week: `Hafta ${weekStart.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit' })}`,
-            net_income: 0 
-          })
-        }
-        const amt = Number(p.amount) || 0
-        const isAdditionalExpense = p.payment_type === 'adjustment' && p.note && p.note.includes('[CATEGORY:')
-        if (isAdditionalExpense) {
-          byWeek.get(weekKey).net_income -= amt // Xarajatlar ayiriladi
-        } else {
-          byWeek.get(weekKey).net_income += cashIncome([p])
-        }
-      })
-      revenueData.value = Array.from(byWeek.values())
-        .sort((a, b) => a.week.localeCompare(b.week))
-    } else {
-      // Oylik
-      const byMonth = new Map()
-      allPayments.forEach(p => {
-        const date = (p.paid_at || '').slice(0, 7) + '-01'
-        if (!date) return
-        if (!byMonth.has(date)) {
-          byMonth.set(date, { month: date, net_income: 0 })
-        }
-        const amt = Number(p.amount) || 0
-        const isAdditionalExpense = p.payment_type === 'adjustment' && p.note && p.note.includes('[CATEGORY:')
-        if (isAdditionalExpense) {
-          byMonth.get(date).net_income -= amt // Xarajatlar ayiriladi
-        } else {
-          byMonth.get(date).net_income += cashIncome([p])
-        }
-      })
-      revenueData.value = Array.from(byMonth.values())
-        .sort((a, b) => a.month.localeCompare(b.month))
-    }
-  } catch (error) {
-    console.error('Failed to load revenue data:', error)
-    revenueData.value = []
-  }
-}
-
-const getWeekStart = (date) => {
-  const day = date.getDay()
-  const diff = date.getDate() - (day === 0 ? 6 : day - 1)
-  return new Date(date.getFullYear(), date.getMonth(), diff)
-}
-
-// Period o'zgarganda ma'lumotlarni qayta yuklash
 watch(revenuePeriod, () => {
-  loadRevenueData()
+  reportsStore.rebuildRevenueData()
 })
-
-const inDateRange = (dateStr, startDate, endDate) => {
-  if (!dateStr || !startDate || !endDate) return true
-  const d = (dateStr || '').slice(0, 10)
-  return d >= startDate && d <= endDate
-}
 
 const movementItemName = (itemId) => {
   const item = inventoryItems.value.find(i => Number(i.id) === Number(itemId))
@@ -1012,104 +842,15 @@ const exportDoctorRevenuePdf = () => {
   }
 }
 
-const loadReports = async () => {
-  loading.value.payments = true
-  loading.value.income = true
-  loading.value.services = true
-  loading.value.expenses = true
-  loading.value.movements = true
-  loading.value.week = true
-
-  try {
-    const { startDate, endDate } = filters.value
-    const [
-      paymentsData,
-      doctorsData,
-      patientsData,
-      topServicesData,
-      expensesData,
-      movementsData,
-      itemsData,
-      weekReport,
-    ] = await Promise.all([
-      paymentsApi.getPaymentsByDateRange(startDate, endDate),
-      listDoctors(),
-      listPatients(),
-      getTopServices(),
-      listExpenses('order=paid_at.desc'),
-      listInventoryMovements('order=created_at.desc'),
-      listInventoryItems('order=name.asc'),
-      getClinicWeekReport({
-        startDate,
-        endDate,
-      }).catch(() => ({ dailyBreakdown: [], uniquePatients: 0, totalRevenue: 0 })),
-    ])
-
-    weekRows.value = weekReport?.dailyBreakdown || []
-    weekUniquePatients.value = Number(weekReport?.uniquePatients) || 0
-    weekTotalRevenue.value = Number(weekReport?.totalRevenue) || 0
-
-    payments.value = paymentsData || []
-    doctors.value = doctorsData || []
-    patients.value = patientsData || []
-    topServices.value = (topServicesData || []).slice(0, 10)
-    inventoryItems.value = itemsData || []
-
-    const allExpenses = expensesData || []
-    const allMovements = movementsData || []
-    expensesList.value = allExpenses
-      .filter(e => inDateRange(e.paid_at, startDate, endDate))
-      .sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at))
-    movementsList.value = allMovements
-      .filter(m => inDateRange(m.created_at, startDate, endDate))
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-
-    summary.value.totalExpenses = expensesList.value.reduce((s, e) => s + (Number(e.amount) || 0), 0)
-    summary.value.totalMovementsOut = movementsList.value
-      .filter(m => m.type === 'out')
-      .reduce((s, m) => s + (Number(m.quantity) || 0), 0)
-
-    if (isSolo.value) {
-      additionalExpenses.value = payments.value
-        .filter(p => p.payment_type === 'adjustment' && p.note && p.note.includes('[CATEGORY:') && parseCategoryFromNote(p.note))
-        .map(p => ({
-          ...p,
-          category: parseCategoryFromNote(p.note) || 'other'
-        }))
-        .sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at))
-    } else {
-      additionalExpenses.value = []
-    }
-
-    applySummary()
-    buildPaymentMethodStats()
-    await loadRevenueData()
-  } catch (error) {
-    console.error('Failed to load reports:', error)
-    toast.error(t('reports.errorLoad') || 'Xatolik yuz berdi')
-  } finally {
-    loading.value.payments = false
-    loading.value.income = false
-    loading.value.services = false
-    loading.value.expenses = false
-    loading.value.movements = false
-    loading.value.week = false
-  }
-}
-
-const refreshDoctorsForReport = async () => {
-  await doctorsStore.fetchAll()
-  doctors.value = doctorsStore.items || []
-}
+const loadReports = () => reportsStore.fetchReports()
 
 onMounted(() => {
-  resetFilters()
-  loadReports()
+  reportsStore.ensureDefaultFilters()
+  reportsStore.fetchReports()
 })
 
-onActivated(async () => {
-  if (payments.value.length > 0) {
-    await refreshDoctorsForReport()
-  }
+onActivated(() => {
+  reportsStore.fetchReports()
 })
 </script>
+

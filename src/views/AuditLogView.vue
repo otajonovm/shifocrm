@@ -119,6 +119,8 @@ import { actorRoleLabel } from '@/lib/activityLog'
 import { useDataPermission } from '@/composables/useDataPermission'
 import { exportToCsv } from '@/lib/exportData'
 
+defineOptions({ name: 'AuditLogView' })
+
 const { t } = useI18n()
 const toast = useToast()
 

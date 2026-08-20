@@ -298,6 +298,8 @@ import { usePermission } from '@/composables/usePermission'
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { getClinic, updateClinic } from '@/services/adminService'
 
+defineOptions({ name: 'SettingsView' })
+
 const { locale } = useI18n()
 const authStore = useAuthStore()
 const clinicStore = useClinicStore()

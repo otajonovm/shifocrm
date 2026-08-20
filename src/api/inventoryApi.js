@@ -55,9 +55,24 @@ export const deleteInventoryItem = async (id) => {
   return true
 }
 
+const toDateTimeBound = (value, endOfDay = false) => {
+  const raw = String(value || '')
+  if (raw.includes('T')) return raw
+  const day = raw.slice(0, 10)
+  return endOfDay ? `${day}T23:59:59.999` : `${day}T00:00:00`
+}
+
 export const listInventoryMovements = async (query = 'order=created_at.desc') => {
   const cid = await getCurrentClinicId()
   return await supabaseGetWithClinicFallback(MOVEMENTS_TABLE, query, cid)
+}
+
+export const listInventoryMovementsByDateRange = async (startDate, endDate) => {
+  const cid = await getCurrentClinicId()
+  const start = toDateTimeBound(startDate, false)
+  const end = toDateTimeBound(endDate, true)
+  const q = `created_at=gte.${start}&created_at=lte.${end}&order=created_at.desc`
+  return await supabaseGetWithClinicFallback(MOVEMENTS_TABLE, q, cid)
 }
 
 export const createInventoryMovement = async (payload) => {
@@ -81,6 +96,14 @@ export const deleteInventoryMovement = async (id) => {
 export const listExpenses = async (query = 'order=paid_at.desc') => {
   const cid = await getCurrentClinicId()
   return await supabaseGetWithClinicFallback(EXPENSES_TABLE, query, cid)
+}
+
+export const listExpensesByDateRange = async (startDate, endDate) => {
+  const cid = await getCurrentClinicId()
+  const start = toDateTimeBound(startDate, false)
+  const end = toDateTimeBound(endDate, true)
+  const q = `paid_at=gte.${start}&paid_at=lte.${end}&order=paid_at.desc`
+  return await supabaseGetWithClinicFallback(EXPENSES_TABLE, q, cid)
 }
 
 export const createExpense = async (payload) => {

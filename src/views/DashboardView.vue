@@ -19,6 +19,8 @@ import AdminDashboard from '@/views/AdminDashboard.vue'
 import DoctorDashboard from '@/views/DoctorDashboard.vue'
 import SoloDashboard from '@/views/SoloDashboard.vue'
 
+defineOptions({ name: 'DashboardView' })
+
 const authStore = useAuthStore()
 const { t } = useI18n()
 const isAdmin = computed(() => isAdminLike(authStore))

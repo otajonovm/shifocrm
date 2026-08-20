@@ -7,11 +7,18 @@ import { getTelegramApiBaseUrl, getTelegramApiHeaders } from './telegramApi'
 import {
   earnLocalCashback,
   getLocalCashbackBalance,
+  getLocalCashbackBalanceRow,
   hasLocalCashbackTxn,
   recordLocalSpendMarker,
   spendLocalCashback,
   syncLocalCashbackFromPayments,
 } from '@/services/cashbackLedgerService'
+
+const CASHBACK_TIMEOUT_MS = 2500
+const CONFIG_TTL_MS = 5 * 60 * 1000
+
+let configCache = { at: 0, value: null, inflight: null }
+const balanceInflight = new Map()
 
 function isSetupIncomplete(result) {
   const reason = result?.data?.setup_reason || result?.error
@@ -56,11 +63,15 @@ async function cashbackRequest(path, { method = 'GET', body } = {}) {
     return { ok: false, error: 'NOT_CONFIGURED' }
   }
 
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), CASHBACK_TIMEOUT_MS)
+
   try {
     const response = await fetch(url, {
       method,
       headers: getTelegramApiHeaders(),
       body: body != null ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
     })
 
     const payload = await response.json().catch(() => ({}))
@@ -88,15 +99,31 @@ async function cashbackRequest(path, { method = 'GET', body } = {}) {
 
     return { ok: true, data: payload }
   } catch (error) {
-    console.warn('Cashback API:', error?.message || 'NETWORK_ERROR')
-    return { ok: false, error: error?.message || 'NETWORK_ERROR' }
+    const aborted = error?.name === 'AbortError'
+    console.warn('Cashback API:', aborted ? 'TIMEOUT' : (error?.message || 'NETWORK_ERROR'))
+    return { ok: false, error: aborted ? 'TIMEOUT' : (error?.message || 'NETWORK_ERROR') }
+  } finally {
+    clearTimeout(timer)
   }
 }
 
-export async function getCashbackBalance(patientId) {
-  if (patientId == null || patientId === '') {
-    return { ok: false, error: 'PATIENT_ID_REQUIRED' }
+function ledgerBalanceResult(balance) {
+  return {
+    ok: true,
+    data: {
+      balance: Number.isFinite(Number(balance)) && Number(balance) > 0 ? Number(balance) : 0,
+      setup_required: false,
+      source: 'ledger',
+    },
   }
+}
+
+async function loadCashbackBalanceUncached(patientId) {
+  const localRow = await getLocalCashbackBalanceRow(patientId).catch(() => null)
+  if (localRow) {
+    return ledgerBalanceResult(localRow.balance)
+  }
+
   const result = await cashbackRequest(`/cashback/balance/${encodeURIComponent(String(patientId))}`)
   if (result.ok && !isSetupIncomplete(result)) {
     return {
@@ -114,14 +141,7 @@ export async function getCashbackBalance(patientId) {
     const sync = await syncLocalCashbackFromPayments(patientId, percent)
     const balance = await getLocalCashbackBalance(patientId)
     if (sync.ok || balance > 0) {
-      return {
-        ok: true,
-        data: {
-          balance,
-          setup_required: false,
-          source: 'ledger',
-        },
-      }
+      return ledgerBalanceResult(balance)
     }
     if (result.ok && isSetupIncomplete(result)) {
       return {
@@ -154,16 +174,44 @@ export async function getCashbackBalance(patientId) {
   }
 }
 
-export async function getCashbackConfig() {
-  const result = await cashbackRequest('/cashback/config')
-  if (!result.ok) return result
-  return {
-    ok: true,
-    data: {
-      ...(result.data && typeof result.data === 'object' ? result.data : {}),
-      cashback_percent: parsePercent(result.data),
-    },
+export async function getCashbackBalance(patientId) {
+  if (patientId == null || patientId === '') {
+    return { ok: false, error: 'PATIENT_ID_REQUIRED' }
   }
+  const key = String(patientId)
+  if (balanceInflight.has(key)) return balanceInflight.get(key)
+  const promise = loadCashbackBalanceUncached(patientId).finally(() => {
+    balanceInflight.delete(key)
+  })
+  balanceInflight.set(key, promise)
+  return promise
+}
+
+export async function getCashbackConfig() {
+  if (configCache.value && (Date.now() - configCache.at) < CONFIG_TTL_MS) {
+    return configCache.value
+  }
+  if (configCache.inflight) return configCache.inflight
+
+  configCache.inflight = cashbackRequest('/cashback/config')
+    .then((result) => {
+      if (!result.ok) return result
+      const wrapped = {
+        ok: true,
+        data: {
+          ...(result.data && typeof result.data === 'object' ? result.data : {}),
+          cashback_percent: parsePercent(result.data),
+        },
+      }
+      configCache.value = wrapped
+      configCache.at = Date.now()
+      return wrapped
+    })
+    .finally(() => {
+      configCache.inflight = null
+    })
+
+  return configCache.inflight
 }
 
 export async function earnCashback({ patientId, paymentAmount, paymentId } = {}) {
@@ -234,6 +282,8 @@ export async function applyPaymentCashback({
   }
 
   try {
+    const localRow = await getLocalCashbackBalanceRow(patientId).catch(() => null)
+
     if (used > 0) {
       const alreadySpent = paymentId != null && paymentId !== ''
         ? await hasLocalCashbackTxn(patientId, paymentId, 'spend')
@@ -242,23 +292,32 @@ export async function applyPaymentCashback({
         result.spent = used
         result.duplicate = true
       } else {
-        let spendResult = await spendCashback({
-          patientId,
-          amount: used,
-          paymentId,
-        })
-        if (!spendResult.ok || isSetupIncomplete(spendResult)) {
+        let spendResult
+        if (localRow) {
           spendResult = await spendLocalCashback({
             patientId,
             amount: used,
             paymentId,
           })
         } else {
-          await recordLocalSpendMarker({
+          spendResult = await spendCashback({
             patientId,
             amount: used,
             paymentId,
           })
+          if (!spendResult.ok || isSetupIncomplete(spendResult)) {
+            spendResult = await spendLocalCashback({
+              patientId,
+              amount: used,
+              paymentId,
+            })
+          } else {
+            recordLocalSpendMarker({
+              patientId,
+              amount: used,
+              paymentId,
+            }).catch(() => {})
+          }
         }
         if (!spendResult.ok) {
           result.ok = false
@@ -270,19 +329,32 @@ export async function applyPaymentCashback({
     }
 
     if (remaining > 0) {
-      let earnResult = await earnCashback({
-        patientId,
-        paymentAmount: remaining,
-        paymentId,
-      })
-      if (!earnResult.ok || isSetupIncomplete(earnResult)) {
-        const config = await getCashbackConfig()
+      let earnResult
+      if (localRow) {
+        const percent = configCache.value?.ok
+          ? parsePercent(configCache.value.data)
+          : 5
         earnResult = await earnLocalCashback({
           patientId,
           paymentAmount: remaining,
           paymentId,
-          percent: config.ok ? parsePercent(config.data) : 5,
+          percent,
         })
+      } else {
+        earnResult = await earnCashback({
+          patientId,
+          paymentAmount: remaining,
+          paymentId,
+        })
+        if (!earnResult.ok || isSetupIncomplete(earnResult)) {
+          const config = await getCashbackConfig()
+          earnResult = await earnLocalCashback({
+            patientId,
+            paymentAmount: remaining,
+            paymentId,
+            percent: config.ok ? parsePercent(config.data) : 5,
+          })
+        }
       }
       if (!earnResult.ok) {
         result.ok = false

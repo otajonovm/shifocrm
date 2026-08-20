@@ -648,6 +648,8 @@ import { summarizePaymentsByMethod, calcExpectedShiftBalance, buildShiftCloseRep
 import { cashIncome, isDiscountEntry } from '@/lib/paymentTotals'
 import { syncVisitAfterPayment } from '@/services/paymentService'
 
+defineOptions({ name: 'PaymentsView' })
+
 const payments = ref([])
 const { t } = useI18n()
 const loading = ref(false)

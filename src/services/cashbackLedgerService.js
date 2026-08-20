@@ -26,14 +26,19 @@ const earnAmountFromPayment = (paymentAmount, percent = 5) => {
   return Math.round(amount * (safeRate / 100))
 }
 
-export async function getLocalCashbackBalance(patientId) {
+export async function getLocalCashbackBalanceRow(patientId) {
   const pid = toPatientId(patientId)
-  if (pid == null || pid === '') return 0
+  if (pid == null || pid === '') return null
   const rows = await supabaseGet(
     BALANCES,
     `patient_id=eq.${pid}&select=balance&limit=1`,
   )
-  const value = Number(rows?.[0]?.balance)
+  return rows?.[0] || null
+}
+
+export async function getLocalCashbackBalance(patientId) {
+  const row = await getLocalCashbackBalanceRow(patientId)
+  const value = Number(row?.balance)
   return Number.isFinite(value) && value > 0 ? value : 0
 }
 
@@ -253,21 +258,30 @@ export async function syncLocalCashbackFromPayments(patientId, percent = 5) {
   if (pid == null || pid === '') return { ok: true, earned: 0 }
 
   try {
-    const payments = await supabaseGet(
-      'payments',
-      `patient_id=eq.${pid}&payment_type=eq.payment&select=id,amount,note`,
-    ).catch(() => [])
-    let withCashbackCol = payments
+    let payments = []
     try {
-      withCashbackCol = await supabaseGet(
+      payments = await supabaseGet(
         'payments',
         `patient_id=eq.${pid}&payment_type=eq.payment&select=id,amount,cashback_used,note`,
       )
     } catch {
-      withCashbackCol = payments
+      payments = await supabaseGet(
+        'payments',
+        `patient_id=eq.${pid}&payment_type=eq.payment&select=id,amount,note`,
+      ).catch(() => [])
     }
+
+    const existingRows = await supabaseGet(
+      TRANSACTIONS,
+      `patient_id=eq.${pid}&type=eq.earn&select=payment_id`,
+    ).catch(() => [])
+    const existing = new Set(
+      (existingRows || []).map((row) => String(row.payment_id || '')).filter(Boolean),
+    )
+
     let earned = 0
-    for (const payment of withCashbackCol || []) {
+    for (const payment of payments || []) {
+      if (existing.has(String(payment.id))) continue
       const result = await earnLocalCashback({
         patientId: pid,
         paymentAmount: earnBaseFromPayment(payment),

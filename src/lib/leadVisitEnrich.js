@@ -20,7 +20,7 @@ export async function enrichVisitsWithLeadInfo(visits = []) {
 
   let leads = []
   try {
-    leads = await supabaseGet('leads', `id=in.(${leadIds.join(',')})`)
+    leads = await supabaseGet('leads', `id=in.(${leadIds.join(',')})&select=id,patient_name,phone,status`)
   } catch {
     return visits
   }

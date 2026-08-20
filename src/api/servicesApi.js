@@ -247,15 +247,19 @@ export const getServiceRevenueMonthly = async (months = 6) => {
     .slice(0, months)
 }
 
-export const getTopServices = async (limit = 10) => {
+export const getTopServices = async (limit = 10, range = {}) => {
   const cid = await getCurrentClinicId()
   if (!cid) return []
-  const end = new Date()
-  const start = new Date(end)
-  start.setFullYear(start.getFullYear() - 1)
-  const rows = await fetchVisitServicesForDateRange(
-    start.toISOString().slice(0, 10),
-    end.toISOString().slice(0, 10),
-  )
+  const end = range.endDate
+    ? String(range.endDate).slice(0, 10)
+    : new Date().toISOString().slice(0, 10)
+  const start = range.startDate
+    ? String(range.startDate).slice(0, 10)
+    : (() => {
+        const d = new Date()
+        d.setFullYear(d.getFullYear() - 1)
+        return d.toISOString().slice(0, 10)
+      })()
+  const rows = await fetchVisitServicesForDateRange(start, end)
   return aggregateByServiceName(rows).slice(0, Math.max(Number(limit) || 10, 1))
 }
