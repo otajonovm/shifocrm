@@ -724,6 +724,7 @@ const {
 } = usePaymentCashback({
   patientId: () => form.value.patient_id,
   paymentAmount: () => form.value.amount,
+  doctorId: () => form.value.doctor_id,
   enabled: cashbackEnabled,
 })
 

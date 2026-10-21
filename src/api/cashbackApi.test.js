@@ -4,12 +4,22 @@ import {
   hasLocalCashbackTxn,
   getLocalCashbackBalanceRow,
   spendLocalCashback,
+  earnLocalCashback,
   syncLocalCashbackFromPayments,
 } from '@/services/cashbackLedgerService'
+import {
+  getActiveDedicatedBotConfig,
+  notifyDedicatedCashback,
+} from '@/services/doctorBotsService'
 
 vi.mock('./telegramApi', () => ({
   getTelegramApiBaseUrl: () => '/api/telegram',
   getTelegramApiHeaders: () => ({ 'Content-Type': 'application/json' }),
+}))
+
+vi.mock('@/services/doctorBotsService', () => ({
+  getActiveDedicatedBotConfig: vi.fn(async () => null),
+  notifyDedicatedCashback: vi.fn(async () => ({ ok: true })),
 }))
 
 vi.mock('@/services/cashbackLedgerService', () => ({
@@ -28,6 +38,9 @@ describe('applyPaymentCashback', () => {
     hasLocalCashbackTxn.mockResolvedValue(false)
     getLocalCashbackBalanceRow.mockResolvedValue(null)
     spendLocalCashback.mockResolvedValue({ ok: false, spent: 0, error: 'LEDGER_SKIPPED' })
+    earnLocalCashback.mockResolvedValue({ ok: false, earned: 0, error: 'LEDGER_SKIPPED' })
+    getActiveDedicatedBotConfig.mockResolvedValue(null)
+    notifyDedicatedCashback.mockResolvedValue({ ok: true })
   })
 
   afterEach(() => {
@@ -180,6 +193,38 @@ describe('applyPaymentCashback', () => {
       amount: 20000,
       paymentId: 99,
     })
+  })
+
+  it('uses dedicated bot percent and notify instead of the shared bot', async () => {
+    getActiveDedicatedBotConfig.mockResolvedValue({
+      cashback_percent: 10,
+      max_spend_percent: 30,
+    })
+    earnLocalCashback.mockResolvedValue({ ok: true, earned: 8000 })
+
+    const result = await applyPaymentCashback({
+      patientId: 10,
+      paymentId: 99,
+      totalAmount: 80000,
+      cashbackUsed: 0,
+      doctorId: 7,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.earned).toBe(80000)
+    expect(result.cashbackEarned).toBe(8000)
+    expect(earnLocalCashback).toHaveBeenCalledWith({
+      patientId: 10,
+      paymentAmount: 80000,
+      paymentId: 99,
+      percent: 10,
+    })
+    expect(notifyDedicatedCashback).toHaveBeenCalledWith({
+      doctorId: 7,
+      patientId: 10,
+      earnedAmount: 8000,
+    })
+    expect(fetch).not.toHaveBeenCalled()
   })
 })
 

@@ -22,6 +22,7 @@ import {
 } from '@/lib/visitAppointmentSync'
 import { logActivity } from '@/lib/activityLog'
 import { tryAttributeVisitRevenue } from './notificationEventsApi'
+import { isSchemaCacheColumnError, parseMissingColumn } from '@/lib/supabaseSchemaFallback'
 
 const TABLE = 'visits'
 
@@ -54,15 +55,11 @@ const normalizeRangeOptions = (optionsOrDoctorId) => {
   return { doctorId: optionsOrDoctorId }
 }
 
-const isMissingSelectColumnError = (error) => {
-  const code = String(error?.code || '')
-  const message = String(error?.message || error?.details || error?.hint || '').toLowerCase()
-  return code === 'PGRST204'
-    || message.includes('schema cache')
-    || (message.includes('column') && (message.includes('does not exist') || message.includes('could not find')))
-}
+const isMissingSelectColumnError = (error) => isSchemaCacheColumnError(error)
 
 const findMissingSelectColumn = (error, columns) => {
+  const parsed = parseMissingColumn(error)
+  if (parsed && columns.includes(parsed)) return parsed
   const haystack = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`
   return columns.find((col) => haystack.includes(col))
 }
@@ -209,11 +206,35 @@ const generateId = async () => {
 export const getVisitsByPatientId = async (patientId, options = {}) => {
   try {
     const cid = await getCurrentClinicId()
-    const parts = [`patient_id=eq.${Number(patientId)}`, 'order=created_at.desc']
-    if (options.select) parts.push(`select=${options.select}`)
+    const columns = String(options.select || '')
+      .split(',')
+      .map((col) => col.trim())
+      .filter(Boolean)
+    let selectColumns = columns.length ? [...columns] : null
     const limit = Number(options.limit)
-    if (Number.isFinite(limit) && limit > 0) parts.push(`limit=${Math.min(limit, 200)}`)
-    return await supabaseGetWithClinicFallback(TABLE, parts.join('&'), cid)
+    const limitPart = Number.isFinite(limit) && limit > 0
+      ? `&limit=${Math.min(limit, 200)}`
+      : ''
+
+    while (true) {
+      const parts = [`patient_id=eq.${Number(patientId)}`, 'order=created_at.desc']
+      if (selectColumns?.length) parts.push(`select=${selectColumns.join(',')}`)
+      try {
+        return await supabaseGetWithClinicFallback(TABLE, `${parts.join('&')}${limitPart}`, cid)
+      } catch (error) {
+        if (!selectColumns?.length || !isMissingSelectColumnError(error)) throw error
+        const missing = findMissingSelectColumn(error, selectColumns)
+        if (!missing) throw error
+        selectColumns = selectColumns.filter((col) => col !== missing)
+        if (!selectColumns.length) {
+          return await supabaseGetWithClinicFallback(
+            TABLE,
+            `patient_id=eq.${Number(patientId)}&order=created_at.desc${limitPart}`,
+            cid,
+          )
+        }
+      }
+    }
   } catch (error) {
     console.error('❌ Failed to fetch visits:', error)
     throw error
@@ -227,14 +248,8 @@ export const getVisitsSummaryByPatientIds = async (patientIds = []) => {
   if (!ids.length) return empty
   try {
     const cid = await getCurrentClinicId()
-    const q = `patient_id=in.(${ids.join(',')})&select=patient_id,debt_amount,paid_amount,status,completed_at,end_time,updated_at,created_at&order=created_at.desc`
-    let rows = []
-    try {
-      rows = await supabaseGetWithClinicFallback(TABLE, q, cid)
-    } catch {
-      const fallback = `patient_id=in.(${ids.join(',')})&select=patient_id,debt_amount,paid_amount,status,updated_at,created_at&order=created_at.desc`
-      rows = await supabaseGetWithClinicFallback(TABLE, fallback, cid)
-    }
+    const q = `patient_id=in.(${ids.join(',')})&select=patient_id,debt_amount,paid_amount,status,updated_at,created_at&order=created_at.desc`
+    const rows = await supabaseGetWithClinicFallback(TABLE, q, cid)
     const latestByPatient = {}
     const debtSum = {}
     for (const row of rows || []) {

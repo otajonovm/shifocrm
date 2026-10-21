@@ -13,6 +13,11 @@ import {
   spendLocalCashback,
   syncLocalCashbackFromPayments,
 } from '@/services/cashbackLedgerService'
+import {
+  getActiveDedicatedBotConfig,
+  notifyDedicatedCashback,
+} from '@/services/doctorBotsService'
+import { earnAmountFromPercent } from '@/lib/dedicatedBot'
 
 const CASHBACK_TIMEOUT_MS = 2500
 const CONFIG_TTL_MS = 5 * 60 * 1000
@@ -187,7 +192,25 @@ export async function getCashbackBalance(patientId) {
   return promise
 }
 
-export async function getCashbackConfig() {
+export async function getCashbackConfig(doctorId) {
+  if (doctorId != null && doctorId !== '') {
+    try {
+      const dedicated = await getActiveDedicatedBotConfig(doctorId)
+      if (dedicated) {
+        return {
+          ok: true,
+          data: {
+            cashback_percent: dedicated.cashback_percent,
+            max_spend_percent: dedicated.max_spend_percent,
+            source: 'dedicated',
+          },
+        }
+      }
+    } catch (error) {
+      console.warn('Dedicated cashback config:', error?.message || error)
+    }
+  }
+
   if (configCache.value && (Date.now() - configCache.at) < CONFIG_TTL_MS) {
     return configCache.value
   }
@@ -214,7 +237,7 @@ export async function getCashbackConfig() {
   return configCache.inflight
 }
 
-export async function earnCashback({ patientId, paymentAmount, paymentId } = {}) {
+export async function earnCashback({ patientId, paymentAmount, paymentId, notify = true } = {}) {
   if (patientId == null || patientId === '') {
     return { ok: false, error: 'PATIENT_ID_REQUIRED' }
   }
@@ -226,7 +249,7 @@ export async function earnCashback({ patientId, paymentAmount, paymentId } = {})
   const body = {
     patient_id: String(patientId),
     payment_amount: amount,
-    notify: true,
+    notify: Boolean(notify),
   }
   if (paymentId != null && paymentId !== '') {
     body.payment_id = String(paymentId)
@@ -235,7 +258,7 @@ export async function earnCashback({ patientId, paymentAmount, paymentId } = {})
   return cashbackRequest('/cashback/earn', { method: 'POST', body })
 }
 
-export async function spendCashback({ patientId, amount, paymentId } = {}) {
+export async function spendCashback({ patientId, amount, paymentId, notify = true } = {}) {
   if (patientId == null || patientId === '') {
     return { ok: false, error: 'PATIENT_ID_REQUIRED' }
   }
@@ -247,7 +270,7 @@ export async function spendCashback({ patientId, amount, paymentId } = {}) {
   const body = {
     patient_id: String(patientId),
     amount: spendAmount,
-    notify: true,
+    notify: Boolean(notify),
   }
   if (paymentId != null && paymentId !== '') {
     body.payment_id = String(paymentId)
@@ -265,6 +288,7 @@ export async function applyPaymentCashback({
   paymentId,
   totalAmount,
   cashbackUsed,
+  doctorId,
 } = {}) {
   const total = Math.max(0, Number(totalAmount) || 0)
   const used = Math.min(Math.max(0, Number(cashbackUsed) || 0), total)
@@ -274,6 +298,7 @@ export async function applyPaymentCashback({
     ok: true,
     spent: 0,
     earned: 0,
+    cashbackEarned: 0,
     error: null,
   }
 
@@ -283,6 +308,12 @@ export async function applyPaymentCashback({
 
   try {
     const localRow = await getLocalCashbackBalanceRow(patientId).catch(() => null)
+    const dedicated = doctorId != null && doctorId !== ''
+      ? await getActiveDedicatedBotConfig(doctorId).catch(() => null)
+      : null
+    const dedicatedPercent = dedicated
+      ? Number(dedicated.cashback_percent) || 5
+      : null
 
     if (used > 0) {
       const alreadySpent = paymentId != null && paymentId !== ''
@@ -293,12 +324,20 @@ export async function applyPaymentCashback({
         result.duplicate = true
       } else {
         let spendResult
-        if (localRow) {
+        if (localRow || dedicated) {
           spendResult = await spendLocalCashback({
             patientId,
             amount: used,
             paymentId,
           })
+          if (dedicated && (!spendResult.ok || isSetupIncomplete(spendResult))) {
+            spendResult = await spendCashback({
+              patientId,
+              amount: used,
+              paymentId,
+              notify: false,
+            })
+          }
         } else {
           spendResult = await spendCashback({
             patientId,
@@ -330,16 +369,25 @@ export async function applyPaymentCashback({
 
     if (remaining > 0) {
       let earnResult
-      if (localRow) {
-        const percent = configCache.value?.ok
-          ? parsePercent(configCache.value.data)
-          : 5
+      const percent = dedicatedPercent != null
+        ? dedicatedPercent
+        : (configCache.value?.ok ? parsePercent(configCache.value.data) : 5)
+
+      if (dedicated || localRow) {
         earnResult = await earnLocalCashback({
           patientId,
           paymentAmount: remaining,
           paymentId,
           percent,
         })
+        if (dedicated && (!earnResult.ok || isSetupIncomplete(earnResult))) {
+          earnResult = await earnCashback({
+            patientId,
+            paymentAmount: remaining,
+            paymentId,
+            notify: false,
+          })
+        }
       } else {
         earnResult = await earnCashback({
           patientId,
@@ -361,6 +409,17 @@ export async function applyPaymentCashback({
         result.error = result.error || earnResult.error || 'EARN_FAILED'
       } else {
         result.earned = remaining
+        const earnedSom = Number(earnResult.earned) > 0
+          ? Number(earnResult.earned)
+          : earnAmountFromPercent(remaining, percent)
+        result.cashbackEarned = earnResult.duplicate ? 0 : earnedSom
+        if (dedicated && result.cashbackEarned > 0) {
+          notifyDedicatedCashback({
+            doctorId,
+            patientId,
+            earnedAmount: result.cashbackEarned,
+          }).catch(() => {})
+        }
       }
     }
   } catch (error) {

@@ -35,7 +35,6 @@ function startLeadHoldCleanupCron(intervalMs = 5 * 60 * 1000) {
 
   console.log(`⏱️ Lead hold cleanup cron ishga tushdi (${intervalMs}ms)`)
 }
-
 function stopLeadHoldCleanupCron() {
   if (intervalRef) {
     clearInterval(intervalRef)

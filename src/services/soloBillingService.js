@@ -46,10 +46,12 @@ const isMissingTable = (error) => {
 }
 
 const isMissingColumn = (error) => {
-  const msg = String(error?.message || error?.hint || '').toLowerCase()
+  const msg = String(error?.message || error?.hint || error?.details || '').toLowerCase()
   const code = String(error?.code || '')
   return code === 'PGRST204'
+    || code === '42703'
     || msg.includes('could not find the')
+    || (msg.includes('column') && msg.includes('does not exist'))
     || (msg.includes('schema cache') && msg.includes('column'))
 }
 

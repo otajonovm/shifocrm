@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.subscription-expiry-cron]
 verify_jwt = false
+
+[functions.dedicated-bot]
+verify_jwt = false

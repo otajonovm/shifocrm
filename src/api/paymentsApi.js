@@ -94,6 +94,7 @@ export const createPayment = async ({
           paymentId: created.id,
           totalAmount: created.amount ?? amount,
           cashbackUsed: usedCashback,
+          doctorId: created.doctor_id ?? doctor_id,
         })
       } catch (cashbackError) {
         console.warn('Cashback API failed:', cashbackError)

@@ -13,6 +13,13 @@
           >
             {{ t('superAdmin.clinics') }}
           </router-link>
+          <router-link
+            to="/admin/doctor-bots"
+            class="px-3 py-2 text-sm font-medium rounded-lg"
+            :class="$route.path.startsWith('/admin/doctor-bots') ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-100'"
+          >
+            {{ t('doctorBots.nav') }}
+          </router-link>
         </nav>
       </div>
       <div class="flex items-center gap-2">

@@ -9,6 +9,7 @@ import {
 } from '@/services/adminService'
 import { authenticateEmployee } from '@/api/employeesApi'
 import { resetAppCaches } from '@/lib/resetAppCaches'
+import { logSessionLoginOnce } from '@/lib/activityLog'
 import { logAuditAction } from '@/services/authService'
 import {
   migrateLegacyClinicOwnerSession,
@@ -98,6 +99,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   repairSoloOwnerSession(getClinic, user, userRole)
 
+  const trackSessionLogin = () => {
+    try {
+      logSessionLoginOnce().catch(() => {})
+    } catch {
+      // audit log loginni to'xtatmasin
+    }
+  }
+
   const login = async ({ login: loginVal, password }) => {
     error.value = null
     try {
@@ -118,7 +127,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem(USER_CLINIC_KEY)
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         localStorage.setItem(SUPER_ADMIN_SCOPE_KEY, 'global')
-        logSessionLoginOnce().catch(() => {})
+        trackSessionLogin()
         logAuditAction({
           userId: loginVal,
           action: 'login',
@@ -187,7 +196,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem(USER_CLINIC_KEY, String(clinicId))
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
-        logSessionLoginOnce().catch(() => {})
+        trackSessionLogin()
         logAuditAction({
           userId: sessionUser.id || sessionUser.login,
           action: 'login',
@@ -219,7 +228,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem(USER_CLINIC_KEY, String(clinicAdmin.clinic_id))
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
-        logSessionLoginOnce().catch(() => {})
+        trackSessionLogin()
         logAuditAction({
           userId: adminUser.admin_id || adminUser.login,
           action: 'login',
@@ -280,7 +289,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
-        logSessionLoginOnce().catch(() => {})
+        trackSessionLogin()
         logAuditAction({
           userId: employeeUser.employee_id || employeeUser.login,
           action: 'login',
@@ -305,7 +314,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem(USER_CLINIC_KEY)
         localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
         localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
-        logSessionLoginOnce().catch(() => {})
+        trackSessionLogin()
         return true
       }
 
@@ -397,7 +406,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('user', JSON.stringify(safeDoctor))
       localStorage.removeItem(IMPERSONATOR_ROLE_KEY)
       localStorage.removeItem(SUPER_ADMIN_SCOPE_KEY)
-      logSessionLoginOnce().catch(() => {})
+      trackSessionLogin()
       logAuditAction({
         userId: safeDoctor.id,
         action: 'login',

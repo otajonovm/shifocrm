@@ -117,31 +117,32 @@
 
         <!-- Tab Content — reduced padding on mobile -->
         <div class="p-4 sm:p-6">
-          <!-- Tashriflar Tab -->
-          <div v-if="activeTab === 'visits'">
+          <div :key="activeTab">
+            <!-- Tashriflar Tab -->
             <PatientVisitsTable
+              v-if="activeTab === 'visits'"
               :patient-id="patient.id"
               :can-edit="canEditMedicalRecords"
               @open-odontogram="openOdontogramTab"
             />
-          </div>
 
-          <!-- Odontogramma Tab -->
-          <div v-else-if="activeTab === 'odontogram'">
-            <PatientOdontogramPlaceholder :patient-id="patient.id" :visit-id="selectedVisitId" />
-          </div>
+            <!-- Odontogramma Tab -->
+            <PatientOdontogramPlaceholder
+              v-else-if="activeTab === 'odontogram'"
+              :patient-id="patient.id"
+              :visit-id="selectedVisitId"
+            />
 
-          <!-- Timeline Tab -->
-          <div v-else-if="activeTab === 'timeline'">
+            <!-- Timeline Tab -->
             <PatientClinicalTimeline
+              v-else-if="activeTab === 'timeline'"
               :patient-id="patient.id"
               :patient-name="patient.full_name || ''"
             />
-          </div>
 
-          <!-- To'lovlar Tab -->
-          <div v-else-if="activeTab === 'payments'">
+            <!-- To'lovlar Tab -->
             <PatientPaymentsPlaceholder
+              v-else-if="activeTab === 'payments'"
               :patient-id="patient.id"
               :patient-name="patient.full_name || ''"
               :patient-med-id="patient.med_id || ''"
@@ -149,20 +150,20 @@
               @update-status="handlePaymentStatusUpdate"
               @cashback-updated="loadCashbackBalance"
             />
-          </div>
 
-          <!-- Davolash rejasi Tab -->
-          <div v-else-if="activeTab === 'plans'">
+            <!-- Davolash rejasi Tab -->
             <PatientTreatmentPlans
+              v-else-if="activeTab === 'plans'"
               :patient-id="patient.id"
               :patient-name="patient.full_name || ''"
               :patient-phone="patient.phone || ''"
             />
-          </div>
 
-          <!-- Hujjatlar Tab -->
-          <div v-else-if="activeTab === 'documents'">
-            <PatientDocumentsPlaceholder :patient-id="patient.id" />
+            <!-- Hujjatlar Tab -->
+            <PatientDocumentsPlaceholder
+              v-else-if="activeTab === 'documents'"
+              :patient-id="patient.id"
+            />
           </div>
         </div>
       </div>
@@ -256,7 +257,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onActivated, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
@@ -474,7 +475,9 @@ const openOdontogramTab = (visitId) => {
 
 watch(activeTab, (tab) => {
   writeStoredPatientTab(route.params.id, tab)
-  syncTabToRoute(tab)
+  nextTick(() => {
+    syncTabToRoute(tab)
+  })
 }, { immediate: true })
 
 watch(() => [route.query.tab, route.query.visit, route.params.id], applyRouteTab)

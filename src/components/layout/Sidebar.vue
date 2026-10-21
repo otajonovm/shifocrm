@@ -174,6 +174,7 @@ import {
   UserCircleIcon,
   DocumentTextIcon,
   ShieldCheckIcon,
+  ChatBubbleLeftRightIcon,
   ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -233,6 +234,7 @@ const superadminMenuItems = [
   { labelKey: 'nav.superadminDashboard', to: '/admin-dashboard', icon: ChartBarIcon },
   { labelKey: 'nav.manageUsers', to: '/admin/manage-users', icon: UsersIcon },
   { labelKey: 'nav.superadminClinics', to: '/admin/clinics', icon: ShieldCheckIcon },
+  { labelKey: 'nav.doctorBots', to: '/admin/doctor-bots', icon: ChatBubbleLeftRightIcon },
 ]
 
 const adminMenuItems = [

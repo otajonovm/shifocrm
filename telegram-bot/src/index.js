@@ -10,6 +10,14 @@
 const path = require('path')
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') })
 require('dotenv').config()
+
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
+process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY
+  || process.env.SUPABASE_SERVICE_ROLE_KEY
+  || process.env.VITE_SUPABASE_SERVICE_KEY
+  || process.env.VITE_SUPABASE_ANON_KEY
+  || ''
+
 const TelegramBot = require('node-telegram-bot-api')
 const express = require('express')
 const cors = require('cors')
@@ -25,6 +33,12 @@ const {
   handleMessage
 } = require('./handlers/startHandler')
 const { handleLeadCallback } = require('./handlers/leadsHandler')
+const { mountDedicatedWebhook } = require('./dedicated/dedicatedWebhook')
+const { mountProvisionApi } = require('./dedicated/provisionApi')
+const {
+  startDedicatedPolling,
+  stopDedicatedPolling,
+} = require('./dedicated/dedicatedPolling')
 
 // Services
 const {
@@ -43,53 +57,50 @@ const {
 
 // Environment variables
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
-const API_KEY = process.env.API_KEY || 'my-secret-key-12345'
+const API_KEY = process.env.API_KEY || process.env.VITE_TELEGRAM_API_KEY || 'my-secret-key-12345'
 const PORT = process.env.PORT || 3001
 
-if (!BOT_TOKEN) {
-  console.error('❌ TELEGRAM_BOT_TOKEN not found in .env')
-  process.exit(1)
-}
+let bot = null
 
-// Telegram Bot
-const bot = new TelegramBot(BOT_TOKEN, { polling: true })
+if (BOT_TOKEN) {
+  bot = new TelegramBot(BOT_TOKEN, { polling: true })
+  console.log('🤖 Telegram bot started...')
 
-console.log('🤖 Telegram bot started...')
+  bot.onText(/\/start(?:@\w+)?(?:\s+(.+))?/i, (msg) => handleStart(bot, msg))
+  bot.onText(/\/help/, (msg) => handleHelp(bot, msg))
+  bot.onText(/\/info/, (msg) => handleInfo(bot, msg))
 
-// Bot commands
-bot.onText(/\/start(?:@\w+)?(?:\s+(.+))?/i, (msg) => handleStart(bot, msg))
-bot.onText(/\/help/, (msg) => handleHelp(bot, msg))
-bot.onText(/\/info/, (msg) => handleInfo(bot, msg))
-
-bot.on('callback_query', async (query) => {
-  try {
-    const handled = await handleLeadCallback(bot, query)
-    if (!handled && query.data) {
-      await bot.answerCallbackQuery(query.id)
+  bot.on('callback_query', async (query) => {
+    try {
+      const handled = await handleLeadCallback(bot, query)
+      if (!handled && query.data) {
+        await bot.answerCallbackQuery(query.id)
+      }
+    } catch (error) {
+      console.error('callback_query error:', error.message)
+      await bot.answerCallbackQuery(query.id, { text: 'Xatolik' }).catch(() => {})
     }
-  } catch (error) {
-    console.error('callback_query error:', error.message)
-    await bot.answerCallbackQuery(query.id, { text: 'Xatolik' }).catch(() => {})
-  }
-})
+  })
 
-// Oddiy xabarlar
-bot.on('message', (msg) => {
-  // Agar buyruq bo'lsa, o'tkazib yuborish
-  if (msg.text && msg.text.startsWith('/')) return
-  handleMessage(bot, msg)
-})
+  bot.on('message', (msg) => {
+    if (msg.text && msg.text.startsWith('/')) return
+    handleMessage(bot, msg)
+  })
 
-// Error handling
-bot.on('polling_error', (error) => {
-  console.error('Telegram polling error:', error)
-})
+  bot.on('polling_error', (error) => {
+    console.error('Telegram polling error:', error)
+  })
+} else {
+  console.warn('⚠️ TELEGRAM_BOT_TOKEN yo\'q — faqat dedicated keshbek botlari ishlaydi')
+}
 
 // Express API Server
 const app = express()
 
 app.use(cors())
 app.use(express.json())
+
+mountDedicatedWebhook(app)
 
 // API Key middleware
 function checkApiKey(req, res, next) {
@@ -102,11 +113,19 @@ function checkApiKey(req, res, next) {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    scheduler: getSchedulerStatus()
-  })
+  try {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      scheduler: getSchedulerStatus(),
+    })
+  } catch (error) {
+    res.status(200).json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      scheduler: { running: false, error: error.message },
+    })
+  }
 })
 
 app.get('/health/scheduler', (req, res) => {
@@ -146,9 +165,15 @@ app.post('/api/send', checkApiKey, async (req, res) => {
       })
     }
 
-    console.log(`📤 Telegram xabari yuborilmoqda: chat_id=${chatId}`);
+    if (!bot) {
+      return res.status(503).json({
+        error: 'SHARED_BOT_NOT_CONFIGURED',
+        message: 'Umumiy Telegram bot tokeni sozlanmagan',
+      })
+    }
 
-    // Telegram ga yuborish
+    console.log(`📤 Telegram xabari yuborilmoqda: chat_id=${chatId}`)
+
     await bot.sendMessage(chatId, message)
 
     console.log(`✅ Telegram xabari muvaffaqiyatli yuborildi: chat_id=${chatId}`);
@@ -168,19 +193,26 @@ app.post('/api/send', checkApiKey, async (req, res) => {
 
 app.use('/api/patients', checkApiKey, patientCompletionApi)
 app.use('/api/treatment-plans', checkApiKey, treatmentPlanReminderApi)
+mountProvisionApi(app, checkApiKey)
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 API server listening on port ${PORT}`)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 API server listening on 0.0.0.0:${PORT}`)
   console.log(`📡 Health check: http://localhost:${PORT}/health`)
   console.log(`📬 Send endpoint: http://localhost:${PORT}/api/send`)
 })
 
-// Start appointment reminder cron job
-setBotInstance(bot)
-startReminderCron()
-startMessageScheduler(bot, { intervalMs: 30000 })
+if (bot) {
+  setBotInstance(bot)
+  startReminderCron()
+  startMessageScheduler(bot, { intervalMs: 30000 })
+} else {
+  console.warn('⚠️ Eslatma cronlari o\'chirilgan (umumiy bot tokeni yo\'q)')
+}
 startLeadHoldCleanupCron(5 * 60 * 1000)
+startDedicatedPolling().catch((error) => {
+  console.error('dedicated polling:', error.message)
+})
 
 console.log('✅ All systems ready!')
 
@@ -188,7 +220,9 @@ function shutdown(signal) {
   console.log(`🛑 ${signal} qabul qilindi, server to'xtatilmoqda...`)
   stopMessageScheduler()
   stopLeadHoldCleanupCron()
-  bot.stopPolling()
+  stopDedicatedPolling()
+  const stopMain = bot ? bot.stopPolling() : Promise.resolve()
+  stopMain
     .then(() => {
       console.log('✅ Telegram polling to‘xtatildi')
       process.exit(0)

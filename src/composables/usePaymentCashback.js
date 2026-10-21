@@ -2,6 +2,7 @@ import { ref, computed, unref, watch } from 'vue'
 import { getCashbackBalance, getCashbackConfig } from '@/services/cashbackService'
 import { useSubscriptionStore } from '@/stores/subscription'
 import { FEATURE_KEYS } from '@/lib/subscriptionFeatures'
+import { maxSpendableCashback } from '@/lib/dedicatedBot'
 
 function readValue(source) {
   return typeof source === 'function' ? source() : unref(source)
@@ -12,9 +13,10 @@ function readValue(source) {
  * @param {object} options
  * @param {import('vue').MaybeRefOrGetter} options.patientId
  * @param {import('vue').MaybeRefOrGetter} options.paymentAmount
+ * @param {import('vue').MaybeRefOrGetter} options.doctorId
  * @param {import('vue').MaybeRefOrGetter<boolean>} options.enabled
  */
-export function usePaymentCashback({ patientId, paymentAmount, enabled, autoFillMax = true }) {
+export function usePaymentCashback({ patientId, paymentAmount, doctorId, enabled, autoFillMax = true }) {
   const subscriptionStore = useSubscriptionStore()
   const featureEnabled = computed(() => subscriptionStore.checkFeature(FEATURE_KEYS.CASHBACK))
   const isEnabled = computed(() => Boolean(readValue(enabled)) && featureEnabled.value)
@@ -25,14 +27,16 @@ export function usePaymentCashback({ patientId, paymentAmount, enabled, autoFill
   const useCashback = ref(false)
   const cashbackAmount = ref('')
   const cashbackPercent = ref(5)
+  const maxSpendPercent = ref(null)
   const hidden = ref(false)
 
   const showCashback = computed(() => isEnabled.value && !hidden.value)
 
-  const maxCashback = computed(() => {
-    const amount = Math.max(0, Number(readValue(paymentAmount)) || 0)
-    return Math.min(amount, Math.max(0, Number(balance.value) || 0))
-  })
+  const maxCashback = computed(() => maxSpendableCashback({
+    paymentAmount: readValue(paymentAmount),
+    balance: balance.value,
+    maxSpendPercent: maxSpendPercent.value,
+  }))
 
   const cashbackUsed = computed(() => {
     if (!useCashback.value) return 0
@@ -53,6 +57,7 @@ export function usePaymentCashback({ patientId, paymentAmount, enabled, autoFill
     balanceError.value = false
     balanceLoading.value = false
     hidden.value = false
+    maxSpendPercent.value = null
   }
 
   const loadBalance = async () => {
@@ -68,7 +73,7 @@ export function usePaymentCashback({ patientId, paymentAmount, enabled, autoFill
     try {
       const [balanceResult, configResult] = await Promise.all([
         getCashbackBalance(pid),
-        getCashbackConfig(),
+        getCashbackConfig(readValue(doctorId)),
       ])
       if (!balanceResult.ok) {
         balance.value = 0
@@ -86,6 +91,9 @@ export function usePaymentCashback({ patientId, paymentAmount, enabled, autoFill
       if (configResult.ok && configResult.data?.cashback_percent) {
         cashbackPercent.value = Number(configResult.data.cashback_percent) || 5
       }
+      maxSpendPercent.value = configResult?.data?.source === 'dedicated'
+        ? Number(configResult.data.max_spend_percent)
+        : null
     } catch (error) {
       console.warn('Cashback balance load failed:', error)
       balance.value = 0
@@ -116,8 +124,8 @@ export function usePaymentCashback({ patientId, paymentAmount, enabled, autoFill
   })
 
   watch(
-    () => [readValue(patientId), isEnabled.value],
-    ([nextPatient, enabledNow], previous) => {
+    () => [readValue(patientId), readValue(doctorId), isEnabled.value],
+    ([nextPatient, , enabledNow], previous) => {
       const prevPatient = previous?.[0]
       if (prevPatient != null && prevPatient !== nextPatient) {
         useCashback.value = false

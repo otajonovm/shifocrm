@@ -25,7 +25,7 @@ const unwrapRpcRow = (value) => {
   return value || null
 }
 
-const ODONTOGRAM_VISIT_SELECT = 'id,status,date,doctor_id,doctor_name,price,paid_amount,debt_amount,created_at,discount_percent'
+const ODONTOGRAM_VISIT_SELECT = 'id,status,date,doctor_id,doctor_name,price,paid_amount,debt_amount,created_at'
 
 export const getPatientVisits = async (patientId) => {
   try {

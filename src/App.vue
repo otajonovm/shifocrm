@@ -1,7 +1,11 @@
 <template>
   <router-view v-slot="{ Component, route }">
     <KeepAlive :key="sessionKey" :include="keepAliveInclude" :max="keepAliveMax">
-      <component :is="Component" :key="keepAliveKey(route)" />
+      <component
+        v-if="Component"
+        :is="Component"
+        :key="keepAliveKey(route)"
+      />
     </KeepAlive>
   </router-view>
 </template>

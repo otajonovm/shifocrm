@@ -206,6 +206,24 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresRole: 'super_admin' },
     },
     {
+      path: '/admin/doctor-bots',
+      name: 'admin-doctor-bots',
+      component: () => import('@/views/superadmin/AdminDoctorBotsView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'super_admin' },
+    },
+    {
+      path: '/admin/doctor-bots/new',
+      name: 'admin-doctor-bots-new',
+      component: () => import('@/views/superadmin/AdminDoctorBotFormView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'super_admin' },
+    },
+    {
+      path: '/admin/doctor-bots/:id/edit',
+      name: 'admin-doctor-bots-edit',
+      component: () => import('@/views/superadmin/AdminDoctorBotFormView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'super_admin' },
+    },
+    {
       path: '/d/:slug',
       name: 'doctor-public-profile',
       component: () => import('@/views/DoctorPublicProfileView.vue'),
