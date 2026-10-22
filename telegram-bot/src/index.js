@@ -54,6 +54,7 @@ const {
   startLeadHoldCleanupCron,
   stopLeadHoldCleanupCron,
 } = require('./services/leadsHoldExpiry')
+const { startUserAgent, stopUserAgent } = require('./userAgent/client')
 
 // Environment variables
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
@@ -213,6 +214,9 @@ startLeadHoldCleanupCron(5 * 60 * 1000)
 startDedicatedPolling().catch((error) => {
   console.error('dedicated polling:', error.message)
 })
+startUserAgent().catch((error) => {
+  console.error('Shaxsiy Telegram agent:', error.message)
+})
 
 console.log('✅ All systems ready!')
 
@@ -222,7 +226,7 @@ function shutdown(signal) {
   stopLeadHoldCleanupCron()
   stopDedicatedPolling()
   const stopMain = bot ? bot.stopPolling() : Promise.resolve()
-  stopMain
+  Promise.all([stopMain, stopUserAgent()])
     .then(() => {
       console.log('✅ Telegram polling to‘xtatildi')
       process.exit(0)

@@ -20,6 +20,11 @@ coverage
 .env.local
 .env.*.local
 
+# Shaxsiy Telegram agent sessiyasi va suhbat holati
+telegram-bot/.session
+telegram-bot/data/
+*.session
+
 # Lokal kirish ma'lumotlari (production da env ishlating)
 db.json
 

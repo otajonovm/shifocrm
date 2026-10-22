@@ -8,6 +8,8 @@
   },
   "scripts": {
     "dev": "vite",
+    "agent:login": "npm run agent:login --prefix telegram-bot",
+    "bot": "npm start --prefix telegram-bot",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --fix --cache",

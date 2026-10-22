@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "agent:login": "node src/userAgent/login.js"
   },
   "keywords": [
     "telegram",
@@ -22,7 +23,8 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "node-cron": "^3.0.3",
-    "node-telegram-bot-api": "^0.64.0"
+    "node-telegram-bot-api": "^0.64.0",
+    "telegram": "^2.26.22"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
